@@ -1,0 +1,2740 @@
+,Unnamed: 0,row,prompt,task_id,occupation,task_description,can_be_performed_remotely,feasiblity_practical,chain_of_thought,tools.Coding,tools.Spreadsheets,tools.Text editor,tools.PDF viewer,tools.Presentation software,tools.Online search engine,tools.Image Generator,tools.Other.name,tools.Other.classification,materials.Text,materials.Data,materials.Images,materials.Audio files,materials.Video files,materials.Virtual labs or sandbox environments,materials.Other.name,materials.Other.classification,required_tools,required_tools_standard,required_materials,required_materials_standard
+10,10,10,"
+Task ID: 3476.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Define the goals of the system and devise flow charts and diagrams describing logical operational steps of programs.) for the role of Computer Systems Analysts. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Computer Systems Analysts's ability to perform the task (Define the goals of the system and devise flow charts and diagrams describing logical operational steps of programs.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""3476.0"",
+  ""occupation"": ""Computer Systems Analysts"",
+  ""task_description"": ""Define the goals of the system and devise flow charts and diagrams describing logical operational steps of programs."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",3476.0,Computer Systems Analysts,Define the goals of the system and devise flow charts and diagrams describing logical operational steps of programs.,True,True,"This task involves defining system goals and creating flowcharts/diagrams, which can be done remotely. A practical exam would require diagramming software (like Lucidchart, Draw.io, or Visio) to create flowcharts and diagrams. A text editor is needed for documenting system goals. The candidate would need system requirements documentation and sample data to analyze. The exam could present a case study requiring the candidate to define system goals and create appropriate diagrams representing the logical steps of the proposed solution.",Not Required,Not Required,Required,Not Required,Not Required,Not Required,Not Required,Diagramming software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,System requirements document,Required,"['Text editor', 'Diagramming software']",['Text editor'],"['Text', 'Data', 'System requirements document']","['Text', 'Data']"
+12,12,12,"
+Task ID: 18090.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Translate nursing practice information between nurses and systems engineers, analysts, or designers, using object-oriented models or other techniques.) for the role of Health Informatics Specialists. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Health Informatics Specialists's ability to perform the task (Translate nursing practice information between nurses and systems engineers, analysts, or designers, using object-oriented models or other techniques.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""18090.0"",
+  ""occupation"": ""Health Informatics Specialists"",
+  ""task_description"": ""Translate nursing practice information between nurses and systems engineers, analysts, or designers, using object-oriented models or other techniques."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",18090.0,Health Informatics Specialists,"Translate nursing practice information between nurses and systems engineers, analysts, or designers, using object-oriented models or other techniques.",True,True,"This task requires translating nursing practice information into technical models, which can be done remotely. A practical exam would involve providing candidates with nursing workflow descriptions and asking them to create object-oriented models using UML modeling software. They would need to demonstrate their ability to identify key entities, relationships, and processes from nursing documentation and translate them into diagrams that systems engineers could implement. This tests their practical translation skills between clinical and technical domains.",Not Required,Not Required,Required,Required,Not Required,Not Required,Not Required,UML/Modeling Software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Case studies of nursing workflows,Required,"['Text editor', 'PDF viewer', 'UML/Modeling Software']","['Text editor', 'PDF viewer']","['Text', 'Data', 'Case studies of nursing workflows']","['Text', 'Data']"
+41,41,41,"
+Task ID: 14624.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Assign or schedule tasks to meet work priorities and goals.) for the role of Computer and Information Research Scientists. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Computer and Information Research Scientists's ability to perform the task (Assign or schedule tasks to meet work priorities and goals.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""14624.0"",
+  ""occupation"": ""Computer and Information Research Scientists"",
+  ""task_description"": ""Assign or schedule tasks to meet work priorities and goals."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",14624.0,Computer and Information Research Scientists,Assign or schedule tasks to meet work priorities and goals.,True,True,"Task scheduling and assignment is a core project management skill for Computer and Information Research Scientists. A practical remote exam can be designed where candidates are given a research scenario with multiple tasks, deadlines, and resource constraints. They would need to use project management software and spreadsheets to create a viable schedule, assign resources, and prioritize tasks. The exam can include unexpected constraints or changes to test adaptability. Text descriptions of the scenario and data about task dependencies, durations, and resources would be required materials.",Not Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Project management software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Spreadsheets', 'Text editor', 'Project management software']","['Spreadsheets', 'Text editor']","['Text', 'Data']","['Text', 'Data']"
+74,74,74,"
+Task ID: 19005.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Create or revise user instructions, procedures, or manuals.) for the role of Computer Network Support Specialists. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Computer Network Support Specialists's ability to perform the task (Create or revise user instructions, procedures, or manuals.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""19005.0"",
+  ""occupation"": ""Computer Network Support Specialists"",
+  ""task_description"": ""Create or revise user instructions, procedures, or manuals."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",,,,,,,,,,,,,,,,,,,,,,,,,,,
+106,106,106,"
+Task ID: 18957.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Communicate with customers, sales staff, or marketing staff to determine customer needs.) for the role of Computer Network Architects. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Computer Network Architects's ability to perform the task (Communicate with customers, sales staff, or marketing staff to determine customer needs.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""18957.0"",
+  ""occupation"": ""Computer Network Architects"",
+  ""task_description"": ""Communicate with customers, sales staff, or marketing staff to determine customer needs."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",18957.0,Computer Network Architects,"Communicate with customers, sales staff, or marketing staff to determine customer needs.",True,True,"Communication skills can be effectively tested remotely through simulated customer interactions. A practical exam would involve role-playing scenarios where the candidate interacts with actors playing customers/sales staff via video conferencing. The candidate would need to gather requirements, ask appropriate questions, and document needs using a text editor. Sample network requirements data would provide context. This tests real communication abilities, requirement gathering skills, and the ability to translate technical concepts for non-technical stakeholders - all core competencies for network architects.",Not Required,Not Required,Required,Not Required,Not Required,Not Required,Not Required,Video conferencing software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Role-play scenarios,Required,"['Text editor', 'Video conferencing software']",['Text editor'],"['Text', 'Data', 'Role-play scenarios']","['Text', 'Data']"
+109,109,109,"
+Task ID: 18983.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Prepare or monitor project schedules, budgets, or cost control systems.) for the role of Computer Network Architects. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Computer Network Architects's ability to perform the task (Prepare or monitor project schedules, budgets, or cost control systems.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""18983.0"",
+  ""occupation"": ""Computer Network Architects"",
+  ""task_description"": ""Prepare or monitor project schedules, budgets, or cost control systems."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",18983.0,Computer Network Architects,"Prepare or monitor project schedules, budgets, or cost control systems.",True,True,"This task involves preparing and monitoring project schedules, budgets, and cost control systems, which can be effectively tested remotely. The candidate would need project management software (like MS Project), spreadsheets for budgeting, and text editors for documentation. They would work with sample network project documentation and financial data to demonstrate their ability to create realistic schedules, track expenses, and implement cost control measures for network architecture projects. This practical assessment directly tests their project management capabilities in a network architecture context.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project Management Software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Sample network project documentation,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project Management Software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Sample network project documentation']","['Text', 'Data']"
+160,160,160,"
+Task ID: 16105.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Document and communicate database schemas, using accepted notations.) for the role of Database Architects. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Database Architects's ability to perform the task (Document and communicate database schemas, using accepted notations.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16105.0"",
+  ""occupation"": ""Database Architects"",
+  ""task_description"": ""Document and communicate database schemas, using accepted notations."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16105.0,Database Architects,"Document and communicate database schemas, using accepted notations.",True,True,"Documenting database schemas using accepted notations (like ER diagrams, UML, etc.) can be effectively tested remotely. The candidate would need a database modeling tool (e.g., MySQL Workbench, Lucidchart, ERDPlus) to create proper schema documentation. A text editor would be needed for explanatory documentation. The exam would provide database requirements and sample data that the candidate must analyze to create appropriate schema documentation. This is a practical test as it requires actually creating documentation using industry-standard notations rather than just answering questions about the process.",Not Required,Not Required,Required,Not Required,Not Required,Not Required,Not Required,Database Modeling Tool,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Database schema requirements,Required,"['Text editor', 'Database Modeling Tool']",['Text editor'],"['Text', 'Data', 'Database schema requirements']","['Text', 'Data']"
+178,178,178,"
+Task ID: 16129.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Create supporting documentation, such as metadata and diagrams of entity relationships, business processes, and process flow.) for the role of Data Warehousing Specialists. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Data Warehousing Specialists's ability to perform the task (Create supporting documentation, such as metadata and diagrams of entity relationships, business processes, and process flow.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16129.0"",
+  ""occupation"": ""Data Warehousing Specialists"",
+  ""task_description"": ""Create supporting documentation, such as metadata and diagrams of entity relationships, business processes, and process flow."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16129.0,Data Warehousing Specialists,"Create supporting documentation, such as metadata and diagrams of entity relationships, business processes, and process flow.",True,True,"Creating documentation like metadata and diagrams is a core task for data warehousing specialists that can be performed remotely. The practical exam would require diagramming software (like Lucidchart, Visio, or ERD tools) to create entity relationship diagrams and process flows. A text editor is needed for metadata documentation, and spreadsheets for organizing metadata attributes. The candidate would need sample database schemas and business process descriptions as materials to document. This is highly practical as it directly tests their ability to produce real documentation artifacts that would be required in their role.",Not Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Diagramming software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Sample database schema,Required,"['Spreadsheets', 'Text editor', 'Diagramming software']","['Spreadsheets', 'Text editor']","['Text', 'Data', 'Sample database schema']","['Text', 'Data']"
+229,229,229,"
+Task ID: 14645.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Plan test schedules or strategies in accordance with project scope or delivery dates.) for the role of Software Quality Assurance Analysts and Testers. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Software Quality Assurance Analysts and Testers's ability to perform the task (Plan test schedules or strategies in accordance with project scope or delivery dates.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""14645.0"",
+  ""occupation"": ""Software Quality Assurance Analysts and Testers"",
+  ""task_description"": ""Plan test schedules or strategies in accordance with project scope or delivery dates."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",14645.0,Software Quality Assurance Analysts and Testers,Plan test schedules or strategies in accordance with project scope or delivery dates.,True,True,"Planning test schedules and strategies is a core QA function that can be evaluated remotely. The practical exam would involve providing candidates with project requirements, scope, and delivery dates, then asking them to create a comprehensive test plan with schedules. This requires spreadsheets for timeline planning, text editors for documentation, PDF viewers for requirements review, and project management tools to organize the test strategy. The candidate would need sample project documentation and data to analyze for test planning. This is highly feasible as a practical remote exam as it mirrors real-world QA planning activities.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project Management Software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Sample Project Requirements Document,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project Management Software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Sample Project Requirements Document']","['Text', 'Data']"
+403,403,403,"
+Task ID: 16155.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Assess current or future customer needs and priorities by communicating directly with customers, conducting surveys, or other methods.) for the role of Information Technology Project Managers. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Information Technology Project Managers's ability to perform the task (Assess current or future customer needs and priorities by communicating directly with customers, conducting surveys, or other methods.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16155.0"",
+  ""occupation"": ""Information Technology Project Managers"",
+  ""task_description"": ""Assess current or future customer needs and priorities by communicating directly with customers, conducting surveys, or other methods."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16155.0,Information Technology Project Managers,"Assess current or future customer needs and priorities by communicating directly with customers, conducting surveys, or other methods.",True,True,"This task can be practically tested remotely by having candidates create customer needs assessment tools (surveys, interview questions) and analyze provided data. The exam could include simulated customer interactions where candidates must identify requirements and priorities from ambiguous information. Spreadsheets would be needed for data analysis, text editors for creating assessment documents, and survey tools for demonstrating form creation skills. The practical nature comes from candidates actively performing the assessment process with realistic scenarios rather than just describing how they would do it.",Not Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Survey/Form Creation Tool,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Simulated customer profiles and project scenarios,Required,"['Spreadsheets', 'Text editor', 'Survey/Form Creation Tool']","['Spreadsheets', 'Text editor']","['Text', 'Data', 'Simulated customer profiles and project scenarios']","['Text', 'Data']"
+408,408,408,"
+Task ID: 16162.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Identify need for initial or supplemental project resources.) for the role of Information Technology Project Managers. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Information Technology Project Managers's ability to perform the task (Identify need for initial or supplemental project resources.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16162.0"",
+  ""occupation"": ""Information Technology Project Managers"",
+  ""task_description"": ""Identify need for initial or supplemental project resources."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16162.0,Information Technology Project Managers,Identify need for initial or supplemental project resources.,True,True,"This task can be practically tested remotely by providing candidates with a detailed IT project case study containing project scope, timeline, and current resource allocation. The exam would require candidates to analyze the case, identify resource gaps, and create a resource plan using spreadsheets and project management software. They would need to justify their resource recommendations, specify skills needed, and determine optimal timing for resource acquisition. This practical assessment directly tests their ability to identify resource needs in a realistic project scenario.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project management software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Case study of IT project,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project management software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Case study of IT project']","['Text', 'Data']"
+409,409,409,"
+Task ID: 16170.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Develop or update project plans for information technology projects including information such as project objectives, technologies, systems, information specifications, schedules, funding, and staffing.) for the role of Information Technology Project Managers. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Information Technology Project Managers's ability to perform the task (Develop or update project plans for information technology projects including information such as project objectives, technologies, systems, information specifications, schedules, funding, and staffing.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16170.0"",
+  ""occupation"": ""Information Technology Project Managers"",
+  ""task_description"": ""Develop or update project plans for information technology projects including information such as project objectives, technologies, systems, information specifications, schedules, funding, and staffing."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16170.0,Information Technology Project Managers,"Develop or update project plans for information technology projects including information such as project objectives, technologies, systems, information specifications, schedules, funding, and staffing.",True,True,"Developing IT project plans is a core PM function that can be tested remotely. The practical exam could provide a case study with incomplete project documentation and ask candidates to develop/update a comprehensive project plan using PM software and spreadsheets. They would need to create schedules (Gantt charts), resource allocations, budgets, and risk assessments based on provided requirements. This directly tests their ability to organize project elements, estimate resources, and create deliverable timelines - all practical skills of the role.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project Management Software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Sample IT project documentation,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project Management Software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Sample IT project documentation']","['Text', 'Data']"
+410,410,410,"
+Task ID: 16151.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Perform risk assessments to develop response strategies.) for the role of Information Technology Project Managers. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Information Technology Project Managers's ability to perform the task (Perform risk assessments to develop response strategies.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16151.0"",
+  ""occupation"": ""Information Technology Project Managers"",
+  ""task_description"": ""Perform risk assessments to develop response strategies."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16151.0,Information Technology Project Managers,Perform risk assessments to develop response strategies.,True,True,"Risk assessment is a core PM function that can be evaluated remotely. A practical exam would involve providing the candidate with a detailed IT project case study containing project parameters, constraints, and stakeholder requirements. The candidate would need to identify risks, analyze their impact and probability, prioritize them, and develop appropriate response strategies using spreadsheets for risk matrices and PM software for documentation. This tests their practical ability to apply risk management methodologies in a realistic scenario without requiring physical presence.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project management software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Case study of IT project,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project management software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Case study of IT project']","['Text', 'Data']"
+413,413,413,"
+Task ID: 16166.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Develop and manage annual budgets for information technology projects.) for the role of Information Technology Project Managers. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Information Technology Project Managers's ability to perform the task (Develop and manage annual budgets for information technology projects.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16166.0"",
+  ""occupation"": ""Information Technology Project Managers"",
+  ""task_description"": ""Develop and manage annual budgets for information technology projects."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16166.0,Information Technology Project Managers,Develop and manage annual budgets for information technology projects.,True,True,"Developing and managing IT project budgets is primarily a financial planning task that can be performed remotely using spreadsheets and project management software. A practical exam can provide candidates with sample project requirements, historical cost data, and resource constraints, then ask them to develop a comprehensive budget, perform cost analysis, create contingency plans, and demonstrate budget tracking mechanisms. This tests real-world budget development and management skills without requiring physical presence.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project management software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Sample IT project documentation,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project management software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Sample IT project documentation']","['Text', 'Data']"
+415,415,415,"
+Task ID: 16171.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Develop and manage work breakdown structure (WBS) of information technology projects.) for the role of Information Technology Project Managers. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Information Technology Project Managers's ability to perform the task (Develop and manage work breakdown structure (WBS) of information technology projects.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16171.0"",
+  ""occupation"": ""Information Technology Project Managers"",
+  ""task_description"": ""Develop and manage work breakdown structure (WBS) of information technology projects."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16171.0,Information Technology Project Managers,Develop and manage work breakdown structure (WBS) of information technology projects.,True,True,"Creating and managing a WBS is a core project management skill that can be practically tested remotely. Candidates can be provided with a detailed IT project case study and asked to develop a comprehensive WBS using project management software or spreadsheets. The exam can evaluate their ability to properly decompose project scope, create hierarchical task structures, assign resources, and establish dependencies. This practical assessment directly tests their ability to perform the actual task rather than just theoretical knowledge.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project Management Software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Sample IT project case study,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project Management Software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Sample IT project case study']","['Text', 'Data']"
+424,424,424,"
+Task ID: 3501.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Analyze statistical information to estimate mortality, accident, sickness, disability, and retirement rates.) for the role of Actuaries. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Actuaries's ability to perform the task (Analyze statistical information to estimate mortality, accident, sickness, disability, and retirement rates.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""3501.0"",
+  ""occupation"": ""Actuaries"",
+  ""task_description"": ""Analyze statistical information to estimate mortality, accident, sickness, disability, and retirement rates."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",3501.0,Actuaries,"Analyze statistical information to estimate mortality, accident, sickness, disability, and retirement rates.",True,True,"Actuarial analysis of mortality and other rates is fundamentally a data-driven task that can be performed remotely. A practical exam would provide candidates with real-world datasets (mortality tables, claim data, etc.) and ask them to perform statistical analysis to derive estimates. This requires statistical software or coding environments (R/Python), spreadsheets for calculations, and reference materials. The exam can evaluate if candidates can properly clean data, apply appropriate statistical methods, interpret results, and document their approach - all core actuarial competencies that can be demonstrated remotely.",Required,Required,Required,Required,Not Required,Not Required,Not Required,"Statistical software (R, SAS, or similar)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Actuarial tables and reference materials,Required,"['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer', 'Statistical software (R, SAS, or similar)']","['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Actuarial tables and reference materials']","['Text', 'Data']"
+425,425,425,"
+Task ID: 3508.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Construct probability tables for events such as fires, natural disasters, and unemployment, based on analysis of statistical data and other pertinent information.) for the role of Actuaries. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Actuaries's ability to perform the task (Construct probability tables for events such as fires, natural disasters, and unemployment, based on analysis of statistical data and other pertinent information.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""3508.0"",
+  ""occupation"": ""Actuaries"",
+  ""task_description"": ""Construct probability tables for events such as fires, natural disasters, and unemployment, based on analysis of statistical data and other pertinent information."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",3508.0,Actuaries,"Construct probability tables for events such as fires, natural disasters, and unemployment, based on analysis of statistical data and other pertinent information.",True,True,"Constructing probability tables is a core actuarial task that can be performed remotely. The exam would provide statistical datasets on events like fires or unemployment, along with contextual information. Candidates would need to use statistical software or coding (R/Python) and spreadsheets to analyze data, apply statistical methods, and construct probability tables. The practical exam would evaluate their ability to clean data, apply appropriate statistical techniques, and create accurate probability tables with proper documentation of methodology. This directly tests the practical application of actuarial skills in a realistic scenario.",Required,Required,Required,Required,Not Required,Not Required,Not Required,"Statistical software (R, SAS, or similar)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer', 'Statistical software (R, SAS, or similar)']","['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"
+426,426,426,"
+Task ID: 20951.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Negotiate terms and conditions of reinsurance with other companies.) for the role of Actuaries. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Actuaries's ability to perform the task (Negotiate terms and conditions of reinsurance with other companies.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""20951.0"",
+  ""occupation"": ""Actuaries"",
+  ""task_description"": ""Negotiate terms and conditions of reinsurance with other companies."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",20951.0,Actuaries,Negotiate terms and conditions of reinsurance with other companies.,True,True,"Reinsurance negotiations can be conducted remotely through video conferencing. A practical exam could involve role-playing scenarios where candidates negotiate with examiners posing as representatives from other companies. Candidates would need spreadsheets to analyze financial implications, text editors to draft terms, and PDF viewers to review sample contracts. The exam would require text materials outlining negotiation scenarios, financial data for analysis, and detailed case scenarios with company profiles and risk portfolios. This simulates real-world negotiations while allowing examiners to evaluate technical knowledge, communication skills, and negotiation tactics.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Video conferencing software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Reinsurance case scenarios,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Video conferencing software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Reinsurance case scenarios']","['Text', 'Data']"
+428,428,428,"
+Task ID: 3512.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Determine equitable basis for distributing surplus earnings under participating insurance and annuity contracts in mutual companies.) for the role of Actuaries. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Actuaries's ability to perform the task (Determine equitable basis for distributing surplus earnings under participating insurance and annuity contracts in mutual companies.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""3512.0"",
+  ""occupation"": ""Actuaries"",
+  ""task_description"": ""Determine equitable basis for distributing surplus earnings under participating insurance and annuity contracts in mutual companies."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",3512.0,Actuaries,Determine equitable basis for distributing surplus earnings under participating insurance and annuity contracts in mutual companies.,True,True,"This task involves analyzing financial data and applying actuarial principles to determine surplus distribution methods. A practical exam can be designed where candidates receive policy data, financial statements, and regulatory requirements, then use spreadsheets and actuarial software to develop and justify an equitable distribution methodology. The exam would require candidates to perform calculations, document their approach, and explain how their solution balances policyholder expectations, company solvency, and regulatory compliance. This can be effectively evaluated remotely.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Actuarial software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Actuarial software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"
+430,430,430,"
+Task ID: 3509.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Determine policy contract provisions for each type of insurance.) for the role of Actuaries. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Actuaries's ability to perform the task (Determine policy contract provisions for each type of insurance.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""3509.0"",
+  ""occupation"": ""Actuaries"",
+  ""task_description"": ""Determine policy contract provisions for each type of insurance."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",3509.0,Actuaries,Determine policy contract provisions for each type of insurance.,True,True,"Determining policy contract provisions is a core actuarial function that can be tested remotely. A practical exam would involve providing candidates with case scenarios, mortality/morbidity data, and sample policy templates. Candidates would use spreadsheets for calculations, actuarial software for modeling, and text editors to draft appropriate policy provisions. They would need to analyze data, determine appropriate coverage limits, exclusions, and pricing, then document these in policy language. This tests their practical ability to translate actuarial analysis into contractual terms.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Actuarial software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Sample insurance policy templates,Required,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Actuarial software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Sample insurance policy templates']","['Text', 'Data']"
+438,438,438,"
+Task ID: 7370.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Perform computations and apply methods of numerical analysis to data.) for the role of Mathematicians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Mathematicians's ability to perform the task (Perform computations and apply methods of numerical analysis to data.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""7370.0"",
+  ""occupation"": ""Mathematicians"",
+  ""task_description"": ""Perform computations and apply methods of numerical analysis to data."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",7370.0,Mathematicians,Perform computations and apply methods of numerical analysis to data.,True,True,"Numerical analysis is highly suitable for remote practical testing. Candidates can be provided with datasets and computational problems requiring numerical methods like interpolation, integration, or differential equations. They would need coding tools (Python/R/MATLAB), spreadsheets for data manipulation, text editors for documentation, and specialized mathematical software. The exam would involve applying specific numerical algorithms to provided datasets, demonstrating understanding through implementation rather than theory. This directly tests practical application of numerical methods to real data.",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Mathematical software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'Mathematical software']","['Coding', 'Spreadsheets', 'Text editor']","['Text', 'Data']","['Text', 'Data']"
+439,439,439,"
+Task ID: 7372.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Assemble sets of assumptions, and explore the consequences of each set.) for the role of Mathematicians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Mathematicians's ability to perform the task (Assemble sets of assumptions, and explore the consequences of each set.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""7372.0"",
+  ""occupation"": ""Mathematicians"",
+  ""task_description"": ""Assemble sets of assumptions, and explore the consequences of each set."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",7372.0,Mathematicians,"Assemble sets of assumptions, and explore the consequences of each set.",True,True,"This task is fundamentally about mathematical reasoning, which can be performed remotely. A practical exam would involve providing candidates with mathematical scenarios requiring them to identify assumptions, formulate them precisely using a text/LaTeX editor, and then derive logical consequences. The exam can include problems of varying complexity that require identifying implicit assumptions and exploring their implications. PDF materials might contain reference information or problem contexts. This tests the practical skill of assumption identification and consequence exploration in a direct, hands-on manner.",Not Required,Not Required,Required,Required,Not Required,Not Required,Not Required,LaTeX editor,Required,Required,Not Required,Not Required,Not Required,Not Required,Not Required,Mathematical problem sets,Required,"['Text editor', 'PDF viewer', 'LaTeX editor']","['Text editor', 'PDF viewer']","['Text', 'Mathematical problem sets']",['Text']
+456,456,456,"
+Task ID: 7389.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Develop and apply time and cost networks to plan, control, and review large projects.) for the role of Operations Research Analysts. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Operations Research Analysts's ability to perform the task (Develop and apply time and cost networks to plan, control, and review large projects.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""7389.0"",
+  ""occupation"": ""Operations Research Analysts"",
+  ""task_description"": ""Develop and apply time and cost networks to plan, control, and review large projects."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",7389.0,Operations Research Analysts,"Develop and apply time and cost networks to plan, control, and review large projects.",True,True,"Developing time and cost networks is a core OR skill that can be tested remotely. Candidates can be provided with project specifications, activity durations, costs, and dependencies, then asked to create networks (CPM/PERT) using spreadsheets or specialized software. The practical exam would involve building network diagrams, calculating critical paths, analyzing float times, and optimizing resource allocation. This tests their ability to apply network techniques to real project scenarios without requiring physical presence.",Not Required,Required,Required,Required,Not Required,Not Required,Not Required,Project Management Software,Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Spreadsheets', 'Text editor', 'PDF viewer', 'Project Management Software']","['Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"
+457,457,457,"
+Task ID: 8956.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Analyze and interpret statistical data to identify significant differences in relationships among sources of information.) for the role of Statisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Statisticians's ability to perform the task (Analyze and interpret statistical data to identify significant differences in relationships among sources of information.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""8956.0"",
+  ""occupation"": ""Statisticians"",
+  ""task_description"": ""Analyze and interpret statistical data to identify significant differences in relationships among sources of information."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",8956.0,Statisticians,Analyze and interpret statistical data to identify significant differences in relationships among sources of information.,True,True,"This task is perfectly suited for remote assessment. Statisticians can be provided with datasets containing information from multiple sources and asked to analyze relationships, identify significant differences, and interpret findings. The practical exam would require statistical software (either coding environments like R or Python, or dedicated statistical packages) and spreadsheets for data manipulation. A text editor is needed for writing interpretations and conclusions. The materials would include the datasets and instructions in text format. This creates a realistic scenario that directly tests their ability to perform statistical analysis and interpretation.",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,"Statistical software (R, SPSS, SAS, or similar)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'Statistical software (R, SPSS, SAS, or similar)']","['Coding', 'Spreadsheets', 'Text editor']","['Text', 'Data']","['Text', 'Data']"
+458,458,458,"
+Task ID: 8955.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Identify relationships and trends in data, as well as any factors that could affect the results of research.) for the role of Statisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Statisticians's ability to perform the task (Identify relationships and trends in data, as well as any factors that could affect the results of research.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""8955.0"",
+  ""occupation"": ""Statisticians"",
+  ""task_description"": ""Identify relationships and trends in data, as well as any factors that could affect the results of research."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",8955.0,Statisticians,"Identify relationships and trends in data, as well as any factors that could affect the results of research.",True,True,"Identifying relationships and trends in data is a core statistical task that can be effectively tested remotely. Candidates would need statistical software or coding environments (R, Python) to analyze provided datasets, identify correlations, run regression analyses, and detect patterns. They would need to document their methodology and findings in a text editor. The exam could provide datasets with hidden relationships and ask candidates to discover them, explain potential confounding variables, and discuss limitations of their analysis - all practical applications of statistical skills.",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,"Statistical software (R, SPSS, SAS, or similar)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'Statistical software (R, SPSS, SAS, or similar)']","['Coding', 'Spreadsheets', 'Text editor']","['Text', 'Data']","['Text', 'Data']"
+459,459,459,"
+Task ID: 21100.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Determine whether statistical methods are appropriate, based on user needs or research questions of interest.) for the role of Statisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Statisticians's ability to perform the task (Determine whether statistical methods are appropriate, based on user needs or research questions of interest.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""21100.0"",
+  ""occupation"": ""Statisticians"",
+  ""task_description"": ""Determine whether statistical methods are appropriate, based on user needs or research questions of interest."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",21100.0,Statisticians,"Determine whether statistical methods are appropriate, based on user needs or research questions of interest.",True,True,"This task can be practically tested remotely by presenting candidates with research scenarios, questions, and datasets, then asking them to evaluate which statistical methods would be appropriate and why. Candidates would need a text editor to write their analyses and a PDF viewer to read case studies. The exam would require text descriptions of research contexts and sample data to analyze. The practical nature comes from requiring candidates to demonstrate their reasoning process and methodological selection based on real-world scenarios rather than theoretical knowledge alone.",Not Required,Not Required,Required,Required,Not Required,Not Required,Not Required,,,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Text editor', 'PDF viewer']","['Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"
+460,460,460,"
+Task ID: 8957.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Prepare data for processing by organizing information, checking for inaccuracies, and adjusting and weighting the raw data.) for the role of Statisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Statisticians's ability to perform the task (Prepare data for processing by organizing information, checking for inaccuracies, and adjusting and weighting the raw data.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""8957.0"",
+  ""occupation"": ""Statisticians"",
+  ""task_description"": ""Prepare data for processing by organizing information, checking for inaccuracies, and adjusting and weighting the raw data."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",8957.0,Statisticians,"Prepare data for processing by organizing information, checking for inaccuracies, and adjusting and weighting the raw data.",True,True,"Data preparation is a core statistical task that can be effectively tested remotely. The exam would provide raw datasets with intentional issues (missing values, outliers, inconsistencies) and ask candidates to clean, organize, and weight the data appropriately. This requires statistical software or coding environments (R, Python), spreadsheet tools for basic manipulation, and text editors for documentation. The practical exam would evaluate if candidates can identify data problems, apply appropriate cleaning techniques, and prepare the data for subsequent analysis.",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,"Statistical software (R, SPSS, SAS, or Stata)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'Statistical software (R, SPSS, SAS, or Stata)']","['Coding', 'Spreadsheets', 'Text editor']","['Text', 'Data']","['Text', 'Data']"
+463,463,463,"
+Task ID: 8961.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Design research projects that apply valid scientific techniques, and use information obtained from baselines or historical data to structure uncompromised and efficient analyses.) for the role of Statisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Statisticians's ability to perform the task (Design research projects that apply valid scientific techniques, and use information obtained from baselines or historical data to structure uncompromised and efficient analyses.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""8961.0"",
+  ""occupation"": ""Statisticians"",
+  ""task_description"": ""Design research projects that apply valid scientific techniques, and use information obtained from baselines or historical data to structure uncompromised and efficient analyses."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",8961.0,Statisticians,"Design research projects that apply valid scientific techniques, and use information obtained from baselines or historical data to structure uncompromised and efficient analyses.",True,True,"This task can be practically tested remotely by providing candidates with a research scenario, historical data, and asking them to design an appropriate research project with statistical analyses. The exam would require statistical software/coding environments, spreadsheets for data manipulation, text editors for documentation, and PDF viewers for reference materials. Candidates would need to demonstrate their ability to select appropriate methodologies, identify confounding variables, determine sample sizes, and create efficient analysis plans based on provided baseline data.",Required,Required,Required,Required,Not Required,Not Required,Not Required,"Statistical software (R, SPSS, SAS, etc.)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer', 'Statistical software (R, SPSS, SAS, etc.)']","['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"
+472,472,472,"
+Task ID: 8967.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Examine theories, such as those of probability and inference, to discover mathematical bases for new or improved methods of obtaining and evaluating numerical data.) for the role of Statisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Statisticians's ability to perform the task (Examine theories, such as those of probability and inference, to discover mathematical bases for new or improved methods of obtaining and evaluating numerical data.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""8967.0"",
+  ""occupation"": ""Statisticians"",
+  ""task_description"": ""Examine theories, such as those of probability and inference, to discover mathematical bases for new or improved methods of obtaining and evaluating numerical data."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",8967.0,Statisticians,"Examine theories, such as those of probability and inference, to discover mathematical bases for new or improved methods of obtaining and evaluating numerical data.",True,True,"This task can be practically tested remotely by providing candidates with statistical problems requiring them to examine probability/inference theories and develop new methods. Candidates would need coding tools (like R/Python) and statistical software to implement and test their methods, spreadsheets for data manipulation, text editors for writing proofs/explanations, and PDF viewers for reference materials. The exam would require text materials explaining the problems and datasets for testing their developed methods. The practical nature would involve candidates actually developing and testing new statistical approaches rather than just explaining concepts.",Required,Required,Required,Required,Not Required,Not Required,Not Required,"Statistical software (R, SPSS, SAS, etc.)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer', 'Statistical software (R, SPSS, SAS, etc.)']","['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"
+475,475,475,"
+Task ID: 8964.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Apply sampling techniques, or use complete enumeration bases to determine and define groups to be surveyed.) for the role of Statisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Statisticians's ability to perform the task (Apply sampling techniques, or use complete enumeration bases to determine and define groups to be surveyed.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""8964.0"",
+  ""occupation"": ""Statisticians"",
+  ""task_description"": ""Apply sampling techniques, or use complete enumeration bases to determine and define groups to be surveyed."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",8964.0,Statisticians,"Apply sampling techniques, or use complete enumeration bases to determine and define groups to be surveyed.",True,True,"This task can be practically tested remotely by providing candidates with a realistic scenario requiring sampling design. Candidates would need statistical software or coding environments (R/Python) to implement sampling techniques, spreadsheets for data manipulation, and text editors to document their approach. The exam would include population data files and text describing the survey objectives. Candidates would demonstrate practical skills by selecting appropriate sampling methods, determining sample sizes, defining strata or clusters if needed, and justifying their choices - all core statistical sampling competencies that can be evaluated through deliverables submitted online.",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,"Statistical software (R, SPSS, SAS, etc.)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'Statistical software (R, SPSS, SAS, etc.)']","['Coding', 'Spreadsheets', 'Text editor']","['Text', 'Data']","['Text', 'Data']"
+479,479,479,"
+Task ID: 16246.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Calculate sample size requirements for clinical studies.) for the role of Biostatisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Biostatisticians's ability to perform the task (Calculate sample size requirements for clinical studies.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16246.0"",
+  ""occupation"": ""Biostatisticians"",
+  ""task_description"": ""Calculate sample size requirements for clinical studies."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16246.0,Biostatisticians,Calculate sample size requirements for clinical studies.,True,True,"Calculating sample size requirements is a core biostatistician skill that can be practically tested remotely. The exam can provide clinical scenarios with specific parameters (effect size, power, significance level) and ask candidates to calculate appropriate sample sizes using statistical software or formulas. This requires statistical software (R, SAS, etc.), coding ability, and possibly spreadsheets for calculations. The exam would include text descriptions of clinical scenarios and potentially pilot data to inform calculations. Candidates would submit their calculations, justifications, and code, making this a truly practical assessment of their ability to perform this essential task.",Required,Required,Required,Required,Not Required,Not Required,Not Required,"Statistical software (e.g., R, SAS, PASS, nQuery)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,Clinical study protocols/scenarios,Required,"['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer', 'Statistical software (e.g., R, SAS, PASS, nQuery)']","['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data', 'Clinical study protocols/scenarios']","['Text', 'Data']"
+496,496,496,"
+Task ID: 16255.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Develop or use mathematical models to track changes in biological phenomena, such as the spread of infectious diseases.) for the role of Biostatisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Biostatisticians's ability to perform the task (Develop or use mathematical models to track changes in biological phenomena, such as the spread of infectious diseases.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16255.0"",
+  ""occupation"": ""Biostatisticians"",
+  ""task_description"": ""Develop or use mathematical models to track changes in biological phenomena, such as the spread of infectious diseases."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16255.0,Biostatisticians,"Develop or use mathematical models to track changes in biological phenomena, such as the spread of infectious diseases.",True,True,"This task is ideal for remote practical assessment. Biostatisticians can be provided with epidemiological datasets and asked to develop SIR/SEIR models or other mathematical models to track disease spread. The exam can include requirements to fit models to data, estimate parameters, validate models, and make predictions. Candidates would need statistical software, coding capabilities, and spreadsheets to manipulate data and implement models. The practical nature comes from working with real-world data and demonstrating the ability to build functional models that accurately represent biological phenomena.",Required,Required,Required,Required,Not Required,Not Required,Not Required,"Statistical software (R, SAS, STATA, or Python with statistical packages)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer', 'Statistical software (R, SAS, STATA, or Python with statistical packages)']","['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"
+498,498,498,"
+Task ID: 16261.0
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `""can_be_performed_remotely"": false` and set all other fields (tools and materials) to `""NA""`.
+   - **If remote:** Output `""can_be_performed_remotely"": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task (Analyze archival data, such as birth, death, and disease records.) for the role of Biostatisticians. Options are: ""Required"" or ""Not Required"". The tools include:
+   - ""Coding""
+   - ""Spreadsheets""
+   - ""Text editor""
+   - ""PDF viewer""
+   - ""Presentation software""
+   - ""Image Generator""
+   - ""Online search engine""
+   - ""Other"" (specify tool name and classification if needed; otherwise ""NA"")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate Biostatisticians's ability to perform the task (Analyze archival data, such as birth, death, and disease records.). Options are: ""Required""or ""Not required"" The materials include:
+   - ""Text""
+   - ""Data""
+   - ""Images""
+   - ""Audio files""
+   - ""Video files""
+   - ""Virtual labs or sandbox environments""
+   - ""Other"" (specify material name and classification if needed; otherwise ""NA"")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `""chain_of_thought""`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{
+  ""task_id"": ""16261.0"",
+  ""occupation"": ""Biostatisticians"",
+  ""task_description"": ""Analyze archival data, such as birth, death, and disease records."",
+  ""can_be_performed_remotely"": true/false,
+  ""tools"": {
+    ""Coding"": ""Not Required/Required/NA"",
+    ""Spreadsheets"": ""Not Required/Required/NA"",
+    ""Text editor"": ""Not Required/Required/NA"",
+    ""PDF viewer"": ""Not Required/Required/NA"", 
+    ""Presentation software"": ""Not Required/Required/NA"",
+    ""Online search engine"": ""Not Required/Required/NA"",
+    ""Image Generator"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Tool Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""materials"": {
+    ""Text"": ""Not Required/Required/NA"",
+    ""Data"": ""Not Required/Required/NA"",
+    ""Images"": ""Not Required/Required/NA"",
+    ""Audio files"": ""Not Required/Required/NA"",
+    ""Video files"": ""Not Required/Required/NA"",
+    ""Virtual labs or sandbox environments"": ""Not Required/Required/NA"",
+    ""Other"": {
+      ""name"": ""Material Name/NA"",
+      ""classification"": ""Not Required/Required/NA""
+    }
+  },
+  ""feasiblity_practical"": true/false
+  ""chain_of_thought"": ""Brief explanation (no more than 150 words).""
+}
+",16261.0,Biostatisticians,"Analyze archival data, such as birth, death, and disease records.",True,True,"Analyzing archival data is a core biostatistician task that can be performed remotely. A practical exam would involve providing candidates with real or simulated archival datasets (birth, death, disease records) and asking them to perform specific analyses. They would need statistical software (R, SAS, etc.) to analyze the data, coding capabilities for scripting analyses, spreadsheets for data manipulation, text editors for documentation, and PDF viewers for reading instructions or background materials. The exam would test their ability to clean data, apply appropriate statistical methods, interpret results, and draw conclusions - all practical skills essential to the role.",Required,Required,Required,Required,Not Required,Not Required,Not Required,"Statistical software (R, SAS, STATA, or SPSS)",Required,Required,Required,Not Required,Not Required,Not Required,Not Required,,,"['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer', 'Statistical software (R, SAS, STATA, or SPSS)']","['Coding', 'Spreadsheets', 'Text editor', 'PDF viewer']","['Text', 'Data']","['Text', 'Data']"

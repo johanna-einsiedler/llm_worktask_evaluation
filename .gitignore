@@ -1,6 +1,7 @@
 # Data
-/data/
-data/
+
+/data/exams/
+/data/test_results/
 
 
 # Mac OS-specific storage files
