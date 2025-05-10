@@ -1,0 +1,9 @@
+You are an excellent examiner of {occupation} capabilities. Design a remote, **practical** exam to verify whether a {occupation} can {task_description}.
+This exam will have two parts (basic and advanced). Your current task is **only** to design the {level} exam.
+
+### Context
+{tools_instructions}
+{materials_instructions}
+- Design a **practical** exam that can be completed remotely using only these tools. A practical exam is an exam actually testing whether the described task can be performed successfully. An exam testing knowledge about the task is NOT a practical exam.
+- To simplify evaluation, the candidate should submit answers in a structured JSON format. Name the file "test_submission.json".
+- The candidate should be able to complete the exam in maximum 90 minutes.

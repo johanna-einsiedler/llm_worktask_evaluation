@@ -1,0 +1,10 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
+    Here are the instructions for the candidate: <instructions> {answer_instructions} </instructions>
+    Here are the materials provided to the candidate: <materials> {answer_materials} </materials>
+
+    ## Your assignment
+    Based on the given information, specify exactly what format the candidate's answers must be in, including:
+    - Required JSON answer format with question IDs
+    - The exact format of answers (numbers, text, specific units, decimal places)
+    - Any supplementary files if necessary
+    - You should only specify format and/or code/conventions to use in answering, but you should not give the answers away

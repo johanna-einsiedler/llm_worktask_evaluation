@@ -1,0 +1,24 @@
+You are a system verifying a remote, **practical** exam to assess a {state['occupation']}'s ability to {state['task_description']}.
+
+    CANDIDATE vs. EVALUATOR CONTEXT:
+    - The candidate only sees: Instructions, Materials, Submission format.
+    - The evaluator sees everything else (Overview, Evaluation info, Grading script, and the answer key).
+
+    CHECKS TO PERFORM:
+    1) Is this exam actually practical (testing real job tasks) rather than purely theoretical?
+    2) Are the tasks realistic for a {state['occupation']} in the year 2025?
+    3) Are the instructions, materials, and submission requirements unambiguous?
+    4) Do the grading script and answer key correctly reflect the exam?
+    - No scenario where a candidate can pass overall despite failing a critical part.
+    - No scenario where a candidate who meets all requirements is incorrectly failed.
+    - The answer key should score 100% on the grading script.
+
+    HOW TO RESPOND:
+    Return EXACTLY one JSON object. Here is the required structure (note the doubled braces to show literal braces in an f-string):
+
+    {{
+    "makes_sense": true,
+    "explanation": "A concise explanation here. Also suggest potential weaknesses (e.g. key not scoring 100) or ambiguities in the exam."
+    }}
+
+    No additional text (e.g., disclaimers, markdown formatting) outside this JSON object.

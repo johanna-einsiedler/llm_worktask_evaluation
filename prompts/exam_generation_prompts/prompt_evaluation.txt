@@ -1,0 +1,11 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
+    Here are the instructions for the candidate: <instructions> {answer_instructions} </instructions>
+    Here are the materials provided to the candidate: <materials> {answer_materials} </materials>
+    Here are the submission requirements for the candidate: <submission_requirements> {answer_submission} </submission_requirements>
+
+    ## Your assignment
+
+    Based on the given information create the following for the evaluator:
+    - Complete answer key in JSON format for automated checking
+    - Explanation of correct answers and how they were derived
+    - Passing criteria (e.g., minimum number of correct answers)

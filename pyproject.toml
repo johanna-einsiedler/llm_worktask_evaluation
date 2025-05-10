@@ -1,0 +1,32 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "llm_worktask_evaluation"
+version = "0.0.1"
+description = "Code to create a dynamic benchmark of exams for work tasks using an LLM pipeline based on LangChain."
+authors = [
+  { name = "JE+MDRC" },
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License"
+]
+requires-python = "~=3.10.0"
+
+
+[tool.ruff]
+line-length = 99
+src = ["llm_worktask_evaluation"]
+include = ["pyproject.toml", "llm_worktask_evaluation/**/*.py"]
+
+[tool.ruff.lint]
+extend-select = ["I"]  # Add import sorting
+
+[tool.ruff.lint.isort]
+known-first-party = ["llm_worktask_evaluation"]
+force-sort-within-sections = true
+

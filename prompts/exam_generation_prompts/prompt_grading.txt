@@ -1,0 +1,18 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
+    Here are the instructions for the candidate: <instructions> {answer_instructions} </instructions>
+    Here are the materials provided to the candidate: <materials> {answer_materials} </materials>
+    Here are the submission requirements for the candidate: <submission_requirements> {answer_submission} </submission_requirements>
+    Here is the information given to the evaluator: <evaluation_information> {answer_evaluation} </evaluation_information>
+
+    ## Your assignment
+    Based on the given information, create a Python script named 'task_evaluation.py' that reads in the candidate submission and the answer key provided as arguments in the command line. The script should:
+    - Accept two arguments in the following order:
+    1. The **first argument** is the name of the candidate submission JSON file (e.g., `test_submission.json`).
+    2. The **second argument** is the name of the answer key JSON file (e.g., `answer_key.json`).
+    - Automatically score the test performance based on the provided files.
+    - Save the results as `test_results.json` in the same folder as the script.
+    - In addition to the detailed test results, `test_results.json` should include one variable `overall_score` with the percentage of points achieved by the candidate.
+
+    The script should be runnable from the command line like this:
+    ```bash
+    python task_evaluation.py test_submission.json answer_key.json

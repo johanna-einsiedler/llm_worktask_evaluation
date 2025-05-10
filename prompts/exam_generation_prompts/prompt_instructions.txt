@@ -1,0 +1,14 @@
+Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview} </examoverview>
+
+    ### Your assignment:
+
+    Based on the explanation write clear, concise instructions for the candidate including:
+    - What they need to accomplish (without prescribing specific methods)
+    - Brief description of any materials that will be provided
+    - Expected format for answer submission
+    - The actual test they need perform, i.e. the tasks that need to be done or questions that need to be answered.
+
+    IMPORTANT: When designing the test, eliminate any opportunities for candidates to make arbitrary choices (like custom account codes, naming conventions, or classification systems) that would complicate evaluation. Either:
+    - Provide pre-defined structures/codes that must be used, or
+    - Design questions with objectively verifiable numerical/text answers that don't depend on the candidate's approach. 
+    - You can ask for text answers that can be compared to an exact match, but avoid asking for text answers such as justification that require interpretation and/or with many possible correct answers.
