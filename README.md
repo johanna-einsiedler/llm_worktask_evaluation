@@ -6,7 +6,7 @@
 
 Code to create a dynamic benchmark of exams for work tasks using an LLM pipeline based on LangChain.
 
-The main benchmark data can be found on HuggingFace: [jae11/llm-work-task-evaluation](https://huggingface.co/datasets/jae11/llm-work-task-evaluation)
+The main benchmark data can be found on Kaggle: https://kaggle.com/datasets/b62668641a0afd910406ffde0b0bfee331749c76ada9eca925530d6be3b8177d
 
 ## Project Organization
 
