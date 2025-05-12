@@ -11,7 +11,7 @@ The main benchmark data can be found on Kaggle: https://kaggle.com/datasets/b626
 ## Project Organization
 
 ```
-├── LICENSE            <- MIT license
+├── LICENSE            <- GNU General Public License
 ├── Makefile           <- Makefile with convenience commands.
 ├── README.md          <- The top-level README for anyone wanting to use this project.
 ├── data
