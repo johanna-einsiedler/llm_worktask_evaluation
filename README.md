@@ -4,7 +4,7 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Code to create a dynamic benchmark of exams for work tasks using an LLM pipeline based on LangChain.
+Code to create a dynamic benchmark of exams for work tasks using an LLM pipeline based on LangChain. Jointly written by [Maria del Rio-Chanona ](https://mariadelriochanona.info/) and [Johanna Einsiedler](https://johannaeinsiedler.carrd.co/). It is licensed under the terms of the GNU General Public License.
 
 The main benchmark data can be found on Kaggle: https://kaggle.com/datasets/b62668641a0afd910406ffde0b0bfee331749c76ada9eca925530d6be3b8177d
 
