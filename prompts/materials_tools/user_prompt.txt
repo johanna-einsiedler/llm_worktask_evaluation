@@ -1,0 +1,81 @@
+Task ID: {task_id}
+
+Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+
+**Definitions:**
+- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
+- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+**Instructions:**
+1. **Remote Feasibility:**  
+   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   - **If in-person required:** Output `"can_be_performed_remotely": false` and set all other fields (tools and materials) to `"NA"`.
+   - **If remote:** Output `"can_be_performed_remotely": true` and continue with the evaluation.
+
+2. **Tools Required:**  
+   For each tool, assess whether it is needed for the task ({task_description}) for the role of {occupation}. Options are: "Required" or "Not Required". The tools include:
+   - "Coding"
+   - "Spreadsheets"
+   - "Text editor"
+   - "PDF viewer"
+   - "Presentation software"
+   - "Image Generator"
+   - "Online search engine"
+   - "Other" (specify tool name and classification if needed; otherwise "NA")
+
+3. **Materials Required:**  
+   For each material, determine if it is necessary as part of the test to evaluate {occupation}'s ability to perform the task ({task_description}). Options are: "Required"or "Not required" The materials include:
+   - "Text"
+   - "Data"
+   - "Images"
+   - "Audio files"
+   - "Video files"
+   - "Virtual labs or sandbox environments"
+   - "Other" (specify material name and classification if needed; otherwise "NA")
+
+4. **Feasability of a practical exam:**
+    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+    - If you think this is possible, answer True,
+    - Otherwise answer False
+
+5. **Chain-of-Thought Reasoning:**  
+   Optionally, include a brief chain-of-thought explanation (no more than 150 words) for your evaluations in a field called `"chain_of_thought"`.
+
+**Output Requirement:**  
+Return a JSON object strictly adhering to the provided structure, without any extra commentary outside of the JSON fields.
+
+**Expected JSON Structure:**
+{{
+  "task_id": "{task_id}",
+  "occupation": "{occupation}",
+  "task_description": "{task_description}",
+  "can_be_performed_remotely": true/false,
+  "tools": {{
+    "Coding": "Not Required/Required/NA",
+    "Spreadsheets": "Not Required/Required/NA",
+    "Text editor": "Not Required/Required/NA",
+    "PDF viewer": "Not Required/Required/NA", 
+    "Presentation software": "Not Required/Required/NA",
+    "Online search engine": "Not Required/Required/NA",
+    "Image Generator": "Not Required/Required/NA",
+    "Other": {{
+      "name": "Tool Name/NA",
+      "classification": "Not Required/Required/NA"
+    }}
+  }},
+  "materials": {{
+    "Text": "Not Required/Required/NA",
+    "Data": "Not Required/Required/NA",
+    "Images": "Not Required/Required/NA",
+    "Audio files": "Not Required/Required/NA",
+    "Video files": "Not Required/Required/NA",
+    "Virtual labs or sandbox environments": "Not Required/Required/NA",
+    "Other": {{
+      "name": "Material Name/NA",
+      "classification": "Not Required/Required/NA"
+    }}
+  }},
+  "feasiblity_practical": true/false
+  "chain_of_thought": "Brief explanation (no more than 150 words)."
+}}

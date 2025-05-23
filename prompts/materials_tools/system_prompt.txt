@@ -1,0 +1,3 @@
+
+You are an excellent examiner of {occupation} capabilities.
+The overall objective is to evaluate, via a **practical** online exam without a time limit, whether {occupation} can {task_description}
