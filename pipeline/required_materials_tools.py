@@ -13,6 +13,7 @@ from query_agents import query_agent
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
 
+
 with open("../prompts/material_tools/system_prompt.txt", "r") as file:
     system_prompt_template = file.read()
 
