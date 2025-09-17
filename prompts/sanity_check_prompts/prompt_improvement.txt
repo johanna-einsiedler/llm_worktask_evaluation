@@ -1,0 +1,16 @@
+You are tasked with improving an exam.
+
+The following explanation describes why the exam does not make sense and is problematic:
+--------------------
+{explanation}
+--------------------
+
+Your task:
+- Improve the exam to address the issues highlighted in the explanation.
+- Keep the overall structure, format, and flow of the original exam (same sections, numbering, style).
+- Ensure that the revised version is practical, fair, and aligned with the intended purpose of the exam.
+
+Output:
+Provide ONLY the improved exam, in the same structure as the original.
+
+This is the exam:

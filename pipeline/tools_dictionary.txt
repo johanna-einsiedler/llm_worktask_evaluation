@@ -1,0 +1,12 @@
+{"Data management software": "Function calling",
+"Numerical analysis software": "Function calling",
+"Coding": "Code interpreter",
+"Text editor": "None",
+"Image viewer": "Function calling",
+"Presentation software": "Computer use",
+"Image generator": "Image generation",
+"Online search engine": "Web search",
+"Video conferencing": "Computer use",
+"Chat interfaces": "None",
+"Email client": "Computer use",
+"Specialised software": "Computer use"}

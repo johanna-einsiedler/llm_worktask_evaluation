@@ -1,8 +1,7 @@
-    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
-    Here are the instructions for the candidate: <instructions> {answer_instructions} </instructions>
-    Here are the materials provided to the candidate: <materials> {answer_materials} </materials>
-    Here are the submission requirements for the candidate: <submission_requirements> {answer_submission} </submission_requirements>
-    Here is the information given to the evaluator: <evaluation_information> {answer_evaluation} </evaluation_information>
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {overview}</examoverview>
+    Here is the exam: <exam> {exam} <exam>
+    Here is some additional material only available to the exam evaluator: <materials_evaluator> {materials_evaluator} </materials_evaluator>
+    Here is the information given to the evaluator: <evaluation> {evaluation} </evaluation>
 
     ## Your assignment
     Based on the given information, create a Python script named 'task_evaluation.py' that reads in the candidate submission and the answer key provided as arguments in the command line. The script should:
@@ -16,3 +15,4 @@
     The script should be runnable from the command line like this:
     ```bash
     python task_evaluation.py test_submission.json answer_key.json
+    ```

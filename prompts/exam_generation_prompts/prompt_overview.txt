@@ -1,2 +1,2 @@
 ### Your assignment:
-    Provide a brief explanation of the exam's purpose and structure for the evaluator.
+Provide an overview of the exam's purpose and optimal structure for the exam creator and exam evaluator, emphasizing how to make this a practical rather than theoretical assessment.  Highlight any strategic elements that should be included in the exam design—such as multi-step processes, data relationships, or decision points—that will differentiate candidates who can actually perform the task from those who only understand it conceptually.

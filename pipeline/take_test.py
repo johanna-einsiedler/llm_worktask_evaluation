@@ -1,29 +1,34 @@
-import pandas as pd
-import pandas as pd
-import random
-import os
-from openai import OpenAI
-from dotenv import load_dotenv, find_dotenv
-import anthropic
-import regex as re
-import json
-import subprocess
-import shutil
 import ast
+import json
+import os
+import random
+import shutil
+import subprocess
 import sys
+
+import anthropic
+from dotenv import find_dotenv, load_dotenv
+from openai import OpenAI
+import pandas as pd
+
 # import google.generativeai as genai
-from query_agents import query_agent, take_test
+from query_agents import query_agent
+import regex as re
+
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
 
-system_prompt_template = """You are an expert worker within the domain of {occupation}. Complete the following exam."""
+system_prompt_template = (
+    """You are an expert worker within the domain of {occupation}. Complete the following exam."""
+)
 
 
 #############
 # support functions
 ###################
 
-def save_answer_json(row, path, model):
+
+def save_answer_json(answer, task_id, path, model):
     """
     Saves a test answer from a DataFrame row as a JSON file in a structured directory.
 
@@ -43,51 +48,65 @@ def save_answer_json(row, path, model):
            - If both attempts fail, it defaults to an empty JSON object (`{}`) and returns False.
         3. Saves the parsed JSON file in a subdirectory named after the model.
     """
-    folder = os.path.join(path, str(row['task_id']).replace(".", "_"))
+    folder = os.path.join(path, str(task_id).replace(".", "_"))
     try:
-        text = re.search(r'```json(.*?)```', row['test_answers_'+model], re.DOTALL).group(1).strip()
+        text = re.search(r"```json(.*?)```", answer, re.DOTALL).group(1).strip()
         answer_file = json.loads(text)
-    
+
     except:
         try:
-            text = re.search(r'```json(.*?)```', row['test_answers_'+model], re.DOTALL).group(1).strip()
+            text = re.search(r"```json(.*?)```", answer, re.DOTALL).group(1).strip()
 
             # Step 1: Remove comment lines manually or using regex
-            cleaned = "\n".join(line for line in text.splitlines() if not line.strip().startswith("//"))
+            cleaned = "\n".join(
+                line for line in text.splitlines() if not line.strip().startswith("//")
+            )
 
             # Step 2: Remove outer quotes if present
             if cleaned.startswith("'") and cleaned.endswith("'"):
                 cleaned = cleaned[1:-1]
-            cleaned = re.sub(r'(?<=: )(-?\d{1,3}(?:,\d{3})+)', lambda m: m.group().replace(',', ''), cleaned)
-            cleaned = ast.literal_eval(f'''"""{cleaned}"""''')  # Converts escaped \n etc. to real chars
+            cleaned = re.sub(
+                r"(?<=: )(-?\d{1,3}(?:,\d{3})+)",
+                lambda m: m.group().replace(",", ""),
+                cleaned,
+            )
+            cleaned = ast.literal_eval(
+                f'''"""{cleaned}"""'''
+            )  # Converts escaped \n etc. to real chars
 
             # Step 4: Parse to JSON
             answer_file = json.loads(cleaned)
         except:
             try:
-                cleaned = "\n".join(line for line in row['test_answers_'+model].splitlines() if not line.strip().startswith("//"))
+                cleaned = "\n".join(
+                    line for line in answer.splitlines() if not line.strip().startswith("//")
+                )
                 if cleaned.startswith("'") and cleaned.endswith("'"):
                     cleaned = cleaned[1:-1]
-                cleaned = re.sub(r'(?<=: )(-?\d{1,3}(?:,\d{3})+)', lambda m: m.group().replace(',', ''), cleaned)
-                answer_file =  json.loads(cleaned)
+                cleaned = re.sub(
+                    r"(?<=: )(-?\d{1,3}(?:,\d{3})+)",
+                    lambda m: m.group().replace(",", ""),
+                    cleaned,
+                )
+                answer_file = json.loads(cleaned)
             except:
-                answer_file = '''{}'''
-                json_path = os.path.join(path, str(row['task_id']),'/')
-                os.makedirs(folder+'/'+model, exist_ok=True)
+                answer_file = """{}"""
+                json_path = os.path.join(path, str(task_id), "/")
+                os.makedirs(folder + "/" + model, exist_ok=True)
 
-                with open(folder+'/'+model+"/test_submission.json", "w") as json_file:
+                with open(folder + "/" + model + "/test_submission.json", "w") as json_file:
                     json.dump(answer_file, json_file, ensure_ascii=False, indent=4)
                 return False
-    json_path = os.path.join(path, str(row['task_id']),'/')
-    os.makedirs(folder+'/'+model, exist_ok=True)
+    json_path = os.path.join(path, str(task_id), "/")
+    os.makedirs(folder + "/" + model, exist_ok=True)
 
-    with open(folder+'/'+model+"/test_submission.json", "w") as json_file:
+    with open(folder + "/" + model + "/test_submission.json", "w") as json_file:
         json.dump(answer_file, json_file, ensure_ascii=False, indent=4)
 
     return True
 
 
-def save_evaluation(row, path):
+def save_evaluation(grading_script, task_id, path):
     """
     Extracts and saves Python evaluation code from a DataFrame row to a file.
 
@@ -104,23 +123,23 @@ def save_evaluation(row, path):
         3. If no Python code is found, prints a warning and returns False.
         4. Writes the extracted code to a file named `task_evaluation.py` inside the task directory.
     """
-    folder = os.path.join(path, str(row['task_id']).replace(".", "_").replace("/", "_"))
-    
+    folder = os.path.join(path, str(task_id).replace(".", "_").replace("/", "_"))
+
     # Extract Python code from answer_grading
     try:
-        match = re.search(r'```python(.*?)```', row['grading'], re.DOTALL)
+        match = re.search(r"```python(.*?)```", grading_script, re.DOTALL)
         if not match:
-            print(f"Warning: No Python code found in grading for task_id {row['task_id']}")
+            print(f"Warning: No Python code found in grading for task_id {task_id}")
             return False
     except Exception as e:
-        print(f"Error extracting Python code for task_id {row['task_id']}: {e}")
+        print(f"Error extracting Python code for task_id {task_id}: {e}")
         return False
-    
+
     eval_file = match.group(1).strip()
 
     # Create the directory
     os.makedirs(folder, exist_ok=True)
-    file_path = os.path.join(folder, 'task_evaluation.py')
+    file_path = os.path.join(folder, "task_evaluation.py")
 
     print(f"Writing file: {file_path}")
 
@@ -132,9 +151,7 @@ def save_evaluation(row, path):
     return True
 
 
-
-
-def save_answer_key(row, path):
+def save_answer_key(answer_key, task_id, path):
     """
     Extracts and saves the answer key from a DataFrame row to a JSON file.
 
@@ -153,36 +170,36 @@ def save_answer_key(row, path):
         2. Creates a directory named after the `task_id`, replacing problematic characters.
         3. Saves the extracted JSON data as `answer_key.json` in the task directory.
     """
-    print('saving answer key')
-    folder = os.path.join(path, str(row['task_id']).replace(".", "_"))
+    print("saving answer key")
+    folder = os.path.join(path, str(task_id).replace(".", "_"))
 
     try:
-        answer_file =  ast.literal_eval(row['answer_key'])
-        print('got answer key')
-        #answer_file = json.loads(re.search(r'```json(.*?)```', row['answer_key'], re.DOTALL).group(1).strip())
-        #print(answer_file)
+        answer_file = ast.literal_eval(answer_key)
+        print("got answer key")
+        # answer_file = json.loads(re.search(r'```json(.*?)```', row['answer_key'], re.DOTALL).group(1).strip())
+        # print(answer_file)
     except:
         try:
-            answer_file =  json.loads(row['answer_key'])
+            answer_file = json.loads(answer_key)
 
-            print('got answer key')
+            print("got answer key")
 
         except:
-            answer_file = '''{}'''
-            print('empty answer key')
+            answer_file = """{}"""
+            print("empty answer key")
             return False
-    
+
     # Create the folder if it doesn't exist
     os.makedirs(folder, exist_ok=True)
 
     # Write to the Python file
-    with open(folder+'/answer_key.json', "w", encoding="utf-8") as json_file:
+    with open(folder + "/answer_key.json", "w", encoding="utf-8") as json_file:
         json.dump(answer_file, json_file, ensure_ascii=False, indent=4)
         print(f"File saved successfully: {folder}/answer_key.json")
     return True
 
 
-def run_evaluation(row,path, model):
+def run_evaluation(task_id, path, model):
     """
     Executes the evaluation script for a given task and captures any errors.
 
@@ -212,30 +229,28 @@ def run_evaluation(row,path, model):
         - Captures both `stderr` and `stdout` for debugging purposes.
     """
 
-    errors =[]
-    folder = os.path.join(path, str(row['task_id']).replace('.','_'))
-    #path =  "../../data/exam_approach/test_results/" + folder + "/"
-    print(f'{folder}/{model}/')
-    # Passes answer_key isntead of test_submission to later check answer key gets full marks
+    errors = []
+    folder = os.path.join(path, task_id.replace(".", "_"))
+    # path =  "../../data/exam_approach/test_results/" + folder + "/"
+    print(f"{folder}/{model}/")
     # subprocess.run(["ls", "-l", path])
     try:
         result = subprocess.run(
-            ["python", "task_evaluation.py", 'test_submission.json', "answer_key.json"],
-            cwd=f'{folder}/{model}/',
+            ["python", "task_evaluation.py", "test_submission.json", "answer_key.json"],
+            cwd=f"{folder}/{model}/",
             check=True,  # Raise an exception if the command fails
             stderr=subprocess.PIPE,  # Capture stderr
-            stdout=subprocess.PIPE   # Capture stdout (if needed)
-            )
+            stdout=subprocess.PIPE,  # Capture stdout (if needed)
+        )
         print("Script executed successfully.")
         errors.append(None)
         return errors
 
-    
     except subprocess.CalledProcessError as e:
         # Capture and store the error output in the errors list
         print(f"Error: Script failed with return code {e.returncode}")
         print(f"Error Output:\n{e.stderr.decode('utf-8')}")
-        errors.append(e.stderr.decode('utf-8'))  # Append the error message to the errors list
+        errors.append(e.stderr.decode("utf-8"))  # Append the error message to the errors list
         return errors
     except FileNotFoundError:
         error_message = "Error: The script or directory was not found. Check the path."
@@ -247,14 +262,11 @@ def run_evaluation(row,path, model):
         # Capture and store any unexpected error
         error_message = f"An unexpected error occurred: {str(e)}"
         print(error_message)
-        errors.append(error_message)  # Append the error message to the errors list   
+        errors.append(error_message)  # Append the error message to the errors list
         return errors
 
 
-  
-
-
-def copy_answer_key(row,folder):
+def copy_answer_key(task_id, folder):
     """
     Copies the answer key JSON file to all subdirectories within the task-specific folder.
 
@@ -282,178 +294,173 @@ def copy_answer_key(row,folder):
         - Copy it into all subdirectories inside `/data/tasks/123_4/`
     """
 
-    parent_directory = folder+'/'+str(row['task_id']).replace(".", "_")
-    source_file1 = parent_directory+'/answer_key.json'
-    source_file2 = parent_directory+'/task_evaluation.py'
+    parent_directory = os.path.join(folder, task_id.replace(".", "_"))
+    source_file1 = os.path.join(parent_directory, "answer_key.json")
+    source_file2 = os.path.join(parent_directory, "task_evaluation.py")
 
     if not os.path.isdir(parent_directory):
         print(f"Directory does not exist: {parent_directory}")
         return
 
     try:
-        subdirs = next(os.walk(parent_directory))[1]
-    except StopIteration:
-        print(f"No subdirectories found in: {parent_directory}")
-        return
+        for root, dirs, files in os.walk(parent_directory):
+            # Only process leaf directories (i.e. dirs is empty)
+            if not dirs:
+                destination1 = os.path.join(root, os.path.basename(source_file1))
+                destination2 = os.path.join(root, os.path.basename(source_file2))
 
-    # Iterate over all subdirectories
-    for subdir in next(os.walk(parent_directory))[1]:  # Get only subfolder names
-        subdir_path = os.path.join(parent_directory, subdir)  # Full path to subfolder
-        destination1 = os.path.join(subdir_path, os.path.basename(source_file1))  # Destination path
-        destination2 = os.path.join(subdir_path, os.path.basename(source_file2))  # Destination path
-
-        try:
-            shutil.copy(source_file1, destination1)
-            shutil.copy(source_file2, destination2)
-
-            print(f"Copied {source_file1} to {destination1}")
-            print(f"Copied {source_file2} to {destination2}")
-
-        except FileNotFoundError:
-            print(f"Source file not found: {source_file1}")
-            print(f"Source file not found: {source_file2}")
-
-            break
-
-
-def collect_overall_scores(row,parent_directory):
-    """
-    Collects the 'overall_score' from test result JSON files across subdirectories within a task-specific folder.
-
-    Args:
-        row (pd.Series): A row from a DataFrame containing `task_id`, which is used to determine the folder structure.
-        parent_directory (str): The base directory where task-specific folders are stored.
-
-    Process:
-        1. Constructs the path to the task-specific folder using `task_id`, replacing problematic characters.
-        2. Iterates over all subdirectories within the task folder.
-        3. Checks for the existence of `test_results.json` in each subdirectory.
-        4. Reads and parses the JSON file, extracting the 'overall_score' if present.
-        5. Stores scores in a dictionary where keys are subfolder names and values are corresponding scores.
-
-    Returns:
-        dict: A dictionary mapping each subfolder to its corresponding 'overall_score' value.
-
-    Notes:
-        - Handles JSON files containing either a dictionary or a list of dictionaries.
-        - Prints warnings if files are missing, have unexpected formats, or lack the 'overall_score' field.
-        - Catches JSON parsing errors and other unexpected exceptions.
-
-    Example:
-        If `parent_directory = "/data/tasks"` and `task_id = 123.4`, the function will:
-        - Look in `/data/tasks/123_4/` for subdirectories.
-        - Check for `test_results.json` in each subdirectory.
-        - Extract and store the 'overall_score' values in a dictionary.
-
-    """
-    scores_dict = {}  # Dictionary to store scores with subfolder names as keys
-    parent_directory = parent_directory+str(row['task_id']).replace(".", "_")
-    # Iterate over each subfolder in the parent directory
-    for subfolder in os.listdir(parent_directory):
-        subfolder_path = os.path.join(parent_directory, subfolder)
-
-        # Check if it's a directory
-        if os.path.isdir(subfolder_path):
-            submission_file = os.path.join(subfolder_path, "test_results.json")
-
-            # Check if the submission.json file exists
-            if os.path.isfile(submission_file):
                 try:
-                    # Read the JSON file
-                    with open(submission_file, "r", encoding="utf-8") as file:
-                        data = json.load(file)
-                    
-                    # Convert JSON to DataFrame (if it's a list of dicts)
-                    if isinstance(data, list):
-                        df = pd.DataFrame(data)
-                    elif isinstance(data, dict):
-                        df = pd.DataFrame([data])  # Convert single dict to DataFrame
-                    else:
-                        print(f"Unexpected format in {submission_file}")
-                        continue
-                    # Ensure 'overall_score' exists
-                    if 'overall_score' in df.columns:
-                        scores_dict[subfolder] = df['overall_score'].iloc[0]
-                    else:
-                        print(f"'overall_score' column missing in {submission_file}")
+                    shutil.copy(source_file1, destination1)
+                    shutil.copy(source_file2, destination2)
 
-                except (json.JSONDecodeError, ValueError) as e:
-                    print(f"Error reading {submission_file}: {e}")
-                except Exception as e:
-                    print(f"Unexpected error in {submission_file}: {e}")
-    return scores_dict
+                    print(f"Copied {source_file1} to {destination1}")
+                    print(f"Copied {source_file2} to {destination2}")
+
+                except FileNotFoundError:
+                    print(f"Source file not found: {source_file1}")
+                    print(f"Source file not found: {source_file2}")
+                    break
+    except Exception as e:
+        print(f"Error walking through directories: {e}")
 
 
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        model = sys.argv[1]
+def collect_overall_scores(task_id, path, model):
+    submission_file = os.path.join(
+        path, str(task_id).replace(".", "_"), model, "test_results.json"
+    )
+    print("submission file ", submission_file)
+    # Check if the submission.json file exists
+    if os.path.isfile(submission_file):
+        try:
+            # Read the JSON file
+            with open(submission_file, "r", encoding="utf-8") as file:
+                data = json.load(file)
+            print("loaded json successfully")
+            # Convert JSON to DataFrame (if it's a list of dicts)
+            if isinstance(data, list):
+                df = pd.DataFrame(data)
+            elif isinstance(data, dict):
+                df = pd.DataFrame([data])  # Convert single dict to DataFrame
+            else:
+                print(f"Unexpected format in {submission_file}")
+                score = 0
+            # Ensure 'overall_score' exists
+            if "overall_score" in df.columns:
+                score = df["overall_score"].iloc[0]
+            else:
+                print(f"'overall_score' column missing in {submission_file}")
+                score = 0
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Error reading {submission_file}: {e}")
+            score = 0
+        except Exception as e:
+            print(f"Unexpected error in {submission_file}: {e}")
+            score = 0
     else:
-        model = 'claude-3-7-sonnet-20250219'
-    if len(sys.argv) > 2:
-        occupation_group = sys.argv[2]
-    else:
-        occupation_group = "Management Occupations"
-    if len(sys.argv) > 3:
-        core_label = sys.argv[3]
-    else:
-        core_label = 'CORE'
-    if len(sys.argv) > 4:
-        level = sys.argv[4]
-    else:
-        level = 'basic'
-    model = 'gemini-2.5-pro-preview-03-25'
-
-    print('Taking the exams of', model)
-
-    if level == 'basic':
-        df = pd.read_csv(f"../data/exams/{model}/{occupation_group.replace(' ', '_').lower()}_exams.csv")
-
-    if level == 'advanced':
-        df = pd.read_csv(f"../data/exams/{model}/advanced_{occupation_group.replace(' ', '_').lower()}_exams.csv")
+        score = 0
+    return score
 
 
-    test_takers = ['gemini-1.5-flash', 'gemini-2.0-flash']#, 'claude-3-7-sonnet-20250219', 'gpt-4o', 'gpt-3.5-turbo-0125', 'deepseek-chat', 'gemini-2.5-pro-preview-03-25', 'o3-2025-04-16', 'claude-3-5-sonnet-20240620', 'claude-3-sonnet-20240229']
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-    model_folder_path = f'../data/test_results/{model}/'
+# if __name__ == "__main__":
+#     if len(sys.argv) > 1:
+#         model = sys.argv[1]
+#     else:
+#         model = "claude-3-7-sonnet-20250219"
+#     if len(sys.argv) > 2:
+#         occupation_group = sys.argv[2]
+#     else:
+#         occupation_group = "Management Occupations"
+#     if len(sys.argv) > 3:
+#         core_label = sys.argv[3]
+#     else:
+#         core_label = "CORE"
+#     if len(sys.argv) > 4:
+#         level = sys.argv[4]
+#     else:
+#         level = "basic"
+#     # model = "gemini-2.5-pro-preview-03-25"
 
-    for idx, row in df.iterrows():
-        if row['exam'] !='Exam not valid':
-            print(row['task_id'])
-            print('testing LLMs')
-            for test_taker in test_takers:
-                df.at[idx,'test_answers_'+test_taker] = take_test(row, system_prompt_template, row['exam'], test_taker)
-                if level == 'basic':
-                    df.to_csv(f"../data/test_results/{model}/{occupation_group.replace(' ', '_').lower()}_test_answers.csv",index=False)
-                if level == 'advanced':
-                    df.to_csv(f"../data/test_results/{model}/advanced_{occupation_group.replace(' ', '_').lower()}_test_answers.csv",index=False)
+#     print("Taking the exams of", model)
 
-            df['answer_empty'] = df.apply(save_answer_json, axis=1, args=(model_folder_path, 'empty_submission'))
+#     if level == "basic":
+#         df = pd.read_csv(
+#             f"../data/exams/{model}/{occupation_group.replace(' ', '_').lower()}_exams.csv"
+#         )
 
+#     if level == "advanced":
+#         df = pd.read_csv(
+#             f"../data/exams/{model}/advanced_{occupation_group.replace(' ', '_').lower()}_exams.csv"
+#         )
 
-            print('running evaluations')
-            df['evaluation_python'] = df.apply(save_evaluation, axis=1, args=(model_folder_path,))
-            df['answer_key_json']=  df.apply(save_answer_key, axis=1, args=(model_folder_path,))
-            df.apply(copy_answer_key, axis=1, args=(model_folder_path,))
+#     # test_takers = [
+#     #     "gemini-1.5-flash",
+#     #     "gemini-2.0-flash",
+#     # ]  # , 'claude-3-7-sonnet-20250219', 'gpt-4o', 'gpt-3.5-turbo-0125', 'deepseek-chat', 'gemini-2.5-pro-preview-03-25', 'o3-2025-04-16', 'claude-3-5-sonnet-20240620', 'claude-3-sonnet-20240229']
+#     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+#     model_folder_path = f"../data/test_results/{model}/"
 
-            for test_taker in test_takers:
-                df['answer_valid_'+test_taker] = df.apply(save_answer_json, axis=1, args=(model_folder_path, test_taker))
-                df['errors_'+test_taker] = df.apply(run_evaluation, axis=1, args=(model_folder_path,test_taker,))
+#     for idx, row in df.iterrows():
+#         if row["exam"] != "Exam not valid":
+#             print(row["task_id"])
+#             print("testing LLMs")
+#             for test_taker in test_takers:
+#                 df.at[idx, "test_answers_" + test_taker] = take_test(
+#                     row, system_prompt_template, row["exam"], test_taker
+#                 )
+#                 if level == "basic":
+#                     df.to_csv(
+#                         f"../data/test_results/{model}/{occupation_group.replace(' ', '_').lower()}_test_answers.csv",
+#                         index=False,
+#                     )
+#                 if level == "advanced":
+#                     df.to_csv(
+#                         f"../data/test_results/{model}/advanced_{occupation_group.replace(' ', '_').lower()}_test_answers.csv",
+#                         index=False,
+#                     )
 
+#             df["answer_empty"] = df.apply(
+#                 save_answer_json, axis=1, args=(model_folder_path, "empty_submission")
+#             )
 
-        df['errors_empty'] =df.apply(run_evaluation, axis=1, args=(model_folder_path,'empty_submission',))
-        print('collecting scores')
-        df['scores'] =  df.apply(collect_overall_scores,axis=1, args= (model_folder_path,))
-        scores_df = pd.json_normalize(df['scores'])
-        scores_df.columns = 'score_'+scores_df.columns
-        # Combine the original DataFrame with the new columns
-        df_expanded = pd.concat([df.drop('scores', axis=1), scores_df], axis=1)
-        if level == 'basic':
-            df_expanded.to_csv(f"../data/test_results/{model}/{occupation_group.replace(' ', '_').lower()}_test_results.csv", index=False)
-        if level == 'advanced':
-            df_expanded.to_csv(f"../data/test_results/{model}/advanced_{occupation_group.replace(' ', '_').lower()}_test_results.csv", index=False)
+#             print("running evaluations")
+#             df["evaluation_python"] = df.apply(save_evaluation, axis=1, args=(model_folder_path,))
+#             df["answer_key_json"] = df.apply(save_answer_key, axis=1, args=(model_folder_path,))
+#             df.apply(copy_answer_key, axis=1, args=(model_folder_path,))
 
+#             for test_taker in test_takers:
+#                 df["answer_valid_" + test_taker] = df.apply(
+#                     save_answer_json, axis=1, args=(model_folder_path, test_taker)
+#                 )
+#                 df["errors_" + test_taker] = df.apply(
+#                     run_evaluation,
+#                     axis=1,
+#                     args=(
+#                         model_folder_path,
+#                         test_taker,
+#                     ),
+#                 )
 
-
-
-
+#         df["errors_empty"] = df.apply(
+#             run_evaluation,
+#             axis=1,
+#             args=(
+#                 model_folder_path,
+#                 "empty_submission",
+#             ),
+#         )
+#         print("collecting scores")
+#         df["scores"] = df.apply(collect_overall_scores, axis=1, args=(model_folder_path,))
+#         scores_df = pd.json_normalize(df["scores"])
+#         scores_df.columns = "score_" + scores_df.columns
+#         # Combine the original DataFrame with the new columns
+#         df_expanded = pd.concat([df.drop("scores", axis=1), scores_df], axis=1)
+#         if level == "basic":
+#             df_expanded.to_csv(
+#                 f"../data/test_results/{model}/{occupation_group.replace(' ', '_').lower()}_test_results.csv",
+#                 index=False,
+#             )
+#         if level == "advanced":
+#             df_expanded.to_csv(
+#                 f"../data/test_results/{model}/advanced_{occupation_group.replace(' ', '_').lower()}_test_results.csv",
+#                 index=False,
+#             )

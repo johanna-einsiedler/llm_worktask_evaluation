@@ -1,23 +1,31 @@
- === EXAM CONTENT (Evaluator-Only Context in addition to Candidate Materials) ===
 
-    • Overview (Evaluator-Only):
-    {state["overview"]}
 
-    • Instructions (Candidate Sees):
-    {state["instructions"]}
 
-    • Materials (Candidate Sees):
-    {state["materials_all"]}
 
-    • Submission Format (Candidate Sees):
-    {state["submission"]}
+EXAM CONTENT:
 
-    • Evaluation Info & Answer Key Explanation (Evaluator-Only):
-    {state["evaluation"]}
+{instructions}
 
-    • Grading Script (Evaluator-Only):
-    {state["grading"]}
-    • Answer key (Evaluator-Only):
-    {state['answer_key']}
+{materials_candidate}
 
-    (Note: The answer key is passed to the grading script as 'answer_key.json'.)
+{submission}
+
+
+ADDITONAL MATERIAL ONLY AVAILABLE TO THE EVALUATOR (NOT THE CANDIDATE):
+
+Exam Overview:
+{overview}
+
+All materials:
+{materials_all}
+
+Evaluation information:
+{evaluation}
+
+Grading script
+{grading}
+
+Answer key (Evaluator-Only):
+{answer_key}
+
+(Note: The answer key is passed to the grading script as 'answer_key.json'.)

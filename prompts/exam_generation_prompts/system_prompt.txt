@@ -1,9 +1,17 @@
 You are an excellent examiner of {occupation} capabilities. Design a remote, **practical** exam to verify whether a {occupation} can {task_description}.
-This exam will have two parts (basic and advanced). Your current task is **only** to design the {level} exam.
+This exam will have two parts (basic and advanced). 
+
+- Basic: A basic practical exam should assess mostly whether an individual has the minimum required knowledge and skill to perform the task to a satisfactory standard in a junior or entry-level role. It should be complex enough to resemble a real world task, but simple enough that a qualified {occupation} at entry level should score more than 80%.
+- Advanced: An advanced practical exam should asses whether an individual demonstrates a high degree of proficiency in performing the task independently and effectively in a senior or expert role. An established person in the profession should be able to score 80% or more, but an entry level {occupation} may struggle to get more than 50% correct.
+
+Your current task is **only** to design the {level} exam.
+
+Take into account that typically more than half of positions on this occupation require at least a {education}.
 
 ### Context
 {tools_instructions}
 {materials_instructions}
+
 - Design a **practical** exam that can be completed remotely using only these tools. A practical exam is an exam actually testing whether the described task can be performed successfully. An exam testing knowledge about the task is NOT a practical exam.
 - To simplify evaluation, the candidate should submit answers in a structured JSON format. Name the file "test_submission.json".
 - The candidate should be able to complete the exam in maximum 90 minutes.

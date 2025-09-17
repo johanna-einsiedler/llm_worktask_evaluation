@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import os
 import re
@@ -13,11 +14,10 @@ from query_agents import query_agent
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
 
-
-with open("../prompts/material_tools/system_prompt.txt", "r") as file:
+with open("../prompts/materials_tools/system_prompt.txt", "r") as file:
     system_prompt_template = file.read()
 
-with open("../prompts/material_tools/user_prompt.txt", "r") as file:
+with open("../prompts/materials_tools/user_prompt_05_23.txt", "r") as file:
     user_prompt_template = file.read()
 
 
@@ -39,36 +39,41 @@ def get_requirements(
     results = []
 
     for i, row in df.iterrows():
-        try:
-            # Extract relevant values from the row for prompt formatting
-            occupation = row["title"]
-            task_description = row["task"]
-            task_id = row["task_id"]
-
-            # Format system and user prompts using the provided templates
-            system_prompt = system_prompt_template.format(
-                occupation=occupation,
-                task_description=task_description,
-            )
-            user_prompt = user_prompt_template.format(
-                occupation=occupation, task_description=task_description, task_id=task_id
-            )
-
-            # Generate the response via the query agent
-            output = query_agent(system_prompt, user_prompt, model)
-
+        counter = 0
+        while counter < 3:
             try:
-                # Attempt to parse output as JSON directly
-                parsed_output = json.loads(output) if output else {}
-            except Exception:
-                # Fallback: Extract JSON using regex if direct parsing fails
-                parsed_output = json.loads(
-                    re.search(r"```json\n(.*?)\n```", output, re.DOTALL).group(1)
-                )
-        except Exception as e:
-            print(f"Error processing row {i}: {e}")
-            parsed_output = {}  # Fallback to an empty dict on error
+                # Extract relevant values from the row for prompt formatting
+                occupation = row["title"]
+                task_description = row["task"]
+                task_id = row["task_id"]
 
+                # Format system and user prompts using the provided templates
+                system_prompt = system_prompt_template.format(
+                    occupation=occupation,
+                    task_description=task_description,
+                )
+
+                user_prompt = user_prompt_template.format(
+                    occupation=occupation, task_description=task_description, task_id=task_id
+                )
+
+                # Generate the response via the query agent
+                output, metadata = query_agent(system_prompt, user_prompt, model)
+                try:
+                    # Attempt to parse output as JSON directly
+                    parsed_output = json.loads(output) if output else {}
+                except Exception:
+                    # Fallback: Extract JSON using regex if direct parsing fails
+                    parsed_output = json.loads(
+                        re.search(r"```json\n(.*?)\n```", output, re.DOTALL).group(1)
+                    )
+            except Exception as e:
+                print(f"Error processing row {i}: {e}")
+                parsed_output = {}  # Fallback to an empty dict on error
+            if parsed_output != "{}":
+                break
+            else:
+                counter = counter + 1
         # Construct the result dictionary and update with parsed output
         result = {"row": i, "prompt": user_prompt}
         result.update(parsed_output)
@@ -96,10 +101,6 @@ def get_required(
         Union[List[str], str]: List of required items if found; otherwise, an empty string.
     """
     required = [col.replace(keyword, "") for col in cols if row[col] == "Required"]
-    if any("Other.classification" in item for item in required):
-        required = [item for item in required if item != "Other.classification"]
-        if other:
-            required.append(row[keyword + "Other.name"])
     return required if required else ""
 
 
@@ -116,17 +117,11 @@ def get_requirement_lists(df: pd.DataFrame) -> pd.DataFrame:
     # Identify columns related to tools (starting with 'tool')
     tool_columns = [col for col in df.columns if col.startswith("tools")]
     df["required_tools"] = df.apply(get_required, axis=1, args=("tools.", tool_columns, True))
-    df["required_tools_standard"] = df.apply(
-        get_required, axis=1, args=("tools.", tool_columns, False)
-    )
 
     # Identify columns related to materials (starting with 'material')
     material_columns = [col for col in df.columns if col.startswith("materials")]
     df["required_materials"] = df.apply(
         get_required, axis=1, args=("materials.", material_columns, True)
-    )
-    df["required_materials_standard"] = df.apply(
-        get_required, axis=1, args=("materials.", material_columns, False)
     )
 
     return df
@@ -136,12 +131,12 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         path_to_data = sys.argv[1]
     else:
-        path_to_data = "../data/task_lists/management_occupations_CORE.csv"
+        path_to_data = "../data/task_lists/business_and_financial_operations_occupations_CORE.csv"
 
     if len(sys.argv) > 2:
         models = sys.argv[2]
     else:
-        model = "claude-3-7-sonnet-20250219"
+        model = "o3-2025-04-16"
     if len(sys.argv) > 3:
         overwrite = sys.argv[3]
     else:
@@ -154,7 +149,13 @@ if __name__ == "__main__":
     # Read the CSV file into a DataFrame and rename columns for consistency
     df = pd.read_csv(path_to_data)
     df = df.rename(columns={"Task ID": "task_id", "Task": "task", "Title": "title"})
-
+    # df = df.sample(30, random_state=42)  # Sample 500 rows for processing
+    # experiment_ids = pd.read_csv(
+    #     "/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation/data/experiments/experiment_unfiltered_task_ids.csv"
+    # )
+    # df = df[df["task_id"].isin(experiment_ids["task_id"])]
+    # print(df.shape)
+    output_dir = f"../data/required_materials_tools/{model}/"
     # Flag to determine whether to overwrite existing output
     print("Overwrite is set to", overwrite)
 
@@ -162,7 +163,6 @@ if __name__ == "__main__":
     print("Generating requirements using", model)
 
     # Create the output directory for the current model if it does not exist
-    output_dir = f"../data/required_materials_tools/{model}/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -183,7 +183,6 @@ if __name__ == "__main__":
     else:
         df_processing = df
     print("Number of tasks to be processed:", df_processing.shape[0])
-
     # Generate requirements for the filtered DataFrame
     out = get_requirements(df_processing, system_prompt_template, user_prompt_template, model)
     out = get_requirement_lists(out)

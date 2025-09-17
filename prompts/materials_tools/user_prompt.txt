@@ -1,41 +1,65 @@
 Task ID: {task_id}
 
-Your assignment is to determine if it is possible to design a meaningful, **practical** exam for this task that can be performed remotely and to identify the required tools and materials for the evaluation. 
+Your assignment is to determine if (1) the task can be performed remotely, (2) it is possible to design a meaningful, **practical** exam for this task and (3) whether such an exam can be evaluated using fact-based scoring. Further, you should identify the required tools and materials that exam takers need to use.
 
 **Definitions:**
-- **Tools:** Software or applications (e.g., coding languages, code editor, spreadsheets, text editor, presentation software, image generator), that the candidate needs to use to complete the test.
-- **Materials:** Digital content (e.g., data files, PDFs, images, audio files, virtual lab environments) that form part of the test content.
+- **Remote feasibility**: A task can be performed remotely if it doesn't require a person to be at a specific place or interact with humans face-to-face.
+
+- **Tools:** Software or applications (e.g. coding & development tools, text editor, presentation software, image generator), that are **absolutely** critical for an exam taker to complete any practically relevant and meaningful exam for this task. 
+
+- **Materials:** Digital content (e.g., data files, text, images, audio files) that form part of the test content.
+
+- **Fact based scoring:** Whether the exam can be evaluated using a predefined answer key (objective scoring) or requires subjective assessment, such as evaluating the quality of written responses or creative work.
+
 - **Practical exam:** A practical exam is a an exam actually testing whether the described task can be performed successfully. An exam testing the knowledge about the task is NOT a practical exam.
+
+- **Virtual lab:** A virtual lab is an interactive digital environment that simulates real-world settings, allowing users to perform tasks, collaborate with others, and test scenarios remotely.
+
+- **Images:** Such as product images, photographs, maps, graphs and plots, etc.
+
+- **Specialized software:** Specialized software refers to computer programs designed for specific industry tasks or technical functions, such as Simulink for system modeling, CAD for 3D design or SAP for enterprise resource planning. This category should be used if there is no way to solve the exam using combinations of the other tools and software listed under tools, but some more specialized software is required.
+
+- **Specialized files:** Specialized files refers to files that cannot be parsed into text, data, images, audio or video but are also not part of a virtual lab. This category should be used if there is no way to provide the necessary exam materials using a combination of the other materials listed.
 
 **Instructions:**
 1. **Remote Feasibility:**  
-   Evaluate whether the task can be performed online/remotely or if it requires in-person presence.
+   Evaluate whether {task_description} can be performed online/remotely or if it requires in-person presence.
    - **If in-person required:** Output `"can_be_performed_remotely": false` and set all other fields (tools and materials) to `"NA"`.
    - **If remote:** Output `"can_be_performed_remotely": true` and continue with the evaluation.
 
-2. **Tools Required:**  
-   For each tool, assess whether it is needed for the task ({task_description}) for the role of {occupation}. Options are: "Required" or "Not Required". The tools include:
-   - "Coding"
-   - "Spreadsheets"
-   - "Text editor"
-   - "PDF viewer"
-   - "Presentation software"
-   - "Image Generator"
-   - "Online search engine"
-   - "Other" (specify tool name and classification if needed; otherwise "NA")
-
-3. **Materials Required:**  
-   For each material, determine if it is necessary as part of the test to evaluate {occupation}'s ability to perform the task ({task_description}). Options are: "Required"or "Not required" The materials include:
+2. **Materials Required:**  
+   For each material type, determine if it is necessary to provide materials of this type as part of an exam to evaluate {occupation}'s ability to perform the task ({task_description}). 
+   Options are: "Required"or "Not required" 
+   The materials include:
    - "Text"
    - "Data"
    - "Images"
    - "Audio files"
    - "Video files"
-   - "Virtual labs or sandbox environments"
-   - "Other" (specify material name and classification if needed; otherwise "NA")
+   - "Virtual labs"
+   - "Specialized files"
 
-4. **Feasability of a practical exam:**
-    Evaluate whether the task can meaningfuly be tested in a practical, remote exam.
+
+3. **Tools Required:**  
+   For each tool, assess whether it is needed to complete an exam that evaluates whether an individual can do {task_description}.
+  Options are: "Required" or "Not Required". 
+  The tools include:
+   - "Spreadsheet software"
+   - "Code execution environment"
+   - "Text editor"
+   - "Image viewer"
+   - "Image generator"
+   - "Presentation software"
+   - "Online search engine"
+   - "Video conferencing"
+   - "Chat interfaces"
+   - "Email client"
+   - "Internet access"
+   - "Specialized software"
+
+
+4. **Feasibility of a practical exam:**
+    Evaluate whether the task can meaningfully be tested in a practical, remote exam.
     - If you think this is possible, answer True,
     - Otherwise answer False
 
@@ -51,31 +75,34 @@ Return a JSON object strictly adhering to the provided structure, without any ex
   "occupation": "{occupation}",
   "task_description": "{task_description}",
   "can_be_performed_remotely": true/false,
-  "tools": {{
-    "Coding": "Not Required/Required/NA",
-    "Spreadsheets": "Not Required/Required/NA",
-    "Text editor": "Not Required/Required/NA",
-    "PDF viewer": "Not Required/Required/NA", 
-    "Presentation software": "Not Required/Required/NA",
-    "Online search engine": "Not Required/Required/NA",
-    "Image Generator": "Not Required/Required/NA",
-    "Other": {{
-      "name": "Tool Name/NA",
-      "classification": "Not Required/Required/NA"
-    }}
-  }},
+   "feasibility_practical": true/false,
+
+
+
+
   "materials": {{
     "Text": "Not Required/Required/NA",
     "Data": "Not Required/Required/NA",
     "Images": "Not Required/Required/NA",
     "Audio files": "Not Required/Required/NA",
     "Video files": "Not Required/Required/NA",
-    "Virtual labs or sandbox environments": "Not Required/Required/NA",
-    "Other": {{
-      "name": "Material Name/NA",
-      "classification": "Not Required/Required/NA"
-    }}
+    "Virtual labs": "Not Required/Required/NA",
+    "Specialized files":"Not Required/Required/NA",
   }},
-  "feasiblity_practical": true/false
+
+   "tools": {{
+   "Spreadsheet software": "Not Required/Required/NA",
+   "Code execution environment": "Not Required/Required/NA",
+   "Image viewer": "Not Required/Required/NA",
+   "Image generator": "Not Required/Required/NA",
+   "Text editor": "Not Required/Required/NA",
+   "Presentation software": "Not Required/Required/NA",
+   "Online search engine": "Not Required/Required/NA",
+   "Video conferencing": "Not Required/Required/NA",
+   "Chat interfaces": "Not Required/Required/NA",
+   "Email client": "Not Required/Required/NA",
+   "Internet access": "Not Required/Required/NA",
+   "Specialized software:""Not Required/Required/NA",
+  }},
   "chain_of_thought": "Brief explanation (no more than 150 words)."
 }}

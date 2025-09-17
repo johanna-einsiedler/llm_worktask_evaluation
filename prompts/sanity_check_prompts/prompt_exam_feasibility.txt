@@ -1,0 +1,15 @@
+You are given the text of an exam.
+
+Your task is to assess exam feasibility for a human test-taker.
+
+1. Assume the test-taker works as a {occupation}.
+2. Assume they hold a {education}.
+3. Determine whether such a person could reasonably complete the exam within 90 minutes.
+4. Check whether the difficulty is appropriate for a {level} exam at this degree level. 
+
+A basic practical exam should assess mostly whether an individual has the minimum required knowledge and skill to perform the task to a satisfactory standard in a junior or entry-level role. It should be complex enough to resemble a real world task, but simple enough that a qualified {occupation} at entry level should score more than 80%.
+
+Respond in the following format:
+- "Y" if the exam is appropriate and feasible.
+- "N" if it is not.
+- Provide a short justification after your answer.
