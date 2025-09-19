@@ -200,7 +200,7 @@ class ExamState(TypedDict):
     check_real_materials: bool
     check_no_internet: bool
     check_candidate_materials: bool
-    check_instructions_materials: bool
+    check_consistency: bool
     alter_target: str
     # Key grade and count how many times below threshold
     key_grade_threshold: float
@@ -250,8 +250,14 @@ def node_system_prompt(state: ExamState) -> ExamState:
     )
     state["sequence"].append("system_prompt")
     state["counter"] = state["counter"] + 1
+
+    os.makedirs(
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/",
+        exist_ok=True,
+    )
+
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_system_prompt.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_system_prompt.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -284,14 +290,14 @@ def node_overview(state: ExamState) -> ExamState:
     state["sequence"].append("overview")
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_overview.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_overview.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt_overview))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_overview.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_overview.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -330,14 +336,14 @@ def node_instructions(state: ExamState) -> ExamState:
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_instructions.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_instructions.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_instructions.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_instructions.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -390,9 +396,13 @@ def node_materials(state: ExamState) -> ExamState:
                 3
             )  # outside text
             state["materials_candidate"] = match.group(2)  # inside text
+            state["check_candidate_materials"] = True
+
     except:
         if state["materials_evaluator"] == "No material required":
             state["materials_candidate"] = "No material required"
+            state["check_candidate_materials"] = True
+
         else:
             state["materials_candidate"] = "Not extracted"
             state["check_candidate_materials"] = False
@@ -402,21 +412,21 @@ def node_materials(state: ExamState) -> ExamState:
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_materials.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_materials.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_materials_candidate.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_materials_candidate.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(state["materials_candidate"]))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_materials_evaluator.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_materials_evaluator.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -459,14 +469,14 @@ def node_check_materials_fake_image(state: ExamState) -> ExamState:
     )
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_materials_fake_image.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_materials_fake_image.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt_check_fake_image))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_materials_fake_image.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_materials_fake_image.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -512,14 +522,14 @@ def node_check_materials_fake_website(state: ExamState) -> ExamState:
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_materials_fake_website.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_materials_fake_website.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt_check_fake_website))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_materials_fake_website.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_materials_fake_website.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -527,25 +537,21 @@ def node_check_materials_fake_website(state: ExamState) -> ExamState:
     return state
 
 
-def node_check_instructions_materials_consistent(state: "ExamState") -> "ExamState":
+def node_check_consistency(state: ExamState) -> ExamState:
     """
     Checks whether exam instructions and materials are consistent and aligned.
     Uses a language model to return structured JSON feedback.
 
     Expected model outputs:
-      {"consistent": "Y"}
-      {"consistent": "F", "alter": "instructions"}
-      {"consistent": "F", "alter": "materials"}
+
 
     Updates the state with:
-      - check_candidate_materials: bool
-      - metadata["check_instructions_materials"]: model usage metadata
+
+          - metadata["check_instructions_materials"]: model usage metadata
       - alter_target: str, if inconsistent (instructions or materials)
     """
     print("Checking consistency between instructions and materials...")
-    with open(
-        "../prompts/sanity_check_prompts/prompt_check_instructions_materials.txt", "r"
-    ) as file:
+    with open("../prompts/sanity_check_prompts/prompt_consistency.txt", "r") as file:
         prompt_check_consistency = file.read()
 
     # Call the exam author model
@@ -555,41 +561,49 @@ def node_check_instructions_materials_consistent(state: "ExamState") -> "ExamSta
         state["exam_author_model"],
     )
     # Parse JSON safely
+
+    state["metadata"]["check_consistent"] = metadata
+    response = content.strip()
+
     try:
-        parsed_output = json.loads(content)
-    except json.JSONDecodeError:
-        print("Warning: could not parse model output as JSON:", raw_output)
+        result = json.loads(response)
+        state["check_consistent"] = bool(result.get("consistent", False))
+        state["alter_target"] = str(result.get("alter", ""))
+    except:
+        try:
+            text = re.search(r"```json(.*?)```", response, re.DOTALL).group(1).strip()
+            result = json.loads(text)
+            state["check_consistent"] = bool(result.get("consistent", False))
+            state["alter_target"] = str(result.get("alter", ""))
 
-    # Default values
-    check_instructions_materials = False
-    alter_target = None
+        except AttributeError:
+            # If no JSON block found, mark sense-check as False
+            # and store the raw response for debugging.
+            state["check_consistent"] = False
+            state["alter_target"] = ""
 
-    if parsed_output.get("consistent") == "Y":
-        check_instructions_materials = True
-    elif parsed_output.get("consistent") == "F":
-        check_instructions_materials = False
-        alter_target = parsed_output.get("alter")
+        except json.JSONDecodeError:
+            # If the LLM's response isn't valid JSON, mark sense-check as False
+            # and store the raw response for debugging.
+            state["check_consistent"] = False
+            state["alter_target"] = ""
 
-    # Update state
-    state["check_instructions_materials"] = check_instructions_materials
-    if alter_target:
-        state["alter_target"] = alter_target
-    state["metadata"]["check_instructions_materials"] = metadata
+    state["metadata"]["check_consistency"] = metadata
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_instructions_materials.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_consistency.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt_check_consistency))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_instructions_materials.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_consistency.txt",
         "w",
         encoding="utf-8",
     ) as f:
-        f.write(str(state["check_candidate_materials"]))
+        f.write(str(state["check_consistency"]) + str(state["alter_target"]))
     return state
 
 
@@ -629,21 +643,21 @@ def node_submission(state: ExamState) -> ExamState:
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_submission.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_submission.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_submission.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_submission.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(state["submission"]))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_exam.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_exam.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -674,14 +688,14 @@ def node_evaluation(state: ExamState) -> ExamState:
     print("creating exam evaluation material")
     with open("../prompts/exam_generation_prompts/prompt_evaluation.txt", "r") as file:
         prompt_template_evaluation = file.read()
-        prompt = prompt_template_evaluation.format(
-            answer_overview=state["overview"],
-            # answer_instructions=state["instructions"],
-            # answer_materials=state["materials_all"],
-            # answer_submission=state["submission"],
-            exam=state["exam"],
-            materials_evaluator=state["evaluation"],
-        )
+    prompt = prompt_template_evaluation.format(
+        answer_overview=state["overview"],
+        # answer_instructions=state["instructions"],
+        # answer_materials=state["materials_all"],
+        # answer_submission=state["submission"],
+        exam=state["exam"],
+        materials_evaluator=state["evaluation"],
+    )
 
     content, metadata = query_agent(
         state["system_prompt"], prompt, state["exam_author_model"]
@@ -692,14 +706,14 @@ def node_evaluation(state: ExamState) -> ExamState:
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_evaluation.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_evaluation.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_evaluation.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_evaluation.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -745,14 +759,14 @@ def node_grading(state: ExamState) -> ExamState:
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_grading.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_grading.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_grading.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_grading.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -798,56 +812,66 @@ def node_save_eval_and_answer(state: ExamState) -> ExamState:
     return state
 
 
-# def node_check_inconsistencies_duplicates(state: ExamState) -> ExamState:
-#     """
-#     Removes duplicate materials, eliminates unnecessary repetition,
-#     and resolves inconsistencies in the exam text.
+def node_cleanup(state: ExamState) -> ExamState:
+    """
+    Removes duplicate materials, eliminates unnecessary repetition,
+    and resolves inconsistencies in the exam text.
 
-#     The function:
-#       - Deduplicates entries in 'materials_all' (exact duplicates).
-#       - Uses a language model to detect and reduce unnecessary repetition
-#         as well as resolve inconsistencies in exam text.
-#       - Updates 'materials_all' and 'instructions' with cleaned versions.
-#       - Stores usage metadata for auditing.
+    The function:
+      - Deduplicates entries in 'materials_all' (exact duplicates).
+      - Uses a language model to detect and reduce unnecessary repetition
+        as well as resolve inconsistencies in exam text.
+      - Updates 'materials_all' and 'instructions' with cleaned versions.
+      - Stores usage metadata for auditing.
 
-#     Args:
-#         state (ExamState): A dictionary-like object containing:
-#                            - 'instructions'
-#                            - 'materials_all'
-#                            - 'exam_author_model'
-#                            - 'metadata'
+    Args:
+        state (ExamState): A dictionary-like object containing:
+                           - 'instructions'
+                           - 'materials_all'
+                           - 'exam_author_model'
+                           - 'metadata'
 
-#     Returns:
-#         ExamState: The updated state with:
-#             - 'materials_all' cleaned (deduplicated + no unnecessary repetition)
-#             - 'instructions' revised for consistency
-#             - 'metadata["check_inconsistencies"]' containing model usage metadata
-#     """
+    Returns:
+        ExamState: The updated state with:
+            - 'materials_all' cleaned (deduplicated + no unnecessary repetition)
+            - 'instructions' revised for consistency
+            - 'metadata["check_inconsistencies"]' containing model usage metadata
+    """
 
-#     print("checking for inconsistencies and duplicates")
-#     # Step 1: Remove exact duplicate lines from materials
-#     exam_instructions = (
-#         state["instructions"] + state["materials_candidate"] + state["submission"]
-#     )
-#     deduped_materials = list(dict.fromkeys(exam_instructions.splitlines()))
-#     deduped_materials_text = "\n".join(deduped_materials)
+    print("checking for inconsistencies and duplicates")
+    # Step 1: Remove exact duplicate lines from materials
+    deduped_materials = list(dict.fromkeys(state["exam"].splitlines()))
+    deduped_materials_text = "\n".join(deduped_materials)
 
-#     # Step 2: Load prompt for repetition & inconsistency cleanup
-#     with open(
-#         "../prompts/sanity_check_prompts/prompt_inconsistency_check.txt", "r"
-#     ) as file:
-#         prompt_inconsistency_check = file.read()
+    # Step 2: Load prompt for repetition & inconsistency cleanup
+    with open("../prompts/exam_generation_prompts/prompt_cleanup.txt", "r") as file:
+        prompt_cleanup = file.read()
 
-#     # Step 3: Query the model to resolve inconsistencies and remove unnecessary repetition
-#     content, metadata = query_agent(
-#         prompt_inconsistency_check, deduped_materials_text, state["exam_author_model"]
-#     )
+    # Step 3: Query the model to resolve inconsistencies and remove unnecessary repetition
+    content, metadata = query_agent(
+        prompt_cleanup, deduped_materials_text, state["exam_author_model"]
+    )
 
-#     # Step 4: Update state
-#     state["exam"] = content
-#     state["metadata"]["check_inconsistencies"] = metadata
-#     state["sequence"].append("removed inconsistencies")
-#     return state
+    # Step 4: Update state
+    state["exam"] = content
+    state["metadata"]["check_inconsistencies"] = metadata
+    state["sequence"].append("removed inconsistencies")
+
+    state["counter"] = state["counter"] + 1
+    with open(
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_cleanup.txt",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        f.write(str(prompt_cleanup))
+
+    with open(
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_cleanup.txt",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        f.write(str(state["exam"]))
+    return state
 
 
 def node_check_answer_key(state: ExamState) -> ExamState:
@@ -913,13 +937,13 @@ def node_check_answer_key(state: ExamState) -> ExamState:
 
         except FileNotFoundError:
             print(path)
-            print(f"Error: The file '{path}' was not found.")
+            print(f"Error: The file {path}test_results.json was not found.")
             errors.append("no overall score found")
             state["errors"].append(errors)
             state["key_grade"] = np.nan
             return state
         except json.JSONDecodeError:
-            print(f"Error: The file '{path}' is not a valid JSON file.")
+            print(f"Error: The file {path}test_results.json is not a valid JSON file.")
             errors.append("not json file")
             state["errors"].append(errors)
             state["key_grade"] = np.nan
@@ -961,7 +985,7 @@ def node_check_answer_key(state: ExamState) -> ExamState:
         state["check_answer_key"] = True
     else:
         state["check_answer_key"] = False
-
+    print("check answer key", state["check_answer_key"], state["key_grade"])
     state["sequence"].append("check_answer_key " + str(state["key_grade"]))
 
     if len(state["errors"]) != 0:
@@ -1056,6 +1080,7 @@ def node_overall_makes_sense(state: ExamState) -> ExamState:
             - 'metadata["check_sense"]': Metadata related to this sanity check.
     """
     print("checking if exam makes sense")
+
     with open(
         "../prompts/sanity_check_prompts/prompt_makes_sense_system.txt", "r"
     ) as file:
@@ -1064,6 +1089,18 @@ def node_overall_makes_sense(state: ExamState) -> ExamState:
         "../prompts/sanity_check_prompts/prompt_makes_sense_user.txt", "r"
     ) as file:
         user_message = file.read()
+
+    user_message = user_message.format(
+        instructions=state["instructions"],
+        materials_candidate=state["materials_candidate"],
+        submission=state["submission"],
+        overview=state["overview"],
+        materials_evaluator=state["materials_evaluator"],
+        evaluation=state["evaluation"],
+        grading=state["grading"],
+        answer_key=state["answer_key"],
+    )
+
     content, metadata = query_agent(
         system_prompt, user_message, state["exam_author_model"]
     )
@@ -1090,20 +1127,21 @@ def node_overall_makes_sense(state: ExamState) -> ExamState:
             state["explanation_overall_makes_sense"] = (
                 "Could not parse JSON. Raw LLM response:\n" + response
             )
+
     state["sequence"].append(
         "check_makes_sense " + str(state["check_overall_makes_sense"])
     )
 
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_makes_sense.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_makes_sense.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(user_message))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_makes_sense.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_content_makes_sense.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -1146,9 +1184,7 @@ def node_check_exam_feasibility(state: ExamState) -> ExamState:
     education = state["education"]
 
     # Step 1: Load feasibility prompt
-    with open(
-        "../prompts/sanity_check_prompts/prompt_exam_feasibility.txt", "r"
-    ) as file:
+    with open("../prompts/sanity_check_prompts/prompt_feasibility.txt", "r") as file:
         prompt_feasibility = file.read()
 
     # Inject target role and degree into the prompt
@@ -1160,37 +1196,40 @@ def node_check_exam_feasibility(state: ExamState) -> ExamState:
     content, metadata = query_agent(
         prompt_filled, state["exam"], state["exam_author_model"]
     )
+    state["metadata"]["check_feasible"] = metadata
+    response = content.strip()
 
-    # Step 3: Extract Y/N
-    cleaned = content.strip().upper()
-    match = re.match(r"^\s*([YN])\b", cleaned)
-    if match:
-        yn_answer = match.group(1)
-        feasible = yn_answer == "Y"
-    else:
-        # Default fallback if model answer is unclear
-        yn_answer = "?"
-        feasible = False
-
-    # Step 4: Update state
-    state["feasible"] = feasible
-    state["explanation_feasible"] = cleaned
-    state["sequence"].append("check_feasible" + str(state["feasible"]))
-
+    try:
+        result = json.loads(response)
+        state["check_feasible"] = bool(result.get("feasible", False))
+        state["explanation_feasible"] = str(result.get("explanation", ""))
+    except:
+        try:
+            text = re.search(r"```json(.*?)```", response, re.DOTALL).group(1).strip()
+            result = json.loads(text)
+            state["check_feasible"] = bool(result.get("makes_sense", False))
+            state["explanation_feasible"] = str(result.get("explanation", ""))
+        except json.JSONDecodeError:
+            # If the LLM's response isn't valid JSON, mark sense-check as False
+            # and store the raw response for debugging.
+            state["check_feasible"] = False
+            state["explanation_feasible"] = (
+                "Could not parse JSON. Raw LLM response:\n" + response
+            )
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_feasibility.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_').replace('.', '_')}/{state['counter']}_prompt_feasibility.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(prompt_filled))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_content_feasiblity.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_')}/{state['counter']}_content_feasiblity.txt",
         "w",
         encoding="utf-8",
     ) as f:
-        f.write(str(state["feasible"]) + str(state["explanation_feasible"]))
+        f.write(str(state["check_feasible"]) + str(state["explanation_feasible"]))
     return state
 
 
@@ -1219,9 +1258,9 @@ def node_end(state: ExamState) -> ExamState:
             - 'exam': The final compiled exam or "Exam not valid" if any checks failed.
     """
     print("finalizing exam")
-    state["exam"] = (
-        state["instructions"] + state["materials_candidate"] + state["submission"]
-    )
+    # state["exam"] = (
+    #     state["instructions"] + state["materials_candidate"] + state["submission"]
+    # )
     # if not state["check_real_materials"]:
     #     state["fail_reason"] = "Materials contain fake materials"
     #     state["exam"] = "Exam not valid"
@@ -1265,15 +1304,30 @@ def node_improve(state: ExamState) -> ExamState:
     """
     print("improving exam")
     # 1. Load improvement prompt
-    prompt_path = Path("../prompts/sanity_check_prompts/prompt_improvement.txt")
+    prompt_path = Path("../prompts/exam_generation_prompts/prompt_improvement.txt")
     if not prompt_path.exists():
         raise FileNotFoundError(f"Prompt file not found at {prompt_path}")
     prompt_template = prompt_path.read_text(encoding="utf-8")
 
-    # 2. Format the prompt with current exam + issues
+    if state["check_overall_makes_sense"]:
+        sense_issues = ""
+    else:
+        sense_issues = state["explanation_overall_makes_sense"] + "; "
+    if state["check_feasible"]:
+        feasible_issues = ""
+    else:
+        feasible_issues = state["explanation_feasible"] + "; "
+
+    if state["check_answer_coverage"] == False:
+        issues = sense_issues
+        +feasible_issues + "; Exam contains more than 30% of answers"
+
+    else:
+        issues = sense_issues + feasible_issues
     formatted_prompt = prompt_template.format(
-        explanation=state["explanation_overall_makes_sense"]
-        + state["explanation_feasible"]
+        issues=issues,
+        # evaluator_info=state["evaluation"],
+        # exam=state["exam"],
     )
     print(formatted_prompt)
     print(state["exam"])
@@ -1287,14 +1341,14 @@ def node_improve(state: ExamState) -> ExamState:
     state["sequence"].append("improved exam")
     state["counter"] = state["counter"] + 1
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_prompt_improve.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_')}/{state['counter']}_prompt_improve.txt",
         "w",
         encoding="utf-8",
     ) as f:
         f.write(str(formatted_prompt))
 
     with open(
-        f"/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/test/{state['counter']}_exam_improved.txt",
+        f"../data/exams/basic/{state['exam_author_model']}/{state['task_id'].replace('.', '_')}/{state['counter']}_exam_improved.txt",
         "w",
         encoding="utf-8",
     ) as f:
@@ -1325,10 +1379,10 @@ def route_after_materials_candidate(state: ExamState) -> str:
             - "node_check_images" if candidate materials were successfully extracted.
     """
 
-    if state["materials_candidate"] == "Not extracted":
-        return "node_materials"
-    else:
+    if state["check_candidate_materials"]:
         return "node_check_images"
+    else:
+        return "node_materials"
 
 
 def route_after_image_check(state: ExamState) -> str:
@@ -1372,14 +1426,14 @@ def route_after_internet_check(state: ExamState) -> str:
             - "node_submission" if there are no internet references.
     """
     if state["check_no_internet"]:
-        return "node_check_instructions_materials"
+        return "node_check_consistency"
 
     else:
         return "node_materials"
 
 
 def route_after_consistency_check(state: ExamState) -> str:
-    if state["check_instructions_materials"]:
+    if state["check_consistency"]:
         return "node_submission"
     else:
         if state["alter_target"] == "instructions":
@@ -1420,7 +1474,7 @@ def route_after_key_check(state: ExamState) -> str:
 
 def route_after_key_contamination_check(state: ExamState) -> str:
     if state["check_answer_coverage"]:
-        return "node_ned"
+        return "node_end"
     else:
         return "node_improve"
 
@@ -1434,7 +1488,7 @@ def route_after_sense_check(state: ExamState) -> str:
 
 def route_after_feasibility_check(state: ExamState) -> str:
     if state["check_feasible"]:
-        return "node_evaluation"
+        return "node_grading"
     else:
         return "node_improve"
 
@@ -1507,7 +1561,7 @@ if __name__ == "__main__":
                 "education",
             ]
         ]
-
+        df_tasks = df_tasks[2:]
         # Initialize an empty list to store result states
         result_states = []
         graph_builder = StateGraph(ExamState)
@@ -1519,9 +1573,10 @@ if __name__ == "__main__":
         graph_builder.add_node("node_check_images", node_check_materials_fake_image)
         graph_builder.add_node("node_check_websites", node_check_materials_fake_website)
         graph_builder.add_node(
-            "node_check_instructions_materials",
-            node_check_instructions_materials_consistent,
+            "node_check_consistency",
+            node_check_consistency,
         )
+        graph_builder.add_node("node_cleanup", node_cleanup)
         graph_builder.add_node("node_submission", node_submission)
         graph_builder.add_node("node_evaluation", node_evaluation)
 
@@ -1560,11 +1615,13 @@ if __name__ == "__main__":
             "node_check_websites", route_after_internet_check
         )
         graph_builder.add_conditional_edges(
-            "node_check_instructions_materials", route_after_consistency_check
+            "node_check_consistency", route_after_consistency_check
         )
 
         # If it passes will continue to generatl submissions and grading
-        graph_builder.add_edge("node_submission", "node_evaluation")
+        graph_builder.add_edge("node_submission", "node_cleanup")
+        graph_builder.add_edge("node_cleanup", "node_evaluation")
+
         # graph_builder.add_edge("node_pause_before_evaluation", "node_evaluation")
 
         graph_builder.add_edge("node_evaluation", "node_overall_makes_sense")
@@ -1623,9 +1680,10 @@ if __name__ == "__main__":
                 "grading": "",
                 "answer_key": "",
                 "errors": [],
+                "check_candidate_materials": False,
                 "check_real_materials": True,
                 "check_no_internet": True,
-                "check_candidate_materials": True,
+                "check_consistency": True,
                 "key_grade_threshold": 100,
                 "key_grade": 0.0,
                 "check_overall_makes_sense": True,
@@ -1661,10 +1719,6 @@ if __name__ == "__main__":
                 result_states.append(result_state)  # Append final state to results
             except Exception:
                 print("Graph failed. Last state before crash:")
-                print(last_state)
-                # Save last state to file
-                with open(folder_path + "output.txt", "w", encoding="utf-8") as f:
-                    f.write(str(last_state))
                 # Append last state to results and save all historical states to CSV
                 result_states.append(last_state)
 

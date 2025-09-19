@@ -4,13 +4,13 @@ Comprehensiveness means that the materials cover all the requirements described 
 
 Respond strictly in the following JSON-format:
 - If the instructions and materials are consistent and comprehensive:
-  {"consistent": "Y" }
+  {{"consistent": True }}
 
 - If they are not consistent:
-  {"consistent": "F", "alter": "instructions" }
+  {{"consistent": False, "alter": "instructions" }}
   (use this if the instructions should be revised or are unclear/misaligned)
 
-  { "consistent": "F", "alter": "materials" }
+  {{"consistent": False, "alter": "materials" }}
   (use this if the provided materials are incomplete, missing, or insufficient to meet the instructions)
 
 Do not include explanations or extra text. Respond ONLY with the JSON object

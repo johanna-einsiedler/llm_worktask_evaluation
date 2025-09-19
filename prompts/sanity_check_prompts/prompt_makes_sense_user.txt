@@ -16,8 +16,8 @@ ADDITONAL MATERIAL ONLY AVAILABLE TO THE EVALUATOR (NOT THE CANDIDATE):
 Exam Overview:
 {overview}
 
-All materials:
-{materials_all}
+Evaluator materials:
+{materials_evaluator}
 
 Evaluation information:
 {evaluation}

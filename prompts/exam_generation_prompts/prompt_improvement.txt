@@ -1,9 +1,11 @@
-You are tasked with improving an exam.
+You are tasked with improving an exam:
 
-The following explanation describes why the exam does not make sense and is problematic:
---------------------
-{explanation}
---------------------
+
+The following explanation describes the major problems with the exam that you should address.
+_______________________________
+{issues}
+________________________________
+
 
 Your task:
 - Improve the exam to address the issues highlighted in the explanation.
