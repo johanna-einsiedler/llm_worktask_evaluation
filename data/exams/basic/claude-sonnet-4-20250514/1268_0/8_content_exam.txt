@@ -1,0 +1,651 @@
+# Basic Practical Exam: Program Trial Runs and Validation
+
+## Exam Instructions
+
+### Overview
+You will conduct systematic trial runs of three software programs to verify they produce correct outputs and identify any issues. This exam tests your ability to execute programs, validate results against requirements, and document findings professionally.
+
+### Time Limit
+90 minutes total
+
+### What You Need to Accomplish
+1. **Execute each provided program** with the given test data
+2. **Validate outputs** against the specified requirements
+3. **Identify and document** any errors, bugs, or incorrect behaviors
+4. **Classify issues** using the provided severity levels
+5. **Make deployment recommendations** based on your findings
+
+### Materials Provided
+You will receive:
+- **Three Python programs** (calculator.py, data_processor.py, inventory_system.py)
+- **Test data files** (test_inputs.txt, customer_data.csv, inventory_data.json)
+- **Requirements specifications** for each program
+- **Expected output samples** for comparison
+
+### Severity Classification System (Use Exactly These Labels)
+- **CRITICAL**: Program crashes or produces completely wrong results
+- **HIGH**: Incorrect calculations or logic errors affecting core functionality
+- **MEDIUM**: Edge cases not handled properly or minor calculation errors
+- **LOW**: Cosmetic issues or non-essential feature problems
+
+### Deployment Recommendation Options (Use Exactly These Labels)
+- **READY**: No critical or high severity issues found
+- **NEEDS_FIXES**: Critical or high severity issues must be resolved first
+- **REQUIRES_TESTING**: Additional testing needed before decision
+
+### Required Tasks
+
+#### Program 1: Calculator Application (calculator.py)
+- Run the program with all test cases from test_inputs.txt
+- Verify mathematical operations produce correct results
+- Test edge cases (division by zero, negative numbers, large numbers)
+- Compare outputs with provided expected results
+
+#### Program 2: Data Processor (data_processor.py)
+- Process the customer_data.csv file
+- Validate data transformation and filtering operations
+- Check statistical calculations (averages, totals, counts)
+- Verify output format matches requirements
+
+#### Program 3: Inventory Management System (inventory_system.py)
+- Load inventory_data.json and execute all main functions
+- Test inventory updates, stock calculations, and reporting features
+- Validate business rule implementations
+- Check error handling for invalid operations
+
+### Submission Requirements
+
+Submit your findings in a file named **test_submission.json** with this exact structure:
+
+```json
+{
+  "program_1_calculator": {
+    "execution_successful": true/false,
+    "issues_found": [
+      {
+        "issue_description": "Exact description of the problem",
+        "severity": "CRITICAL/HIGH/MEDIUM/LOW",
+        "test_case": "Specific input that caused the issue",
+        "expected_result": "What should have happened",
+        "actual_result": "What actually happened"
+      }
+    ],
+    "total_test_cases_run": 0,
+    "failed_test_cases": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "program_2_data_processor": {
+    "execution_successful": true/false,
+    "issues_found": [
+      {
+        "issue_description": "Exact description of the problem",
+        "severity": "CRITICAL/HIGH/MEDIUM/LOW",
+        "test_case": "Specific input that caused the issue",
+        "expected_result": "What should have happened",
+        "actual_result": "What actually happened"
+      }
+    ],
+    "total_records_processed": 0,
+    "processing_errors": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "program_3_inventory_system": {
+    "execution_successful": true/false,
+    "issues_found": [
+      {
+        "issue_description": "Exact description of the problem",
+        "severity": "CRITICAL/HIGH/MEDIUM/LOW",
+        "test_case": "Specific input that caused the issue",
+        "expected_result": "What should have happened",
+        "actual_result": "What actually happened"
+      }
+    ],
+    "functions_tested": 0,
+    "functions_with_errors": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "overall_assessment": {
+    "total_critical_issues": 0,
+    "total_high_issues": 0,
+    "total_medium_issues": 0,
+    "total_low_issues": 0,
+    "overall_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  }
+}
+```
+
+### Important Notes
+- Use only the provided severity levels and recommendation labels exactly as shown
+- If no issues are found for a program, use an empty array: `"issues_found": []`
+- All numerical fields must contain actual counts from your testing
+- Test systematically - don't skip edge cases or error conditions
+- Document specific inputs that cause problems, not general descriptions
+
+### Getting Started
+1. Download all provided files to your working directory
+2. Read the requirements specification for each program
+3. Begin with Program 1 and work sequentially
+4. Run each program multiple times with different inputs
+5. Document your findings as you go
+6. Submit your completed test_submission.json file
+
+Good luck!
+
+## Program Files
+
+### calculator.py
+```python
+def add(a, b):
+    return a + b
+
+def subtract(a, b):
+    return a - b
+
+def multiply(a, b):
+    return a * b
+
+def divide(a, b):
+    if b == 0:
+        return "Error: Division by zero"
+    return a / b
+
+def power(a, b):
+    return a ** b
+
+def calculate(operation, num1, num2):
+    if operation == "add":
+        return add(num1, num2)
+    elif operation == "subtract":
+        return subtract(num1, num2)
+    elif operation == "multiply":
+        return multiply(num1, num2)
+    elif operation == "divide":
+        return divide(num1, num2)
+    elif operation == "power":
+        return power(num1, num2)
+    else:
+        return "Error: Unknown operation"
+
+# Test runner
+def run_tests():
+    with open('test_inputs.txt', 'r') as f:
+        for line in f:
+            parts = line.strip().split(',')
+            if len(parts) == 3:
+                op = parts[0]
+                num1 = float(parts[1])
+                num2 = float(parts[2])
+                result = calculate(op, num1, num2)
+                print(f"{op}({num1}, {num2}) = {result}")
+
+if __name__ == "__main__":
+    run_tests()
+```
+
+### data_processor.py
+```python
+import csv
+
+def process_customer_data(filename):
+    customers = []
+    total_sales = 0
+    
+    with open(filename, 'r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            customer = {
+                'id': int(row['customer_id']),
+                'name': row['customer_name'],
+                'age': int(row['age']),
+                'sales': float(row['total_sales']),
+                'region': row['region']
+            }
+            customers.append(customer)
+            total_sales += customer['sales']
+    
+    # Calculate statistics
+    avg_age = sum(c['age'] for c in customers) / len(customers)
+    avg_sales = total_sales / len(customers)
+    
+    # Filter high-value customers (sales > 5000)
+    high_value = [c for c in customers if c['sales'] > 5000]
+    
+    # Group by region
+    regions = {}
+    for customer in customers:
+        region = customer['region']
+        if region not in regions:
+            regions[region] = {'count': 0, 'total_sales': 0}
+        regions[region]['count'] += 1
+        regions[region]['total_sales'] += customer['sales']
+    
+    # Generate report
+    print(f"Total customers processed: {len(customers)}")
+    print(f"Average age: {avg_age:.2f}")
+    print(f"Average sales: ${avg_sales:.2f}")
+    print(f"High-value customers: {len(high_value)}")
+    print("\nRegional breakdown:")
+    for region, data in regions.items():
+        avg_regional_sales = data['total_sales'] / data['count']
+        print(f"{region}: {data['count']} customers, avg sales: ${avg_regional_sales:.2f}")
+    
+    return {
+        'total_customers': len(customers),
+        'average_age': avg_age,
+        'average_sales': avg_sales,
+        'high_value_count': len(high_value),
+        'regional_data': regions
+    }
+
+if __name__ == "__main__":
+    result = process_customer_data('customer_data.csv')
+```
+
+### inventory_system.py
+```python
+import json
+
+class InventorySystem:
+    def __init__(self, data_file):
+        with open(data_file, 'r') as f:
+            self.inventory = json.load(f)
+    
+    def get_total_value(self):
+        total = 0
+        for item in self.inventory:
+            total += item['quantity'] * item['unit_price']
+        return total
+    
+    def find_low_stock_items(self, threshold=10):
+        low_stock = []
+        for item in self.inventory:
+            if item['quantity'] < threshold:
+                low_stock.append(item)
+        return low_stock
+    
+    def update_stock(self, product_id, new_quantity):
+        for item in self.inventory:
+            if item['product_id'] == product_id:
+                item['quantity'] = new_quantity
+                return True
+        return False
+    
+    def add_new_product(self, product_id, name, quantity, unit_price, category):
+        # Check if product already exists
+        for item in self.inventory:
+            if item['product_id'] == product_id:
+                return False
+        
+        new_item = {
+            'product_id': product_id,
+            'product_name': name,
+            'quantity': quantity,
+            'unit_price': unit_price,
+            'category': category
+        }
+        self.inventory.append(new_item)
+        return True
+    
+    def get_category_summary(self):
+        categories = {}
+        for item in self.inventory:
+            cat = item['category']
+            if cat not in categories:
+                categories[cat] = {'count': 0, 'total_value': 0, 'total_quantity': 0}
+            categories[cat]['count'] += 1
+            categories[cat]['total_value'] += item['quantity'] * item['unit_price']
+            categories[cat]['total_quantity'] += item['quantity']
+        return categories
+    
+    def generate_report(self):
+        print("=== INVENTORY REPORT ===")
+        print(f"Total inventory value: ${self.get_total_value():.2f}")
+        
+        low_stock = self.find_low_stock_items()
+        print(f"Low stock items: {len(low_stock)}")
+        
+        categories = self.get_category_summary()
+        print("\nCategory Summary:")
+        for cat, data in categories.items():
+            print(f"{cat}: {data['count']} items, ${data['total_value']:.2f} value")
+
+def main():
+    system = InventorySystem('inventory_data.json')
+    
+    # Test all functions
+    print("Testing inventory system...")
+    
+    # Test 1: Generate initial report
+    system.generate_report()
+    
+    # Test 2: Update stock
+    print(f"\nUpdating stock for product P001...")
+    success = system.update_stock('P001', 25)
+    print(f"Update successful: {success}")
+    
+    # Test 3: Add new product
+    print(f"\nAdding new product P999...")
+    success = system.add_new_product('P999', 'Test Product', 50, 15.99, 'Electronics')
+    print(f"Add successful: {success}")
+    
+    # Test 4: Try to add duplicate product
+    print(f"\nTrying to add duplicate product P001...")
+    success = system.add_new_product('P001', 'Duplicate', 10, 5.00, 'Test')
+    print(f"Add successful: {success}")
+    
+    # Test 5: Final report
+    print(f"\n=== FINAL REPORT ===")
+    system.generate_report()
+
+if __name__ == "__main__":
+    main()
+```
+
+## Test Data Files
+
+### test_inputs.txt
+```
+add,10,5
+subtract,20,8
+multiply,7,6
+divide,15,3
+power,2,3
+add,-5,10
+subtract,0,5
+multiply,-3,-4
+divide,10,0
+divide,-20,4
+power,5,0
+add,1000000,2000000
+multiply,0.5,0.3
+divide,1,3
+power,-2,3
+```
+
+### customer_data.csv
+```
+customer_id,customer_name,age,total_sales,region
+1001,John Smith,34,7500.50,North
+1002,Sarah Johnson,28,3200.75,South
+1003,Mike Wilson,45,12000.00,East
+1004,Lisa Brown,31,4800.25,West
+1005,David Lee,52,8900.80,North
+1006,Emma Davis,29,2100.00,South
+1007,James Miller,38,15500.75,East
+1008,Anna Garcia,42,6700.50,West
+1009,Robert Taylor,35,9200.25,North
+1010,Maria Rodriguez,27,1800.90,South
+1011,William Anderson,48,11200.00,East
+1012,Jennifer Wilson,33,5400.75,West
+1013,Christopher Moore,41,7800.50,North
+1014,Jessica Taylor,36,4200.25,South
+1015,Matthew Jackson,29,13400.80,East
+```
+
+### inventory_data.json
+```json
+[
+  {
+    "product_id": "P001",
+    "product_name": "Wireless Mouse",
+    "quantity": 15,
+    "unit_price": 29.99,
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P002",
+    "product_name": "USB Cable",
+    "quantity": 8,
+    "unit_price": 12.50,
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P003",
+    "product_name": "Office Chair",
+    "quantity": 25,
+    "unit_price": 199.99,
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P004",
+    "product_name": "Desk Lamp",
+    "quantity": 5,
+    "unit_price": 45.00,
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P005",
+    "product_name": "Notebook",
+    "quantity": 50,
+    "unit_price": 3.25,
+    "category": "Stationery"
+  },
+  {
+    "product_id": "P006",
+    "product_name": "Pen Set",
+    "quantity": 12,
+    "unit_price": 8.99,
+    "category": "Stationery"
+  },
+  {
+    "product_id": "P007",
+    "product_name": "Monitor Stand",
+    "quantity": 3,
+    "unit_price": 75.50,
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P008",
+    "product_name": "Filing Cabinet",
+    "quantity": 18,
+    "unit_price": 149.99,
+    "category": "Furniture"
+  }
+]
+```
+
+## Requirements Specifications
+
+### Calculator Requirements
+- All basic arithmetic operations (add, subtract, multiply, divide, power) must work correctly
+- Division by zero should return "Error: Division by zero"
+- Negative numbers should be handled properly
+- Large numbers should not cause overflow errors
+- Power of 0 should return 1 for any positive base
+- Unknown operations should return "Error: Unknown operation"
+
+### Data Processor Requirements
+- Must process all customer records from CSV file
+- Calculate correct average age (rounded to 2 decimal places)
+- Calculate correct average sales (rounded to 2 decimal places)
+- Identify customers with sales > $5000 as "high-value"
+- Group customers by region and calculate regional averages
+- Handle all data types correctly (integers, floats, strings)
+
+### Inventory System Requirements
+- Load inventory data from JSON file successfully
+- Calculate total inventory value correctly
+- Identify items with quantity < 10 as "low stock"
+- Update existing product quantities
+- Prevent adding duplicate product IDs
+- Generate category summaries with correct totals
+- All monetary values should be displayed with 2 decimal places
+
+## Expected Output Samples
+
+### Calculator Expected Results
+```
+add(10, 5) = 15.0
+subtract(20, 8) = 12.0
+multiply(7, 6) = 42.0
+divide(15, 3) = 5.0
+power(2, 3) = 8.0
+add(-5, 10) = 5.0
+subtract(0, 5) = -5.0
+multiply(-3, -4) = 12.0
+divide(10, 0) = Error: Division by zero
+divide(-20, 4) = -5.0
+power(5, 0) = 1.0
+add(1000000, 2000000) = 3000000.0
+multiply(0.5, 0.3) = 0.15
+divide(1, 3) = 0.3333333333333333
+power(-2, 3) = -8.0
+```
+
+### Data Processor Expected Results
+```
+Total customers processed: 15
+Average age: 36.27
+Average sales: $7640.12
+High-value customers: 8
+Regional breakdown:
+North: 4 customers, avg sales: $8350.26
+South: 4 customers, avg sales: $2825.73
+East: 4 customers, avg sales: $10525.45
+West: 3 customers, avg sales: $5634.50
+```
+
+### Inventory System Expected Results
+```
+=== INVENTORY REPORT ===
+Total inventory value: $8683.69
+Low stock items: 3
+
+Category Summary:
+Electronics: 3 items, $776.47 value
+Furniture: 3 items, $5924.73 value
+Stationery: 2 items, $270.38 value
+```
+
+# Answer Format Specifications
+
+## Required Submission Format
+
+The candidate must submit their findings in a file named **test_submission.json** with the exact structure and field names specified below. All JSON syntax must be valid.
+
+## JSON Structure Requirements
+
+```json
+{
+  "program_1_calculator": {
+    "execution_successful": boolean,
+    "issues_found": [
+      {
+        "issue_description": "string",
+        "severity": "string",
+        "test_case": "string", 
+        "expected_result": "string",
+        "actual_result": "string"
+      }
+    ],
+    "total_test_cases_run": integer,
+    "failed_test_cases": integer,
+    "deployment_recommendation": "string"
+  },
+  "program_2_data_processor": {
+    "execution_successful": boolean,
+    "issues_found": [
+      {
+        "issue_description": "string",
+        "severity": "string",
+        "test_case": "string",
+        "expected_result": "string", 
+        "actual_result": "string"
+      }
+    ],
+    "total_records_processed": integer,
+    "processing_errors": integer,
+    "deployment_recommendation": "string"
+  },
+  "program_3_inventory_system": {
+    "execution_successful": boolean,
+    "issues_found": [
+      {
+        "issue_description": "string",
+        "severity": "string",
+        "test_case": "string",
+        "expected_result": "string",
+        "actual_result": "string"
+      }
+    ],
+    "functions_tested": integer,
+    "functions_with_errors": integer,
+    "deployment_recommendation": "string"
+  },
+  "overall_assessment": {
+    "total_critical_issues": integer,
+    "total_high_issues": integer,
+    "total_medium_issues": integer,
+    "total_low_issues": integer,
+    "overall_recommendation": "string"
+  }
+}
+```
+
+## Field Format Requirements
+
+### Boolean Fields
+- `execution_successful`: Must be exactly `true` or `false` (lowercase, no quotes)
+
+### String Fields - Severity Classification
+- `severity`: Must use exactly one of these values:
+  - `"CRITICAL"`
+  - `"HIGH"`
+  - `"MEDIUM"`
+  - `"LOW"`
+
+### String Fields - Deployment Recommendations
+- `deployment_recommendation`: Must use exactly one of these values:
+  - `"READY"`
+  - `"NEEDS_FIXES"`
+  - `"REQUIRES_TESTING"`
+- `overall_recommendation`: Must use exactly one of these values:
+  - `"READY"`
+  - `"NEEDS_FIXES"`
+  - `"REQUIRES_TESTING"`
+
+### Integer Fields
+- All count fields must contain actual integer values (not strings)
+- `total_test_cases_run`: Count of test cases executed for calculator
+- `failed_test_cases`: Count of test cases that failed for calculator
+- `total_records_processed`: Count of customer records processed
+- `processing_errors`: Count of errors encountered during data processing
+- `functions_tested`: Count of inventory system functions tested
+- `functions_with_errors`: Count of functions that had errors
+- `total_critical_issues`, `total_high_issues`, `total_medium_issues`, `total_low_issues`: Sum counts across all programs
+
+### String Fields - Issue Documentation
+- `issue_description`: Clear, specific description of the problem found
+- `test_case`: Exact input or scenario that caused the issue
+- `expected_result`: What should have happened according to requirements
+- `actual_result`: What actually happened when the test was run
+
+### Array Fields
+- `issues_found`: Array of issue objects. If no issues found, use empty array `[]`
+- Each issue object must contain all five required fields
+
+## Formatting Standards
+
+### Text Content
+- All string values must be enclosed in double quotes
+- Issue descriptions should be concise but specific
+- Test cases should include exact inputs used
+- Results should include actual output values or error messages
+
+### Numerical Precision
+- Integer fields: Whole numbers only, no decimal points
+- When referencing monetary values in text fields: Use format `$X.XX` (dollar sign, two decimal places)
+- When referencing percentages in text fields: Use format `X.XX%` (two decimal places)
+
+### Special Cases
+- If a program fails to execute at all, set `execution_successful: false`
+- If no issues are found for a program, use `"issues_found": []`
+- All numerical count fields must reflect actual testing performed
+- Issue arrays can contain multiple issue objects if multiple problems are found
+
+## Validation Requirements
+- JSON must be syntactically valid
+- All required fields must be present
+- No additional fields beyond those specified
+- All enum values (severity, recommendations) must match exactly as specified
+- File must be named exactly `test_submission.json`

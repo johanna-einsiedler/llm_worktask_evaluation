@@ -1,0 +1,440 @@
+# Basic Practical Exam: Program Debugging and Documentation
+
+## Time Limit: 90 minutes
+
+## Overview
+You will work with a provided Python program that contains compilation errors. Your task is to fix these errors, ensure the program runs successfully, and create basic documentation.
+
+## Materials Provided
+You will receive:
+- `buggy_program.py` - A Python file containing a simple inventory management system with intentional compilation errors
+- `sample_data.txt` - Sample inventory data to test the program
+
+## Tasks to Complete
+
+### Task 1: Code Debugging (40 points)
+1. Analyze the provided `buggy_program.py` file
+2. Identify and fix ALL compilation errors to make the program run successfully
+3. Test the program with the provided sample data to ensure it works correctly
+
+### Task 2: Basic Documentation (35 points)
+Create simple documentation that includes:
+1. **Program Overview**: Write 2-3 sentences describing what the program does
+2. **Key Functions**: For the main functions, provide:
+   - Function name and brief purpose
+   - Main parameters (name and type only)
+   - What it returns
+3. **How to Run**: Simple instructions for running the program
+
+### Task 3: Code Comments (25 points)
+Add essential comments to the corrected code:
+1. Add a header comment with program title and your name as "Exam Candidate"
+2. Add brief comments for each major function explaining its purpose
+3. Add comments explaining any complex logic or calculations (minimum 3 comments)
+
+## Submission Requirements
+Submit your work as a simple text file named `exam_submission.txt` with this structure:
+
+```
+=== CORRECTED CODE ===
+[Your complete corrected Python code here]
+
+=== ERRORS FIXED ===
+1. Line [number]: [Brief description of error and fix]
+2. Line [number]: [Brief description of error and fix]
+[Continue for all errors found]
+
+=== PROGRAM DOCUMENTATION ===
+Program Overview:
+[2-3 sentences describing what the program does]
+
+Key Functions:
+- load_inventory(): Loads inventory data from file, takes filename (string), returns success status (boolean)
+- add_item(): Adds items to inventory, takes item details, returns nothing
+- remove_item(): Removes items from inventory, takes item_id and quantity, returns nothing
+- generate_report(): Displays inventory report, takes no parameters, returns nothing
+
+How to Run:
+[Simple step-by-step instructions]
+
+=== TESTING PERFORMED ===
+[Brief description of how you tested the program to ensure it works]
+
+=== PROGRAM WORKS: YES/NO ===
+[Answer YES or NO]
+```
+
+## Success Criteria
+- Program compiles and runs without errors (most important)
+- All compilation errors are identified and fixed
+- Basic documentation is complete and accurate
+- Essential comments are added to explain the code
+- Program successfully processes the sample data
+
+## Important Notes
+- Focus primarily on getting the program to work correctly
+- Keep documentation simple and clear
+- Test your program with the provided sample data before submission
+- The program must run successfully to receive full credit
+
+**File: buggy_program.py**
+```python
+# Inventory Management System
+# Contains intentional compilation errors for exam purposes
+import os
+import sys
+from datetime import datetime
+import json
+
+class InventoryManager:
+    def __init__(self):
+        self.inventory = {}
+        self.transaction_log = []
+    
+    def load_inventory(self, filename):
+        """Load inventory data from file"""
+        try:
+            with open(filename, 'r') as file:
+                for line in file:
+                    parts = line.strip().split(',')
+                    if len(parts) == 4:
+                        item_id = parts[0]
+                        name = parts[1]
+                        quantity = int(parts[2])
+                        price = float(parts[3])
+                        self.inventory[item_id] = {
+                            'name': name,
+                            'quantity': quantity,
+                            'price': price
+                        # Missing closing brace for dictionary
+        except FileNotFoundError:
+            print(f"Error: File {filename} not found")
+            return False
+        return True
+
+    def add_item(self, item_id, name, quantity, price):
+        """Add new item to inventory"""
+        if item_id in self.inventory:
+            self.inventory[item_id]['quantity'] += quantity
+        else:
+            self.inventory[item_id] = {
+                'name': name,
+                'quantity': quantity,
+                'price': price
+            }
+        
+        # Log the transaction
+        self.transaction_log.append({
+            'timestamp': datetime.now().isoformat(),
+            'action': 'add',
+            'item_id': item_id,
+            'quantity': quantity
+        })
+
+    def remove_item(self, item_id, quantity):
+        """Remove items from inventory"""
+        if item_id not in self.inventory:
+            print(f"Error: Item {item_id} not found in inventory")
+            return
+        if self.inventory[item_id]['quantity'] < quantity:
+            print(f"Error: Not enough {self.inventory[item_id]['name']} in stock")
+            return
+        
+        self.inventory[item_id]['quantity'] -= quantity
+        
+        # Missing dictionary braces for transaction log
+        self.transaction_log.append(
+            'timestamp': datetime.now().isoformat(),
+            'action': 'remove',
+            'item_id': item_id,
+            'quantity': quantity
+        )
+
+    def get_item_info(self, item_id):
+        """Get information about specific item"""
+        # Missing colon after if statement
+        if item_id in self.inventory
+            return self.inventory[item_id]
+        return None
+
+    def calculate_total_value(self):
+        """Calculate total value of all inventory"""
+        total = 0
+        for item in self.inventory.values():
+            total += item['quantity'] * item['price']
+        return total
+
+    def generate_report(self):
+        """Generate inventory report"""
+        print("\n=== INVENTORY REPORT ===")
+        print(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("-" * 50)
+        
+        for item_id, item_data in self.inventory.items():
+            print(f"ID: {item_id}")
+            print(f"Name: {item_data['name']}")
+            print(f"Quantity: {item_data['quantity']}")
+            print(f"Price: ${item_data['price']:.2f}")
+            print(f"Total Value: ${item_data['quantity'] * item_data['price']:.2f}")
+            print("-" * 30)
+        
+        print(f"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}")
+
+def main():
+    # Create inventory manager instance
+    manager = InventoryManager()
+    
+    # Load sample data
+    if manager.load_inventory('sample_data.txt'):
+        print("Inventory loaded successfully!")
+    else:
+        print("Failed to load inventory data")
+        return
+    
+    # Test adding items
+    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)
+    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing
+    
+    # Test removing items
+    manager.remove_item('ITEM002', 3)
+    
+    # Test item lookup
+    item_info = manager.get_item_info('ITEM003')
+    if item_info:
+        print(f"Found item: {item_info['name']} - Quantity: {item_info['quantity']}")
+    
+    # Generate final report
+    manager.generate_report()
+
+# Missing proper if __name__ == "__main__" guard
+if __name__ == "__main__"
+    main()
+```
+
+**File: sample_data.txt**
+```
+ITEM001,Laptop Computer,10,899.99
+ITEM002,Desktop Monitor,25,249.50
+ITEM003,Keyboard,50,45.00
+ITEM004,USB Cable,100,12.99
+```
+# Basic Practical Exam: Program Debugging and Documentation
+
+## Time Limit: 90 minutes
+
+## Overview
+You will work with a provided Python program that contains compilation errors. Your task is to fix these errors, ensure the program runs successfully, and create basic documentation.
+
+## Materials Provided
+You will receive:
+- `buggy_program.py` - A Python file containing a simple inventory management system with intentional compilation errors
+- `sample_data.txt` - Sample inventory data to test the program
+
+## Tasks to Complete
+
+### Task 1: Code Debugging (40 points)
+1. Analyze the provided `buggy_program.py` file
+2. Identify and fix ALL compilation errors to make the program run successfully
+3. Test the program with the provided sample data to ensure it works correctly
+
+### Task 2: Basic Documentation (35 points)
+Create simple documentation that includes:
+1. **Program Overview**: Write 2-3 sentences describing what the program does
+2. **Key Functions**: For the main functions, provide:
+   - Function name and brief purpose
+   - Main parameters (name and type only)
+   - What it returns
+3. **How to Run**: Simple instructions for running the program
+
+### Task 3: Code Comments (25 points)
+Add essential comments to the corrected code:
+1. Add a header comment with program title and your name as "Exam Candidate"
+2. Add brief comments for each major function explaining its purpose
+3. Add comments explaining any complex logic or calculations (minimum 3 comments)
+
+## Submission Requirements
+Submit your work as a simple text file named `exam_submission.txt` with this structure:
+
+```
+=== CORRECTED CODE ===
+[Your complete corrected Python code here]
+
+=== ERRORS FIXED ===
+1. Line [number]: [Brief description of error and fix]
+2. Line [number]: [Brief description of error and fix]
+[Continue for all errors found]
+
+=== PROGRAM DOCUMENTATION ===
+Program Overview:
+[2-3 sentences describing what the program does]
+
+Key Functions:
+- load_inventory(): Loads inventory data from file, takes filename (string), returns success status (boolean)
+- add_item(): Adds items to inventory, takes item details, returns nothing
+- remove_item(): Removes items from inventory, takes item_id and quantity, returns nothing
+- generate_report(): Displays inventory report, takes no parameters, returns nothing
+
+How to Run:
+[Simple step-by-step instructions]
+
+=== TESTING PERFORMED ===
+[Brief description of how you tested the program to ensure it works]
+
+=== PROGRAM WORKS: YES/NO ===
+[Answer YES or NO]
+```
+
+## Success Criteria
+- Program compiles and runs without errors (most important)
+- All compilation errors are identified and fixed
+- Basic documentation is complete and accurate
+- Essential comments are added to explain the code
+- Program successfully processes the sample data
+
+## Important Notes
+- Focus primarily on getting the program to work correctly
+- Keep documentation simple and clear
+- Test your program with the provided sample data before submission
+- The program must run successfully to receive full credit
+
+**File: buggy_program.py**
+```python
+# Inventory Management System
+# Contains intentional compilation errors for exam purposes
+import os
+import sys
+from datetime import datetime
+import json
+
+class InventoryManager:
+    def __init__(self):
+        self.inventory = {}
+        self.transaction_log = []
+    
+    def load_inventory(self, filename):
+        """Load inventory data from file"""
+        try:
+            with open(filename, 'r') as file:
+                for line in file:
+                    parts = line.strip().split(',')
+                    if len(parts) == 4:
+                        item_id = parts[0]
+                        name = parts[1]
+                        quantity = int(parts[2])
+                        price = float(parts[3])
+                        self.inventory[item_id] = {
+                            'name': name,
+                            'quantity': quantity,
+                            'price': price
+                        # Missing closing brace for dictionary
+        except FileNotFoundError:
+            print(f"Error: File {filename} not found")
+            return False
+        return True
+
+    def add_item(self, item_id, name, quantity, price):
+        """Add new item to inventory"""
+        if item_id in self.inventory:
+            self.inventory[item_id]['quantity'] += quantity
+        else:
+            self.inventory[item_id] = {
+                'name': name,
+                'quantity': quantity,
+                'price': price
+            }
+        
+        # Log the transaction
+        self.transaction_log.append({
+            'timestamp': datetime.now().isoformat(),
+            'action': 'add',
+            'item_id': item_id,
+            'quantity': quantity
+        })
+
+    def remove_item(self, item_id, quantity):
+        """Remove items from inventory"""
+        if item_id not in self.inventory:
+            print(f"Error: Item {item_id} not found in inventory")
+            return
+        if self.inventory[item_id]['quantity'] < quantity:
+            print(f"Error: Not enough {self.inventory[item_id]['name']} in stock")
+            return
+        
+        self.inventory[item_id]['quantity'] -= quantity
+        
+        # Missing dictionary braces for transaction log
+        self.transaction_log.append(
+            'timestamp': datetime.now().isoformat(),
+            'action': 'remove',
+            'item_id': item_id,
+            'quantity': quantity
+        )
+
+    def get_item_info(self, item_id):
+        """Get information about specific item"""
+        # Missing colon after if statement
+        if item_id in self.inventory
+            return self.inventory[item_id]
+        return None
+
+    def calculate_total_value(self):
+        """Calculate total value of all inventory"""
+        total = 0
+        for item in self.inventory.values():
+            total += item['quantity'] * item['price']
+        return total
+
+    def generate_report(self):
+        """Generate inventory report"""
+        print("\n=== INVENTORY REPORT ===")
+        print(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("-" * 50)
+        
+        for item_id, item_data in self.inventory.items():
+            print(f"ID: {item_id}")
+            print(f"Name: {item_data['name']}")
+            print(f"Quantity: {item_data['quantity']}")
+            print(f"Price: ${item_data['price']:.2f}")
+            print(f"Total Value: ${item_data['quantity'] * item_data['price']:.2f}")
+            print("-" * 30)
+        
+        print(f"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}")
+
+def main():
+    # Create inventory manager instance
+    manager = InventoryManager()
+    
+    # Load sample data
+    if manager.load_inventory('sample_data.txt'):
+        print("Inventory loaded successfully!")
+    else:
+        print("Failed to load inventory data")
+        return
+    
+    # Test adding items
+    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)
+    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing
+    
+    # Test removing items
+    manager.remove_item('ITEM002', 3)
+    
+    # Test item lookup
+    item_info = manager.get_item_info('ITEM003')
+    if item_info:
+        print(f"Found item: {item_info['name']} - Quantity: {item_info['quantity']}")
+    
+    # Generate final report
+    manager.generate_report()
+
+# Missing proper if __name__ == "__main__" guard
+if __name__ == "__main__"
+    main()
+```
+
+**File: sample_data.txt**
+```
+ITEM001,Laptop Computer,10,899.99
+ITEM002,Desktop Monitor,25,249.50
+ITEM003,Keyboard,50,45.00
+ITEM004,USB Cable,100,12.99
+```

@@ -1,0 +1,110 @@
+# Answer Format Specifications
+
+## Required Submission Format
+
+Submit your work as **test_submission.json** with this exact structure and formatting requirements:
+
+```json
+{
+  "analysis_phase": {
+    "bugs_found": [
+      {
+        "bug_id": "BUG001",
+        "description": "Exact description of the bug",
+        "affected_function": "function_name",
+        "error_type": "runtime_error|logic_error|data_error"
+      }
+    ],
+    "performance_issues": [
+      {
+        "issue_id": "PERF001", 
+        "description": "Exact description of performance problem",
+        "affected_operation": "operation_name"
+      }
+    ],
+    "total_bugs_found": 0,
+    "total_performance_issues": 0
+  },
+  "bug_fixes": [
+    {
+      "bug_id": "BUG001",
+      "fix_description": "Exact description of what was changed",
+      "files_modified": ["filename.py"],
+      "lines_changed": [45, 67, 89],
+      "fix_verified": true
+    }
+  ],
+  "feature_enhancement": {
+    "implementation_complete": true,
+    "menu_option_added": "5",
+    "output_file_created": "low_stock_alerts.txt",
+    "alert_threshold": 10,
+    "reorder_formula": "current_quantity + 50",
+    "integration_method": "Description of how feature integrates with existing code"
+  },
+  "performance_optimization": {
+    "optimization_implemented": true,
+    "target_operation": "Generate Sales Report",
+    "optimization_technique": "Exact technique used",
+    "performance_improvement_percentage": 0,
+    "functionality_preserved": true
+  },
+  "testing_completed": {
+    "all_menu_options_tested": true,
+    "new_feature_tested": true,
+    "performance_improvement_verified": true,
+    "no_new_bugs_introduced": true
+  }
+}
+```
+
+## Specific Format Requirements
+
+### Bug IDs and Issue IDs
+- Use format: "BUG001", "BUG002", etc. for bugs
+- Use format: "PERF001", "PERF002", etc. for performance issues
+- Sequential numbering starting from 001
+
+### Error Types
+Must be exactly one of:
+- `"runtime_error"` - Code crashes or throws exceptions
+- `"logic_error"` - Code runs but produces incorrect results
+- `"data_error"` - Issues with data handling or validation
+
+### Numerical Values
+- **Counts**: Integer values only (e.g., `total_bugs_found: 3`)
+- **Line numbers**: Array of integers (e.g., `[45, 67, 89]`)
+- **Percentages**: Integer values representing whole percentages (e.g., `75` for 75%)
+- **Threshold values**: Integer values (e.g., `alert_threshold: 10`)
+
+### Boolean Values
+- Must be exactly `true` or `false` (lowercase, no quotes)
+- Examples: `"implementation_complete": true`, `"fix_verified": false`
+
+### String Values
+- **File names**: Exact filename including extension (e.g., `"inventory_system.py"`)
+- **Function names**: Exact function name as it appears in code
+- **Menu options**: String format (e.g., `"5"` not `5`)
+- **Descriptions**: Complete sentences with proper grammar
+- **Formulas**: Exact mathematical expression as text (e.g., `"current_quantity + 50"`)
+
+### Array Formats
+- **Files modified**: `["filename1.py", "filename2.py"]`
+- **Line numbers**: `[45, 67, 89]` (integers only)
+- **Bug/Issue arrays**: Must contain objects with all required fields
+
+### Required Field Completeness
+- All fields shown in the template must be present
+- No additional fields should be added
+- Empty arrays should be `[]`, not omitted
+- Zero values should be `0`, not omitted
+
+### Text Description Standards
+- **Bug descriptions**: Must clearly state what is wrong and when it occurs
+- **Fix descriptions**: Must explain what code was changed and why
+- **Integration method**: Must describe how new feature connects to existing code
+- **Optimization technique**: Must name the specific method used (e.g., "removed redundant loop", "implemented caching")
+
+### File Naming Convention
+- Submit as exactly: `test_submission.json`
+- No variations in capitalization or spelling accepted

@@ -1,0 +1,191 @@
+# Basic Practical Exam Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "analysis_phase": {
+    "bugs_found": [
+      {
+        "bug_id": "BUG001",
+        "description": "Division by zero error when calculating category and supplier statistics due to unnecessary 1000x loop multiplication followed by division",
+        "affected_function": "generate_sales_report",
+        "error_type": "logic_error"
+      },
+      {
+        "bug_id": "BUG002", 
+        "description": "Low stock threshold inconsistency - code checks for quantity < 15 but requirements specify < 10 for low stock alerts",
+        "affected_function": "generate_sales_report",
+        "error_type": "logic_error"
+      },
+      {
+        "bug_id": "BUG003",
+        "description": "Missing menu option 5 for Low Stock Alert feature as specified in requirements",
+        "affected_function": "display_menu",
+        "error_type": "logic_error"
+      }
+    ],
+    "performance_issues": [
+      {
+        "issue_id": "PERF001",
+        "description": "Unnecessary 1000-iteration loop in generate_sales_report causing 1000x redundant calculations",
+        "affected_operation": "Generate Sales Report"
+      }
+    ],
+    "total_bugs_found": 3,
+    "total_performance_issues": 1
+  },
+  "bug_fixes": [
+    {
+      "bug_id": "BUG001",
+      "fix_description": "Removed the unnecessary 1000-iteration loop and corresponding division operations to fix calculation logic",
+      "files_modified": ["inventory_system.py"],
+      "lines_changed": [89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150],
+      "fix_verified": true
+    },
+    {
+      "bug_id": "BUG002",
+      "fix_description": "Changed low stock threshold from 15 to 10 units to match requirements specification",
+      "files_modified": ["inventory_system.py"],
+      "lines_changed": [118],
+      "fix_verified": true
+    },
+    {
+      "bug_id": "BUG003",
+      "fix_description": "Added menu option 5 for Low Stock Alert feature and implemented corresponding functionality",
+      "files_modified": ["inventory_system.py"],
+      "lines_changed": [25, 180, 181, 182],
+      "fix_verified": true
+    }
+  ],
+  "feature_enhancement": {
+    "implementation_complete": true,
+    "menu_option_added": "5",
+    "output_file_created": "low_stock_alerts.txt",
+    "alert_threshold": 10,
+    "reorder_formula": "current_quantity + 50",
+    "integration_method": "Added new method low_stock_alert() to InventorySystem class and integrated with main menu loop using elif condition for choice '5'"
+  },
+  "performance_optimization": {
+    "optimization_implemented": true,
+    "target_operation": "Generate Sales Report",
+    "optimization_technique": "removed redundant loop",
+    "performance_improvement_percentage": 99,
+    "functionality_preserved": true
+  },
+  "testing_completed": {
+    "all_menu_options_tested": true,
+    "new_feature_tested": true,
+    "performance_improvement_verified": true,
+    "no_new_bugs_introduced": true
+  }
+}
+```
+
+## Explanation of Correct Answers
+
+### Analysis Phase
+
+**BUG001 - Logic Error in Sales Report Calculation**
+- **Root Cause**: The `generate_sales_report()` function contains an unnecessary `for _ in range(1000):` loop that multiplies all calculations by 1000, then attempts to correct this by dividing by 1000 at the end.
+- **Impact**: This creates incorrect statistical calculations and is the primary performance bottleneck.
+- **Identification Method**: Running the sales report reveals incorrect total inventory value and category/supplier statistics.
+
+**BUG002 - Low Stock Threshold Inconsistency**
+- **Root Cause**: Code uses `< 15` threshold for low stock detection, but requirements specify `< 10` for the new Low Stock Alert feature.
+- **Impact**: Inconsistent business logic between existing report and new feature requirements.
+- **Identification Method**: Comparing code implementation with requirements specification.
+
+**BUG003 - Missing Menu Option**
+- **Root Cause**: The `display_menu()` function doesn't include option "5" for Low Stock Alerts as specified in requirements.
+- **Impact**: New feature cannot be accessed by users.
+- **Identification Method**: Comparing menu display with requirements specification.
+
+**PERF001 - Redundant Loop Performance Issue**
+- **Root Cause**: The 1000-iteration loop in `generate_sales_report()` causes unnecessary computational overhead.
+- **Impact**: Report generation takes 10+ seconds instead of target <2 seconds.
+- **Identification Method**: Timing the sales report operation and code analysis.
+
+### Bug Fixes
+
+**Fix for BUG001**: Remove the entire `for _ in range(1000):` loop and all corresponding division operations. Restructure the calculation logic to process each product exactly once.
+
+**Fix for BUG002**: Change the low stock threshold from `< 15` to `< 10` in the sales report function to maintain consistency.
+
+**Fix for BUG003**: Add menu option "5. Low Stock Alert" to the display menu and implement the corresponding elif condition in the main loop.
+
+### Feature Enhancement
+
+**Low Stock Alert Implementation**:
+- New method `low_stock_alert()` added to InventorySystem class
+- Scans all products for quantity < 10
+- Displays alert information in specified format
+- Creates/overwrites "low_stock_alerts.txt" with CSV format
+- Integrates with existing menu system via option "5"
+
+### Performance Optimization
+
+**Optimization Technique**: Removed the redundant 1000-iteration loop
+- **Before**: O(1000n) time complexity where n = number of products
+- **After**: O(n) time complexity
+- **Improvement**: ~99% performance improvement (from ~10 seconds to ~0.1 seconds)
+- **Verification**: Identical output format and accuracy maintained
+
+## Passing Criteria
+
+### Minimum Requirements for 80% Pass Rate
+
+#### Critical Success Factors (Must Have All):
+1. **Functional Bug Fixes**: At least 2 out of 3 bugs correctly identified and fixed
+2. **Feature Implementation**: Low Stock Alert feature fully functional with correct threshold (10) and file output
+3. **Performance Optimization**: Sales report performance improved by at least 50%
+4. **JSON Accuracy**: Submission format exactly matches requirements with correct data types
+
+#### Detailed Scoring Breakdown:
+
+**Analysis Phase (20 points)**
+- Identify BUG001 (performance/logic issue): 8 points
+- Identify BUG002 (threshold inconsistency): 4 points  
+- Identify BUG003 (missing menu option): 4 points
+- Identify PERF001 (redundant loop): 4 points
+
+**Bug Fixes (30 points)**
+- Fix BUG001 (remove redundant loop): 15 points
+- Fix BUG002 (correct threshold): 8 points
+- Fix BUG003 (add menu option): 7 points
+
+**Feature Enhancement (25 points)**
+- Implement Low Stock Alert functionality: 15 points
+- Correct file output format: 5 points
+- Proper menu integration: 5 points
+
+**Performance Optimization (15 points)**
+- Achieve >50% performance improvement: 10 points
+- Maintain functionality: 5 points
+
+**JSON Submission Quality (10 points)**
+- Correct format and data types: 5 points
+- Accurate numerical values: 5 points
+
+### Pass/Fail Thresholds:
+
+**80%+ (Pass)**: 64+ points total
+- Must include: At least 2 major bugs fixed, feature implemented, performance improved
+- Demonstrates practical programming competency
+
+**50-79% (Marginal)**: 40-63 points
+- Some bugs fixed but missing critical elements
+- May indicate theoretical knowledge without practical skills
+
+**<50% (Fail)**: <40 points
+- Major functionality issues remain
+- Indicates insufficient practical programming ability
+
+### Red Flags for Automatic Failure:
+- Code doesn't run due to syntax errors
+- JSON submission format completely incorrect
+- No evidence of actual testing performed
+- New feature completely non-functional
+- Performance actually degraded
+
+This evaluation framework ensures that only candidates who can actually perform program maintenance tasks in a real-world context will achieve passing scores.

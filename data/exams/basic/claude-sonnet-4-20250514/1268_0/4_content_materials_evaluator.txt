@@ -1,0 +1,91 @@
+
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+## Materials Design and Expected Outcomes
+
+### Calculator Program (calculator.py)
+**Intentional Issues Planted:**
+1. **CRITICAL**: Missing handling for power(5,0) - should return 1.0 but will return 1 (integer vs float inconsistency)
+2. **HIGH**: The power function doesn't handle negative base with fractional exponents properly
+3. **MEDIUM**: No input validation for non-numeric inputs (though test file only contains valid numbers)
+
+**Expected Test Results:**
+- 15 test cases total
+- 1-2 failed cases depending on candidate's thoroughness
+- Division by zero correctly handled
+- Most arithmetic operations work correctly
+
+**Key Relationships:**
+- Test inputs are designed to cover edge cases: negative numbers, zero operations, large numbers, decimals
+- Expected outputs provided show exact formatting candidates should observe
+
+### Data Processor (data_processor.py)
+**Intentional Issues Planted:**
+1. **HIGH**: Average age calculation has a subtle rounding error - uses Python's default float division which may not match the expected 36.27 exactly
+2. **MEDIUM**: Regional breakdown calculation doesn't sort regions consistently
+3. **LOW**: No error handling for malformed CSV data
+
+**Expected Test Results:**
+- 15 customer records processed
+- Average age: 36.27 (calculated as 544/15 = 36.266... rounded to 36.27)
+- Average sales: $7640.12 (calculated as $114,601.75/15)
+- High-value customers: 8 (customers with sales > $5000)
+- Regional totals: North=4, South=4, East=4, West=3
+
+**Statistical Patterns:**
+- Customer data is evenly distributed across regions (4,4,4,3)
+- Ages range from 27-52 with realistic distribution
+- Sales values designed to create exactly 8 high-value customers
+- Regional averages vary significantly to test calculation accuracy
+
+### Inventory System (inventory_system.py)
+**Intentional Issues Planted:**
+1. **CRITICAL**: The get_total_value() method has a logic error - it doesn't initialize total correctly in some edge cases
+2. **HIGH**: Low stock threshold is hardcoded at 10 but some functions use different thresholds
+3. **MEDIUM**: Category summary doesn't handle missing categories gracefully
+4. **LOW**: No validation for negative quantities or prices
+
+**Expected Test Results:**
+- Initial total value: $8,683.69
+- Low stock items: 3 (P002=8, P004=5, P007=3 quantities)
+- Categories: Electronics (3 items), Furniture (3 items), Stationery (2 items)
+- Stock update for P001 should succeed
+- Adding P999 should succeed
+- Adding duplicate P001 should fail
+
+**Data Relationships:**
+- Product IDs follow P001-P008 pattern
+- Quantities deliberately set to create exactly 3 low-stock items
+- Categories evenly distributed for testing summary functions
+- Unit prices chosen to create specific total values for verification
+
+### Cross-Material Connections
+- All three programs use different data formats (TXT, CSV, JSON) to test file handling
+- Numerical precision requirements vary across programs to test attention to detail
+- Error conditions are distributed across all programs to test comprehensive testing approach
+
+### Common Pitfalls for Candidates
+1. **Incomplete Testing**: Missing edge cases like division by zero, duplicate entries, or boundary conditions
+2. **Precision Issues**: Not recognizing floating-point precision differences in calculations
+3. **Error Classification**: Misclassifying cosmetic issues as critical or vice versa
+4. **Documentation Quality**: Providing vague descriptions instead of specific test cases and expected vs actual results
+5. **Systematic Approach**: Testing randomly instead of following a methodical approach
+
+### Hidden Information Requiring Careful Analysis
+- The calculator's power function behavior with edge cases
+- Exact floating-point precision in statistical calculations
+- Regional distribution patterns in customer data
+- Inventory value calculations requiring precise arithmetic
+- Error handling gaps that only appear with specific input combinations
+
+### Scoring Key Points
+- **Technical Accuracy**: Candidates should identify 6-8 total issues across all programs
+- **Severity Classification**: Critical issues should be program crashes or major logic errors
+- **Testing Methodology**: Should test all provided inputs plus additional edge cases
+- **Documentation**: Must include specific test cases, expected vs actual results
+- **Professional Judgment**: Deployment recommendations should align with severity of issues found
+
+The materials are designed so that a qualified entry-level programmer will identify most issues and provide appropriate recommendations, while less qualified candidates will miss subtle problems or misclassify issue severity.
+
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

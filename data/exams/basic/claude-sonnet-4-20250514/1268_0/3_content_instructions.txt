@@ -1,0 +1,132 @@
+# Basic Practical Exam: Program Trial Runs and Validation
+
+## Exam Instructions
+
+### Overview
+You will conduct systematic trial runs of three software programs to verify they produce correct outputs and identify any issues. This exam tests your ability to execute programs, validate results against requirements, and document findings professionally.
+
+### Time Limit
+90 minutes total
+
+### What You Need to Accomplish
+1. **Execute each provided program** with the given test data
+2. **Validate outputs** against the specified requirements
+3. **Identify and document** any errors, bugs, or incorrect behaviors
+4. **Classify issues** using the provided severity levels
+5. **Make deployment recommendations** based on your findings
+
+### Materials Provided
+You will receive:
+- **Three Python programs** (calculator.py, data_processor.py, inventory_system.py)
+- **Test data files** (test_inputs.txt, customer_data.csv, inventory_data.json)
+- **Requirements specifications** for each program
+- **Expected output samples** for comparison
+
+### Severity Classification System (Use Exactly These Labels)
+- **CRITICAL**: Program crashes or produces completely wrong results
+- **HIGH**: Incorrect calculations or logic errors affecting core functionality
+- **MEDIUM**: Edge cases not handled properly or minor calculation errors
+- **LOW**: Cosmetic issues or non-essential feature problems
+
+### Deployment Recommendation Options (Use Exactly These Labels)
+- **READY**: No critical or high severity issues found
+- **NEEDS_FIXES**: Critical or high severity issues must be resolved first
+- **REQUIRES_TESTING**: Additional testing needed before decision
+
+### Required Tasks
+
+#### Program 1: Calculator Application (calculator.py)
+- Run the program with all test cases from test_inputs.txt
+- Verify mathematical operations produce correct results
+- Test edge cases (division by zero, negative numbers, large numbers)
+- Compare outputs with provided expected results
+
+#### Program 2: Data Processor (data_processor.py)
+- Process the customer_data.csv file
+- Validate data transformation and filtering operations
+- Check statistical calculations (averages, totals, counts)
+- Verify output format matches requirements
+
+#### Program 3: Inventory Management System (inventory_system.py)
+- Load inventory_data.json and execute all main functions
+- Test inventory updates, stock calculations, and reporting features
+- Validate business rule implementations
+- Check error handling for invalid operations
+
+### Submission Requirements
+
+Submit your findings in a file named **test_submission.json** with this exact structure:
+
+```json
+{
+  "program_1_calculator": {
+    "execution_successful": true/false,
+    "issues_found": [
+      {
+        "issue_description": "Exact description of the problem",
+        "severity": "CRITICAL/HIGH/MEDIUM/LOW",
+        "test_case": "Specific input that caused the issue",
+        "expected_result": "What should have happened",
+        "actual_result": "What actually happened"
+      }
+    ],
+    "total_test_cases_run": 0,
+    "failed_test_cases": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "program_2_data_processor": {
+    "execution_successful": true/false,
+    "issues_found": [
+      {
+        "issue_description": "Exact description of the problem",
+        "severity": "CRITICAL/HIGH/MEDIUM/LOW",
+        "test_case": "Specific input that caused the issue",
+        "expected_result": "What should have happened",
+        "actual_result": "What actually happened"
+      }
+    ],
+    "total_records_processed": 0,
+    "processing_errors": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "program_3_inventory_system": {
+    "execution_successful": true/false,
+    "issues_found": [
+      {
+        "issue_description": "Exact description of the problem",
+        "severity": "CRITICAL/HIGH/MEDIUM/LOW",
+        "test_case": "Specific input that caused the issue",
+        "expected_result": "What should have happened",
+        "actual_result": "What actually happened"
+      }
+    ],
+    "functions_tested": 0,
+    "functions_with_errors": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "overall_assessment": {
+    "total_critical_issues": 0,
+    "total_high_issues": 0,
+    "total_medium_issues": 0,
+    "total_low_issues": 0,
+    "overall_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  }
+}
+```
+
+### Important Notes
+- Use only the provided severity levels and recommendation labels exactly as shown
+- If no issues are found for a program, use an empty array: `"issues_found": []`
+- All numerical fields must contain actual counts from your testing
+- Test systematically - don't skip edge cases or error conditions
+- Document specific inputs that cause problems, not general descriptions
+
+### Getting Started
+1. Download all provided files to your working directory
+2. Read the requirements specification for each program
+3. Begin with Program 1 and work sequentially
+4. Run each program multiple times with different inputs
+5. Document your findings as you go
+6. Submit your completed test_submission.json file
+
+Good luck!

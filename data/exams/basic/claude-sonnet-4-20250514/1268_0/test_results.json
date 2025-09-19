@@ -1,0 +1,12 @@
+{
+  "overall_score": 0,
+  "grade": "Insufficient",
+  "status": "Invalid submission structure",
+  "errors": [
+    "Missing required field: program_1_calculator",
+    "Missing required field: program_2_data_processor",
+    "Missing required field: program_3_inventory_system",
+    "Missing required field: overall_assessment"
+  ],
+  "detailed_scores": {}
+}

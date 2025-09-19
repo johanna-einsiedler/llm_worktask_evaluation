@@ -1,0 +1,99 @@
+Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> # Basic Practical Exam: Program Trial Runs and Validation
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to systematically conduct trial runs of programs and software applications to verify they produce desired outputs and contain correct instructions. The exam simulates real-world scenarios where junior programmers must test, debug, and validate code before deployment.
+
+**Key Assessment Goals:**
+- Ability to execute systematic testing procedures
+- Skills in identifying and documenting defects
+- Competency in validating program outputs against requirements
+- Proficiency in creating structured test reports
+
+## Strategic Exam Design Elements
+
+### 1. Multi-Step Testing Process
+The exam requires candidates to follow a complete testing workflow:
+- **Initial execution** to identify obvious errors
+- **Systematic input testing** with various data scenarios
+- **Output validation** against specified requirements
+- **Documentation** of findings and recommendations
+
+### 2. Realistic Code Scenarios
+Three progressively complex programs simulate actual workplace situations:
+- **Simple calculation program** with basic logic errors
+- **Data processing script** with edge case handling issues
+- **Multi-function application** with integration problems
+
+### 3. Decision Points and Critical Thinking
+Candidates must make judgment calls about:
+- Severity classification of discovered issues
+- Priority ranking for fixes
+- Acceptance criteria for program readiness
+- Risk assessment for deployment decisions
+
+### 4. Data Relationship Understanding
+The exam tests ability to:
+- Trace data flow through program logic
+- Identify input-output relationships
+- Recognize data validation requirements
+- Understand business rule implementations
+
+## Practical vs. Theoretical Differentiation
+
+### What Makes This Practical:
+- **Hands-on execution**: Candidates must actually run programs, not just read code
+- **Real debugging**: Finding actual errors in working (but flawed) code
+- **Output analysis**: Comparing actual vs. expected results with real data
+- **Documentation creation**: Producing professional test reports
+
+### Strategic Elements to Identify Capable Candidates:
+
+1. **Systematic Approach**: Qualified candidates will demonstrate organized testing methodology rather than random trial-and-error
+
+2. **Edge Case Recognition**: Experienced testers naturally consider boundary conditions, invalid inputs, and unusual scenarios
+
+3. **Root Cause Analysis**: Ability to trace errors back to specific code sections rather than just noting symptoms
+
+4. **Professional Communication**: Clear, actionable documentation that would be useful to development teams
+
+5. **Risk Assessment**: Understanding which issues are critical vs. minor, and their impact on system reliability
+
+## Optimal Exam Structure
+
+### Time Allocation (90 minutes total):
+- **Setup and familiarization**: 10 minutes
+- **Program 1 testing**: 20 minutes
+- **Program 2 testing**: 25 minutes
+- **Program 3 testing**: 25 minutes
+- **Final review and submission**: 10 minutes
+
+### Evaluation Framework:
+The structured JSON submission enables consistent scoring across:
+- **Technical accuracy** (40%): Correct identification of issues
+- **Testing methodology** (30%): Systematic approach and thoroughness
+- **Documentation quality** (20%): Clear, professional reporting
+- **Critical thinking** (10%): Appropriate prioritization and recommendations
+
+### Success Indicators:
+Entry-level candidates scoring 80%+ will demonstrate:
+- Ability to execute basic testing procedures
+- Recognition of common programming errors
+- Understanding of input/output validation
+- Professional documentation skills
+- Basic debugging and problem-solving capabilities
+
+This exam design ensures that candidates who merely understand testing concepts theoretically will struggle, while those who can actually perform systematic program validation will succeed. The practical nature, combined with real code execution and structured reporting requirements, creates an authentic assessment of job-relevant skills. </examoverview>
+
+    ### Your assignment:
+
+    Based on the explanation write clear, concise instructions for the candidate including:
+    - The actual test they need perform, i.e. the tasks that need to be done or questions that need to be answered.
+    - What they need to accomplish (without prescribing specific methods)
+    - Brief description of any materials that will be provided
+    - That they will have to submit their answers as a JSON file.
+
+    IMPORTANT: When designing the test, eliminate any opportunities for candidates to make arbitrary choices (like custom account codes, naming conventions, or classification systems) that would complicate evaluation. Either:
+    - Provide pre-defined structures/codes that must be used, or
+    - Design questions with objectively verifiable numerical/text answers that don't depend on the candidate's approach. 
+    - You can ask for text answers that can be compared to an exact match, but avoid asking for text answers such as justification that require interpretation and/or with many possible correct answers.

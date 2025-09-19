@@ -1,0 +1,141 @@
+Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> # Basic Practical Exam: Program Revision, Repair, and Expansion
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to **perform hands-on program modification tasks** that mirror real-world scenarios where existing codebases need maintenance, bug fixes, and feature enhancements. The exam goes beyond theoretical knowledge to test actual implementation skills in a controlled environment.
+
+### Key Assessment Objectives:
+- **Code Analysis**: Ability to understand and navigate existing codebases
+- **Bug Identification & Resolution**: Practical debugging and repair skills
+- **Feature Implementation**: Adding new functionality while maintaining code integrity
+- **Code Quality**: Writing maintainable, efficient modifications
+- **Documentation**: Properly documenting changes and decisions
+
+## Strategic Exam Structure
+
+### Multi-Layered Challenge Design
+The exam presents a **realistic software maintenance scenario** with interconnected components that require candidates to:
+
+1. **Analyze existing code architecture** before making changes
+2. **Prioritize multiple issues** (bugs vs. enhancements vs. performance)
+3. **Make incremental improvements** while maintaining system stability
+4. **Handle dependencies** between different code modules
+5. **Validate changes** through testing and verification
+
+### Differentiation Strategy: Practical vs. Theoretical Knowledge
+
+#### What Separates Actual Performers from Conceptual Understanders:
+
+**Real Practitioners Will:**
+- Systematically analyze code before making changes
+- Identify root causes rather than just symptoms
+- Consider side effects and edge cases
+- Write clean, maintainable modifications
+- Test their changes thoroughly
+- Document their reasoning and approach
+
+**Theoretical-Only Candidates Will:**
+- Jump to solutions without proper analysis
+- Fix symptoms without addressing underlying issues
+- Introduce new bugs while fixing existing ones
+- Write functional but poorly structured code
+- Skip validation steps
+- Provide minimal or unclear documentation
+
+## Exam Structure: "Legacy E-Commerce System Maintenance"
+
+### Scenario Context
+Candidates receive a **partially functional e-commerce inventory management system** with multiple interconnected issues requiring different types of interventions:
+
+### Phase 1: Code Analysis & Issue Identification (20 minutes)
+- **Practical Element**: Candidates must actually run and interact with the system
+- **Strategic Component**: Multiple issues of varying complexity and type
+- **Differentiation**: Real practitioners will systematically catalog issues by severity and type
+
+### Phase 2: Bug Repair (30 minutes)
+- **Practical Element**: Fix actual runtime errors and logic bugs
+- **Strategic Component**: Bugs with cascading effects across modules
+- **Differentiation**: Experienced programmers will trace root causes through multiple files
+
+### Phase 3: Feature Enhancement (30 minutes)
+- **Practical Element**: Implement new functionality that integrates with existing code
+- **Strategic Component**: Requires understanding of existing architecture patterns
+- **Differentiation**: Skilled developers will maintain consistency with existing code style and patterns
+
+### Phase 4: Performance Optimization (10 minutes)
+- **Practical Element**: Identify and resolve performance bottlenecks
+- **Strategic Component**: Trade-offs between different optimization approaches
+- **Differentiation**: Experienced programmers will choose appropriate optimizations based on actual profiling
+
+## Key Strategic Elements for Maximum Differentiation
+
+### 1. **Interconnected Dependencies**
+- Changes in one module affect others
+- Tests whether candidates consider system-wide impacts
+- Reveals understanding of software architecture principles
+
+### 2. **Multiple Valid Solutions**
+- Different approaches with varying trade-offs
+- Tests decision-making and justification skills
+- Reveals depth of programming experience
+
+### 3. **Hidden Complexity**
+- Issues that appear simple but have deeper implications
+- Tests thorough analysis vs. surface-level fixes
+- Reveals systematic thinking vs. ad-hoc problem solving
+
+### 4. **Real-World Constraints**
+- Legacy code patterns that must be maintained
+- Backward compatibility requirements
+- Tests adaptability and professional judgment
+
+## Evaluation Framework
+
+### Structured JSON Submission Requirements:
+```json
+{
+  "analysis_phase": {
+    "identified_issues": [...],
+    "priority_ranking": [...],
+    "architectural_observations": "..."
+  },
+  "bug_fixes": {
+    "fix_1": {
+      "issue_description": "...",
+      "root_cause": "...",
+      "solution_approach": "...",
+      "files_modified": [...],
+      "testing_performed": "..."
+    }
+  },
+  "enhancements": {
+    "feature_implementation": "...",
+    "integration_approach": "...",
+    "design_decisions": "..."
+  },
+  "performance_optimizations": [...],
+  "overall_reflection": "..."
+}
+```
+
+### Success Indicators for Entry-Level Competency (80%+ threshold):
+- **Functional Solutions**: Code actually works as intended
+- **Systematic Approach**: Evidence of methodical problem-solving
+- **Basic Testing**: Verification that changes work correctly
+- **Clear Documentation**: Understandable explanations of changes
+- **Code Quality**: Modifications follow basic best practices
+
+This exam design ensures that only candidates who can **actually perform** program maintenance tasks will succeed, while providing clear differentiation between theoretical knowledge and practical capability. </examoverview>
+
+    ### Your assignment:
+
+    Based on the explanation write clear, concise instructions for the candidate including:
+    - The actual test they need perform, i.e. the tasks that need to be done or questions that need to be answered.
+    - What they need to accomplish (without prescribing specific methods)
+    - Brief description of any materials that will be provided
+    - That they will have to submit their answers as a JSON file.
+
+    IMPORTANT: When designing the test, eliminate any opportunities for candidates to make arbitrary choices (like custom account codes, naming conventions, or classification systems) that would complicate evaluation. Either:
+    - Provide pre-defined structures/codes that must be used, or
+    - Design questions with objectively verifiable numerical/text answers that don't depend on the candidate's approach. 
+    - You can ask for text answers that can be compared to an exact match, but avoid asking for text answers such as justification that require interpretation and/or with many possible correct answers.

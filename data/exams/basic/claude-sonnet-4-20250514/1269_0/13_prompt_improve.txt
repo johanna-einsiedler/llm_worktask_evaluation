@@ -1,0 +1,18 @@
+You are tasked with improving an exam:
+
+
+The following explanation describes the major problems with the exam that you should address.
+_______________________________
+This exam is not feasible for a 90-minute timeframe. The tasks require: 1) Debugging Python code with multiple compilation errors, 2) Creating comprehensive documentation following strict formatting requirements, 3) Adding extensive inline comments with specific guidelines, 4) Documenting all changes in a complex JSON structure, and 5) Testing the program thoroughly. The JSON submission format alone is extremely complex with nested objects and arrays requiring precise formatting. An entry-level programmer would need 3-4 hours minimum to complete all requirements properly. To make this feasible: reduce the documentation requirements, simplify the JSON submission format, focus on either debugging OR documentation (not both), and provide clearer examples of expected outputs. The current format prioritizes administrative overhead over actual programming skills assessment.; 
+________________________________
+
+
+Your task:
+- Improve the exam to address the issues highlighted in the explanation.
+- Keep the overall structure, format, and flow of the original exam (same sections, numbering, style).
+- Ensure that the revised version is practical, fair, and aligned with the intended purpose of the exam.
+
+Output:
+Provide ONLY the improved exam, in the same structure as the original.
+
+This is the exam:

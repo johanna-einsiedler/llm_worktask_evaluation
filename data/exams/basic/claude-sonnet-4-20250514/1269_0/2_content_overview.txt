@@ -1,0 +1,86 @@
+# Basic Practical Exam: Program Compilation and Documentation
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to **compile code and create comprehensive documentation** for program development and revisions. Unlike theoretical assessments, this exam requires candidates to actually perform the complete workflow of code compilation, documentation creation, and code commenting that they would encounter in an entry-level programming position.
+
+### Key Assessment Objectives:
+- Compile code successfully while handling common compilation issues
+- Write clear, structured documentation for program functionality
+- Insert meaningful comments that enable code comprehension by others
+- Document development revisions and changes systematically
+- Demonstrate understanding of documentation standards and best practices
+
+## Strategic Exam Structure
+
+### Multi-Step Process Design
+The exam follows a realistic development workflow:
+1. **Code Analysis & Compilation** - Fix compilation errors in provided code
+2. **Documentation Creation** - Write comprehensive program documentation
+3. **Code Commenting** - Add meaningful inline comments
+4. **Revision Documentation** - Document changes and improvements made
+
+### Differentiation Strategy Elements
+
+#### 1. **Real-World Complexity**
+- Provide code with intentional compilation errors (missing imports, syntax issues)
+- Include multiple functions with different purposes
+- Require documentation of both user-facing and internal functionality
+
+#### 2. **Decision Points That Reveal Competency**
+- **Comment Placement**: Where and what type of comments to add
+- **Documentation Depth**: What level of detail is appropriate for different audiences
+- **Error Prioritization**: Which compilation errors to fix first
+- **Revision Tracking**: How to document changes systematically
+
+#### 3. **Multi-Audience Documentation**
+- Technical documentation for other developers
+- User documentation for end-users
+- Inline comments for code maintainers
+
+## Practical vs. Theoretical Assessment Features
+
+### What Makes This Practical:
+- **Actual Compilation**: Candidates must successfully compile working code
+- **Real Documentation Creation**: Generate actual documentation files
+- **Hands-on Problem Solving**: Fix real compilation errors
+- **Code Modification**: Actually insert comments and make improvements
+
+### Strategic Elements to Differentiate Candidates:
+
+#### **Competent Candidates Will:**
+- Systematically identify and fix compilation errors
+- Write documentation that addresses multiple audiences appropriately
+- Insert comments that explain *why* code works, not just *what* it does
+- Create structured, searchable documentation
+- Document revisions with clear rationale
+
+#### **Less Competent Candidates Will:**
+- Struggle with compilation error diagnosis
+- Write documentation that only restates obvious code functionality
+- Add superficial comments that don't aid understanding
+- Create unstructured or incomplete documentation
+- Fail to properly document their revision process
+
+## Evaluation Framework
+
+### Structured JSON Submission Format
+The JSON format enables:
+- **Objective Scoring**: Clear pass/fail criteria for compilation success
+- **Standardized Evaluation**: Consistent documentation quality assessment
+- **Automated Checking**: Verification of code compilation and basic functionality
+- **Comprehensive Review**: All deliverables in one structured format
+
+### Key Performance Indicators:
+1. **Compilation Success Rate** (25%)
+2. **Documentation Completeness** (30%)
+3. **Comment Quality and Placement** (25%)
+4. **Revision Documentation** (20%)
+
+## Time Management Strategy (90 minutes)
+- **Code Analysis & Compilation**: 25 minutes
+- **Documentation Writing**: 35 minutes
+- **Code Commenting**: 20 minutes
+- **Revision Documentation**: 10 minutes
+
+This structure ensures candidates demonstrate actual competency in the complete workflow of program compilation and documentation, rather than just theoretical knowledge of best practices.

@@ -1,0 +1,116 @@
+
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+## Materials Design and Evaluation Guide
+
+### **Product Data Structure (product_data.csv)**
+The CSV contains exactly 20 products with the following intentional design elements:
+
+**Categories Distribution:**
+- Electronics: 8 products (P001, P004, P008, P011, P014, P016, P018)
+- Clothing: 3 products (P002, P009, P015)
+- Home & Garden: 4 products (P003, P006, P013, P020)
+- Sports & Fitness: 3 products (P005, P007, P019)
+- Health & Beauty: 2 products (P010, P012)
+
+**Supplier Distribution:**
+- TechCorp: 6 products
+- FashionPlus: 3 products
+- FitGear: 3 products
+- KitchenPro: 2 products
+- Others: 1 product each
+
+**Stock Levels (Intentionally Designed):**
+- **Low Stock (< 10 units):** P002(8), P006(6), P009(9), P012(7) = 4 products
+- **Medium Stock (10-20 units):** P004(12), P008(14), P013(11), P015(13), P018(21), P005(18), P014(19) = 7 products  
+- **High Stock (> 20 units):** Remaining 9 products
+
+**Total Inventory Value Calculation:**
+Exact value: $1,033.60 (sum of price × quantity for all products)
+
+### **Embedded Bugs in inventory_system.py**
+
+**BUG001 - Menu Option Missing (Line 142-154)**
+- Issue: No menu option "5" for Low Stock Alerts
+- Type: Logic error
+- Expected Fix: Add elif choice == '5': with low_stock_alert() method
+
+**BUG002 - Performance Issue (Lines 95-97)**
+- Issue: Unnecessary 1000-iteration loop in generate_sales_report()
+- Type: Performance error
+- Expected Fix: Remove the for _ in range(1000): loop
+- Current execution time: ~10 seconds, Target: <2 seconds
+
+**BUG003 - File Handling Error (Line 12)**
+- Issue: FileNotFoundError not properly handled, system continues with empty products dict
+- Type: Runtime error
+- Expected Fix: Either exit gracefully or provide better error handling
+
+### **Expected Correct Answers**
+
+**Analysis Phase:**
+- Total bugs: 3 (menu missing, performance loop, file handling)
+- Performance issues: 1 (sales report generation)
+
+**Bug Fixes:**
+- BUG001: Add menu option 5 and implement low_stock_alert() method
+- BUG002: Remove unnecessary loop, fix calculation logic
+- BUG003: Improve file error handling
+
+**Feature Enhancement:**
+- Implement low_stock_alert() method
+- Threshold: quantity < 10
+- Alert products: P002, P006, P009, P012
+- Reorder quantities: 58, 56, 59, 57 respectively
+- Output file: "low_stock_alerts.txt"
+
+**Performance Optimization:**
+- Remove 1000-iteration loop
+- Expected improvement: >90% (from ~10s to <1s)
+- Technique: "Eliminated redundant loop iteration"
+
+### **Common Pitfalls and Tricky Elements**
+
+1. **Performance Bug Disguised as Complex Logic:**
+   - The 1000-iteration loop appears to be intentional calculation logic
+   - Candidates may try to optimize other parts instead of removing the loop
+   - The division by 1000 at the end is a clue that the loop is unnecessary
+
+2. **Low Stock Threshold Confusion:**
+   - Requirements specify two different thresholds: <15 for reports, <10 for alerts
+   - Candidates must implement the correct threshold (10) for the new feature
+
+3. **File Format Precision:**
+   - The alert file format must be exact: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+   - No spaces, specific order, CSV format
+
+4. **Menu Integration:**
+   - New feature must be menu option "5", not appended to existing options
+   - Must maintain existing menu structure and flow
+
+### **Evaluation Scoring Guide**
+
+**80%+ Performance Indicators:**
+- Identifies all 3 bugs correctly
+- Implements working low stock alert feature
+- Removes performance bottleneck (1000-loop)
+- Maintains existing functionality
+- Provides accurate JSON submission with exact values
+
+**Below 80% Indicators:**
+- Misses the performance loop bug
+- Implements incorrect threshold values
+- Breaks existing functionality while fixing bugs
+- Provides approximate rather than exact values in JSON
+- Fails to properly integrate new feature with menu system
+
+### **Cross-References Between Materials**
+
+- **product_data.csv ↔ test_cases.txt:** Test cases reference specific products (P001, P002, etc.) with exact expected values
+- **requirements.txt ↔ inventory_system.py:** Requirements specify features that are missing or broken in the code
+- **test_cases.txt ↔ JSON submission:** Test case results should match JSON reported values exactly
+
+The materials are designed to test real programming skills rather than theoretical knowledge, with multiple interconnected issues that require systematic analysis and careful implementation.
+
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

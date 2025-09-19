@@ -1,0 +1,80 @@
+
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+## Materials Design and Expected Outcomes
+
+### Data Structure Design
+The test materials were carefully constructed to create predictable, verifiable outcomes while testing all required programming capabilities:
+
+**Initial Inventory (10 items):**
+- Items grouped by category (A=Widgets, B=Gadgets, C=Tools, D=Components, E=Supplies)
+- Varying starting quantities (40-300) and reorder thresholds (20-75)
+- Designed to trigger low stock alerts after transaction processing
+
+**Transaction Processing (25 transactions):**
+- Mix of SHIP (add inventory) and SALE (subtract inventory) transactions
+- Includes deliberate test cases for error handling
+- Sequential processing required to maintain data integrity
+
+### Key Relationships and Expected Results
+
+**Final Inventory Calculations:**
+- A001: 100 + 50 - 80 + 60 = 130 (above threshold of 25)
+- A002: 75 + 30 - 120 - 50 = -65 → Invalid sale T012 rejected, final = 55 (above threshold of 30)
+- B001: 200 - 25 + 75 - 300 = -50 → Invalid sale T024 rejected, final = 250 (above threshold of 50)
+- B002: 40 - 30 - 5 = 5 (LOW STOCK ALERT - below threshold of 25)
+- C001: 150 - 60 - 45 - 20 = 25 (LOW STOCK ALERT - below threshold of 40)
+- C002: 80 + 25 - 30 = 75 (above threshold of 35)
+- D001: 300 + 100 - 150 = 250 (above threshold of 75)
+- D002: 120 - 40 + 80 = 160 (above threshold of 60)
+- E001: 90 - 15 + 40 = 115 (above threshold of 20)
+- E002: 180 - 90 - 45 = 45 (above threshold of 45)
+
+**Error Cases (3 total):**
+1. T022: Invalid item code "X999" (doesn't exist in inventory)
+2. T012: A002 sale of 120 would create negative inventory (75+30-120 = -15)
+3. T024: B001 sale of 300 would create negative inventory (200-25+75-300 = -50)
+
+**Equipment Commands:**
+- SHIP transactions generate scanner commands (8 total)
+- SALE transactions generate printer commands (14 valid sales)
+- Equipment responses include 2 ERROR statuses (CMD007, CMD015)
+- Commands are processed sequentially, matching transaction order
+
+**Daily Summary:**
+- Total transactions processed: 22 (25 minus 3 rejected)
+- Total shipments: 8
+- Total sales: 14
+- Total rejected: 3
+
+**Low Stock Alerts:**
+- B002: quantity 5, threshold 25
+- C001: quantity 25, threshold 40
+
+### Tricky Elements and Common Pitfalls
+
+1. **Sequential Processing Required**: Transactions must be processed in order since later transactions depend on updated inventory levels from earlier ones.
+
+2. **Negative Inventory Prevention**: Candidates must check if a sale would create negative inventory BEFORE processing it.
+
+3. **Invalid Item Codes**: Transaction T022 references non-existent item "X999" - must be rejected.
+
+4. **Equipment Command Mapping**: 
+   - SHIP → scanner/SCAN_BARCODE
+   - SALE → printer/PRINT_RECEIPT
+   - Only valid transactions should generate equipment commands
+
+5. **Equipment Response Processing**: Equipment responses are provided in a separate file and must be matched to commands by sequential order (CMD001 corresponds to first equipment command sent, etc.).
+
+6. **Threshold Comparison**: Low stock alerts trigger when current_quantity < reorder_threshold (strictly less than, not less than or equal).
+
+### Hidden Information Requiring Careful Reading
+
+- Equipment commands are only sent for VALID transactions (rejected transactions don't generate equipment commands)
+- Equipment responses must be processed in the order commands were sent
+- The reorder threshold comparison uses strict inequality (<)
+- Transaction timestamps are provided but not required for processing logic
+- Item codes follow a pattern but candidates shouldn't assume this pattern extends beyond provided data
+
+This design ensures that candidates who correctly implement all business logic will produce identical, verifiable results, while those who miss edge cases or make logical errors will produce detectably different outputs.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

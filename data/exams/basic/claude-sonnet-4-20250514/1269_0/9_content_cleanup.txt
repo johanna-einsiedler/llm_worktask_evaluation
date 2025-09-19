@@ -1,0 +1,359 @@
+# Basic Practical Exam: Program Compilation and Documentation
+
+## Time Limit: 90 minutes
+
+## Overview
+You will work with a provided Python program that contains compilation errors. Your task is to fix these errors, compile the program successfully, and create comprehensive documentation following specific requirements.
+
+## Materials Provided
+You will receive:
+- `buggy_program.py` - A Python file containing a simple inventory management system with intentional compilation errors
+- `sample_data.txt` - Sample inventory data to test the program
+- `documentation_template.md` - A template showing the required documentation structure
+- `comment_guidelines.txt` - Specific commenting requirements and examples
+
+## Tasks to Complete
+
+### Task 1: Code Compilation (25 points)
+1. Analyze the provided `buggy_program.py` file
+2. Identify and fix ALL compilation errors to make the program run successfully
+3. Test the program with the provided sample data to ensure it works correctly
+4. Document each error you fixed using the exact format specified in the guidelines
+
+### Task 2: Program Documentation (30 points)
+Create comprehensive documentation that includes:
+1. **Program Overview**: Write exactly 3-4 sentences describing what the program does
+2. **Function Documentation**: For each function, provide:
+   - Purpose (1 sentence)
+   - Input parameters (name, type, description)
+   - Return value (type and description)
+   - Usage example
+3. **Installation Instructions**: Step-by-step instructions (numbered list)
+4. **User Guide**: How to run the program and interpret outputs
+
+### Task 3: Code Commenting (25 points)
+Add inline comments to the corrected code following these requirements:
+1. Add a header comment block with program title, author (use "Exam Candidate"), and date
+2. Add function-level docstrings for each function using the provided format
+3. Add inline comments explaining complex logic (minimum 5 comments)
+4. Add comments explaining any non-obvious variable names or calculations
+
+### Task 4: Revision Documentation (20 points)
+Document your changes using this exact format:
+1. List each compilation error fixed with:
+   - Line number where error occurred
+   - Type of error (syntax, import, logic, etc.)
+   - Exact change made
+   - Reason for the change
+2. List any improvements made beyond fixing errors
+3. Provide a summary of testing performed
+
+## Submission Requirements
+Submit your work as a JSON file named `test_submission.json` with this exact structure:
+```json
+{
+  "corrected_code": "// Your complete corrected Python code here",
+  "compilation_fixes": [
+    {
+      "line_number": 0,
+      "error_type": "syntax|import|logic|other",
+      "change_made": "Exact description of fix",
+      "reason": "Why this fix was necessary"
+    }
+  ],
+  "program_documentation": {
+    "overview": "3-4 sentence program description",
+    "functions": [
+      {
+        "name": "function_name",
+        "purpose": "One sentence description",
+        "parameters": [
+          {
+            "name": "param_name",
+            "type": "data_type",
+            "description": "Parameter description"
+          }
+        ],
+        "return_value": {
+          "type": "return_type",
+          "description": "Return value description"
+        },
+        "usage_example": "Code example showing how to call function"
+      }
+    ],
+    "installation_instructions": [
+      "Step 1 description",
+      "Step 2 description"
+    ],
+    "user_guide": "Instructions for running and using the program"
+  },
+  "commented_code": "// Your code with all required comments added",
+  "revision_log": {
+    "errors_fixed": [
+      {
+        "line_number": 0,
+        "error_type": "Type of error",
+        "change_made": "What was changed",
+        "reason": "Why change was needed"
+      }
+    ],
+    "improvements_made": [
+      "Description of improvement 1",
+      "Description of improvement 2"
+    ],
+    "testing_summary": "Description of testing performed to verify program works"
+  },
+  "program_runs_successfully": true
+}
+```
+
+## Success Criteria
+- Program compiles and runs without errors
+- All required documentation sections are complete
+- Comments follow the specified format and guidelines
+- JSON submission follows the exact structure provided
+- All fixes and changes are properly documented
+
+## Important Notes
+- Use only the provided template formats and structures
+- Test your program thoroughly before submission
+- Ensure your JSON file is valid and properly formatted
+- The program must run successfully with the provided sample data
+
+**File: buggy_program.py**
+```python
+# Inventory Management System
+# Contains intentional compilation errors for exam purposes
+import os
+import sys
+from datetime import datetime
+import json
+
+class InventoryManager:
+    def __init__(self):
+        self.inventory = {}
+        self.transaction_log = []
+    
+    def load_inventory(self, filename):
+        """Load inventory data from file"""
+        try:
+            with open(filename, 'r') as file:
+                for line in file:
+                    parts = line.strip().split(',')
+                    if len(parts) == 4:
+                        item_id = parts[0]
+                        name = parts[1]
+                        quantity = int(parts[2])
+                        price = float(parts[3])
+                        self.inventory[item_id] = {
+                            'name': name,
+                            'quantity': quantity,
+                            'price': price
+                        }
+        except FileNotFoundError:
+            print(f"Error: File {filename} not found")
+            return False
+        return True
+
+    def add_item(self, item_id, name, quantity, price):
+        """Add new item to inventory"""
+        if item_id in self.inventory:
+            self.inventory[item_id]['quantity'] += quantity
+        else:
+            self.inventory[item_id] = {
+                'name': name,
+                'quantity': quantity,
+                'price': price
+            }
+        
+        # Log the transaction
+        self.transaction_log.append({
+            'timestamp': datetime.now().isoformat(),
+            'action': 'add',
+            'item_id': item_id,
+            'quantity': quantity
+        })
+
+    def remove_item(self, item_id, quantity):
+        """Remove items from inventory"""
+        if item_id not in self.inventory:
+            print(f"Error: Item {item_id} not found in inventory")
+        if self.inventory[item_id]['quantity'] < quantity:
+            print(f"Error: Not enough {self.inventory[item_id]['name']} in stock")
+        self.inventory[item_id]['quantity'] -= quantity
+            'action': 'remove',
+
+    def get_item_info(self, item_id):
+        """Get information about specific item"""
+            return self.inventory[item_id]
+        return None
+
+    def calculate_total_value(self):
+        """Calculate total value of all inventory"""
+        total = 0
+        for item in self.inventory.values():
+            total += item['quantity'] * item['price']
+        return total
+
+    def generate_report(self):
+        """Generate inventory report"""
+        print("\n=== INVENTORY REPORT ===")
+        print(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("-" * 50)
+        
+        for item_id, item_data in self.inventory.items():
+            print(f"ID: {item_id}")
+            print(f"Name: {item_data['name']}")
+            print(f"Quantity: {item_data['quantity']}")
+            print(f"Price: ${item_data['price']:.2f}")
+            print(f"Total Value: ${item_data['quantity'] * item_data['price']:.2f}")
+            print("-" * 30)
+        
+        print(f"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}")
+
+def main():
+    # Create inventory manager instance
+    manager = InventoryManager()
+    
+    # Load sample data
+    if manager.load_inventory('sample_data.txt'):
+        print("Inventory loaded successfully!")
+    else:
+        print("Failed to load inventory data")
+        return
+    
+    # Test adding items
+    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)
+    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing
+    
+    # Test removing items
+    manager.remove_item('ITEM002', 3)
+    
+    # Test item lookup
+    item_info = manager.get_item_info('ITEM003')
+    if item_info:
+        print(f"Found item: {item_info['name']} - Quantity: {item_info['quantity']}")
+    
+    # Generate final report
+    manager.generate_report()
+
+if __name__ == "__main__":
+    main()
+```
+
+**File: sample_data.txt**
+```
+ITEM001,Laptop Computer,10,899.99
+ITEM002,Desktop Monitor,25,249.50
+ITEM003,Keyboard,50,45.00
+ITEM004,USB Cable,100,12.99
+```
+
+**File: documentation_template.md**
+```markdown
+# Program Documentation Template
+
+## Program Overview
+[Write 3-4 sentences describing what the program does and its main purpose]
+
+## Function Documentation
+
+### Function Name: [function_name]
+**Purpose:** [One sentence describing what the function does]
+
+**Parameters:**
+- `parameter_name` (type): Description of parameter
+
+**Return Value:**
+- Type: [return_type]
+- Description: [What the function returns]
+
+**Usage Example:**
+```python
+# Example code showing how to use the function
+result = function_name(param1, param2)
+```
+
+## Installation Instructions
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+## User Guide
+[Instructions for how to run the program and interpret the outputs]
+```
+
+**File: comment_guidelines.txt**
+```
+# Code Commenting Guidelines
+
+## Header Comment Block Format:
+"""
+Program Title: [Title]
+Author: Exam Candidate
+Date: [Current Date]
+Description: [Brief description]
+"""
+
+## Function Docstring Format:
+def function_name(param1, param2):
+    """
+    Brief description of what the function does.
+    
+    Args:
+        param1 (type): Description of parameter
+        param2 (type): Description of parameter
+    
+    Returns:
+        type: Description of return value
+    
+    Raises:
+        ExceptionType: Description of when exception is raised
+    """
+
+## Inline Comment Requirements:
+- Explain WHY code does something, not just WHAT it does
+- Comment complex logic or calculations
+- Explain non-obvious variable names
+- Add comments before code blocks that perform specific tasks
+- Minimum 5 inline comments required
+
+## Examples of Good vs Bad Comments:
+
+### Good Comments:
+# Calculate tax based on regional rate (8.5% for this location)
+tax_amount = subtotal * 0.085
+
+# Retry connection up to 3 times before failing
+for attempt in range(3):
+
+### Bad Comments:
+# Set x to 5
+x = 5
+
+# Loop through items
+for item in items:
+```
+
+## JSON Submission Format Requirements
+
+The candidate must submit their work as a file named `test_submission.json` with the following exact structure:
+
+- `corrected_code`: Complete Python code with all compilation errors fixed
+- `compilation_fixes`: Array of objects with line_number (integer), error_type (syntax|import|logic|other), change_made (string), reason (string)
+- `program_documentation`: Object containing overview (3-4 sentences), functions array, installation_instructions array, user_guide (string)
+- `commented_code`: Complete Python code with all required comments added
+- `revision_log`: Object with errors_fixed array, improvements_made array, testing_summary (string)
+- `program_runs_successfully`: Boolean value (true/false)
+
+### Format Requirements:
+- All Python code must be properly indented (4 spaces per level)
+- Header comment block must use triple quotes
+- Function docstrings must follow the exact format provided
+- Overview must be exactly 3-4 complete sentences
+- Function purposes must start with an action verb
+- Use standard Python type names (str, int, float, bool, list, dict, etc.)
+- Installation instructions must be complete, actionable sentences
+- Usage examples must be valid, executable Python code
+- Error types must be one of: syntax, import, logic, other
+- JSON must be valid and parseable

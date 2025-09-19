@@ -1,0 +1,628 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> # Basic Practical Exam: Program Revision, Repair, and Expansion
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to **perform hands-on program modification tasks** that mirror real-world scenarios where existing codebases need maintenance, bug fixes, and feature enhancements. The exam goes beyond theoretical knowledge to test actual implementation skills in a controlled environment.
+
+### Key Assessment Objectives:
+- **Code Analysis**: Ability to understand and navigate existing codebases
+- **Bug Identification & Resolution**: Practical debugging and repair skills
+- **Feature Implementation**: Adding new functionality while maintaining code integrity
+- **Code Quality**: Writing maintainable, efficient modifications
+- **Documentation**: Properly documenting changes and decisions
+
+## Strategic Exam Structure
+
+### Multi-Layered Challenge Design
+The exam presents a **realistic software maintenance scenario** with interconnected components that require candidates to:
+
+1. **Analyze existing code architecture** before making changes
+2. **Prioritize multiple issues** (bugs vs. enhancements vs. performance)
+3. **Make incremental improvements** while maintaining system stability
+4. **Handle dependencies** between different code modules
+5. **Validate changes** through testing and verification
+
+### Differentiation Strategy: Practical vs. Theoretical Knowledge
+
+#### What Separates Actual Performers from Conceptual Understanders:
+
+**Real Practitioners Will:**
+- Systematically analyze code before making changes
+- Identify root causes rather than just symptoms
+- Consider side effects and edge cases
+- Write clean, maintainable modifications
+- Test their changes thoroughly
+- Document their reasoning and approach
+
+**Theoretical-Only Candidates Will:**
+- Jump to solutions without proper analysis
+- Fix symptoms without addressing underlying issues
+- Introduce new bugs while fixing existing ones
+- Write functional but poorly structured code
+- Skip validation steps
+- Provide minimal or unclear documentation
+
+## Exam Structure: "Legacy E-Commerce System Maintenance"
+
+### Scenario Context
+Candidates receive a **partially functional e-commerce inventory management system** with multiple interconnected issues requiring different types of interventions:
+
+### Phase 1: Code Analysis & Issue Identification (20 minutes)
+- **Practical Element**: Candidates must actually run and interact with the system
+- **Strategic Component**: Multiple issues of varying complexity and type
+- **Differentiation**: Real practitioners will systematically catalog issues by severity and type
+
+### Phase 2: Bug Repair (30 minutes)
+- **Practical Element**: Fix actual runtime errors and logic bugs
+- **Strategic Component**: Bugs with cascading effects across modules
+- **Differentiation**: Experienced programmers will trace root causes through multiple files
+
+### Phase 3: Feature Enhancement (30 minutes)
+- **Practical Element**: Implement new functionality that integrates with existing code
+- **Strategic Component**: Requires understanding of existing architecture patterns
+- **Differentiation**: Skilled developers will maintain consistency with existing code style and patterns
+
+### Phase 4: Performance Optimization (10 minutes)
+- **Practical Element**: Identify and resolve performance bottlenecks
+- **Strategic Component**: Trade-offs between different optimization approaches
+- **Differentiation**: Experienced programmers will choose appropriate optimizations based on actual profiling
+
+## Key Strategic Elements for Maximum Differentiation
+
+### 1. **Interconnected Dependencies**
+- Changes in one module affect others
+- Tests whether candidates consider system-wide impacts
+- Reveals understanding of software architecture principles
+
+### 2. **Multiple Valid Solutions**
+- Different approaches with varying trade-offs
+- Tests decision-making and justification skills
+- Reveals depth of programming experience
+
+### 3. **Hidden Complexity**
+- Issues that appear simple but have deeper implications
+- Tests thorough analysis vs. surface-level fixes
+- Reveals systematic thinking vs. ad-hoc problem solving
+
+### 4. **Real-World Constraints**
+- Legacy code patterns that must be maintained
+- Backward compatibility requirements
+- Tests adaptability and professional judgment
+
+## Evaluation Framework
+
+### Structured JSON Submission Requirements:
+```json
+{
+  "analysis_phase": {
+    "identified_issues": [...],
+    "priority_ranking": [...],
+    "architectural_observations": "..."
+  },
+  "bug_fixes": {
+    "fix_1": {
+      "issue_description": "...",
+      "root_cause": "...",
+      "solution_approach": "...",
+      "files_modified": [...],
+      "testing_performed": "..."
+    }
+  },
+  "enhancements": {
+    "feature_implementation": "...",
+    "integration_approach": "...",
+    "design_decisions": "..."
+  },
+  "performance_optimizations": [...],
+  "overall_reflection": "..."
+}
+```
+
+### Success Indicators for Entry-Level Competency (80%+ threshold):
+- **Functional Solutions**: Code actually works as intended
+- **Systematic Approach**: Evidence of methodical problem-solving
+- **Basic Testing**: Verification that changes work correctly
+- **Clear Documentation**: Understandable explanations of changes
+- **Code Quality**: Modifications follow basic best practices
+
+This exam design ensures that only candidates who can **actually perform** program maintenance tasks will succeed, while providing clear differentiation between theoretical knowledge and practical capability.</examoverview>
+    Here are the instructions for the candidate: <instructions> # Basic Practical Exam: Program Revision, Repair, and Expansion
+
+## Exam Instructions
+
+You will work with a legacy e-commerce inventory management system that requires maintenance and improvements. Your task is to analyze, repair, and enhance the existing codebase to meet specified requirements.
+
+## Time Limit
+90 minutes total
+
+## What You Need to Accomplish
+
+### Phase 1: System Analysis (20 minutes)
+- Run the provided inventory management system
+- Identify all functional issues, bugs, and performance problems
+- Document your findings in the required JSON format
+
+### Phase 2: Bug Repairs (30 minutes)
+- Fix all identified bugs to make the system fully functional
+- Ensure all existing features work as originally intended
+- Verify your fixes through testing
+
+### Phase 3: Feature Enhancement (30 minutes)
+- Implement the new "Low Stock Alert" feature according to specifications
+- Integrate the feature seamlessly with existing code
+- Maintain consistency with existing code patterns
+
+### Phase 4: Performance Optimization (10 minutes)
+- Identify and resolve the most critical performance bottleneck
+- Implement the optimization without breaking existing functionality
+
+## Materials Provided
+
+You will receive:
+1. **inventory_system.py** - Main application file
+2. **product_data.csv** - Sample product database (100 products)
+3. **requirements.txt** - System specifications document
+4. **test_cases.txt** - Expected system behaviors for validation
+
+## Specific Requirements
+
+### Bug Repair Criteria
+- All menu options must work without errors
+- Data validation must function correctly
+- File operations must complete successfully
+- Mathematical calculations must be accurate
+
+### Feature Enhancement Specifications
+The "Low Stock Alert" feature must:
+- Trigger when any product quantity falls below 10 units
+- Display product ID, name, current quantity, and recommended reorder quantity (current quantity + 50)
+- Be accessible via menu option "5"
+- Save alerts to "low_stock_alerts.txt" in the format: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+
+### Performance Optimization Target
+- Reduce the time for "Generate Sales Report" operation by at least 50%
+- Maintain identical output format and accuracy
+
+## Submission Requirements
+
+Submit your work as **test_submission.json** with this exact structure:
+
+```json
+{
+  "analysis_phase": {
+    "bugs_found": [
+      {
+        "bug_id": "BUG001",
+        "description": "Exact description of the bug",
+        "affected_function": "function_name",
+        "error_type": "runtime_error|logic_error|data_error"
+      }
+    ],
+    "performance_issues": [
+      {
+        "issue_id": "PERF001", 
+        "description": "Exact description of performance problem",
+        "affected_operation": "operation_name"
+      }
+    ],
+    "total_bugs_found": 0,
+    "total_performance_issues": 0
+  },
+  "bug_fixes": [
+    {
+      "bug_id": "BUG001",
+      "fix_description": "Exact description of what was changed",
+      "files_modified": ["filename.py"],
+      "lines_changed": [45, 67, 89],
+      "fix_verified": true
+    }
+  ],
+  "feature_enhancement": {
+    "implementation_complete": true,
+    "menu_option_added": "5",
+    "output_file_created": "low_stock_alerts.txt",
+    "alert_threshold": 10,
+    "reorder_formula": "current_quantity + 50",
+    "integration_method": "Description of how feature integrates with existing code"
+  },
+  "performance_optimization": {
+    "optimization_implemented": true,
+    "target_operation": "Generate Sales Report",
+    "optimization_technique": "Exact technique used",
+    "performance_improvement_percentage": 0,
+    "functionality_preserved": true
+  },
+  "testing_completed": {
+    "all_menu_options_tested": true,
+    "new_feature_tested": true,
+    "performance_improvement_verified": true,
+    "no_new_bugs_introduced": true
+  }
+}
+```
+
+## Important Notes
+
+- Use only the provided product data and specifications
+- Do not modify the core data structure or file formats
+- All numerical values in your JSON must be exact (no approximations)
+- Boolean values must be exactly `true` or `false`
+- Test your changes thoroughly before submission
+- Ensure your modified code runs without errors
+
+## Evaluation Criteria
+
+Your submission will be evaluated on:
+- **Functionality**: All bugs fixed and new feature works correctly
+- **Completeness**: All required tasks completed
+- **Accuracy**: JSON submission matches actual implementation
+- **Code Quality**: Clean, maintainable modifications
+- **Testing**: Evidence that changes were properly validated
+
+Good luck! </instructions>
+    Here are the materials provided to the candidate: <materials> 
+
+**inventory_system.py**
+```python
+import csv
+import os
+from datetime import datetime
+
+class InventorySystem:
+    def __init__(self):
+        self.products = {}
+        self.load_products()
+    
+    def load_products(self):
+        """Load products from CSV file"""
+        try:
+            with open('product_data.csv', 'r') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    product_id = row['product_id']
+                    self.products[product_id] = {
+                        'name': row['product_name'],
+                        'category': row['category'],
+                        'price': float(row['price']),
+                        'quantity': int(row['quantity']),
+                        'supplier': row['supplier']
+                    }
+        except FileNotFoundError:
+            print("Error: product_data.csv not found")
+    
+    def display_menu(self):
+        """Display main menu options"""
+        print("\n=== INVENTORY MANAGEMENT SYSTEM ===")
+        print("1. View All Products")
+        print("2. Search Product")
+        print("3. Update Stock")
+        print("4. Generate Sales Report")
+        print("0. Exit")
+        print("=====================================")
+    
+    def view_all_products(self):
+        """Display all products in inventory"""
+        if not self.products:
+            print("No products in inventory")
+            return
+        
+        print(f"\n{'ID':<10} {'Name':<25} {'Category':<15} {'Price':<10} {'Qty':<8} {'Supplier':<15}")
+        print("-" * 90)
+        for product_id, details in self.products.items():
+            print(f"{product_id:<10} {details['name']:<25} {details['category']:<15} "
+                  f"${details['price']:<9.2f} {details['quantity']:<8} {details['supplier']:<15}")
+    
+    def search_product(self):
+        """Search for a specific product"""
+        search_id = input("Enter Product ID to search: ").strip()
+        
+        if search_id in self.products:
+            product = self.products[search_id]
+            print(f"\nProduct Found:")
+            print(f"ID: {search_id}")
+            print(f"Name: {product['name']}")
+            print(f"Category: {product['category']}")
+            print(f"Price: ${product['price']:.2f}")
+            print(f"Quantity: {product['quantity']}")
+            print(f"Supplier: {product['supplier']}")
+        else:
+            print("Product not found")
+    
+    def update_stock(self):
+        """Update product stock quantity"""
+        product_id = input("Enter Product ID: ").strip()
+        
+        if product_id not in self.products:
+            print("Product not found")
+            return
+        
+        try:
+            current_qty = self.products[product_id]['quantity']
+            print(f"Current quantity: {current_qty}")
+            
+            new_qty = input("Enter new quantity: ")
+            new_qty = int(new_qty)
+            
+            if new_qty < 0:
+                print("Quantity cannot be negative")
+                return
+            
+            self.products[product_id]['quantity'] = new_qty
+            print(f"Stock updated successfully. New quantity: {new_qty}")
+            
+            # Save changes back to CSV
+            self.save_products()
+            
+        except ValueError:
+            print("Invalid quantity entered")
+    
+    def save_products(self):
+        """Save current product data back to CSV"""
+        try:
+            with open('product_data.csv', 'w', newline='') as file:
+                fieldnames = ['product_id', 'product_name', 'category', 'price', 'quantity', 'supplier']
+                writer = csv.DictWriter(file, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for product_id, details in self.products.items():
+                    writer.writerow({
+                        'product_id': product_id,
+                        'product_name': details['name'],
+                        'category': details['category'],
+                        'price': details['price'],
+                        'quantity': details['quantity'],
+                        'supplier': details['supplier']
+                    })
+        except Exception as e:
+            print(f"Error saving products: {e}")
+    
+    def generate_sales_report(self):
+        """Generate comprehensive sales and inventory report"""
+        print("\nGenerating Sales Report...")
+        
+        # Calculate statistics
+        total_products = len(self.products)
+        total_inventory_value = 0
+        category_stats = {}
+        supplier_stats = {}
+        low_stock_items = []
+        
+        # Process each product multiple times (inefficient - performance issue)
+        for _ in range(1000):  # Unnecessary loop causing performance issue
+            for product_id, details in self.products.items():
+                value = details['price'] * details['quantity']
+                total_inventory_value += value
+                
+                # Category statistics
+                category = details['category']
+                if category not in category_stats:
+                    category_stats[category] = {'count': 0, 'value': 0}
+                category_stats[category]['count'] += 1
+                category_stats[category]['value'] += value
+                
+                # Supplier statistics  
+                supplier = details['supplier']
+                if supplier not in supplier_stats:
+                    supplier_stats[supplier] = {'count': 0, 'value': 0}
+                supplier_stats[supplier]['count'] += 1
+                supplier_stats[supplier]['value'] += value
+                
+                # Low stock check
+                if details['quantity'] < 15:
+                    low_stock_items.append({
+                        'id': product_id,
+                        'name': details['name'],
+                        'quantity': details['quantity']
+                    })
+        
+        # Divide by 1000 to get correct values (due to the unnecessary loop)
+        total_inventory_value = total_inventory_value / 1000
+        for category in category_stats:
+            category_stats[category]['value'] = category_stats[category]['value'] / 1000
+            category_stats[category]['count'] = category_stats[category]['count'] / 1000
+        for supplier in supplier_stats:
+            supplier_stats[supplier]['value'] = supplier_stats[supplier]['value'] / 1000
+            supplier_stats[supplier]['count'] = supplier_stats[supplier]['count'] / 1000
+        
+        # Display report
+        print(f"\n=== INVENTORY REPORT ===")
+        print(f"Total Products: {total_products}")
+        print(f"Total Inventory Value: ${total_inventory_value:.2f}")
+        
+        print(f"\nCategory Breakdown:")
+        for category, stats in category_stats.items():
+            print(f"  {category}: {int(stats['count'])} items, ${stats['value']:.2f}")
+        
+        print(f"\nSupplier Breakdown:")
+        for supplier, stats in supplier_stats.items():
+            print(f"  {supplier}: {int(stats['count'])} items, ${stats['value']:.2f}")
+        
+        print(f"\nLow Stock Items (< 15 units):")
+        for item in low_stock_items:
+            print(f"  {item['id']}: {item['name']} ({item['quantity']} units)")
+    
+    def run(self):
+        """Main program loop"""
+        while True:
+            self.display_menu()
+            choice = input("\nEnter your choice: ").strip()
+            
+            if choice == '1':
+                self.view_all_products()
+            elif choice == '2':
+                self.search_product()
+            elif choice == '3':
+                self.update_stock()
+            elif choice == '4':
+                self.generate_sales_report()
+            elif choice == '0':
+                print("Goodbye!")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+if __name__ == "__main__":
+    system = InventorySystem()
+    system.run()
+```
+
+**product_data.csv**
+```csv
+product_id,product_name,category,price,quantity,supplier
+P001,Wireless Bluetooth Headphones,Electronics,79.99,25,TechCorp
+P002,Organic Cotton T-Shirt,Clothing,24.99,8,FashionPlus
+P003,Stainless Steel Water Bottle,Home & Garden,19.99,45,EcoSupply
+P004,Smartphone Case,Electronics,15.99,12,TechCorp
+P005,Yoga Mat,Sports & Fitness,35.99,18,FitGear
+P006,Coffee Mug Set,Home & Garden,29.99,6,KitchenPro
+P007,Running Shoes,Sports & Fitness,89.99,22,SportMax
+P008,Desk Lamp,Electronics,42.99,14,TechCorp
+P009,Backpack,Clothing,65.99,9,FashionPlus
+P010,Protein Powder,Health & Beauty,49.99,31,HealthFirst
+P011,Wireless Mouse,Electronics,25.99,16,TechCorp
+P012,Face Moisturizer,Health & Beauty,32.99,7,BeautyWorld
+P013,Kitchen Knife Set,Home & Garden,78.99,11,KitchenPro
+P014,Fitness Tracker,Electronics,129.99,19,FitGear
+P015,Sunglasses,Clothing,45.99,13,FashionPlus
+P016,Bluetooth Speaker,Electronics,59.99,28,TechCorp
+P017,Herbal Tea Set,Food & Beverage,18.99,35,OrganicLife
+P018,Laptop Stand,Electronics,39.99,21,TechCorp
+P019,Resistance Bands,Sports & Fitness,22.99,26,FitGear
+P020,Scented Candles,Home & Garden,16.99,41,HomeDecor
+```
+
+**requirements.txt**
+```
+INVENTORY MANAGEMENT SYSTEM - REQUIREMENTS SPECIFICATION
+
+SYSTEM OVERVIEW:
+The inventory management system must provide basic CRUD operations for product management, stock tracking, and reporting capabilities.
+
+FUNCTIONAL REQUIREMENTS:
+
+1. PRODUCT VIEWING
+   - Display all products in tabular format
+   - Show: Product ID, Name, Category, Price, Quantity, Supplier
+   - Handle empty inventory gracefully
+
+2. PRODUCT SEARCH
+   - Search by exact Product ID match
+   - Display complete product details when found
+   - Show "Product not found" message for invalid IDs
+
+3. STOCK MANAGEMENT
+   - Update product quantities
+   - Validate non-negative quantities
+   - Save changes to persistent storage (CSV file)
+   - Display current quantity before update
+
+4. SALES REPORTING
+   - Calculate total inventory value
+   - Provide category-wise breakdown (count and value)
+   - Provide supplier-wise breakdown (count and value)
+   - Identify low stock items (quantity < 15)
+   - Performance target: Complete within 2 seconds
+
+5. LOW STOCK ALERTS (NEW FEATURE)
+   - Menu option "5" to check low stock
+   - Alert threshold: quantity < 10 units
+   - Display: Product ID, Name, Current Quantity, Recommended Reorder Quantity
+   - Reorder formula: current_quantity + 50
+   - Save alerts to "low_stock_alerts.txt"
+   - File format: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+
+DATA VALIDATION REQUIREMENTS:
+- Product IDs must be exact matches (case-sensitive)
+- Quantities must be non-negative integers
+- Prices must be positive numbers with 2 decimal places
+- All CSV operations must preserve data integrity
+
+ERROR HANDLING REQUIREMENTS:
+- Graceful handling of file not found errors
+- Input validation for all user entries
+- Clear error messages for invalid operations
+- System must not crash on invalid input
+
+PERFORMANCE REQUIREMENTS:
+- Product search: < 0.1 seconds
+- Stock updates: < 0.5 seconds
+- Sales report generation: < 2 seconds (currently failing)
+- System startup: < 1 second
+```
+
+**test_cases.txt**
+```
+INVENTORY SYSTEM TEST CASES
+
+TEST CASE 1: SYSTEM STARTUP
+Expected: System loads without errors, displays main menu
+Products loaded: 20 items from product_data.csv
+
+TEST CASE 2: VIEW ALL PRODUCTS
+Input: Menu option "1"
+Expected: Display 20 products in tabular format
+Verify: All product details visible, proper formatting
+
+TEST CASE 3: SEARCH EXISTING PRODUCT
+Input: Menu option "2", Product ID "P001"
+Expected: Display complete details for Wireless Bluetooth Headphones
+Price: $79.99, Quantity: 25, Supplier: TechCorp
+
+TEST CASE 4: SEARCH NON-EXISTENT PRODUCT
+Input: Menu option "2", Product ID "P999"
+Expected: "Product not found" message
+
+TEST CASE 5: UPDATE STOCK - VALID
+Input: Menu option "3", Product ID "P002", New quantity "15"
+Expected: Stock updated successfully, changes saved to CSV
+Verify: P002 quantity changed from 8 to 15
+
+TEST CASE 6: UPDATE STOCK - NEGATIVE QUANTITY
+Input: Menu option "3", Product ID "P003", New quantity "-5"
+Expected: "Quantity cannot be negative" error message
+Verify: P003 quantity remains unchanged (45)
+
+TEST CASE 7: UPDATE STOCK - INVALID INPUT
+Input: Menu option "3", Product ID "P004", New quantity "abc"
+Expected: "Invalid quantity entered" error message
+Verify: P004 quantity remains unchanged (12)
+
+TEST CASE 8: GENERATE SALES REPORT
+Input: Menu option "4"
+Expected: Complete report with:
+- Total Products: 20
+- Total Inventory Value: $1,033.60
+- Category breakdown showing 5 categories
+- Supplier breakdown showing 8 suppliers
+- Low stock items (quantity < 15): 8 items listed
+
+TEST CASE 9: LOW STOCK ALERTS (NEW FEATURE)
+Input: Menu option "5"
+Expected: 
+- Display products with quantity < 10: P002, P006, P009, P012
+- Show recommended reorder quantities (current + 50)
+- Create "low_stock_alerts.txt" file
+- File contains: P002,Organic Cotton T-Shirt,8,58
+
+TEST CASE 10: INVALID MENU CHOICE
+Input: Menu option "9"
+Expected: "Invalid choice. Please try again." message
+System continues running normally
+
+TEST CASE 11: EXIT SYSTEM
+Input: Menu option "0"
+Expected: "Goodbye!" message, system terminates cleanly
+
+PERFORMANCE VERIFICATION:
+- Sales report should complete in under 2 seconds
+- Current implementation has performance issue causing 10+ second execution
+- Optimization required to meet performance target
+```
+
+ </materials>
+
+    ## Your assignment
+    Based on the given information, specify exactly what format the candidate's answers must be in, including:
+    - Required JSON answer format with question IDs
+    - The exact format of answers (numbers, text, specific units, decimal places)
+    - You should only specify format and/or code/conventions to use in answering, but you should not give the answers away

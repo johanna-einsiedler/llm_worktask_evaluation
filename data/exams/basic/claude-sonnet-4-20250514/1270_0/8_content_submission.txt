@@ -1,0 +1,92 @@
+# Answer Format Specifications
+
+## Required JSON Submission Format
+
+Submit your solution as **test_submission.json** with the following exact structure:
+
+```json
+{
+  "source_code": "string - your complete program code",
+  "final_inventory": [
+    {
+      "item_code": "string - exact item code from CSV",
+      "item_name": "string - exact item name from CSV", 
+      "current_quantity": integer - final quantity after all transactions,
+      "reorder_threshold": integer - threshold value from initial inventory
+    }
+  ],
+  "low_stock_alerts": [
+    {
+      "item_code": "string - item code where current_quantity < reorder_threshold",
+      "current_quantity": integer - current stock level,
+      "reorder_threshold": integer - minimum threshold value
+    }
+  ],
+  "rejected_transactions": [
+    {
+      "transaction_id": "string - exact transaction ID from CSV",
+      "reason": "string - brief explanation of rejection reason"
+    }
+  ],
+  "daily_summary": {
+    "total_transactions_processed": integer - count of successfully processed transactions,
+    "total_shipments": integer - count of SHIP transactions processed,
+    "total_sales": integer - count of SALE transactions processed,
+    "total_rejected": integer - count of rejected transactions
+  },
+  "equipment_commands": [
+    {
+      "transaction_id": "string - exact transaction ID that triggered command",
+      "equipment": "string - either 'scanner' or 'printer'",
+      "command": "string - either 'SCAN_BARCODE' or 'PRINT_RECEIPT'",
+      "status": "string - either 'SUCCESS' or 'ERROR'"
+    }
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": integer - total scanner commands sent,
+    "scanner_successful": integer - scanner commands with SUCCESS status,
+    "scanner_failed": integer - scanner commands with ERROR status,
+    "printer_commands_sent": integer - total printer commands sent,
+    "printer_successful": integer - printer commands with SUCCESS status,
+    "printer_failed": integer - printer commands with ERROR status
+  },
+  "testing_notes": "string - brief description of testing performed and any issues found"
+}
+```
+
+## Format Requirements
+
+### String Values
+- **item_code**: Use exact codes from CSV files (e.g., "A001", "B002")
+- **item_name**: Use exact names from initial_inventory.csv
+- **transaction_id**: Use exact IDs from transactions.csv (e.g., "T001", "T022")
+- **equipment**: Must be exactly "scanner" or "printer" (lowercase)
+- **command**: Must be exactly "SCAN_BARCODE" or "PRINT_RECEIPT" (uppercase)
+- **status**: Must be exactly "SUCCESS" or "ERROR" (uppercase)
+
+### Integer Values
+- All quantity and count fields must be whole numbers (no decimals)
+- Negative quantities are not allowed in final inventory
+- All summary counts must equal the sum of their components
+
+### Array Ordering
+- **final_inventory**: Order by item_code alphabetically
+- **low_stock_alerts**: Order by item_code alphabetically  
+- **rejected_transactions**: Order by transaction_id
+- **equipment_commands**: Order by the sequence transactions were processed
+
+### Equipment Command Mapping Rules
+- SHIP transactions → scanner equipment, SCAN_BARCODE command
+- SALE transactions → printer equipment, PRINT_RECEIPT command
+- Command status determined by matching with equipment_responses.csv in order
+
+### Validation Rules
+- All item_codes in transactions must exist in initial_inventory.csv or be rejected
+- Sales cannot reduce inventory below 0 (reject transaction if insufficient stock)
+- Equipment responses are consumed sequentially from equipment_responses.csv
+- Low stock alerts only for items where current_quantity < reorder_threshold
+
+### Source Code Format
+- Include complete, executable program code as a single string
+- Use proper escape characters for quotes and newlines within the JSON string
+- Code should be readable and well-commented

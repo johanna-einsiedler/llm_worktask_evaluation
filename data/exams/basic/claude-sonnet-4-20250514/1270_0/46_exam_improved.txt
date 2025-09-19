@@ -1,0 +1,514 @@
+# Basic Computer Programming Practical Exam
+
+## Exam Instructions
+You are a junior programmer at TechCorp Industries. Your manager has assigned you to build a basic inventory management system. You have 90 minutes to complete this practical programming exam.
+
+## Your Assignment
+
+### Phase 1: Core Inventory Management (90 minutes)
+Build a program that processes inventory transactions and maintains accurate stock levels.
+
+**Requirements:**
+1. **Read and process transaction data** from the provided CSV file
+2. **Update inventory levels** based on transactions (shipments add stock, sales subtract stock)
+3. **Generate low stock alerts** for items with quantity below their reorder threshold
+4. **Produce a daily summary report** with total transactions processed
+5. **Handle basic validation** - reject transactions that would create negative inventory
+
+**Business Rules:**
+- Shipment transactions (type "SHIP") add to inventory
+- Sale transactions (type "SALE") subtract from inventory  
+- Sales cannot reduce inventory below 0 (reject these transactions)
+- Generate alerts when current stock < reorder_threshold
+- All item codes must exist in the initial inventory file
+
+## Materials Provided
+
+**initial_inventory.csv**
+```
+item_code,item_name,current_quantity,reorder_threshold
+A001,Widget Alpha,100,25
+A002,Widget Beta,75,30
+B001,Gadget Pro,200,50
+B002,Gadget Lite,40,25
+C001,Tool Master,150,40
+```
+
+**transactions.csv**
+```
+transaction_id,item_code,transaction_type,quantity,timestamp
+T001,A001,SHIP,50,2024-01-15 09:00:00
+T002,B001,SALE,25,2024-01-15 09:15:00
+T003,A002,SHIP,30,2024-01-15 09:30:00
+T004,C001,SALE,60,2024-01-15 09:45:00
+T005,A001,SALE,80,2024-01-15 10:00:00
+T006,B002,SALE,30,2024-01-15 10:15:00
+T007,B002,SALE,15,2024-01-15 10:30:00
+T008,B001,SHIP,75,2024-01-15 10:45:00
+T009,C001,SALE,45,2024-01-15 11:00:00
+T010,B002,SALE,5,2024-01-15 11:15:00
+```
+
+## Submission Requirements
+
+Submit your solution as **test_submission.json** containing:
+
+```json
+{
+  "source_code": "your complete program code as a string",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 20, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [],
+  "daily_summary": {
+    "total_transactions_processed": 10,
+    "total_shipments": 3,
+    "total_sales": 7,
+    "total_rejected": 0
+  },
+  "testing_notes": "Brief description of any issues found during testing"
+}
+```
+
+## Format Requirements
+
+### String Values
+- **item_code**: Use exact codes from CSV files (e.g., "A001", "B002")
+- **item_name**: Use exact names from initial_inventory.csv
+- **transaction_id**: Use exact IDs from transactions.csv (e.g., "T001", "T007")
+
+### Integer Values
+- All quantity and count fields must be whole numbers (no decimals)
+- Negative quantities are not allowed in final inventory
+- All summary counts must equal the sum of their components
+
+### Array Ordering
+- **final_inventory**: Order by item_code alphabetically
+- **low_stock_alerts**: Order by item_code alphabetically  
+- **rejected_transactions**: Order by transaction_id
+
+### Validation Rules
+- All item_codes in transactions must exist in initial_inventory.csv or be rejected
+- Sales cannot reduce inventory below 0 (reject transaction if insufficient stock)
+- Low stock alerts only for items where current_quantity < reorder_threshold
+
+### Source Code Format
+- Include complete, executable program code as a single string
+- Use proper escape characters for quotes and newlines within the JSON string
+- Code should be readable and well-commented
+
+## Important Notes
+- Use the exact item codes and transaction types provided in the data files
+- Your program must handle all transactions in the provided CSV file
+- All numerical values in your JSON output must be exact integers
+- Test your program thoroughly before submitting
+
+## Evaluation Criteria
+Your solution will be evaluated on:
+- **Final Inventory Calculations (40%)**: Correct processing of all transactions and accurate final quantities
+- **Transaction Validation (25%)**: Proper identification and rejection of invalid transactions
+- **Low Stock Alerts (15%)**: Accurate identification of items below reorder threshold
+- **Daily Summary (15%)**: Correct counting of processed, shipped, sold, and rejected transactions
+- **Code Quality (5%)**: Well-structured, readable, and executable code
+
+**Passing Score**: 80% (80 points out of 100)
+
+## Helpful Tips
+- Use simple data structures like dictionaries/maps to store inventory data
+- Process transactions one at a time in chronological order
+- Test with a few transactions before processing the entire file
+- Focus on getting the core inventory calculations correct - this is the most important part
+- Start by reading the CSV files and understanding the data structure
+- Build incrementally - get basic transaction processing working first, then add validation
+
+## Sample Program Structure
+Here's a suggested approach to get you started:
+
+```python
+# 1. Read initial inventory from CSV
+# 2. Read transactions from CSV
+# 3. For each transaction:
+#    - Check if item exists
+#    - Check if transaction is valid (no negative inventory)
+#    - Update inventory or reject transaction
+# 4. Generate reports (final inventory, alerts, summary)
+# 5. Format output as JSON
+```
+
+## Expected Results Reference
+To help you verify your solution, here are the key expected outcomes:
+
+**Final Inventory After All Transactions:**
+- A001: 70 units (started 100, +50 ship, -80 sale)
+- A002: 105 units (started 75, +30 ship)
+- B001: 250 units (started 200, -25 sale, +75 ship)
+- B002: 20 units (started 40, -30 sale, -15 sale, -5 sale)
+- C001: 45 units (started 150, -60 sale, -45 sale)
+
+**Low Stock Items:**
+- B002 (20 < 25 threshold) should trigger alert
+- All other items are above their thresholds
+
+## Starter Code Template (Optional)
+To help you get started quickly, you may use this basic template:
+
+```python
+import csv
+import json
+
+# Initialize inventory dictionary
+inventory = {}
+
+# Read initial inventory
+with open('initial_inventory.csv', 'r') as file:
+    reader = csv.DictReader(file)
+    for row in reader:
+        inventory[row['item_code']] = {
+            'item_name': row['item_name'],
+            'current_quantity': int(row['current_quantity']),
+            'reorder_threshold': int(row['reorder_threshold'])
+        }
+
+# Initialize tracking variables
+rejected_transactions = []
+processed_count = 0
+shipment_count = 0
+sale_count = 0
+
+# Process transactions
+with open('transactions.csv', 'r') as file:
+    reader = csv.DictReader(file)
+    for row in reader:
+        item_code = row['item_code']
+        transaction_type = row['transaction_type']
+        quantity = int(row['quantity'])
+        
+        # Check if item exists
+        if item_code not in inventory:
+            rejected_transactions.append({
+                'transaction_id': row['transaction_id'],
+                'reason': 'Invalid item code'
+            })
+            continue
+        
+        # Process transaction based on type
+        if transaction_type == 'SHIP':
+            inventory[item_code]['current_quantity'] += quantity
+            shipment_count += 1
+            processed_count += 1
+        elif transaction_type == 'SALE':
+            # Check if sufficient inventory
+            if inventory[item_code]['current_quantity'] >= quantity:
+                inventory[item_code]['current_quantity'] -= quantity
+                sale_count += 1
+                processed_count += 1
+            else:
+                rejected_transactions.append({
+                    'transaction_id': row['transaction_id'],
+                    'reason': 'Insufficient inventory'
+                })
+
+# Generate final inventory list
+final_inventory = []
+for item_code in sorted(inventory.keys()):
+    item = inventory[item_code]
+    final_inventory.append({
+        'item_code': item_code,
+        'item_name': item['item_name'],
+        'current_quantity': item['current_quantity'],
+        'reorder_threshold': item['reorder_threshold']
+    })
+
+# Generate low stock alerts
+low_stock_alerts = []
+for item_code in sorted(inventory.keys()):
+    item = inventory[item_code]
+    if item['current_quantity'] < item['reorder_threshold']:
+        low_stock_alerts.append({
+            'item_code': item_code,
+            'current_quantity': item['current_quantity'],
+            'reorder_threshold': item['reorder_threshold']
+        })
+
+# Create daily summary
+daily_summary = {
+    'total_transactions_processed': processed_count,
+    'total_shipments': shipment_count,
+    'total_sales': sale_count,
+    'total_rejected': len(rejected_transactions)
+}
+
+# Create JSON output
+result = {
+    "source_code": "# Your complete code here",
+    "final_inventory": final_inventory,
+    "low_stock_alerts": low_stock_alerts,
+    "rejected_transactions": rejected_transactions,
+    "daily_summary": daily_summary,
+    "testing_notes": "Your testing notes"
+}
+
+print(json.dumps(result, indent=2))
+```
+
+Good luck! Remember to test your solution before submitting.
+# Basic Computer Programming Practical Exam
+
+## Exam Instructions
+You are a junior programmer at TechCorp Industries. Your manager has assigned you to build a basic inventory management system. You have 90 minutes to complete this practical programming exam.
+
+## Your Assignment
+
+### Phase 1: Core Inventory Management (90 minutes)
+Build a program that processes inventory transactions and maintains accurate stock levels.
+
+**Requirements:**
+1. **Read and process transaction data** from the provided CSV file
+2. **Update inventory levels** based on transactions (shipments add stock, sales subtract stock)
+3. **Generate low stock alerts** for items with quantity below their reorder threshold
+4. **Produce a daily summary report** with total transactions processed
+5. **Handle basic validation** - reject transactions that would create negative inventory
+
+**Business Rules:**
+- Shipment transactions (type "SHIP") add to inventory
+- Sale transactions (type "SALE") subtract from inventory  
+- Sales cannot reduce inventory below 0 (reject these transactions)
+- Generate alerts when current stock < reorder_threshold
+- All item codes must exist in the initial inventory file
+
+## Materials Provided
+
+**initial_inventory.csv**
+```
+item_code,item_name,current_quantity,reorder_threshold
+A001,Widget Alpha,100,25
+A002,Widget Beta,75,30
+B001,Gadget Pro,200,50
+B002,Gadget Lite,40,25
+C001,Tool Master,150,40
+```
+
+**transactions.csv**
+```
+transaction_id,item_code,transaction_type,quantity,timestamp
+T001,A001,SHIP,50,2024-01-15 09:00:00
+T002,B001,SALE,25,2024-01-15 09:15:00
+T003,A002,SHIP,30,2024-01-15 09:30:00
+T004,C001,SALE,60,2024-01-15 09:45:00
+T005,A001,SALE,80,2024-01-15 10:00:00
+T006,B002,SALE,30,2024-01-15 10:15:00
+T007,B002,SALE,15,2024-01-15 10:30:00
+T008,B001,SHIP,75,2024-01-15 10:45:00
+T009,C001,SALE,45,2024-01-15 11:00:00
+T010,B002,SALE,5,2024-01-15 11:15:00
+```
+
+## Submission Requirements
+
+Submit your solution as **test_submission.json** containing:
+
+```json
+{
+  "source_code": "your complete program code as a string",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 20, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [],
+  "daily_summary": {
+    "total_transactions_processed": 10,
+    "total_shipments": 3,
+    "total_sales": 7,
+    "total_rejected": 0
+  },
+  "testing_notes": "Brief description of any issues found during testing"
+}
+```
+
+## Format Requirements
+
+### String Values
+- **item_code**: Use exact codes from CSV files (e.g., "A001", "B002")
+- **item_name**: Use exact names from initial_inventory.csv
+- **transaction_id**: Use exact IDs from transactions.csv (e.g., "T001", "T007")
+
+### Integer Values
+- All quantity and count fields must be whole numbers (no decimals)
+- Negative quantities are not allowed in final inventory
+- All summary counts must equal the sum of their components
+
+### Array Ordering
+- **final_inventory**: Order by item_code alphabetically
+- **low_stock_alerts**: Order by item_code alphabetically  
+- **rejected_transactions**: Order by transaction_id
+
+### Validation Rules
+- All item_codes in transactions must exist in initial_inventory.csv or be rejected
+- Sales cannot reduce inventory below 0 (reject transaction if insufficient stock)
+- Low stock alerts only for items where current_quantity < reorder_threshold
+
+### Source Code Format
+- Include complete, executable program code as a single string
+- Use proper escape characters for quotes and newlines within the JSON string
+- Code should be readable and well-commented
+
+## Important Notes
+- Use the exact item codes and transaction types provided in the data files
+- Your program must handle all transactions in the provided CSV file
+- All numerical values in your JSON output must be exact integers
+- Test your program thoroughly before submitting
+
+## Evaluation Criteria
+Your solution will be evaluated on:
+- **Final Inventory Calculations (40%)**: Correct processing of all transactions and accurate final quantities
+- **Transaction Validation (25%)**: Proper identification and rejection of invalid transactions
+- **Low Stock Alerts (15%)**: Accurate identification of items below reorder threshold
+- **Daily Summary (15%)**: Correct counting of processed, shipped, sold, and rejected transactions
+- **Code Quality (5%)**: Well-structured, readable, and executable code
+
+**Passing Score**: 80% (80 points out of 100)
+
+## Helpful Tips
+- Use simple data structures like dictionaries/maps to store inventory data
+- Process transactions one at a time in chronological order
+- Test with a few transactions before processing the entire file
+- Focus on getting the core inventory calculations correct - this is the most important part
+- Start by reading the CSV files and understanding the data structure
+- Build incrementally - get basic transaction processing working first, then add validation
+
+## Sample Program Structure
+Here's a suggested approach to get you started:
+
+```python
+# 1. Read initial inventory from CSV
+# 2. Read transactions from CSV
+# 3. For each transaction:
+#    - Check if item exists
+#    - Check if transaction is valid (no negative inventory)
+#    - Update inventory or reject transaction
+# 4. Generate reports (final inventory, alerts, summary)
+# 5. Format output as JSON
+```
+
+## Expected Results Reference
+To help you verify your solution, here are the key expected outcomes:
+
+**Final Inventory After All Transactions:**
+- A001: 70 units (started 100, +50 ship, -80 sale)
+- A002: 105 units (started 75, +30 ship)
+- B001: 250 units (started 200, -25 sale, +75 ship)
+- B002: 20 units (started 40, -30 sale, -15 sale, -5 sale)
+- C001: 45 units (started 150, -60 sale, -45 sale)
+
+**Low Stock Items:**
+- B002 (20 < 25 threshold) should trigger alert
+- All other items are above their thresholds
+
+## Starter Code Template (Optional)
+To help you get started quickly, you may use this basic template:
+
+```python
+import csv
+import json
+
+# Initialize inventory dictionary
+inventory = {}
+
+# Read initial inventory
+with open('initial_inventory.csv', 'r') as file:
+    reader = csv.DictReader(file)
+    for row in reader:
+        inventory[row['item_code']] = {
+            'item_name': row['item_name'],
+            'current_quantity': int(row['current_quantity']),
+            'reorder_threshold': int(row['reorder_threshold'])
+        }
+
+# Initialize tracking variables
+rejected_transactions = []
+processed_count = 0
+shipment_count = 0
+sale_count = 0
+
+# Process transactions
+with open('transactions.csv', 'r') as file:
+    reader = csv.DictReader(file)
+    for row in reader:
+        item_code = row['item_code']
+        transaction_type = row['transaction_type']
+        quantity = int(row['quantity'])
+        
+        # Check if item exists
+        if item_code not in inventory:
+            rejected_transactions.append({
+                'transaction_id': row['transaction_id'],
+                'reason': 'Invalid item code'
+            })
+            continue
+        
+        # Process transaction based on type
+        if transaction_type == 'SHIP':
+            inventory[item_code]['current_quantity'] += quantity
+            shipment_count += 1
+            processed_count += 1
+        elif transaction_type == 'SALE':
+            # Check if sufficient inventory
+            if inventory[item_code]['current_quantity'] >= quantity:
+                inventory[item_code]['current_quantity'] -= quantity
+                sale_count += 1
+                processed_count += 1
+            else:
+                rejected_transactions.append({
+                    'transaction_id': row['transaction_id'],
+                    'reason': 'Insufficient inventory'
+                })
+
+# Generate final inventory list
+final_inventory = []
+for item_code in sorted(inventory.keys()):
+    item = inventory[item_code]
+    final_inventory.append({
+        'item_code': item_code,
+        'item_name': item['item_name'],
+        'current_quantity': item['current_quantity'],
+        'reorder_threshold': item['reorder_threshold']
+    })
+
+# Generate low stock alerts
+low_stock_alerts = []
+for item_code in sorted(inventory.keys()):
+    item = inventory[item_code]
+    if item['current_quantity'] < item['reorder_threshold']:
+        low_stock_alerts.append({
+            'item_code': item_code,
+            'current_quantity': item['current_quantity'],
+            'reorder_threshold': item['reorder_threshold']
+        })
+
+# Create daily summary
+daily_summary = {
+    'total_transactions_processed': processed_count,
+    'total_shipments': shipment_count,
+    'total_sales': sale_count,
+    'total_rejected': len(rejected_transactions)
+}
+
+# Create JSON output
+result = {
+    "source_code": "# Your complete code here",
+    "final_inventory": final_inventory,
+    "low_stock_alerts": low_stock_alerts,
+    "rejected_transactions": rejected_transactions,
+    "daily_summary": daily_summary,
+    "testing_notes": "Your testing notes"
+}
+
+print(json.dumps(result, indent=2))
+```
+
+Good luck! Remember to test your solution before submitting.

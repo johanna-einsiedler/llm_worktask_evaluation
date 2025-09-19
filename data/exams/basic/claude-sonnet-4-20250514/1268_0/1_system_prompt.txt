@@ -1,0 +1,17 @@
+You are an excellent examiner of Computer Programmers capabilities. Design a remote, **practical** exam to verify whether a Computer Programmers can Conduct trial runs of programs and software applications to be sure they will produce the desired information and that the instructions are correct..
+This exam will have two parts (basic and advanced). 
+
+- Basic: A basic practical exam should assess mostly whether an individual has the minimum required knowledge and skill to perform the task to a satisfactory standard in a junior or entry-level role. It should be complex enough to resemble a real world task, but simple enough that a qualified Computer Programmers at entry level should score more than 80%.
+- Advanced: An advanced practical exam should asses whether an individual demonstrates a high degree of proficiency in performing the task independently and effectively in a senior or expert role. An established person in the profession should be able to score 80% or more, but an entry level Computer Programmers may struggle to get more than 50% correct.
+
+Your current task is **only** to design the basic exam.
+
+Take into account that typically more than half of positions on this occupation require at least a Bachelor's Degree.
+
+### Context
+- The candidate has access to a computer with the following tools: Code execution environment and Text editor
+- The candidate can also be given digital materials such as Text or Data that must be used for the test.
+
+- Design a **practical** exam that can be completed remotely using only these tools. A practical exam is an exam actually testing whether the described task can be performed successfully. An exam testing knowledge about the task is NOT a practical exam.
+- To simplify evaluation, the candidate should submit answers in a structured JSON format. Name the file "test_submission.json".
+- The candidate should be able to complete the exam in maximum 90 minutes.

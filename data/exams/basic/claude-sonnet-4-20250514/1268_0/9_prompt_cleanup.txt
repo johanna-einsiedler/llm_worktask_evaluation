@@ -1,0 +1,10 @@
+You are given exam materials (instructions + content). 
+Your task is to clean them up as follows:
+
+1. Remove exact duplicate entries.
+2. Eliminate unnecessary repetition (e.g., repeated phrases, reworded duplicates, or redundant sections).
+3. Resolve inconsistencies in facts, numbers, or wording. 
+   - If two statements conflict, keep the clearer and more accurate version.
+   - If possible, merge similar statements into one consistent form.
+4. Preserve all essential exam content and meaning.
+5. Return ONLY the cleaned exam text, without explanations or commentary.

@@ -1,0 +1,334 @@
+# Basic Practical Exam: Program Compilation and Documentation - Answer Key
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "corrected_code": "# Inventory Management System\n# Contains intentional compilation errors for exam purposes\nimport os\nimport sys\nfrom datetime import datetime\nimport json\n\nclass InventoryManager:\n    def __init__(self):\n        self.inventory = {}\n        self.transaction_log = []\n    \n    def load_inventory(self, filename):\n        \"\"\"Load inventory data from file\"\"\"\n        try:\n            with open(filename, 'r') as file:\n                for line in file:\n                    parts = line.strip().split(',')\n                    if len(parts) == 4:\n                        item_id = parts[0]\n                        name = parts[1]\n                        quantity = int(parts[2])\n                        price = float(parts[3])\n                        self.inventory[item_id] = {\n                            'name': name,\n                            'quantity': quantity,\n                            'price': price\n                        }\n        except FileNotFoundError:\n            print(f\"Error: File {filename} not found\")\n            return False\n        return True\n\n    def add_item(self, item_id, name, quantity, price):\n        \"\"\"Add new item to inventory\"\"\"\n        if item_id in self.inventory:\n            self.inventory[item_id]['quantity'] += quantity\n        else:\n            self.inventory[item_id] = {\n                'name': name,\n                'quantity': quantity,\n                'price': price\n            }\n        \n        # Log the transaction\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'add',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n\n    def remove_item(self, item_id, quantity):\n        \"\"\"Remove items from inventory\"\"\"\n        if item_id not in self.inventory:\n            print(f\"Error: Item {item_id} not found in inventory\")\n            return False\n        if self.inventory[item_id]['quantity'] < quantity:\n            print(f\"Error: Not enough {self.inventory[item_id]['name']} in stock\")\n            return False\n        self.inventory[item_id]['quantity'] -= quantity\n        \n        # Log the transaction\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'remove',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n        return True\n\n    def get_item_info(self, item_id):\n        \"\"\"Get information about specific item\"\"\"\n        if item_id in self.inventory:\n            return self.inventory[item_id]\n        return None\n\n    def calculate_total_value(self):\n        \"\"\"Calculate total value of all inventory\"\"\"\n        total = 0\n        for item in self.inventory.values():\n            total += item['quantity'] * item['price']\n        return total\n\n    def generate_report(self):\n        \"\"\"Generate inventory report\"\"\"\n        print(\"\\n=== INVENTORY REPORT ===\")\n        print(f\"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\")\n        print(\"-\" * 50)\n        \n        for item_id, item_data in self.inventory.items():\n            print(f\"ID: {item_id}\")\n            print(f\"Name: {item_data['name']}\")\n            print(f\"Quantity: {item_data['quantity']}\")\n            print(f\"Price: ${item_data['price']:.2f}\")\n            print(f\"Total Value: ${item_data['quantity'] * item_data['price']:.2f}\")\n            print(\"-\" * 30)\n        \n        print(f\"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}\")\n\ndef main():\n    # Create inventory manager instance\n    manager = InventoryManager()\n    \n    # Load sample data\n    if manager.load_inventory('sample_data.txt'):\n        print(\"Inventory loaded successfully!\")\n    else:\n        print(\"Failed to load inventory data\")\n        return\n    \n    # Test adding items\n    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)\n    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing\n    \n    # Test removing items\n    manager.remove_item('ITEM002', 3)\n    \n    # Test item lookup\n    item_info = manager.get_item_info('ITEM003')\n    if item_info:\n        print(f\"Found item: {item_info['name']} - Quantity: {item_info['quantity']}\")\n    \n    # Generate final report\n    manager.generate_report()\n\nif __name__ == \"__main__\":\n    main()",
+  "compilation_fixes": [
+    {
+      "line_number": 49,
+      "error_type": "logic",
+      "change_made": "Added 'return False' after error message for item not found",
+      "reason": "Function should return early when item is not found to prevent further execution"
+    },
+    {
+      "line_number": 51,
+      "error_type": "logic",
+      "change_made": "Added 'return False' after insufficient stock error message",
+      "reason": "Function should return early when insufficient stock to prevent invalid quantity reduction"
+    },
+    {
+      "line_number": 53,
+      "error_type": "syntax",
+      "change_made": "Added missing transaction log entry with proper indentation and closing brace",
+      "reason": "Original code had incomplete transaction logging with missing dictionary structure"
+    },
+    {
+      "line_number": 54,
+      "error_type": "logic",
+      "change_made": "Added 'return True' at end of successful remove operation",
+      "reason": "Function should indicate successful completion"
+    },
+    {
+      "line_number": 58,
+      "error_type": "syntax",
+      "change_made": "Added missing 'if item_id in self.inventory:' condition",
+      "reason": "Function was missing the conditional check before returning item data"
+    }
+  ],
+  "program_documentation": {
+    "overview": "This program is an Inventory Management System that allows users to track and manage product inventory. It provides functionality to load inventory data from files, add and remove items, and generate comprehensive reports. The system maintains transaction logs and calculates total inventory values for business analysis. It is designed for small to medium businesses that need basic inventory tracking capabilities.",
+    "functions": [
+      {
+        "name": "__init__",
+        "purpose": "Initialize a new InventoryManager instance with empty inventory and transaction log",
+        "parameters": [
+          {
+            "name": "self",
+            "type": "InventoryManager",
+            "description": "The instance being initialized"
+          }
+        ],
+        "return_value": {
+          "type": "None",
+          "description": "Constructor does not return a value"
+        },
+        "usage_example": "manager = InventoryManager()"
+      },
+      {
+        "name": "load_inventory",
+        "purpose": "Load inventory data from a CSV file into the system",
+        "parameters": [
+          {
+            "name": "self",
+            "type": "InventoryManager",
+            "description": "The InventoryManager instance"
+          },
+          {
+            "name": "filename",
+            "type": "str",
+            "description": "Path to the CSV file containing inventory data"
+          }
+        ],
+        "return_value": {
+          "type": "bool",
+          "description": "True if file loaded successfully, False if file not found"
+        },
+        "usage_example": "success = manager.load_inventory('inventory.txt')"
+      },
+      {
+        "name": "add_item",
+        "purpose": "Add a new item to inventory or increase quantity of existing item",
+        "parameters": [
+          {
+            "name": "self",
+            "type": "InventoryManager",
+            "description": "The InventoryManager instance"
+          },
+          {
+            "name": "item_id",
+            "type": "str",
+            "description": "Unique identifier for the item"
+          },
+          {
+            "name": "name",
+            "type": "str",
+            "description": "Display name of the item"
+          },
+          {
+            "name": "quantity",
+            "type": "int",
+            "description": "Number of items to add"
+          },
+          {
+            "name": "price",
+            "type": "float",
+            "description": "Price per unit of the item"
+          }
+        ],
+        "return_value": {
+          "type": "None",
+          "description": "Does not return a value"
+        },
+        "usage_example": "manager.add_item('ITEM001', 'Laptop', 5, 999.99)"
+      },
+      {
+        "name": "remove_item",
+        "purpose": "Remove specified quantity of an item from inventory",
+        "parameters": [
+          {
+            "name": "self",
+            "type": "InventoryManager",
+            "description": "The InventoryManager instance"
+          },
+          {
+            "name": "item_id",
+            "type": "str",
+            "description": "Unique identifier for the item to remove"
+          },
+          {
+            "name": "quantity",
+            "type": "int",
+            "description": "Number of items to remove"
+          }
+        ],
+        "return_value": {
+          "type": "bool",
+          "description": "True if removal successful, False if item not found or insufficient stock"
+        },
+        "usage_example": "success = manager.remove_item('ITEM001', 2)"
+      },
+      {
+        "name": "get_item_info",
+        "purpose": "Retrieve detailed information about a specific item",
+        "parameters": [
+          {
+            "name": "self",
+            "type": "InventoryManager",
+            "description": "The InventoryManager instance"
+          },
+          {
+            "name": "item_id",
+            "type": "str",
+            "description": "Unique identifier for the item to look up"
+          }
+        ],
+        "return_value": {
+          "type": "dict",
+          "description": "Dictionary containing item details (name, quantity, price) or None if not found"
+        },
+        "usage_example": "item_data = manager.get_item_info('ITEM001')"
+      },
+      {
+        "name": "calculate_total_value",
+        "purpose": "Calculate the total monetary value of all items in inventory",
+        "parameters": [
+          {
+            "name": "self",
+            "type": "InventoryManager",
+            "description": "The InventoryManager instance"
+          }
+        ],
+        "return_value": {
+          "type": "float",
+          "description": "Total value of all inventory items"
+        },
+        "usage_example": "total_value = manager.calculate_total_value()"
+      },
+      {
+        "name": "generate_report",
+        "purpose": "Print a comprehensive inventory report to the console",
+        "parameters": [
+          {
+            "name": "self",
+            "type": "InventoryManager",
+            "description": "The InventoryManager instance"
+          }
+        ],
+        "return_value": {
+          "type": "None",
+          "description": "Does not return a value, prints report to console"
+        },
+        "usage_example": "manager.generate_report()"
+      }
+    ],
+    "installation_instructions": [
+      "Ensure Python 3.6 or higher is installed on your system",
+      "Download the program file (buggy_program.py) and sample data file (sample_data.txt)",
+      "Place both files in the same directory",
+      "Open a terminal or command prompt and navigate to the directory containing the files"
+    ],
+    "user_guide": "To run the program, execute 'python buggy_program.py' from the command line. The program will automatically load the sample inventory data, perform test operations (adding and removing items), and generate a comprehensive inventory report. The report shows each item's details including ID, name, quantity, price, and total value, followed by the overall inventory value. All transactions are logged internally for audit purposes."
+  },
+  "commented_code": "\"\"\"\nProgram Title: Inventory Management System\nAuthor: Exam Candidate\nDate: 2024-01-15\nDescription: A comprehensive inventory management system for tracking products, quantities, and values\n\"\"\"\n\n# Import required modules for file operations, system functions, date handling, and JSON processing\nimport os\nimport sys\nfrom datetime import datetime\nimport json\n\nclass InventoryManager:\n    def __init__(self):\n        \"\"\"Initialize a new InventoryManager instance with empty inventory and transaction log.\"\"\"\n        # Dictionary to store all inventory items with their details\n        self.inventory = {}\n        # List to maintain a log of all transactions for audit purposes\n        self.transaction_log = []\n    \n    def load_inventory(self, filename):\n        \"\"\"Load inventory data from a CSV file into the system.\n        \n        Args:\n            filename (str): Path to the CSV file containing inventory data\n        \n        Returns:\n            bool: True if file loaded successfully, False if file not found\n        \"\"\"\n        try:\n            with open(filename, 'r') as file:\n                # Process each line in the CSV file\n                for line in file:\n                    parts = line.strip().split(',')\n                    # Ensure each line has exactly 4 components (ID, name, quantity, price)\n                    if len(parts) == 4:\n                        item_id = parts[0]\n                        name = parts[1]\n                        quantity = int(parts[2])  # Convert string to integer\n                        price = float(parts[3])   # Convert string to float for monetary values\n                        # Store item data in inventory dictionary\n                        self.inventory[item_id] = {\n                            'name': name,\n                            'quantity': quantity,\n                            'price': price\n                        }\n        except FileNotFoundError:\n            print(f\"Error: File {filename} not found\")\n            return False\n        return True\n\n    def add_item(self, item_id, name, quantity, price):\n        \"\"\"Add a new item to inventory or increase quantity of existing item.\n        \n        Args:\n            item_id (str): Unique identifier for the item\n            name (str): Display name of the item\n            quantity (int): Number of items to add\n            price (float): Price per unit of the item\n        \"\"\"\n        # Check if item already exists to update quantity or create new entry\n        if item_id in self.inventory:\n            self.inventory[item_id]['quantity'] += quantity\n        else:\n            # Create new inventory entry for new items\n            self.inventory[item_id] = {\n                'name': name,\n                'quantity': quantity,\n                'price': price\n            }\n        \n        # Record transaction in log with timestamp for audit trail\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'add',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n\n    def remove_item(self, item_id, quantity):\n        \"\"\"Remove specified quantity of an item from inventory.\n        \n        Args:\n            item_id (str): Unique identifier for the item to remove\n            quantity (int): Number of items to remove\n        \n        Returns:\n            bool: True if removal successful, False if item not found or insufficient stock\n        \"\"\"\n        # Validate that item exists in inventory\n        if item_id not in self.inventory:\n            print(f\"Error: Item {item_id} not found in inventory\")\n            return False\n        # Ensure sufficient stock before allowing removal\n        if self.inventory[item_id]['quantity'] < quantity:\n            print(f\"Error: Not enough {self.inventory[item_id]['name']} in stock\")\n            return False\n        \n        # Reduce inventory quantity by specified amount\n        self.inventory[item_id]['quantity'] -= quantity\n        \n        # Log the removal transaction with timestamp\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'remove',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n        return True\n\n    def get_item_info(self, item_id):\n        \"\"\"Retrieve detailed information about a specific item.\n        \n        Args:\n            item_id (str): Unique identifier for the item to look up\n        \n        Returns:\n            dict: Dictionary containing item details (name, quantity, price) or None if not found\n        \"\"\"\n        # Return item data if found, otherwise return None\n        if item_id in self.inventory:\n            return self.inventory[item_id]\n        return None\n\n    def calculate_total_value(self):\n        \"\"\"Calculate the total monetary value of all items in inventory.\n        \n        Returns:\n            float: Total value of all inventory items\n        \"\"\"\n        total = 0\n        # Sum up value of each item (quantity × price)\n        for item in self.inventory.values():\n            total += item['quantity'] * item['price']\n        return total\n\n    def generate_report(self):\n        \"\"\"Print a comprehensive inventory report to the console.\"\"\"\n        print(\"\\n=== INVENTORY REPORT ===\")\n        print(f\"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\")\n        print(\"-\" * 50)\n        \n        # Display detailed information for each inventory item\n        for item_id, item_data in self.inventory.items():\n            print(f\"ID: {item_id}\")\n            print(f\"Name: {item_data['name']}\")\n            print(f\"Quantity: {item_data['quantity']}\")\n            print(f\"Price: ${item_data['price']:.2f}\")\n            # Calculate and display total value for this item\n            print(f\"Total Value: ${item_data['quantity'] * item_data['price']:.2f}\")\n            print(\"-\" * 30)\n        \n        # Display overall inventory value summary\n        print(f\"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}\")\n\ndef main():\n    \"\"\"Main function to demonstrate inventory management system functionality.\"\"\"\n    # Create inventory manager instance\n    manager = InventoryManager()\n    \n    # Load sample data from file\n    if manager.load_inventory('sample_data.txt'):\n        print(\"Inventory loaded successfully!\")\n    else:\n        print(\"Failed to load inventory data\")\n        return\n    \n    # Test adding items (both new and existing)\n    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)\n    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing\n    \n    # Test removing items from inventory\n    manager.remove_item('ITEM002', 3)\n    \n    # Test item lookup functionality\n    item_info = manager.get_item_info('ITEM003')\n    if item_info:\n        print(f\"Found item: {item_info['name']} - Quantity: {item_info['quantity']}\")\n    \n    # Generate final comprehensive report\n    manager.generate_report()\n\n# Execute main function only when script is run directly\nif __name__ == \"__main__\":\n    main()",
+  "revision_log": {
+    "errors_fixed": [
+      {
+        "line_number": 49,
+        "error_type": "logic",
+        "change_made": "Added 'return False' after error message for item not found",
+        "reason": "Function should return early when item is not found to prevent further execution and indicate failure"
+      },
+      {
+        "line_number": 51,
+        "error_type": "logic",
+        "change_made": "Added 'return False' after insufficient stock error message",
+        "reason": "Function should return early when insufficient stock to prevent invalid quantity reduction and indicate failure"
+      },
+      {
+        "line_number": 53,
+        "error_type": "syntax",
+        "change_made": "Added complete transaction log entry with proper dictionary structure and indentation",
+        "reason": "Original code had incomplete transaction logging with missing dictionary closing and improper syntax"
+      },
+      {
+        "line_number": 54,
+        "error_type": "logic",
+        "change_made": "Added 'return True' at end of successful remove operation",
+        "reason": "Function should indicate successful completion to calling code"
+      },
+      {
+        "line_number": 58,
+        "error_type": "syntax",
+        "change_made": "Added missing 'if item_id in self.inventory:' condition before return statement",
+        "reason": "Function was missing the conditional check before returning item data, causing potential KeyError"
+      }
+    ],
+    "improvements_made": [
+      "Added comprehensive docstrings to all functions following Python standards",
+      "Added detailed inline comments explaining complex logic and business rules",
+      "Added proper error handling with return values for better function reliability",
+      "Added header comment block with program metadata",
+      "Improved code readability with explanatory comments for non-obvious operations"
+    ],
+    "testing_summary": "Program was tested by running with the provided sample_data.txt file. Verified successful loading of 4 inventory items, tested adding new items and updating existing quantities, tested removal of items with proper error handling for insufficient stock, tested item lookup functionality, and confirmed report generation with correct calculations. All functions executed without errors and produced expected outputs."
+  },
+  "program_runs_successfully": true
+}
+```
+
+## Explanation of Correct Answers
+
+### Compilation Errors Identified and Fixed:
+
+1. **Line 49 - Logic Error**: Missing return statement after "item not found" error
+   - **Issue**: Function continued executing after printing error message
+   - **Fix**: Added `return False` to exit function early and indicate failure
+
+2. **Line 51 - Logic Error**: Missing return statement after "insufficient stock" error
+   - **Issue**: Function would continue and reduce quantity even with insufficient stock
+   - **Fix**: Added `return False` to prevent invalid inventory reduction
+
+3. **Line 53 - Syntax Error**: Incomplete transaction log entry
+   - **Issue**: Dictionary was missing closing brace and had improper indentation
+   - **Fix**: Completed the transaction log dictionary with proper structure
+
+4. **Line 54 - Logic Error**: Missing success return value
+   - **Issue**: Function didn't indicate successful completion
+   - **Fix**: Added `return True` for successful operations
+
+5. **Line 58 - Syntax Error**: Missing conditional check in get_item_info
+   - **Issue**: Function was missing the `if` statement before returning item data
+   - **Fix**: Added proper conditional check to prevent KeyError
+
+### Documentation Quality Standards:
+
+- **Overview**: Must be 3-4 complete sentences describing program purpose and capabilities
+- **Function Documentation**: Each function requires purpose, parameters with types, return values, and usage examples
+- **Installation Instructions**: Step-by-step actionable instructions
+- **User Guide**: Clear instructions for running and interpreting program output
+
+### Comment Quality Requirements:
+
+- **Header Block**: Program metadata with title, author, date, description
+- **Function Docstrings**: Standard Python docstring format with Args, Returns, Raises sections
+- **Inline Comments**: Explain WHY code does something, not just WHAT it does
+- **Minimum 5 inline comments**: Must explain complex logic, business rules, or non-obvious operations
+
+## Passing Criteria
+
+### Scoring Breakdown (100 points total):
+
+**Task 1: Code Compilation (25 points)**
+- All 5 compilation errors fixed: 20 points
+- Program runs successfully: 5 points
+- **Minimum to pass**: 20/25 points (4 out of 5 errors fixed)
+
+**Task 2: Program Documentation (30 points)**
+- Overview (3-4 sentences): 5 points
+- Function documentation completeness: 15 points
+- Installation instructions: 5 points
+- User guide: 5 points
+- **Minimum to pass**: 24/30 points (80% completion)
+
+**Task 3: Code Commenting (25 points)**
+- Header comment block: 5 points
+- Function docstrings: 10 points
+- Inline comments (minimum 5): 10 points
+- **Minimum to pass**: 20/25 points (proper header, docstrings, and at least 4 meaningful inline comments)
+
+**Task 4: Revision Documentation (20 points)**
+- Error fixes documented: 10 points
+- Improvements listed: 5 points
+- Testing summary: 5 points
+- **Minimum to pass**: 16/20 points (all errors documented with basic testing summary)
+
+### Overall Passing Threshold:
+- **Minimum total score**: 80/100 points (80%)
+- **Critical requirements**: Program must compile and run successfully
+- **JSON format**: Must be valid and follow exact structure provided
+
+### Differentiation Indicators:
+
+**Entry-level competent candidates (80%+) will:**
+- Fix all compilation errors systematically
+- Write clear, audience-appropriate documentation
+- Add meaningful comments that explain business logic
+- Document changes with clear rationale
+
+**Struggling candidates (<80%) will:**
+- Miss subtle logic errors (return statements)
+- Write documentation that merely restates code
+- Add superficial comments that don't aid understanding
+- Provide incomplete or unclear revision documentation

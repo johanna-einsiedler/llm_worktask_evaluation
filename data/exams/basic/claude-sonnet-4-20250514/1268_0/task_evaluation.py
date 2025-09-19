@@ -1,0 +1,391 @@
+#!/usr/bin/env python3
+"""
+Task Evaluation Script for Basic Practical Exam: Program Trial Runs and Validation
+Automatically scores candidate submissions against the answer key.
+"""
+
+import json
+import sys
+import os
+from typing import Dict, List, Any, Tuple
+
+class TaskEvaluator:
+    def __init__(self):
+        self.max_points = 100
+        self.scoring_breakdown = {
+            'technical_accuracy': 40,
+            'testing_methodology': 30,
+            'documentation_quality': 20,
+            'critical_thinking': 10
+        }
+        
+    def load_json_file(self, filename: str) -> Dict[str, Any]:
+        """Load and parse JSON file."""
+        try:
+            with open(filename, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            print(f"Error: File '{filename}' not found.")
+            sys.exit(1)
+        except json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON in '{filename}': {e}")
+            sys.exit(1)
+    
+    def validate_submission_structure(self, submission: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        """Validate that submission has required structure."""
+        required_fields = [
+            'program_1_calculator',
+            'program_2_data_processor', 
+            'program_3_inventory_system',
+            'overall_assessment'
+        ]
+        
+        errors = []
+        
+        for field in required_fields:
+            if field not in submission:
+                errors.append(f"Missing required field: {field}")
+        
+        # Check program-specific required fields
+        program_fields = {
+            'program_1_calculator': ['execution_successful', 'issues_found', 'total_test_cases_run', 'failed_test_cases', 'deployment_recommendation'],
+            'program_2_data_processor': ['execution_successful', 'issues_found', 'total_records_processed', 'processing_errors', 'deployment_recommendation'],
+            'program_3_inventory_system': ['execution_successful', 'issues_found', 'functions_tested', 'functions_with_errors', 'deployment_recommendation'],
+            'overall_assessment': ['total_critical_issues', 'total_high_issues', 'total_medium_issues', 'total_low_issues', 'overall_recommendation']
+        }
+        
+        for program, fields in program_fields.items():
+            if program in submission:
+                for field in fields:
+                    if field not in submission[program]:
+                        errors.append(f"Missing field '{field}' in {program}")
+        
+        return len(errors) == 0, errors
+    
+    def evaluate_technical_accuracy(self, submission: Dict[str, Any], answer_key: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        """Evaluate technical accuracy (40 points total)."""
+        points = 0
+        details = {}
+        
+        # Program 1 - Should identify no issues (15 points)
+        prog1_issues = len(submission.get('program_1_calculator', {}).get('issues_found', []))
+        if prog1_issues == 0:
+            points += 15
+            details['program_1_accuracy'] = {'points': 15, 'max': 15, 'status': 'Correct - no issues identified'}
+        else:
+            details['program_1_accuracy'] = {'points': 0, 'max': 15, 'status': f'Incorrect - reported {prog1_issues} false issues'}
+        
+        # Program 2 - Should identify no issues (15 points)
+        prog2_issues = len(submission.get('program_2_data_processor', {}).get('issues_found', []))
+        if prog2_issues == 0:
+            points += 15
+            details['program_2_accuracy'] = {'points': 15, 'max': 15, 'status': 'Correct - no issues identified'}
+        else:
+            details['program_2_accuracy'] = {'points': 0, 'max': 15, 'status': f'Incorrect - reported {prog2_issues} false issues'}
+        
+        # Program 3 - Should identify calculation bug(s) (10 points)
+        prog3_issues = submission.get('program_3_inventory_system', {}).get('issues_found', [])
+        calculation_bug_found = False
+        
+        for issue in prog3_issues:
+            issue_desc = issue.get('issue_description', '').lower()
+            if any(keyword in issue_desc for keyword in ['p002', 'calculation', 'total', 'value', 'exclude', 'skip']):
+                if issue.get('severity') in ['HIGH', 'CRITICAL']:
+                    calculation_bug_found = True
+                    break
+        
+        if calculation_bug_found:
+            points += 10
+            details['program_3_accuracy'] = {'points': 10, 'max': 10, 'status': 'Correct - identified calculation bug'}
+        else:
+            details['program_3_accuracy'] = {'points': 0, 'max': 10, 'status': 'Missed critical calculation bug'}
+        
+        return points, details
+    
+    def evaluate_testing_methodology(self, submission: Dict[str, Any], answer_key: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        """Evaluate testing methodology (30 points total)."""
+        points = 0
+        details = {}
+        
+        # Test case counting accuracy (10 points)
+        expected_counts = {
+            'program_1_calculator': {'total_test_cases_run': 15},
+            'program_2_data_processor': {'total_records_processed': 15},
+            'program_3_inventory_system': {'functions_tested': 6}
+        }
+        
+        count_accuracy = 0
+        for program, expected in expected_counts.items():
+            if program in submission:
+                for field, expected_value in expected.items():
+                    actual_value = submission[program].get(field, 0)
+                    if actual_value == expected_value:
+                        count_accuracy += 1
+        
+        # Award points based on accuracy (3 counts total, each worth ~3.33 points)
+        count_points = min(10, int((count_accuracy / 3) * 10))
+        points += count_points
+        details['count_accuracy'] = {'points': count_points, 'max': 10, 'status': f'{count_accuracy}/3 counts correct'}
+        
+        # Systematic execution (10 points) - based on proper structure and completeness
+        systematic_points = 0
+        if submission.get('program_1_calculator', {}).get('execution_successful', False):
+            systematic_points += 3
+        if submission.get('program_2_data_processor', {}).get('execution_successful', False):
+            systematic_points += 3
+        if submission.get('program_3_inventory_system', {}).get('execution_successful', False):
+            systematic_points += 4
+        
+        points += systematic_points
+        details['systematic_execution'] = {'points': systematic_points, 'max': 10, 'status': 'Based on execution success flags'}
+        
+        # Edge case consideration (10 points) - based on thoroughness of testing
+        edge_case_points = 0
+        
+        # Check if they tested all provided test cases for calculator
+        calc_total = submission.get('program_1_calculator', {}).get('total_test_cases_run', 0)
+        if calc_total >= 15:
+            edge_case_points += 5
+        
+        # Check if they processed all data records
+        data_total = submission.get('program_2_data_processor', {}).get('total_records_processed', 0)
+        if data_total >= 15:
+            edge_case_points += 5
+        
+        points += edge_case_points
+        details['edge_case_testing'] = {'points': edge_case_points, 'max': 10, 'status': 'Based on completeness of testing'}
+        
+        return points, details
+    
+    def evaluate_documentation_quality(self, submission: Dict[str, Any], answer_key: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        """Evaluate documentation quality (20 points total)."""
+        points = 0
+        details = {}
+        
+        # Clear issue descriptions (8 points)
+        description_quality = 0
+        all_issues = []
+        
+        for program in ['program_1_calculator', 'program_2_data_processor', 'program_3_inventory_system']:
+            issues = submission.get(program, {}).get('issues_found', [])
+            all_issues.extend(issues)
+        
+        if all_issues:
+            for issue in all_issues:
+                desc = issue.get('issue_description', '')
+                if len(desc) > 20 and any(field in issue for field in ['test_case', 'expected_result', 'actual_result']):
+                    description_quality += 1
+            
+            # Award points based on quality (max 8 points)
+            desc_points = min(8, description_quality * 2)
+            points += desc_points
+            details['description_quality'] = {'points': desc_points, 'max': 8, 'status': f'{description_quality} well-documented issues'}
+        else:
+            # If no issues found in programs 1&2 (correct), award partial points
+            if (len(submission.get('program_1_calculator', {}).get('issues_found', [])) == 0 and
+                len(submission.get('program_2_data_processor', {}).get('issues_found', [])) == 0):
+                points += 6
+                details['description_quality'] = {'points': 6, 'max': 8, 'status': 'Correctly identified no issues in programs 1&2'}
+            else:
+                details['description_quality'] = {'points': 0, 'max': 8, 'status': 'No issues documented'}
+        
+        # Correct severity classifications (6 points)
+        severity_accuracy = 0
+        valid_severities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
+        
+        for issue in all_issues:
+            severity = issue.get('severity', '')
+            if severity in valid_severities:
+                severity_accuracy += 1
+        
+        severity_points = min(6, severity_accuracy)
+        points += severity_points
+        details['severity_classification'] = {'points': severity_points, 'max': 6, 'status': f'{severity_accuracy} issues with valid severity'}
+        
+        # Appropriate deployment recommendations (6 points)
+        valid_recommendations = ['READY', 'NEEDS_FIXES', 'REQUIRES_TESTING']
+        recommendation_accuracy = 0
+        
+        expected_recommendations = {
+            'program_1_calculator': 'READY',
+            'program_2_data_processor': 'READY',
+            'program_3_inventory_system': 'NEEDS_FIXES'
+        }
+        
+        for program, expected in expected_recommendations.items():
+            actual = submission.get(program, {}).get('deployment_recommendation', '')
+            if actual == expected:
+                recommendation_accuracy += 1
+            elif actual in valid_recommendations:
+                recommendation_accuracy += 0.5  # Partial credit for valid but incorrect
+        
+        rec_points = min(6, int(recommendation_accuracy * 2))
+        points += rec_points
+        details['deployment_recommendations'] = {'points': rec_points, 'max': 6, 'status': f'{recommendation_accuracy}/3 recommendations correct'}
+        
+        return points, details
+    
+    def evaluate_critical_thinking(self, submission: Dict[str, Any], answer_key: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        """Evaluate critical thinking (10 points total)."""
+        points = 0
+        details = {}
+        
+        # Logical prioritization (5 points)
+        overall_assessment = submission.get('overall_assessment', {})
+        high_issues = overall_assessment.get('total_high_issues', 0)
+        critical_issues = overall_assessment.get('total_critical_issues', 0)
+        
+        # Should identify 1-2 high issues from program 3, no critical issues from programs 1&2
+        if high_issues >= 1 and critical_issues == 0:
+            points += 5
+            details['prioritization'] = {'points': 5, 'max': 5, 'status': 'Appropriate issue prioritization'}
+        elif high_issues > 0 or critical_issues > 0:
+            points += 3
+            details['prioritization'] = {'points': 3, 'max': 5, 'status': 'Partial credit for issue identification'}
+        else:
+            details['prioritization'] = {'points': 0, 'max': 5, 'status': 'No significant issues identified'}
+        
+        # Sound overall assessment (5 points)
+        overall_rec = overall_assessment.get('overall_recommendation', '')
+        if overall_rec == 'NEEDS_FIXES':
+            points += 5
+            details['overall_assessment'] = {'points': 5, 'max': 5, 'status': 'Correct overall recommendation'}
+        elif overall_rec in ['READY', 'REQUIRES_TESTING']:
+            points += 2
+            details['overall_assessment'] = {'points': 2, 'max': 5, 'status': 'Valid but suboptimal recommendation'}
+        else:
+            details['overall_assessment'] = {'points': 0, 'max': 5, 'status': 'Invalid or missing recommendation'}
+        
+        return points, details
+    
+    def calculate_grade_boundary(self, total_points: int) -> str:
+        """Determine grade based on points."""
+        percentage = (total_points / self.max_points) * 100
+        
+        if percentage >= 90:
+            return "Excellent"
+        elif percentage >= 80:
+            return "Proficient"
+        elif percentage >= 70:
+            return "Developing"
+        else:
+            return "Insufficient"
+    
+    def evaluate_submission(self, submission_file: str, answer_key_file: str) -> Dict[str, Any]:
+        """Main evaluation function."""
+        # Load files
+        submission = self.load_json_file(submission_file)
+        answer_key = self.load_json_file(answer_key_file)
+        
+        # Validate structure
+        is_valid, errors = self.validate_submission_structure(submission)
+        if not is_valid:
+            return {
+                'overall_score': 0,
+                'grade': 'Insufficient',
+                'status': 'Invalid submission structure',
+                'errors': errors,
+                'detailed_scores': {}
+            }
+        
+        # Evaluate each category
+        tech_points, tech_details = self.evaluate_technical_accuracy(submission, answer_key)
+        method_points, method_details = self.evaluate_testing_methodology(submission, answer_key)
+        doc_points, doc_details = self.evaluate_documentation_quality(submission, answer_key)
+        think_points, think_details = self.evaluate_critical_thinking(submission, answer_key)
+        
+        total_points = tech_points + method_points + doc_points + think_points
+        percentage = (total_points / self.max_points) * 100
+        grade = self.calculate_grade_boundary(total_points)
+        
+        # Compile results
+        results = {
+            'overall_score': round(percentage, 1),
+            'total_points': total_points,
+            'max_points': self.max_points,
+            'grade': grade,
+            'status': 'Complete evaluation',
+            'category_scores': {
+                'technical_accuracy': {
+                    'points': tech_points,
+                    'max_points': self.scoring_breakdown['technical_accuracy'],
+                    'percentage': round((tech_points / self.scoring_breakdown['technical_accuracy']) * 100, 1),
+                    'details': tech_details
+                },
+                'testing_methodology': {
+                    'points': method_points,
+                    'max_points': self.scoring_breakdown['testing_methodology'],
+                    'percentage': round((method_points / self.scoring_breakdown['testing_methodology']) * 100, 1),
+                    'details': method_details
+                },
+                'documentation_quality': {
+                    'points': doc_points,
+                    'max_points': self.scoring_breakdown['documentation_quality'],
+                    'percentage': round((doc_points / self.scoring_breakdown['documentation_quality']) * 100, 1),
+                    'details': doc_details
+                },
+                'critical_thinking': {
+                    'points': think_points,
+                    'max_points': self.scoring_breakdown['critical_thinking'],
+                    'percentage': round((think_points / self.scoring_breakdown['critical_thinking']) * 100, 1),
+                    'details': think_details
+                }
+            },
+            'pass_fail_analysis': {
+                'minimum_passing_score': 80,
+                'passed': percentage >= 80,
+                'key_requirements_met': {
+                    'programs_1_2_no_issues': (len(submission.get('program_1_calculator', {}).get('issues_found', [])) == 0 and
+                                             len(submission.get('program_2_data_processor', {}).get('issues_found', [])) == 0),
+                    'program_3_calculation_error_found': any('calculation' in issue.get('issue_description', '').lower() or 
+                                                           'p002' in issue.get('issue_description', '').lower()
+                                                           for issue in submission.get('program_3_inventory_system', {}).get('issues_found', [])),
+                    'valid_severity_labels': all(issue.get('severity') in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] 
+                                                for program in ['program_1_calculator', 'program_2_data_processor', 'program_3_inventory_system']
+                                                for issue in submission.get(program, {}).get('issues_found', [])),
+                    'appropriate_deployment_recs': (submission.get('program_1_calculator', {}).get('deployment_recommendation') == 'READY' and
+                                                  submission.get('program_2_data_processor', {}).get('deployment_recommendation') == 'READY')
+                }
+            }
+        }
+        
+        return results
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <submission_file> <answer_key_file>")
+        sys.exit(1)
+    
+    submission_file = sys.argv[1]
+    answer_key_file = sys.argv[2]
+    
+    # Check if files exist
+    if not os.path.exists(submission_file):
+        print(f"Error: Submission file '{submission_file}' not found.")
+        sys.exit(1)
+    
+    if not os.path.exists(answer_key_file):
+        print(f"Error: Answer key file '{answer_key_file}' not found.")
+        sys.exit(1)
+    
+    # Evaluate submission
+    evaluator = TaskEvaluator()
+    results = evaluator.evaluate_submission(submission_file, answer_key_file)
+    
+    # Save results
+    output_file = 'test_results.json'
+    try:
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print(f"Evaluation complete!")
+        print(f"Overall Score: {results['overall_score']}%")
+        print(f"Grade: {results['grade']}")
+        print(f"Results saved to: {output_file}")
+        
+    except Exception as e:
+        print(f"Error saving results: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

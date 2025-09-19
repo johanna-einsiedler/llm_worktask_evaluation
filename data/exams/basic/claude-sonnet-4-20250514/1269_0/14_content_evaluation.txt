@@ -1,0 +1,193 @@
+# Basic Practical Exam: Program Compilation and Documentation - Answer Key
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "corrected_code": "# Inventory Management System\n# Author: Exam Candidate\n# Contains intentional compilation errors for exam purposes\nimport os\nimport sys\nfrom datetime import datetime\nimport json\n\nclass InventoryManager:\n    def __init__(self):\n        self.inventory = {}\n        self.transaction_log = []\n    \n    def load_inventory(self, filename):\n        \"\"\"Load inventory data from file\"\"\"\n        try:\n            with open(filename, 'r') as file:\n                for line in file:\n                    parts = line.strip().split(',')\n                    if len(parts) == 4:\n                        item_id = parts[0]\n                        name = parts[1]\n                        quantity = int(parts[2])\n                        price = float(parts[3])\n                        self.inventory[item_id] = {\n                            'name': name,\n                            'quantity': quantity,\n                            'price': price\n                        }\n        except FileNotFoundError:\n            print(f\"Error: File {filename} not found\")\n            return False\n        return True\n\n    def add_item(self, item_id, name, quantity, price):\n        \"\"\"Add new item to inventory\"\"\"\n        if item_id in self.inventory:\n            self.inventory[item_id]['quantity'] += quantity\n        else:\n            self.inventory[item_id] = {\n                'name': name,\n                'quantity': quantity,\n                'price': price\n            }\n        \n        # Log the transaction\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'add',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n\n    def remove_item(self, item_id, quantity):\n        \"\"\"Remove items from inventory\"\"\"\n        if item_id not in self.inventory:\n            print(f\"Error: Item {item_id} not found in inventory\")\n            return False\n        if self.inventory[item_id]['quantity'] < quantity:\n            print(f\"Error: Not enough {self.inventory[item_id]['name']} in stock\")\n            return False\n        self.inventory[item_id]['quantity'] -= quantity\n        \n        # Log the transaction\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'remove',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n        return True\n\n    def get_item_info(self, item_id):\n        \"\"\"Get information about specific item\"\"\"\n        if item_id in self.inventory:\n            return self.inventory[item_id]\n        return None\n\n    def calculate_total_value(self):\n        \"\"\"Calculate total value of all inventory\"\"\"\n        total = 0\n        for item in self.inventory.values():\n            total += item['quantity'] * item['price']\n        return total\n\n    def generate_report(self):\n        \"\"\"Generate inventory report\"\"\"\n        print(\"\\n=== INVENTORY REPORT ===\")\n        print(f\"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\")\n        print(\"-\" * 50)\n        \n        for item_id, item_data in self.inventory.items():\n            print(f\"ID: {item_id}\")\n            print(f\"Name: {item_data['name']}\")\n            print(f\"Quantity: {item_data['quantity']}\")\n            print(f\"Price: ${item_data['price']:.2f}\")\n            print(f\"Total Value: ${item_data['quantity'] * item_data['price']:.2f}\")\n            print(\"-\" * 30)\n        \n        print(f\"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}\")\n\ndef main():\n    # Create inventory manager instance\n    manager = InventoryManager()\n    \n    # Load sample data\n    if manager.load_inventory('sample_data.txt'):\n        print(\"Inventory loaded successfully!\")\n    else:\n        print(\"Failed to load inventory data\")\n        return\n    \n    # Test adding items\n    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)\n    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing\n    \n    # Test removing items\n    manager.remove_item('ITEM002', 3)\n    \n    # Test item lookup\n    item_info = manager.get_item_info('ITEM003')\n    if item_info:\n        print(f\"Found item: {item_info['name']} - Quantity: {item_info['quantity']}\")\n    \n    # Generate final report\n    manager.generate_report()\n\nif __name__ == \"__main__\":\n    main()",
+  "errors_fixed": [
+    {
+      "line": 49,
+      "description": "Added 'return False' after item not found error message",
+      "error_type": "Missing return statement"
+    },
+    {
+      "line": 51,
+      "description": "Added 'return False' after insufficient stock error message", 
+      "error_type": "Missing return statement"
+    },
+    {
+      "line": 53,
+      "description": "Completed transaction log dictionary with proper closing brace and indentation",
+      "error_type": "Incomplete dictionary syntax"
+    },
+    {
+      "line": 54,
+      "description": "Added 'return True' for successful remove operation",
+      "error_type": "Missing return statement"
+    },
+    {
+      "line": 58,
+      "description": "Added missing 'if item_id in self.inventory:' condition",
+      "error_type": "Missing conditional check"
+    }
+  ],
+  "program_documentation": {
+    "overview": "This program is an Inventory Management System that tracks product inventory for businesses. It allows users to load inventory data from files, add and remove items, and generate detailed reports showing current stock levels and values.",
+    "key_functions": [
+      {
+        "name": "load_inventory",
+        "purpose": "Loads inventory data from CSV file",
+        "parameters": "filename (string)",
+        "returns": "success status (boolean)"
+      },
+      {
+        "name": "add_item", 
+        "purpose": "Adds new items or increases quantity of existing items",
+        "parameters": "item_id (string), name (string), quantity (int), price (float)",
+        "returns": "nothing"
+      },
+      {
+        "name": "remove_item",
+        "purpose": "Removes specified quantity of items from inventory", 
+        "parameters": "item_id (string), quantity (int)",
+        "returns": "success status (boolean)"
+      },
+      {
+        "name": "get_item_info",
+        "purpose": "Retrieves information about a specific item",
+        "parameters": "item_id (string)", 
+        "returns": "item data dictionary or None"
+      },
+      {
+        "name": "calculate_total_value",
+        "purpose": "Calculates total monetary value of all inventory",
+        "parameters": "none",
+        "returns": "total value (float)"
+      },
+      {
+        "name": "generate_report",
+        "purpose": "Displays comprehensive inventory report",
+        "parameters": "none", 
+        "returns": "nothing"
+      }
+    ],
+    "how_to_run": [
+      "1. Ensure Python 3.x is installed",
+      "2. Place both buggy_program.py and sample_data.txt in same folder",
+      "3. Open terminal/command prompt in that folder", 
+      "4. Run: python buggy_program.py",
+      "5. Program will load data, perform test operations, and display report"
+    ]
+  },
+  "testing_performed": "Tested program by running with sample_data.txt file. Verified successful loading of 4 inventory items, adding new items and updating existing quantities, removing items with proper error handling, item lookup functionality, and report generation with correct calculations.",
+  "program_works": "YES"
+}
+```
+
+## Explanation of Correct Answers
+
+### Critical Compilation Errors Identified:
+
+1. **Line 49 - Missing Return Statement**: 
+   - **Issue**: After printing "item not found" error, function continued executing
+   - **Fix**: Added `return False` to exit function and indicate failure
+   - **Why Critical**: Without this, the function would attempt to access non-existent inventory items, causing runtime errors
+
+2. **Line 51 - Missing Return Statement**:
+   - **Issue**: After printing "insufficient stock" error, function still reduced inventory
+   - **Fix**: Added `return False` to prevent invalid inventory reduction
+   - **Why Critical**: This would allow negative inventory quantities, corrupting data integrity
+
+3. **Line 53 - Incomplete Dictionary Syntax**:
+   - **Issue**: Transaction log dictionary was missing closing structure
+   - **Original**: `'action': 'remove',` (incomplete)
+   - **Fix**: Completed full dictionary with proper indentation and closing
+   - **Why Critical**: Syntax error preventing compilation
+
+4. **Line 54 - Missing Success Return**:
+   - **Issue**: Function didn't indicate successful completion
+   - **Fix**: Added `return True` for successful operations
+   - **Why Critical**: Calling code couldn't determine if operation succeeded
+
+5. **Line 58 - Missing Conditional Check**:
+   - **Issue**: Function missing `if item_id in self.inventory:` before return
+   - **Fix**: Added proper conditional check
+   - **Why Critical**: Would cause KeyError when accessing non-existent items
+
+### Documentation Quality Standards:
+
+**Program Overview Requirements:**
+- Must be 2-3 complete sentences
+- Should describe what the program does (inventory management)
+- Should mention key capabilities (load data, add/remove items, generate reports)
+
+**Function Documentation Requirements:**
+- Function name and clear purpose statement
+- Parameter names with data types
+- Return value description with data type
+- Must cover all major functions in the class
+
+**How to Run Instructions:**
+- Step-by-step actionable instructions
+- Include prerequisite requirements (Python installation)
+- Specify file placement requirements
+- Provide exact command to execute
+
+### Comment Quality Requirements:
+
+**Essential Comments Needed:**
+- Header comment with program title and author
+- Function-level comments explaining purpose of each major method
+- Complex logic comments (minimum 3) explaining:
+  - File parsing logic in load_inventory
+  - Inventory update logic in add_item
+  - Error handling logic in remove_item
+
+## Passing Criteria
+
+### Scoring Breakdown (100 points total):
+
+**Task 1: Code Debugging (40 points)**
+- Fix all 5 compilation errors: 32 points (6.4 points each)
+- Program runs successfully: 8 points
+- **Minimum to pass**: 32/40 points (must fix at least 4 out of 5 errors)
+
+**Task 2: Basic Documentation (35 points)**
+- Program overview (2-3 sentences): 8 points
+- Key functions documentation: 20 points (all 6 functions with purpose, parameters, returns)
+- How to run instructions: 7 points
+- **Minimum to pass**: 28/35 points (80% completion)
+
+**Task 3: Code Comments (25 points)**
+- Header comment with title and author: 5 points
+- Function-level comments: 12 points
+- Complex logic comments (minimum 3): 8 points
+- **Minimum to pass**: 20/25 points
+
+### Overall Passing Threshold:
+- **Minimum total score**: 80/100 points
+- **Critical requirement**: Program must compile and run successfully (cannot pass without this)
+- **Format requirement**: Must follow exact text format specified in exam
+
+### Differentiation Between Competency Levels:
+
+**Entry-Level Competent Candidates (80%+ score) will:**
+- Systematically identify and fix all compilation errors
+- Write clear documentation that explains program purpose and usage
+- Add meaningful comments that help others understand the code
+- Follow instructions precisely and submit in correct format
+
+**Struggling Candidates (<80% score) will:**
+- Miss subtle logic errors (especially missing return statements)
+- Write documentation that merely restates obvious code functionality
+- Add superficial comments that don't aid understanding
+- Provide incomplete testing descriptions or incorrect format
+
+**Red Flags for Incompetence:**
+- Program doesn't run after "fixes"
+- Documentation doesn't match actual program functionality
+- Comments that are incorrect or misleading
+- Missing critical errors like the syntax error in transaction logging
+
+This exam effectively differentiates between candidates who can actually debug, document, and comment code versus those who only have theoretical knowledge of programming concepts.

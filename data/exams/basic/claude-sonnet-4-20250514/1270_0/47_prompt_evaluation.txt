@@ -1,0 +1,556 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> # Basic Computer Programming Practical Exam Design
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to **actually write, update, and maintain functional computer programs** that solve real-world business problems. Unlike theoretical assessments, this exam requires candidates to produce working code that handles data processing, business logic, and system integration tasks commonly found in entry-level programming positions.
+
+## Strategic Exam Structure
+
+### Core Assessment Philosophy
+The exam simulates a **realistic workplace scenario** where a junior programmer receives a business requirement and must deliver a complete, working solution. This approach differentiates candidates who can actually program from those who only understand programming concepts.
+
+### Key Strategic Elements
+
+#### 1. **Multi-Step Problem Solving**
+- **Data Input Processing**: Reading and validating data from multiple sources
+- **Business Logic Implementation**: Applying rules and calculations
+- **Output Generation**: Producing formatted results and reports
+- **Error Handling**: Managing edge cases and invalid inputs
+
+#### 2. **Data Relationship Management**
+- Working with related datasets (customers, orders, inventory)
+- Implementing data joins and lookups
+- Maintaining data integrity across operations
+- Handling missing or inconsistent data
+
+#### 3. **Decision Points and Branching Logic**
+- Conditional processing based on business rules
+- Status updates and workflow management
+- Alert generation for critical conditions
+- Dynamic behavior based on data characteristics
+
+#### 4. **Real-World Constraints**
+- Time-based processing (dates, deadlines)
+- Quantity and threshold management
+- Data validation and sanitization
+- Performance considerations for data processing
+
+## Practical Assessment Components
+
+### Primary Task: Inventory Management System
+Candidates must build a complete inventory tracking system that:
+- Processes incoming shipments and sales transactions
+- Updates stock levels automatically
+- Generates alerts for low inventory
+- Produces management reports
+- Handles data validation and error cases
+
+### Secondary Integration: Equipment Control Simulation
+Candidates extend their system to:
+- Send commands to simulated equipment (printers, scanners)
+- Process equipment status responses
+- Log equipment interactions
+- Handle equipment failure scenarios
+
+## Evaluation Strategy
+
+### Success Indicators
+- **Functional Code**: Programs execute without errors
+- **Correct Logic**: Business rules implemented accurately
+- **Data Integrity**: Proper handling of data relationships
+- **Error Management**: Graceful handling of edge cases
+- **Code Organization**: Clear structure and maintainability
+
+### Differentiation Factors
+- **Problem Decomposition**: How candidates break down complex requirements
+- **Data Flow Design**: Understanding of how data moves through the system
+- **Integration Thinking**: Ability to connect multiple system components
+- **Practical Decision Making**: Choosing appropriate solutions for real constraints
+
+## Optimal Exam Structure
+
+### Phase 1: Core Programming (45 minutes)
+- Implement basic inventory tracking functionality
+- Process transaction data and update records
+- Generate simple reports and alerts
+
+### Phase 2: System Integration (30 minutes)
+- Add equipment control capabilities
+- Implement cross-system data sharing
+- Handle integration error scenarios
+
+### Phase 3: Enhancement and Testing (15 minutes)
+- Add requested feature enhancements
+- Test edge cases and document findings
+- Optimize performance or add validation
+
+## Key Design Principles
+
+### 1. **Authentic Complexity**
+Problems mirror real workplace challenges without being overwhelming for entry-level candidates.
+
+### 2. **Measurable Outcomes**
+Each component produces specific, verifiable outputs that can be automatically evaluated.
+
+### 3. **Progressive Difficulty**
+Tasks build from basic programming to system integration, allowing candidates to demonstrate their skill ceiling.
+
+### 4. **Practical Constraints**
+Time limits and resource constraints mirror real development environments.
+
+## Evaluation Framework
+
+### Structured JSON Submission
+Candidates submit:
+- Source code files
+- Test results and outputs
+- Documentation of design decisions
+- Reflection on challenges encountered
+
+### Automated + Manual Review
+- Automated testing of core functionality
+- Manual review of code quality and approach
+- Assessment of problem-solving methodology
+- Evaluation of real-world applicability
+
+This exam design ensures that successful candidates can actually perform the essential tasks of computer programming in a professional environment, not just demonstrate theoretical knowledge.</examoverview>
+    Here is the exam: <exam> # Basic Computer Programming Practical Exam
+
+## Exam Instructions
+You are a junior programmer at TechCorp Industries. Your manager has assigned you to build a basic inventory management system. You have 90 minutes to complete this practical programming exam.
+
+## Your Assignment
+
+### Phase 1: Core Inventory Management (90 minutes)
+Build a program that processes inventory transactions and maintains accurate stock levels.
+
+**Requirements:**
+1. **Read and process transaction data** from the provided CSV file
+2. **Update inventory levels** based on transactions (shipments add stock, sales subtract stock)
+3. **Generate low stock alerts** for items with quantity below their reorder threshold
+4. **Produce a daily summary report** with total transactions processed
+5. **Handle basic validation** - reject transactions that would create negative inventory
+
+**Business Rules:**
+- Shipment transactions (type "SHIP") add to inventory
+- Sale transactions (type "SALE") subtract from inventory  
+- Sales cannot reduce inventory below 0 (reject these transactions)
+- Generate alerts when current stock < reorder_threshold
+- All item codes must exist in the initial inventory file
+
+## Materials Provided
+
+**initial_inventory.csv**
+```
+item_code,item_name,current_quantity,reorder_threshold
+A001,Widget Alpha,100,25
+A002,Widget Beta,75,30
+B001,Gadget Pro,200,50
+B002,Gadget Lite,40,25
+C001,Tool Master,150,40
+```
+
+**transactions.csv**
+```
+transaction_id,item_code,transaction_type,quantity,timestamp
+T001,A001,SHIP,50,2024-01-15 09:00:00
+T002,B001,SALE,25,2024-01-15 09:15:00
+T003,A002,SHIP,30,2024-01-15 09:30:00
+T004,C001,SALE,60,2024-01-15 09:45:00
+T005,A001,SALE,80,2024-01-15 10:00:00
+T006,B002,SALE,30,2024-01-15 10:15:00
+T007,B002,SALE,15,2024-01-15 10:30:00
+T008,B001,SHIP,75,2024-01-15 10:45:00
+T009,C001,SALE,45,2024-01-15 11:00:00
+T010,B002,SALE,5,2024-01-15 11:15:00
+```
+
+## Submission Requirements
+
+Submit your solution as **test_submission.json** containing:
+
+```json
+{
+  "source_code": "your complete program code as a string",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 20, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [],
+  "daily_summary": {
+    "total_transactions_processed": 10,
+    "total_shipments": 3,
+    "total_sales": 7,
+    "total_rejected": 0
+  },
+  "testing_notes": "Brief description of any issues found during testing"
+}
+```
+
+## Format Requirements
+
+### String Values
+- **item_code**: Use exact codes from CSV files (e.g., "A001", "B002")
+- **item_name**: Use exact names from initial_inventory.csv
+- **transaction_id**: Use exact IDs from transactions.csv (e.g., "T001", "T007")
+
+### Integer Values
+- All quantity and count fields must be whole numbers (no decimals)
+- Negative quantities are not allowed in final inventory
+- All summary counts must equal the sum of their components
+
+### Array Ordering
+- **final_inventory**: Order by item_code alphabetically
+- **low_stock_alerts**: Order by item_code alphabetically  
+- **rejected_transactions**: Order by transaction_id
+
+### Validation Rules
+- All item_codes in transactions must exist in initial_inventory.csv or be rejected
+- Sales cannot reduce inventory below 0 (reject transaction if insufficient stock)
+- Low stock alerts only for items where current_quantity < reorder_threshold
+
+### Source Code Format
+- Include complete, executable program code as a single string
+- Use proper escape characters for quotes and newlines within the JSON string
+- Code should be readable and well-commented
+
+## Important Notes
+- Use the exact item codes and transaction types provided in the data files
+- Your program must handle all transactions in the provided CSV file
+- All numerical values in your JSON output must be exact integers
+- Test your program thoroughly before submitting
+
+## Evaluation Criteria
+Your solution will be evaluated on:
+- **Final Inventory Calculations (40%)**: Correct processing of all transactions and accurate final quantities
+- **Transaction Validation (25%)**: Proper identification and rejection of invalid transactions
+- **Low Stock Alerts (15%)**: Accurate identification of items below reorder threshold
+- **Daily Summary (15%)**: Correct counting of processed, shipped, sold, and rejected transactions
+- **Code Quality (5%)**: Well-structured, readable, and executable code
+
+**Passing Score**: 80% (80 points out of 100)
+
+## Helpful Tips
+- Use simple data structures like dictionaries/maps to store inventory data
+- Process transactions one at a time in chronological order
+- Test with a few transactions before processing the entire file
+- Focus on getting the core inventory calculations correct - this is the most important part
+- Start by reading the CSV files and understanding the data structure
+- Build incrementally - get basic transaction processing working first, then add validation
+
+## Sample Program Structure
+Here's a suggested approach to get you started:
+
+```python
+# 1. Read initial inventory from CSV
+# 2. Read transactions from CSV
+# 3. For each transaction:
+#    - Check if item exists
+#    - Check if transaction is valid (no negative inventory)
+#    - Update inventory or reject transaction
+# 4. Generate reports (final inventory, alerts, summary)
+# 5. Format output as JSON
+```
+
+## Expected Results Reference
+To help you verify your solution, here are the key expected outcomes:
+
+**Final Inventory After All Transactions:**
+- A001: 70 units (started 100, +50 ship, -80 sale)
+- A002: 105 units (started 75, +30 ship)
+- B001: 250 units (started 200, -25 sale, +75 ship)
+- B002: 20 units (started 40, -30 sale, -15 sale, -5 sale)
+- C001: 45 units (started 150, -60 sale, -45 sale)
+
+**Low Stock Items:**
+- B002 (20 < 25 threshold) should trigger alert
+- All other items are above their thresholds
+
+## Starter Code Template (Optional)
+To help you get started quickly, you may use this basic template:
+
+```python
+import csv
+import json
+
+# Initialize inventory dictionary
+inventory = {}
+
+# Read initial inventory
+with open('initial_inventory.csv', 'r') as file:
+    reader = csv.DictReader(file)
+    for row in reader:
+        inventory[row['item_code']] = {
+            'item_name': row['item_name'],
+            'current_quantity': int(row['current_quantity']),
+            'reorder_threshold': int(row['reorder_threshold'])
+        }
+
+# Initialize tracking variables
+rejected_transactions = []
+processed_count = 0
+shipment_count = 0
+sale_count = 0
+
+# Process transactions
+with open('transactions.csv', 'r') as file:
+    reader = csv.DictReader(file)
+    for row in reader:
+        item_code = row['item_code']
+        transaction_type = row['transaction_type']
+        quantity = int(row['quantity'])
+        
+        # Check if item exists
+        if item_code not in inventory:
+            rejected_transactions.append({
+                'transaction_id': row['transaction_id'],
+                'reason': 'Invalid item code'
+            })
+            continue
+        
+        # Process transaction based on type
+        if transaction_type == 'SHIP':
+            inventory[item_code]['current_quantity'] += quantity
+            shipment_count += 1
+            processed_count += 1
+        elif transaction_type == 'SALE':
+            # Check if sufficient inventory
+            if inventory[item_code]['current_quantity'] >= quantity:
+                inventory[item_code]['current_quantity'] -= quantity
+                sale_count += 1
+                processed_count += 1
+            else:
+                rejected_transactions.append({
+                    'transaction_id': row['transaction_id'],
+                    'reason': 'Insufficient inventory'
+                })
+
+# Generate final inventory list
+final_inventory = []
+for item_code in sorted(inventory.keys()):
+    item = inventory[item_code]
+    final_inventory.append({
+        'item_code': item_code,
+        'item_name': item['item_name'],
+        'current_quantity': item['current_quantity'],
+        'reorder_threshold': item['reorder_threshold']
+    })
+
+# Generate low stock alerts
+low_stock_alerts = []
+for item_code in sorted(inventory.keys()):
+    item = inventory[item_code]
+    if item['current_quantity'] < item['reorder_threshold']:
+        low_stock_alerts.append({
+            'item_code': item_code,
+            'current_quantity': item['current_quantity'],
+            'reorder_threshold': item['reorder_threshold']
+        })
+
+# Create daily summary
+daily_summary = {
+    'total_transactions_processed': processed_count,
+    'total_shipments': shipment_count,
+    'total_sales': sale_count,
+    'total_rejected': len(rejected_transactions)
+}
+
+# Create JSON output
+result = {
+    "source_code": "# Your complete code here",
+    "final_inventory": final_inventory,
+    "low_stock_alerts": low_stock_alerts,
+    "rejected_transactions": rejected_transactions,
+    "daily_summary": daily_summary,
+    "testing_notes": "Your testing notes"
+}
+
+print(json.dumps(result, indent=2))
+```
+
+Good luck! Remember to test your solution before submitting. <exam>
+    Here is some additional material only available to the exam evaluator: <materials_evaluator> # Basic Computer Programming Practical Exam - Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "source_code": "# Complete working program code would be provided by candidate",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25},
+    {"item_code": "A002", "item_name": "Widget Beta", "current_quantity": 105, "reorder_threshold": 30},
+    {"item_code": "B001", "item_name": "Gadget Pro", "current_quantity": 250, "reorder_threshold": 50},
+    {"item_code": "B002", "item_name": "Gadget Lite", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "item_name": "Tool Master", "current_quantity": 45, "reorder_threshold": 40}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T007", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 9,
+    "total_shipments": 3,
+    "total_sales": 6,
+    "total_rejected": 1
+  },
+  "testing_notes": "System successfully processed valid transactions and rejected T007 due to insufficient inventory for B002."
+}
+```
+
+## Detailed Answer Derivation
+
+### Step-by-Step Transaction Processing
+
+Processing transactions in chronological order from the provided CSV:
+
+**Initial Inventory:**
+- A001: 100, A002: 75, B001: 200, B002: 40, C001: 150
+
+**Transaction Processing:**
+
+1. **T001** (09:00): A001 SHIP +50 → A001: 100 + 50 = 150 ✅
+2. **T002** (09:15): B001 SALE -25 → B001: 200 - 25 = 175 ✅
+3. **T003** (09:30): A002 SHIP +30 → A002: 75 + 30 = 105 ✅
+4. **T004** (09:45): C001 SALE -60 → C001: 150 - 60 = 90 ✅
+5. **T005** (10:00): A001 SALE -80 → A001: 150 - 80 = 70 ✅
+6. **T006** (10:15): B002 SALE -30 → B002: 40 - 30 = 10 ✅
+7. **T007** (10:30): B002 SALE -30 → B002: 10 - 30 = -20 ❌ **REJECTED** (Insufficient inventory)
+8. **T008** (10:45): B001 SHIP +75 → B001: 175 + 75 = 250 ✅
+9. **T009** (11:00): C001 SALE -45 → C001: 90 - 45 = 45 ✅
+10. **T010** (11:15): B002 SALE -5 → B002: 10 - 5 = 5 ✅
+
+### Final Inventory Calculations
+
+**A001 (Widget Alpha)**: 100 + 50 - 80 = **70**
+**A002 (Widget Beta)**: 75 + 30 = **105** 
+**B001 (Gadget Pro)**: 200 - 25 + 75 = **250**
+**B002 (Gadget Lite)**: 40 - 30 - 5 = **5** (T007 rejected)
+**C001 (Tool Master)**: 150 - 60 - 45 = **45**
+
+### Low Stock Alert Analysis
+
+Items where current_quantity < reorder_threshold:
+- **A001**: 70 ≥ 25 (No alert)
+- **A002**: 105 ≥ 30 (No alert)
+- **B001**: 250 ≥ 50 (No alert)
+- **B002**: 5 < 25 ✅ (Alert required)
+- **C001**: 45 > 40 (No alert - 45 is greater than 40)
+
+**Low Stock Alerts:**
+Only B002 should trigger an alert (5 < 25).
+
+### Rejected Transactions Analysis
+
+**T007**: B002 SALE 30
+- Current B002 stock at time of T007: 10 (after T006)
+- Attempted sale: 30
+- Result would be: 10 - 30 = -20 (negative inventory not allowed)
+- **Status**: REJECTED - "Insufficient inventory"
+
+### Daily Summary Calculations
+
+- **Total transactions processed**: 9 (10 attempted - 1 rejected)
+- **Total shipments**: 3 (T001, T003, T008)
+- **Total sales**: 6 (T002, T004, T005, T006, T009, T010)
+- **Total rejected**: 1 (T007)
+
+## Passing Criteria and Scoring Rubric
+
+### Overall Passing Threshold: 80%
+
+**Total Points: 100**
+**Minimum Passing Score: 80 points**
+
+### Detailed Scoring Breakdown
+
+**1. Final Inventory Calculations (40 points)**
+- All 5 items calculated correctly: 40 points
+- 4 items correct: 32 points
+- 3 items correct: 24 points
+- 2 items correct: 16 points
+- 1 item correct: 8 points
+- 0 items correct: 0 points
+
+**2. Transaction Validation and Rejection Logic (25 points)**
+- T007 correctly identified as rejected with proper reason: 25 points
+- T007 identified as rejected but incorrect reason: 15 points
+- T007 not identified as rejected: 0 points
+
+**3. Low Stock Alert Generation (15 points)**
+- Correct identification of B002 only: 15 points
+- B002 identified plus incorrect additional alerts: 10 points
+- Missing B002 alert or only incorrect alerts: 0 points
+
+**4. Daily Summary Accuracy (15 points)**
+- All 4 summary counts correct: 15 points
+- 3 out of 4 counts correct: 11 points
+- 2 out of 4 counts correct: 7 points
+- 1 out of 4 counts correct: 3 points
+- No counts correct: 0 points
+
+**5. Code Quality and Execution (5 points)**
+- Code executes without errors and produces correct output: 5 points
+- Code executes with minor issues but produces mostly correct results: 3 points
+- Code partially functional: 1 point
+- Code doesn't execute or produces no meaningful output: 0 points
+
+### Critical Success Requirements
+
+To achieve a passing score (80+), candidates must demonstrate:
+
+1. **Core Programming Competency**: Accurate processing of at least 4 out of 5 inventory calculations (32+ points)
+2. **Business Logic Implementation**: Proper identification of T007 rejection (25 points)
+3. **Data Processing Skills**: Accurate daily summary calculations (11+ points)
+4. **Basic Alert Logic**: Correct low stock identification (10+ points)
+5. **Functional Code**: Working program that executes (3+ points)
+
+**Minimum combination for passing**: 32 + 25 + 11 + 10 + 3 = 81 points ✅
+
+### Grade Boundaries
+
+- **90-100 points**: Excellent - Professional level competency
+- **80-89 points**: Good - **PASSING** - Entry-level competency demonstrated
+- **70-79 points**: Satisfactory - **NOT PASSING** - Some skills present but insufficient
+- **60-69 points**: Needs Improvement - **NOT PASSING** - Basic understanding lacking
+- **Below 60 points**: Unsatisfactory - **NOT PASSING** - Fundamental skills missing
+
+### Key Assessment Points
+
+**Must-Have for Passing (80+ points):**
+- Perfect or near-perfect inventory calculations (32-40 points)
+- Correct transaction rejection logic (25 points)
+- Accurate summary calculations (11-15 points)
+- Working executable code (3-5 points)
+- Basic alert functionality (10-15 points)
+
+**Common Failure Points:**
+- Incorrect chronological processing of transactions
+- Missing validation for negative inventory
+- Arithmetic errors in inventory calculations
+- Incorrect understanding of low stock alert criteria (current_quantity < reorder_threshold)
+- Non-functional or non-executable code
+- Including C001 in low stock alerts incorrectly (45 > 40, so no alert needed)
+
+### Automated Checking Points
+
+For automated evaluation, the system should verify:
+
+1. **JSON Structure**: Proper formatting and required fields present
+2. **Data Types**: Integers for quantities, strings for codes/names
+3. **Array Ordering**: Alphabetical by item_code where specified
+4. **Calculation Accuracy**: Mathematical correctness of inventory updates
+5. **Business Rule Compliance**: Proper rejection of negative inventory transactions
+6. **Alert Logic**: Correct identification of items below reorder threshold (only B002)
+
+This evaluation framework ensures that candidates who pass demonstrate the essential programming skills needed for entry-level computer programming positions, including data processing, business logic implementation, error handling, and accurate mathematical calculations. </materials_evaluator>
+
+    ## Your assignment
+
+    Based on the given information create the following for the evaluator:
+    - Complete answer key in JSON format that can be extracted for automated checking
+    - Explanation of correct answers and how they were derived
+    - Passing criteria (e.g., minimum number of correct answers)

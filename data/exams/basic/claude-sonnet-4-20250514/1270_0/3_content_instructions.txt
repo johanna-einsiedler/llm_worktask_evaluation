@@ -1,0 +1,112 @@
+# Basic Computer Programming Practical Exam
+
+## Exam Instructions
+
+You are a junior programmer at TechCorp Industries. Your manager has assigned you to build an inventory management system that processes transactions and controls equipment. You have 90 minutes to complete this practical programming exam.
+
+## Your Assignment
+
+### Phase 1: Inventory Management System (60 minutes)
+
+Build a program that processes inventory transactions and maintains accurate stock levels.
+
+**Requirements:**
+1. **Read and process transaction data** from the provided CSV file
+2. **Update inventory levels** based on transactions (shipments add stock, sales subtract stock)
+3. **Generate low stock alerts** for items with quantity below their reorder threshold
+4. **Produce a daily summary report** with total transactions processed and current stock status
+5. **Handle data validation** - reject invalid transactions and log errors
+
+**Business Rules:**
+- Shipment transactions (type "SHIP") add to inventory
+- Sale transactions (type "SALE") subtract from inventory  
+- Sales cannot reduce inventory below 0 (reject these transactions)
+- Generate alerts when current stock < reorder_threshold
+- All item codes must exist in the initial inventory file
+
+### Phase 2: Equipment Control Integration (25 minutes)
+
+Extend your system to control warehouse equipment based on inventory operations.
+
+**Requirements:**
+1. **Send equipment commands** when processing transactions:
+   - SHIP transactions → send "SCAN_BARCODE" command to scanner
+   - SALE transactions → send "PRINT_RECEIPT" command to printer
+2. **Process equipment responses** and log successful/failed operations
+3. **Handle equipment failures** - if equipment returns "ERROR", log the failure but continue processing
+4. **Generate equipment status report** showing total commands sent and success/failure counts
+
+### Phase 3: Final Testing (5 minutes)
+
+Test your complete system and document any issues found.
+
+## Materials Provided
+
+You will receive these data files:
+
+1. **initial_inventory.csv** - Starting inventory with columns:
+   - item_code, item_name, current_quantity, reorder_threshold
+
+2. **transactions.csv** - Daily transactions with columns:
+   - transaction_id, item_code, transaction_type, quantity, timestamp
+
+3. **equipment_responses.csv** - Simulated equipment responses with columns:
+   - command_id, equipment_type, command, response_status
+
+## Submission Requirements
+
+Submit your solution as **test_submission.json** containing:
+
+```json
+{
+  "source_code": "your complete program code as a string",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget A", "current_quantity": 150, "reorder_threshold": 50}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 15, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T123", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 45,
+    "total_shipments": 20,
+    "total_sales": 25,
+    "total_rejected": 3
+  },
+  "equipment_commands": [
+    {"transaction_id": "T001", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"}
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": 20,
+    "scanner_successful": 18,
+    "scanner_failed": 2,
+    "printer_commands_sent": 25,
+    "printer_successful": 23,
+    "printer_failed": 2
+  },
+  "testing_notes": "Brief description of any issues found during testing"
+}
+```
+
+## Important Notes
+
+- Use the exact item codes, transaction types, and equipment names provided in the data files
+- Your program must handle all transactions in the provided CSV file
+- Equipment command types are: "SCAN_BARCODE" for shipments, "PRINT_RECEIPT" for sales
+- Equipment types are: "scanner" and "printer"
+- Response statuses are: "SUCCESS" or "ERROR"
+- All numerical values in your JSON output must be exact integers
+- Test your program thoroughly before submitting
+
+## Evaluation Criteria
+
+Your solution will be evaluated on:
+- **Functionality**: Does your program correctly process all transactions?
+- **Accuracy**: Are inventory levels and calculations correct?
+- **Error Handling**: Does your program properly reject invalid transactions?
+- **Integration**: Does equipment control work correctly?
+- **Code Quality**: Is your code well-structured and maintainable?
+
+Good luck! Remember to test your solution before submitting.

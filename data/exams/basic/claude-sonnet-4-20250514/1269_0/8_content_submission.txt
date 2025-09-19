@@ -1,0 +1,107 @@
+# Answer Format Requirements
+
+## JSON Submission Format
+
+The candidate must submit their work as a file named `test_submission.json` with the following exact structure and formatting requirements:
+
+```json
+{
+  "corrected_code": "[STRING] Complete Python code with all compilation errors fixed",
+  "compilation_fixes": [
+    {
+      "line_number": "[INTEGER] Exact line number where error occurred",
+      "error_type": "[STRING] Must be one of: syntax|import|logic|other",
+      "change_made": "[STRING] Exact description of what was changed",
+      "reason": "[STRING] Explanation of why this fix was necessary"
+    }
+  ],
+  "program_documentation": {
+    "overview": "[STRING] Exactly 3-4 sentences describing program purpose",
+    "functions": [
+      {
+        "name": "[STRING] Exact function name as it appears in code",
+        "purpose": "[STRING] Single sentence description starting with a verb",
+        "parameters": [
+          {
+            "name": "[STRING] Exact parameter name",
+            "type": "[STRING] Python data type (e.g., str, int, float, list, dict)",
+            "description": "[STRING] Brief description of parameter purpose"
+          }
+        ],
+        "return_value": {
+          "type": "[STRING] Python data type or 'None'",
+          "description": "[STRING] Description of what is returned"
+        },
+        "usage_example": "[STRING] Valid Python code showing function call"
+      }
+    ],
+    "installation_instructions": [
+      "[STRING] Step 1 as complete sentence",
+      "[STRING] Step 2 as complete sentence"
+    ],
+    "user_guide": "[STRING] Paragraph explaining how to run and use the program"
+  },
+  "commented_code": "[STRING] Complete Python code with all required comments added",
+  "revision_log": {
+    "errors_fixed": [
+      {
+        "line_number": "[INTEGER] Line number where error was located",
+        "error_type": "[STRING] Category of error (syntax, import, logic, etc.)",
+        "change_made": "[STRING] Specific change that was made",
+        "reason": "[STRING] Explanation of why change was needed"
+      }
+    ],
+    "improvements_made": [
+      "[STRING] Description of improvement beyond error fixes",
+      "[STRING] Additional improvements if any"
+    ],
+    "testing_summary": "[STRING] Description of testing steps performed to verify program functionality"
+  },
+  "program_runs_successfully": "[BOOLEAN] true or false"
+}
+```
+
+## Specific Format Requirements
+
+### Code Formatting
+- All Python code must be properly indented (4 spaces per level)
+- Include all necessary import statements
+- Preserve original class and function structure
+- Use double quotes for JSON string values containing code
+
+### Comment Format Requirements
+- Header comment block must use triple quotes (`"""`)
+- Function docstrings must follow the exact format provided in guidelines
+- Inline comments must use `#` symbol
+- Date format in header: YYYY-MM-DD
+
+### Documentation Text Requirements
+- Overview: Must be exactly 3-4 complete sentences
+- Function purposes: Must start with an action verb (e.g., "Loads", "Calculates", "Returns")
+- Parameter types: Use standard Python type names (str, int, float, bool, list, dict, etc.)
+- Installation instructions: Each step must be a complete, actionable sentence
+- Usage examples: Must be valid, executable Python code
+
+### Numerical and Boolean Values
+- Line numbers: Positive integers only
+- Boolean values: Use lowercase `true` or `false` (JSON format)
+- No quotes around integer or boolean values in JSON
+
+### Error Type Categories
+Must use exactly one of these values:
+- `syntax`
+- `import` 
+- `logic`
+- `other`
+
+### Array/List Requirements
+- Empty arrays are acceptable if no items exist for that category
+- All array elements must follow the specified object structure
+- Maintain consistent formatting within arrays
+
+### String Escaping
+- Escape quotes within code strings using backslashes
+- Escape newlines in code as `\n`
+- Ensure valid JSON formatting throughout
+
+The JSON file must be valid and parseable. Use a JSON validator before submission.

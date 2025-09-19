@@ -1,0 +1,20 @@
+You are given the text of an exam.
+
+Your task is to assess exam feasibility for a human test-taker.
+
+1. Assume the test-taker works as a Computer Programmers.
+2. Assume they hold a Bachelor's Degree.
+3. Determine whether such a person could reasonably complete the exam within 90 minutes.
+4. Check whether the difficulty is appropriate for a basic exam at this degree level. 
+
+A basic practical exam should assess mostly whether an individual has the minimum required knowledge and skill to perform the task to a satisfactory standard in a junior or entry-level role. It should be complex enough to resemble a real world task, but simple enough that a qualified Computer Programmers at entry level should score more than 80%.
+
+HOW TO RESPOND:
+Return EXACTLY one JSON object. Here is the required structure (note the doubled braces to show literal braces in an f-string):
+
+    {
+    "feasible": True,
+    "explanation": "A concise explanation here. Also suggest potential weaknesses and things to improve in order to make the exam feasible."
+    }
+
+No additional text (e.g., disclaimers, markdown formatting) outside this JSON object.

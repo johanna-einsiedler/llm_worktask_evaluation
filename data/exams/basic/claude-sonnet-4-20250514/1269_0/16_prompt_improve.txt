@@ -1,0 +1,18 @@
+You are tasked with improving an exam:
+
+
+The following explanation describes the major problems with the exam that you should address.
+_______________________________
+This exam has several critical issues that make it unsuitable for practical assessment. First, the provided 'buggy_program.py' actually compiles and runs successfully without any syntax errors - the claimed 'compilation errors' are mostly logic issues or missing return statements, not compilation failures. This creates a fundamental mismatch between the exam description and reality. Second, the answer key contains incorrect information about the bugs (e.g., claiming line 53 has 'incomplete dictionary syntax' when it's actually valid Python). Third, the JSON submission format is overly complex and inconsistent with the actual tasks - candidates must document 'compilation_fixes' but also 'errors_fixed' in different sections with overlapping information. Fourth, the grading script is missing entirely, making objective evaluation impossible. Finally, the exam conflates debugging/logic fixes with compilation errors, which tests different skills than advertised. The exam would be more practical if it contained actual syntax errors that prevent compilation, simplified the submission format, and included a proper grading script.; This exam is not feasible for a 90-minute timeframe. The tasks require: 1) Debugging Python code with multiple compilation errors, 2) Creating comprehensive documentation following strict formatting requirements, 3) Adding extensive inline comments with specific guidelines, 4) Documenting all changes in a complex JSON structure, and 5) Testing the program thoroughly. The JSON submission format alone is extremely complex with nested objects and arrays requiring precise formatting. An entry-level programmer would need 3-4 hours minimum to complete all requirements properly. To make this feasible: reduce the documentation requirements, simplify the JSON submission format, focus on either debugging OR documentation (not both), and provide clearer examples of expected outputs. The current format prioritizes administrative overhead over actual programming skills assessment.; 
+________________________________
+
+
+Your task:
+- Improve the exam to address the issues highlighted in the explanation.
+- Keep the overall structure, format, and flow of the original exam (same sections, numbering, style).
+- Ensure that the revised version is practical, fair, and aligned with the intended purpose of the exam.
+
+Output:
+Provide ONLY the improved exam, in the same structure as the original.
+
+This is the exam:

@@ -1,0 +1,174 @@
+# Basic Computer Programming Practical Exam - Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "source_code": "# Complete working program code would be provided by candidate",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25},
+    {"item_code": "A002", "item_name": "Widget Beta", "current_quantity": 55, "reorder_threshold": 30},
+    {"item_code": "B001", "item_name": "Gadget Pro", "current_quantity": 250, "reorder_threshold": 50},
+    {"item_code": "B002", "item_name": "Gadget Lite", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "item_name": "Tool Master", "current_quantity": 45, "reorder_threshold": 40}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T007", "reason": "Insufficient inventory"},
+    {"transaction_id": "T012", "reason": "Insufficient inventory"},
+    {"transaction_id": "T013", "reason": "Invalid item code"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 10,
+    "total_shipments": 3,
+    "total_sales": 7,
+    "total_rejected": 3
+  },
+  "testing_notes": "System successfully processed valid transactions and rejected invalid ones according to business rules."
+}
+```
+
+## Detailed Answer Derivation
+
+### Final Inventory Calculations
+
+Starting from initial_inventory.csv, process each valid transaction in chronological order:
+
+**A001 (Widget Alpha)**: Starting quantity 100
+- T001: SHIP +50 → 150
+- T005: SALE -80 → 70
+- **Final: 70**
+
+**A002 (Widget Beta)**: Starting quantity 75
+- T003: SHIP +30 → 105
+- T007: SALE -120 → **REJECTED** (would result in -15, insufficient inventory)
+- T011: SALE -50 → 55
+- **Final: 55**
+
+**B001 (Gadget Pro)**: Starting quantity 200
+- T002: SALE -25 → 175
+- T008: SHIP +75 → 250
+- T012: SALE -300 → **REJECTED** (would result in -50, insufficient inventory)
+- **Final: 250**
+
+**B002 (Gadget Lite)**: Starting quantity 40
+- T006: SALE -30 → 10
+- T010: SALE -5 → 5
+- **Final: 5**
+
+**C001 (Tool Master)**: Starting quantity 150
+- T004: SALE -60 → 90
+- T009: SALE -45 → 45
+- **Final: 45**
+
+### Rejected Transactions Analysis
+
+1. **T007**: A002 SALE 120
+   - Current stock after T003: 105
+   - Attempted sale: 120
+   - Result would be: 105 - 120 = -15 (negative inventory not allowed)
+   - **Reason**: "Insufficient inventory"
+
+2. **T012**: B001 SALE 300
+   - Current stock after T008: 250
+   - Attempted sale: 300
+   - Result would be: 250 - 300 = -50 (negative inventory not allowed)
+   - **Reason**: "Insufficient inventory"
+
+3. **T013**: X999 SALE 10
+   - Item code X999 does not exist in initial_inventory.csv
+   - **Reason**: "Invalid item code"
+
+### Low Stock Alerts
+
+Items where current_quantity < reorder_threshold:
+- **A001**: 70 ≥ 25 ❌ (No alert needed)
+- **A002**: 55 ≥ 30 ❌ (No alert needed)
+- **B001**: 250 ≥ 50 ❌ (No alert needed)
+- **B002**: 5 < 25 ✅ (Alert required)
+- **C001**: 45 ≥ 40 ❌ (No alert needed)
+
+Only B002 requires a low stock alert.
+
+### Daily Summary Calculations
+
+- **Total transactions processed**: 10 (13 total - 3 rejected)
+- **Total shipments**: 3 (T001, T003, T008)
+- **Total sales**: 7 (T002, T004, T005, T006, T009, T010, T011)
+- **Total rejected**: 3 (T007, T012, T013)
+
+## Passing Criteria and Scoring Rubric
+
+### Overall Passing Threshold: 80%
+
+**Total Points: 100**
+**Minimum Passing Score: 80 points**
+
+### Detailed Scoring Breakdown
+
+**1. Final Inventory Calculations (40 points)**
+- All 5 items calculated correctly: 40 points
+- 4 items correct: 32 points
+- 3 items correct: 24 points
+- 2 items correct: 16 points
+- 1 item correct: 8 points
+- 0 items correct: 0 points
+
+**2. Transaction Validation and Rejection Logic (30 points)**
+- All 3 rejections identified correctly with proper reasons: 30 points
+- 2 rejections correct (with reasons): 20 points
+- 1 rejection correct (with reason): 10 points
+- Rejections identified but reasons incorrect: 5 points
+- No rejections identified correctly: 0 points
+
+**3. Low Stock Alert Generation (10 points)**
+- Correct identification of B002 only: 10 points
+- Incorrect alerts or missing required alerts: 0 points
+
+**4. Daily Summary Accuracy (15 points)**
+- All 4 summary counts correct: 15 points
+- 3 out of 4 counts correct: 11 points
+- 2 out of 4 counts correct: 7 points
+- 1 out of 4 counts correct: 3 points
+- No counts correct: 0 points
+
+**5. Code Quality and Execution (5 points)**
+- Code executes without errors and produces correct output: 5 points
+- Code executes with minor issues but produces mostly correct results: 3 points
+- Code partially functional: 1 point
+- Code doesn't execute or produces no meaningful output: 0 points
+
+### Critical Success Requirements
+
+To achieve a passing score (80+), candidates must demonstrate:
+
+1. **Core Programming Competency**: Accurate processing of at least 80% of inventory calculations
+2. **Business Logic Implementation**: Proper validation and rejection of invalid transactions
+3. **Data Processing Skills**: Ability to read, process, and manipulate CSV data
+4. **Problem-Solving Approach**: Systematic handling of edge cases and error conditions
+
+### Grade Boundaries
+
+- **90-100 points**: Excellent - Professional level competency
+- **80-89 points**: Good - **PASSING** - Entry-level competency demonstrated
+- **70-79 points**: Satisfactory - **NOT PASSING** - Some skills present but insufficient
+- **60-69 points**: Needs Improvement - **NOT PASSING** - Basic understanding lacking
+- **Below 60 points**: Unsatisfactory - **NOT PASSING** - Fundamental skills missing
+
+### Key Assessment Points
+
+**Must-Have for Passing:**
+- Correct processing of at least 4 out of 5 inventory items
+- Identification of at least 2 out of 3 rejected transactions with correct reasons
+- Accurate daily summary calculations
+- Working, executable code
+
+**Differentiators for High Scores:**
+- Perfect inventory calculations
+- Complete transaction validation logic
+- Proper low stock alert generation
+- Clean, well-structured code with appropriate comments
+
+This evaluation framework ensures that candidates who pass can perform essential computer programming tasks in a professional environment while providing clear, objective assessment criteria.

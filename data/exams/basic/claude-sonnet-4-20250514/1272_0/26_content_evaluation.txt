@@ -1,0 +1,181 @@
+# Basic Practical Exam Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "bugs_fixed": ["BUG001", "BUG002"],
+  "feature_complete": true,
+  "performance_optimized": true,
+  "testing_completed": true,
+  "detailed_solutions": {
+    "bug_001": {
+      "description": "Stock updates not saved to CSV file",
+      "location": "update_stock() method after quantity assignment",
+      "fix": "Add self.save_products() call",
+      "verification": "Stock changes persist after program restart"
+    },
+    "bug_002": {
+      "description": "Menu doesn't pause for user input",
+      "location": "run() method after each menu operation",
+      "fix": "Add input('\\nPress Enter to continue...') statement",
+      "verification": "System waits for user input before showing menu"
+    },
+    "feature_enhancement": {
+      "threshold": 10,
+      "expected_low_stock_items": ["P002", "P006", "P009", "P012"],
+      "reorder_formula": "current_quantity + 50",
+      "file_format": "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY",
+      "menu_option": "5"
+    },
+    "performance_fix": {
+      "remove_loop": "for _ in range(100):",
+      "remove_divisions": "All /100 compensation calculations",
+      "expected_improvement": "99% faster execution time"
+    }
+  }
+}
+```
+
+## Explanation of Correct Answers and Derivation
+
+### Critical Bug Fixes (50% of total score)
+
+**BUG001 - Missing Data Persistence**
+- **Location**: `update_stock()` method, line 85
+- **Issue**: Stock quantity updates are made in memory (`self.products[product_id]['quantity'] = new_qty`) but never saved to the CSV file
+- **Evidence**: Clear comment in code states "BUG: Missing call to save_products() - changes not persisted to file"
+- **Correct Fix**: Add `self.save_products()` after the quantity update
+- **Verification Method**: Update a product's stock, exit program, restart, and verify the change persisted
+- **Why Critical**: Without this fix, all stock updates are lost when the program closes
+
+**BUG002 - Missing User Interface Pause**
+- **Location**: `run()` method main loop, after each menu operation
+- **Issue**: After executing any menu option, the menu immediately redisplays without allowing users to read the results
+- **Evidence**: Clear comment states "BUG: Missing pause for user to read results before showing menu again"
+- **Correct Fix**: Add `input("\nPress Enter to continue...")` after each menu operation in the main loop
+- **Verification Method**: Execute any menu option and confirm system waits for Enter key
+- **Why Critical**: Poor user experience makes the system difficult to use effectively
+
+### Feature Enhancement - Low Stock Alert (30% of total score)
+
+**Implementation Requirements**:
+- **Alert Threshold**: Products with quantity < 10 units
+- **Expected Low Stock Items** (from provided sample data):
+  - P002: Organic Cotton T-Shirt (8 units) → Reorder: 58
+  - P006: Coffee Mug Set (6 units) → Reorder: 56
+  - P009: Backpack (9 units) → Reorder: 59
+  - P012: Face Moisturizer (7 units) → Reorder: 57
+
+**Correct Implementation Logic**:
+```python
+# Loop through products to find low stock items
+for product_id, details in self.products.items():
+    if details['quantity'] < 10:
+        low_stock_products.append({
+            'id': product_id,
+            'name': details['name'],
+            'current_qty': details['quantity'],
+            'reorder_qty': details['quantity'] + 50
+        })
+
+# Display and save results
+for item in low_stock_products:
+    print(f"{item['id']:<12} {item['name']:<25} {item['current_qty']:<12} {item['reorder_qty']:<12}")
+
+# Save to file in CSV format
+with open('low_stock_alerts.txt', 'w') as file:
+    for item in low_stock_products:
+        file.write(f"{item['id']},{item['name']},{item['current_qty']},{item['reorder_qty']}\n")
+```
+
+**Derivation**: The template function provides clear TODO comments indicating exactly what needs to be implemented. The requirements specify the threshold (< 10), reorder formula (current + 50), and file format.
+
+### Performance Optimization (20% of total score)
+
+**PERF001 - Unnecessary Loop Removal**
+- **Location**: `generate_sales_report()` method, lines 140-170
+- **Issue**: Redundant `for _ in range(100):` loop makes all calculations 100 times, requiring compensation divisions
+- **Evidence**: Clear comments mark "PERFORMANCE BUG: This unnecessary loop makes the report 100x slower - REMOVE THIS LOOP"
+- **Correct Fix**: 
+  1. Remove the entire `for _ in range(100):` loop wrapper
+  2. Remove all `/100` division operations that compensate for the loop
+  3. Keep the single iteration through products intact
+- **Expected Result**: Report execution time drops from ~10 seconds to <1 second
+- **Verification**: Time the report generation before and after the fix
+
+## Passing Criteria and Scoring Framework
+
+### Total Points: 100
+
+**Critical Bug Fixes: 50 points**
+- BUG001 (Stock persistence): 25 points
+- BUG002 (Menu pause): 25 points
+
+**Feature Enhancement: 30 points**
+- Low stock detection logic: 15 points
+- Correct file output format: 10 points
+- Proper display formatting: 5 points
+
+**Performance Optimization: 20 points**
+- Loop removal: 15 points
+- Functionality preservation: 5 points
+
+### Pass/Fail Thresholds
+
+**80%+ (Pass - Entry Level Competent): 80+ points**
+- **Minimum Requirements**: 
+  - Both critical bugs must be fixed
+  - Low stock feature must be functional
+  - Performance optimization must be implemented
+  - All changes must be tested and working
+
+**60-79% (Marginal - Needs Development): 60-79 points**
+- Some critical functionality working but significant gaps remain
+- May indicate incomplete testing or systematic approach
+
+**<60% (Fail - Insufficient Competency): <60 points**
+- Major functionality remains broken
+- Indicates inability to perform basic program maintenance
+
+### Automatic Failure Conditions
+- JSON submission missing or incorrectly formatted
+- Code contains syntax errors preventing execution
+- Either critical bug (BUG001 or BUG002) remains unfixed
+- Performance optimization breaks existing functionality
+- No evidence of testing performed
+
+### Quality Indicators for Exceptional Performance (90%+)
+- Systematic testing approach with specific examples
+- Clean code modifications following existing patterns
+- Additional improvements beyond minimum requirements
+- Comprehensive understanding demonstrated in implementation
+- Error handling considerations
+
+### Expected Test Results for Verification
+
+**Stock Persistence Test**:
+1. Run program, select option 3 (Update Stock)
+2. Update P002 from quantity 8 to 15
+3. Exit program (option 0)
+4. Restart program, search for P002 (option 2)
+5. Verify quantity shows 15 (not reverted to 8)
+
+**Low Stock Alert Test**:
+1. Run program, select option 5 (Low Stock Alert)
+2. Should display exactly 4 products: P002, P006, P009, P012
+3. Should create "low_stock_alerts.txt" file
+4. File should contain 4 lines in format: "P002,Organic Cotton T-Shirt,8,58"
+
+**Performance Test**:
+1. Run program, select option 4 (Generate Sales Report)
+2. Report should complete in under 2 seconds
+3. All statistics should be mathematically correct
+4. No fractional product counts should appear
+
+**Menu Pause Test**:
+1. Run any menu option
+2. System should display results and wait
+3. User must press Enter to return to main menu
+
+This evaluation framework ensures candidates demonstrate actual programming maintenance capabilities with clear differentiation between competent and incompetent performance levels.

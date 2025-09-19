@@ -1,0 +1,774 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> # Basic Practical Exam: Program Trial Runs and Validation
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to systematically conduct trial runs of programs and software applications to verify they produce desired outputs and contain correct instructions. The exam simulates real-world scenarios where junior programmers must test, debug, and validate code before deployment.
+
+**Key Assessment Goals:**
+- Ability to execute systematic testing procedures
+- Skills in identifying and documenting defects
+- Competency in validating program outputs against requirements
+- Proficiency in creating structured test reports
+
+## Strategic Exam Design Elements
+
+### 1. Multi-Step Testing Process
+The exam requires candidates to follow a complete testing workflow:
+- **Initial execution** to identify obvious errors
+- **Systematic input testing** with various data scenarios
+- **Output validation** against specified requirements
+- **Documentation** of findings and recommendations
+
+### 2. Realistic Code Scenarios
+Three progressively complex programs simulate actual workplace situations:
+- **Simple calculation program** with basic logic errors
+- **Data processing script** with edge case handling issues
+- **Multi-function application** with integration problems
+
+### 3. Decision Points and Critical Thinking
+Candidates must make judgment calls about:
+- Severity classification of discovered issues
+- Priority ranking for fixes
+- Acceptance criteria for program readiness
+- Risk assessment for deployment decisions
+
+### 4. Data Relationship Understanding
+The exam tests ability to:
+- Trace data flow through program logic
+- Identify input-output relationships
+- Recognize data validation requirements
+- Understand business rule implementations
+
+## Practical vs. Theoretical Differentiation
+
+### What Makes This Practical:
+- **Hands-on execution**: Candidates must actually run programs, not just read code
+- **Real debugging**: Finding actual errors in working (but flawed) code
+- **Output analysis**: Comparing actual vs. expected results with real data
+- **Documentation creation**: Producing professional test reports
+
+### Strategic Elements to Identify Capable Candidates:
+
+1. **Systematic Approach**: Qualified candidates will demonstrate organized testing methodology rather than random trial-and-error
+
+2. **Edge Case Recognition**: Experienced testers naturally consider boundary conditions, invalid inputs, and unusual scenarios
+
+3. **Root Cause Analysis**: Ability to trace errors back to specific code sections rather than just noting symptoms
+
+4. **Professional Communication**: Clear, actionable documentation that would be useful to development teams
+
+5. **Risk Assessment**: Understanding which issues are critical vs. minor, and their impact on system reliability
+
+## Optimal Exam Structure
+
+### Time Allocation (90 minutes total):
+- **Setup and familiarization**: 10 minutes
+- **Program 1 testing**: 20 minutes
+- **Program 2 testing**: 25 minutes
+- **Program 3 testing**: 25 minutes
+- **Final review and submission**: 10 minutes
+
+### Evaluation Framework:
+The structured JSON submission enables consistent scoring across:
+- **Technical accuracy** (40%): Correct identification of issues
+- **Testing methodology** (30%): Systematic approach and thoroughness
+- **Documentation quality** (20%): Clear, professional reporting
+- **Critical thinking** (10%): Appropriate prioritization and recommendations
+
+### Success Indicators:
+Entry-level candidates scoring 80%+ will demonstrate:
+- Ability to execute basic testing procedures
+- Recognition of common programming errors
+- Understanding of input/output validation
+- Professional documentation skills
+- Basic debugging and problem-solving capabilities
+
+This exam design ensures that candidates who merely understand testing concepts theoretically will struggle, while those who can actually perform systematic program validation will succeed. The practical nature, combined with real code execution and structured reporting requirements, creates an authentic assessment of job-relevant skills.</examoverview>
+    Here is the exam: <exam> # Basic Practical Exam: Program Trial Runs and Validation
+
+## Exam Instructions
+
+### Overview
+You will conduct systematic trial runs of three software programs to verify they produce correct outputs and identify any issues. This exam tests your ability to execute programs, validate results against requirements, and document findings professionally.
+
+### Time Limit
+90 minutes total
+
+### What You Need to Accomplish
+1. **Execute each provided program** with the given test data
+2. **Validate outputs** against the specified requirements
+3. **Identify and document** any errors, bugs, or incorrect behaviors
+4. **Classify issues** using the provided severity levels
+5. **Make deployment recommendations** based on your findings
+
+### Materials Provided
+You will receive:
+- **Three Python programs** (calculator.py, data_processor.py, inventory_system.py)
+- **Test data files** (test_inputs.txt, customer_data.csv, inventory_data.json)
+- **Requirements specifications** for each program
+- **Expected output samples** for comparison
+
+### Severity Classification System (Use Exactly These Labels)
+- **CRITICAL**: Program crashes or produces completely wrong results
+- **HIGH**: Incorrect calculations or logic errors affecting core functionality
+- **MEDIUM**: Edge cases not handled properly or minor calculation errors
+- **LOW**: Cosmetic issues or non-essential feature problems
+
+### Deployment Recommendation Options (Use Exactly These Labels)
+- **READY**: No critical or high severity issues found
+- **NEEDS_FIXES**: Critical or high severity issues must be resolved first
+- **REQUIRES_TESTING**: Additional testing needed before decision
+
+### Required Tasks
+
+#### Program 1: Calculator Application (calculator.py)
+- Run the program with all test cases from test_inputs.txt
+- Verify mathematical operations produce correct results
+- Test edge cases (division by zero, negative numbers, large numbers)
+- Compare outputs with provided expected results
+
+#### Program 2: Data Processor (data_processor.py)
+- Process the customer_data.csv file
+- Validate data transformation and filtering operations
+- Check statistical calculations (averages, totals, counts)
+- Verify output format matches requirements
+
+#### Program 3: Inventory Management System (inventory_system.py)
+- Load inventory_data.json and execute all main functions
+- Test inventory updates, stock calculations, and reporting features
+- Validate business rule implementations
+- Check error handling for invalid operations
+
+### Submission Requirements
+Submit your findings in a file named **test_submission.json** with this exact structure:
+```json
+{
+  "program_1_calculator": {
+    "execution_successful": true/false,
+    "issues_found": [
+      {
+        "issue_description": "Exact description of the problem",
+        "severity": "CRITICAL/HIGH/MEDIUM/LOW",
+        "test_case": "Specific input that caused the issue",
+        "expected_result": "What should have happened",
+        "actual_result": "What actually happened"
+      }
+    ],
+    "total_test_cases_run": 0,
+    "failed_test_cases": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "program_2_data_processor": {
+    "execution_successful": true/false,
+    "issues_found": [],
+    "total_records_processed": 0,
+    "processing_errors": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "program_3_inventory_system": {
+    "execution_successful": true/false,
+    "issues_found": [],
+    "functions_tested": 0,
+    "functions_with_errors": 0,
+    "deployment_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  },
+  "overall_assessment": {
+    "total_critical_issues": 0,
+    "total_high_issues": 0,
+    "total_medium_issues": 0,
+    "total_low_issues": 0,
+    "overall_recommendation": "READY/NEEDS_FIXES/REQUIRES_TESTING"
+  }
+}
+```
+
+### Important Notes
+- Use only the provided severity levels and recommendation labels exactly as shown
+- If no issues are found for a program, use an empty array: `"issues_found": []`
+- All numerical fields must contain actual counts from your testing
+- Test systematically - don't skip edge cases or error conditions
+- Document specific inputs that cause problems, not general descriptions
+
+### Getting Started
+1. Download all provided files to your working directory
+2. Read the requirements specification for each program
+3. Begin with Program 1 and work sequentially
+4. Run each program multiple times with different inputs
+5. Document your findings as you go
+6. Submit your completed test_submission.json file
+
+## Program Files
+
+### calculator.py
+```python
+def add(a, b):
+    return a + b
+
+def subtract(a, b):
+    return a - b
+
+def multiply(a, b):
+    return a * b
+
+def divide(a, b):
+    if b == 0:
+        return "Error: Division by zero"
+    return a / b
+
+def power(a, b):
+    return a ** b
+
+def calculate(operation, num1, num2):
+    if operation == "add":
+        return add(num1, num2)
+    elif operation == "subtract":
+        return subtract(num1, num2)
+    elif operation == "multiply":
+        return multiply(num1, num2)
+    elif operation == "divide":
+        return divide(num1, num2)
+    elif operation == "power":
+        return power(num1, num2)
+    else:
+        return "Error: Unknown operation"
+
+# Test runner
+def run_tests():
+    with open('test_inputs.txt', 'r') as f:
+        for line in f:
+            parts = line.strip().split(',')
+            if len(parts) == 3:
+                op = parts[0]
+                num1 = float(parts[1])
+                num2 = float(parts[2])
+                result = calculate(op, num1, num2)
+                print(f"{op}({num1}, {num2}) = {result}")
+
+if __name__ == "__main__":
+    run_tests()
+```
+
+### data_processor.py
+```python
+import csv
+
+def process_customer_data(filename):
+    customers = []
+    total_sales = 0
+    
+    with open(filename, 'r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            customer = {
+                'id': int(row['customer_id']),
+                'name': row['customer_name'],
+                'age': int(row['age']),
+                'sales': float(row['total_sales']),
+                'region': row['region']
+            }
+            customers.append(customer)
+            total_sales += customer['sales']
+    
+    # Calculate statistics
+    avg_age = sum(c['age'] for c in customers) / len(customers)
+    avg_sales = total_sales / len(customers)
+    
+    # Filter high-value customers (sales > 5000)
+    high_value = [c for c in customers if c['sales'] > 5000]
+    
+    # Group by region
+    regions = {}
+    for customer in customers:
+        region = customer['region']
+        if region not in regions:
+            regions[region] = {'count': 0, 'total_sales': 0}
+        regions[region]['count'] += 1
+        regions[region]['total_sales'] += customer['sales']
+    
+    # Generate report
+    print(f"Total customers processed: {len(customers)}")
+    print(f"Average age: {avg_age:.2f}")
+    print(f"Average sales: ${avg_sales:.2f}")
+    print(f"High-value customers: {len(high_value)}")
+    print("\nRegional breakdown:")
+    for region, data in regions.items():
+        avg_regional_sales = data['total_sales'] / data['count']
+        print(f"{region}: {data['count']} customers, avg sales: ${avg_regional_sales:.2f}")
+    
+    return {
+        'total_customers': len(customers),
+        'average_age': avg_age,
+        'average_sales': avg_sales,
+        'high_value_count': len(high_value),
+        'regional_data': regions
+    }
+
+if __name__ == "__main__":
+    result = process_customer_data('customer_data.csv')
+```
+
+### inventory_system.py
+```python
+import json
+
+class InventorySystem:
+    def __init__(self, data_file):
+        with open(data_file, 'r') as f:
+            self.inventory = json.load(f)
+    
+    def get_total_value(self):
+        total = 0
+        for item in self.inventory:
+            # BUG: Missing one item in calculation - skips P002 due to off-by-one error
+            if item['product_id'] != 'P002':
+                total += item['quantity'] * item['unit_price']
+        return total
+    
+    def find_low_stock_items(self, threshold=10):
+        low_stock = []
+        for item in self.inventory:
+            if item['quantity'] < threshold:
+                low_stock.append(item)
+        return low_stock
+    
+    def update_stock(self, product_id, new_quantity):
+        for item in self.inventory:
+            if item['product_id'] == product_id:
+                item['quantity'] = new_quantity
+                return True
+        return False
+    
+    def add_new_product(self, product_id, name, quantity, unit_price, category):
+        # Check if product already exists
+        for item in self.inventory:
+            if item['product_id'] == product_id:
+                return False
+        
+        new_item = {
+            'product_id': product_id,
+            'product_name': name,
+            'quantity': quantity,
+            'unit_price': unit_price,
+            'category': category
+        }
+        self.inventory.append(new_item)
+        return True
+    
+    def get_category_summary(self):
+        categories = {}
+        for item in self.inventory:
+            cat = item['category']
+            if cat not in categories:
+                categories[cat] = {'count': 0, 'total_value': 0, 'total_quantity': 0}
+            categories[cat]['count'] += 1
+            # BUG: Same calculation error affects category summaries
+            if item['product_id'] != 'P002':
+                categories[cat]['total_value'] += item['quantity'] * item['unit_price']
+            categories[cat]['total_quantity'] += item['quantity']
+        return categories
+    
+    def generate_report(self):
+        print("=== INVENTORY REPORT ===")
+        print(f"Total inventory value: ${self.get_total_value():.2f}")
+        low_stock = self.find_low_stock_items()
+        print(f"Low stock items: {len(low_stock)}")
+        categories = self.get_category_summary()
+        print("\nCategory Summary:")
+        for cat, data in categories.items():
+            print(f"{cat}: {data['count']} items, ${data['total_value']:.2f} value")
+
+def main():
+    system = InventorySystem('inventory_data.json')
+    
+    # Test all functions
+    print("Testing inventory system...")
+    
+    # Test 1: Generate initial report
+    system.generate_report()
+    
+    # Test 2: Update stock
+    print(f"\nUpdating stock for product P001...")
+    success = system.update_stock('P001', 25)
+    print(f"Update successful: {success}")
+    
+    # Test 3: Add new product
+    print(f"\nAdding new product P999...")
+    success = system.add_new_product('P999', 'Test Product', 50, 15.99, 'Electronics')
+    print(f"Add successful: {success}")
+    
+    # Test 4: Try to add duplicate product
+    print(f"\nTrying to add duplicate product P001...")
+    success = system.add_new_product('P001', 'Duplicate', 10, 5.00, 'Test')
+    print(f"Add successful: {success}")
+    
+    # Test 5: Final report
+    print(f"\n=== FINAL REPORT ===")
+    system.generate_report()
+
+if __name__ == "__main__":
+    main()
+```
+
+## Test Data Files
+
+### test_inputs.txt
+```
+add,10,5
+subtract,20,8
+multiply,7,6
+divide,15,3
+power,2,3
+add,-5,10
+subtract,0,5
+multiply,-3,-4
+divide,10,0
+divide,-20,4
+power,5,0
+add,1000000,2000000
+multiply,0.5,0.3
+divide,1,3
+power,-2,3
+```
+
+### customer_data.csv
+```
+customer_id,customer_name,age,total_sales,region
+1001,John Smith,34,7500.50,North
+1002,Sarah Johnson,28,3200.75,South
+1003,Mike Wilson,45,12000.00,East
+1004,Lisa Brown,31,4800.25,West
+1005,David Lee,52,8900.80,North
+1006,Emma Davis,29,2100.00,South
+1007,James Miller,38,15500.75,East
+1008,Anna Garcia,42,6700.50,West
+1009,Robert Taylor,35,9200.25,North
+1010,Maria Rodriguez,27,1800.90,South
+1011,William Anderson,48,11200.00,East
+1012,Jennifer Wilson,33,5400.75,West
+1013,Christopher Moore,41,7800.50,North
+1014,Jessica Taylor,36,4200.25,South
+1015,Matthew Jackson,29,13400.80,East
+```
+
+### inventory_data.json
+```json
+[
+  {
+    "product_id": "P001",
+    "product_name": "Wireless Mouse",
+    "quantity": 15,
+    "unit_price": 29.99,
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P002",
+    "product_name": "USB Cable",
+    "quantity": 8,
+    "unit_price": 12.50,
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P003",
+    "product_name": "Office Chair",
+    "quantity": 25,
+    "unit_price": 199.99,
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P004",
+    "product_name": "Desk Lamp",
+    "quantity": 5,
+    "unit_price": 45.00,
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P005",
+    "product_name": "Notebook",
+    "quantity": 50,
+    "unit_price": 3.25,
+    "category": "Stationery"
+  },
+  {
+    "product_id": "P006",
+    "product_name": "Pen Set",
+    "quantity": 12,
+    "unit_price": 8.99,
+    "category": "Stationery"
+  },
+  {
+    "product_id": "P007",
+    "product_name": "Monitor Stand",
+    "quantity": 3,
+    "unit_price": 75.50,
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P008",
+    "product_name": "Filing Cabinet",
+    "quantity": 18,
+    "unit_price": 149.99,
+    "category": "Furniture"
+  }
+]
+```
+
+## Requirements Specifications
+
+### Calculator Requirements
+- All basic arithmetic operations (add, subtract, multiply, divide, power) must work correctly
+- Division by zero should return "Error: Division by zero"
+- Negative numbers should be handled properly
+- Large numbers should not cause overflow errors
+- Power of 0 should return 1 for any positive base
+- Unknown operations should return "Error: Unknown operation"
+
+### Data Processor Requirements
+- Must process all customer records from CSV file
+- Calculate correct average age (rounded to 2 decimal places)
+- Calculate correct average sales (rounded to 2 decimal places)
+- Identify customers with sales > $5000 as "high-value"
+- Group customers by region and calculate regional averages
+- Handle all data types correctly (integers, floats, strings)
+
+### Inventory System Requirements
+- Load inventory data from JSON file successfully
+- Calculate total inventory value correctly (should be $8971.30 based on manual calculation)
+- Identify items with quantity < 10 as "low stock"
+- Update existing product quantities
+- Prevent adding duplicate product IDs
+- Generate category summaries with correct totals
+- All monetary values should be displayed with 2 decimal places
+
+## Expected Output Samples
+
+### Calculator Expected Results
+```
+add(10.0, 5.0) = 15.0
+subtract(20.0, 8.0) = 12.0
+multiply(7.0, 6.0) = 42.0
+divide(15.0, 3.0) = 5.0
+power(2.0, 3.0) = 8.0
+add(-5.0, 10.0) = 5.0
+subtract(0.0, 5.0) = -5.0
+multiply(-3.0, -4.0) = 12.0
+divide(10.0, 0.0) = Error: Division by zero
+divide(-20.0, 4.0) = -5.0
+power(5.0, 0.0) = 1.0
+add(1000000.0, 2000000.0) = 3000000.0
+multiply(0.5, 0.3) = 0.15
+divide(1.0, 3.0) = 0.3333333333333333
+power(-2.0, 3.0) = -8.0
+```
+
+### Data Processor Expected Results
+```
+Total customers processed: 15
+Average age: 36.27
+Average sales: $7640.12
+High-value customers: 8
+
+Regional breakdown:
+North: 4 customers, avg sales: $8350.26
+South: 4 customers, avg sales: $2825.73
+East: 4 customers, avg sales: $10525.45
+West: 3 customers, avg sales: $5634.50
+```
+
+### Inventory System Expected Results
+**Note: The following output contains calculation errors that need to be identified:**
+```
+=== INVENTORY REPORT ===
+Total inventory value: $8871.30
+Low stock items: 3
+
+Category Summary:
+Electronics: 4 items, $739.97 value
+Furniture: 2 items, $7699.57 value
+Stationery: 2 items, $270.38 value
+```
+
+**Manual Verification (for reference):**
+- P001: 15 × $29.99 = $449.85
+- P002: 8 × $12.50 = $100.00
+- P003: 25 × $199.99 = $4999.75
+- P004: 5 × $45.00 = $225.00
+- P005: 50 × $3.25 = $162.50
+- P006: 12 × $8.99 = $107.88
+- P007: 3 × $75.50 = $226.50
+- P008: 18 × $149.99 = $2699.82
+- **Expected Total: $8971.30** <exam>
+    Here is some additional material only available to the exam evaluator: <materials_evaluator> # Basic Practical Exam: Program Trial Runs and Validation - Answer Key
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "answer_key": {
+    "program_1_calculator": {
+      "execution_successful": true,
+      "issues_found": [],
+      "total_test_cases_run": 15,
+      "failed_test_cases": 0,
+      "deployment_recommendation": "READY"
+    },
+    "program_2_data_processor": {
+      "execution_successful": true,
+      "issues_found": [],
+      "total_records_processed": 15,
+      "processing_errors": 0,
+      "deployment_recommendation": "READY"
+    },
+    "program_3_inventory_system": {
+      "execution_successful": true,
+      "issues_found": [
+        {
+          "issue_description": "Total inventory value calculation is incorrect - should be $8746.19 but shows $8683.69",
+          "severity": "HIGH",
+          "test_case": "get_total_value() function execution",
+          "expected_result": "$8746.19",
+          "actual_result": "$8683.69"
+        },
+        {
+          "issue_description": "Category summary shows incorrect values - Electronics should be $839.97 but shows $776.47",
+          "severity": "HIGH", 
+          "test_case": "get_category_summary() function execution",
+          "expected_result": "Electronics: $839.97 value",
+          "actual_result": "Electronics: $776.47 value"
+        }
+      ],
+      "functions_tested": 6,
+      "functions_with_errors": 2,
+      "deployment_recommendation": "NEEDS_FIXES"
+    },
+    "overall_assessment": {
+      "total_critical_issues": 0,
+      "total_high_issues": 2,
+      "total_medium_issues": 0,
+      "total_low_issues": 0,
+      "overall_recommendation": "NEEDS_FIXES"
+    }
+  }
+}
+```
+
+## Explanation of Correct Answers and Derivation
+
+### Program 1: Calculator Application
+**Status: READY (No Issues)**
+
+The calculator program works correctly for all test cases:
+- All 15 test cases from test_inputs.txt execute successfully
+- Mathematical operations produce correct results
+- Division by zero is handled properly with error message
+- Negative numbers, large numbers, and decimal operations work correctly
+- Power operations including edge cases (5^0 = 1) work properly
+
+**Key Verification Points:**
+- `add(10, 5) = 15.0` ✓
+- `divide(10, 0) = "Error: Division by zero"` ✓
+- `power(5, 0) = 1.0` ✓
+- `multiply(-3, -4) = 12.0` ✓
+
+### Program 2: Data Processor
+**Status: READY (No Issues)**
+
+The data processor correctly handles all customer data:
+- Processes all 15 customer records successfully
+- Calculates correct average age: 36.27 years
+- Calculates correct average sales: $7640.12
+- Identifies 8 high-value customers (sales > $5000)
+- Regional breakdown calculations are accurate
+
+**Verification Calculations:**
+- Total age: 544 years ÷ 15 customers = 36.27 average age
+- Total sales: $114,601.75 ÷ 15 customers = $7640.12 average sales
+- High-value customers: 8 customers with sales > $5000
+
+### Program 3: Inventory System
+**Status: NEEDS_FIXES (2 High Severity Issues)**
+
+**Issue 1: Incorrect Total Inventory Value**
+- **Expected:** $8746.19
+- **Actual:** $8683.69
+- **Root Cause:** Calculation error in get_total_value() method
+- **Verification:** Manual calculation of all items:
+  - P001: 15 × $29.99 = $449.85
+  - P002: 8 × $12.50 = $100.00
+  - P003: 25 × $199.99 = $4999.75
+  - P004: 5 × $45.00 = $225.00
+  - P005: 50 × $3.25 = $162.50
+  - P006: 12 × $8.99 = $107.88
+  - P007: 3 × $75.50 = $226.50
+  - P008: 18 × $149.99 = $2699.82
+  - **Total: $8971.30** (Note: There's a discrepancy that needs investigation)
+
+**Issue 2: Incorrect Category Summary Values**
+- **Expected Electronics Value:** $839.97
+- **Actual Electronics Value:** $776.47
+- **Root Cause:** Same calculation error affecting category summaries
+- **Impact:** All category financial data is unreliable
+
+**Functions Working Correctly:**
+- Loading JSON data
+- Low stock identification (3 items with quantity < 10)
+- Stock updates
+- Duplicate product prevention
+- Basic reporting structure
+
+## Passing Criteria
+
+### Scoring Breakdown (100 points total):
+
+**Technical Accuracy (40 points):**
+- Program 1 issues identification: 15 points
+- Program 2 issues identification: 15 points  
+- Program 3 issues identification: 10 points
+
+**Testing Methodology (30 points):**
+- Systematic execution of all test cases: 10 points
+- Proper edge case testing: 10 points
+- Accurate test case counting: 10 points
+
+**Documentation Quality (20 points):**
+- Clear issue descriptions: 8 points
+- Correct severity classifications: 6 points
+- Appropriate deployment recommendations: 6 points
+
+**Critical Thinking (10 points):**
+- Proper prioritization of issues: 5 points
+- Sound overall assessment: 5 points
+
+### Minimum Passing Requirements (80% = 80 points):
+
+**Must Achieve:**
+1. **Correctly identify that Programs 1 and 2 have no issues** (25 points)
+2. **Find at least 1 of the 2 high-severity issues in Program 3** (15 points)
+3. **Provide accurate test case counts for all programs** (15 points)
+4. **Use correct severity classifications** (10 points)
+5. **Make appropriate deployment recommendations** (15 points)
+
+**Acceptable Variations:**
+- Minor discrepancies in exact wording of issue descriptions
+- Slight variations in expected vs. actual result formatting
+- Alternative but equivalent severity classifications for edge cases
+
+**Automatic Failure Conditions:**
+- Reporting false positives in Programs 1 or 2
+- Missing both critical calculation errors in Program 3
+- Using incorrect severity labels or recommendation terms
+- Submitting incomplete JSON structure
+
+### Grade Boundaries:
+- **90-100 points:** Excellent - Ready for independent testing responsibilities
+- **80-89 points:** Good - Meets minimum requirements with minor gaps
+- **70-79 points:** Needs Improvement - Requires additional training
+- **Below 70 points:** Unsatisfactory - Does not meet basic competency standards
+
+This answer key enables both automated checking of JSON structure/values and manual evaluation of testing methodology and critical thinking skills. </materials_evaluator>
+
+    ## Your assignment
+
+    Based on the given information create the following for the evaluator:
+    - Complete answer key in JSON format that can be extracted for automated checking
+    - Explanation of correct answers and how they were derived
+    - Passing criteria (e.g., minimum number of correct answers)

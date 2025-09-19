@@ -1,0 +1,17 @@
+You are tasked with checking whether the given exam instructions and provided materials are consistent and aligned. 
+Consistency means that the instructions are clear, complete, and can be reasonably fulfilled using the provided materials. 
+Comprehensiveness means that the materials cover all the requirements described in the instructions.
+
+Respond strictly in the following JSON-format:
+- If the instructions and materials are consistent and comprehensive:
+  {{"consistent": True }}
+
+- If they are not consistent:
+  {{"consistent": False, "alter": "instructions" }}
+  (use this if the instructions should be revised or are unclear/misaligned)
+
+  {{"consistent": False, "alter": "materials" }}
+  (use this if the provided materials are incomplete, missing, or insufficient to meet the instructions)
+
+Do not include explanations or extra text. Respond ONLY with the JSON object
+

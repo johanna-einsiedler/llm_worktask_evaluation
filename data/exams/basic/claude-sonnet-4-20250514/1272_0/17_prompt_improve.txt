@@ -1,0 +1,18 @@
+You are tasked with improving an exam:
+
+
+The following explanation describes the major problems with the exam that you should address.
+_______________________________
+This exam is not feasible within 90 minutes for an entry-level Computer Programmer. The exam requires 150 minutes but only allows 90, creating an immediate time constraint issue. The complexity is also excessive for a basic exam - it requires advanced debugging skills, performance optimization, feature implementation, and comprehensive system analysis across multiple phases. An entry-level programmer would struggle to complete all four phases (analysis, bug fixing, feature enhancement, and performance optimization) in the given timeframe. To make this feasible: 1) Reduce time requirement to 90 minutes or extend allowed time to 150 minutes, 2) Simplify to 2-3 phases maximum, 3) Reduce the number of intentional bugs from 3-4 to 1-2 critical ones, 4) Make the performance issue more obvious, 5) Provide clearer guidance on priority tasks, and 6) Reduce the complexity of the JSON submission format.; 
+________________________________
+
+
+Your task:
+- Improve the exam to address the issues highlighted in the explanation.
+- Keep the overall structure, format, and flow of the original exam (same sections, numbering, style).
+- Ensure that the revised version is practical, fair, and aligned with the intended purpose of the exam.
+
+Output:
+Provide ONLY the improved exam, in the same structure as the original.
+
+This is the exam:

@@ -1,0 +1,726 @@
+
+
+
+
+EXAM CONTENT:
+
+# Basic Computer Programming Practical Exam
+
+## Exam Instructions
+
+You are a junior programmer at TechCorp Industries. Your manager has assigned you to build an inventory management system that processes transactions and controls equipment. You have 90 minutes to complete this practical programming exam.
+
+## Your Assignment
+
+### Phase 1: Inventory Management System (60 minutes)
+
+Build a program that processes inventory transactions and maintains accurate stock levels.
+
+**Requirements:**
+1. **Read and process transaction data** from the provided CSV file
+2. **Update inventory levels** based on transactions (shipments add stock, sales subtract stock)
+3. **Generate low stock alerts** for items with quantity below their reorder threshold
+4. **Produce a daily summary report** with total transactions processed and current stock status
+5. **Handle data validation** - reject invalid transactions and log errors
+
+**Business Rules:**
+- Shipment transactions (type "SHIP") add to inventory
+- Sale transactions (type "SALE") subtract from inventory  
+- Sales cannot reduce inventory below 0 (reject these transactions)
+- Generate alerts when current stock < reorder_threshold
+- All item codes must exist in the initial inventory file
+
+### Phase 2: Equipment Control Integration (25 minutes)
+
+Extend your system to control warehouse equipment based on inventory operations.
+
+**Requirements:**
+1. **Send equipment commands** when processing transactions:
+   - SHIP transactions → send "SCAN_BARCODE" command to scanner
+   - SALE transactions → send "PRINT_RECEIPT" command to printer
+2. **Process equipment responses** and log successful/failed operations
+3. **Handle equipment failures** - if equipment returns "ERROR", log the failure but continue processing
+4. **Generate equipment status report** showing total commands sent and success/failure counts
+
+### Phase 3: Final Testing (5 minutes)
+
+Test your complete system and document any issues found.
+
+## Materials Provided
+
+You will receive these data files:
+
+1. **initial_inventory.csv** - Starting inventory with columns:
+   - item_code, item_name, current_quantity, reorder_threshold
+
+2. **transactions.csv** - Daily transactions with columns:
+   - transaction_id, item_code, transaction_type, quantity, timestamp
+
+3. **equipment_responses.csv** - Simulated equipment responses with columns:
+   - command_id, equipment_type, command, response_status
+
+## Submission Requirements
+
+Submit your solution as **test_submission.json** containing:
+
+```json
+{
+  "source_code": "your complete program code as a string",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget A", "current_quantity": 150, "reorder_threshold": 50}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 15, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T123", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 45,
+    "total_shipments": 20,
+    "total_sales": 25,
+    "total_rejected": 3
+  },
+  "equipment_commands": [
+    {"transaction_id": "T001", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"}
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": 20,
+    "scanner_successful": 18,
+    "scanner_failed": 2,
+    "printer_commands_sent": 25,
+    "printer_successful": 23,
+    "printer_failed": 2
+  },
+  "testing_notes": "Brief description of any issues found during testing"
+}
+```
+
+## Important Notes
+
+- Use the exact item codes, transaction types, and equipment names provided in the data files
+- Your program must handle all transactions in the provided CSV file
+- Equipment command types are: "SCAN_BARCODE" for shipments, "PRINT_RECEIPT" for sales
+- Equipment types are: "scanner" and "printer"
+- Response statuses are: "SUCCESS" or "ERROR"
+- All numerical values in your JSON output must be exact integers
+- Test your program thoroughly before submitting
+
+## Evaluation Criteria
+
+Your solution will be evaluated on:
+- **Functionality**: Does your program correctly process all transactions?
+- **Accuracy**: Are inventory levels and calculations correct?
+- **Error Handling**: Does your program properly reject invalid transactions?
+- **Integration**: Does equipment control work correctly?
+- **Code Quality**: Is your code well-structured and maintainable?
+
+Good luck! Remember to test your solution before submitting.
+
+
+**initial_inventory.csv**
+```
+item_code,item_name,current_quantity,reorder_threshold
+A001,Widget Alpha,100,25
+A002,Widget Beta,75,30
+B001,Gadget Pro,200,50
+B002,Gadget Lite,40,25
+C001,Tool Master,150,40
+C002,Tool Basic,80,35
+D001,Component X,300,75
+D002,Component Y,120,60
+E001,Supply Pack,90,20
+E002,Supply Kit,180,45
+```
+
+**transactions.csv**
+```
+transaction_id,item_code,transaction_type,quantity,timestamp
+T001,A001,SHIP,50,2024-01-15 09:00:00
+T002,B001,SALE,25,2024-01-15 09:15:00
+T003,A002,SHIP,30,2024-01-15 09:30:00
+T004,C001,SALE,60,2024-01-15 09:45:00
+T005,D001,SHIP,100,2024-01-15 10:00:00
+T006,E001,SALE,15,2024-01-15 10:15:00
+T007,B002,SALE,30,2024-01-15 10:30:00
+T008,A001,SALE,80,2024-01-15 10:45:00
+T009,C002,SHIP,25,2024-01-15 11:00:00
+T010,D002,SALE,40,2024-01-15 11:15:00
+T011,E002,SALE,90,2024-01-15 11:30:00
+T012,A002,SALE,120,2024-01-15 11:45:00
+T013,B001,SHIP,75,2024-01-15 12:00:00
+T014,C001,SALE,45,2024-01-15 12:15:00
+T015,D001,SALE,150,2024-01-15 12:30:00
+T016,E001,SHIP,40,2024-01-15 12:45:00
+T017,B002,SALE,5,2024-01-15 13:00:00
+T018,A001,SHIP,60,2024-01-15 13:15:00
+T019,C002,SALE,30,2024-01-15 13:30:00
+T020,D002,SHIP,80,2024-01-15 13:45:00
+T021,E002,SALE,45,2024-01-15 14:00:00
+T022,X999,SALE,10,2024-01-15 14:15:00
+T023,A002,SALE,50,2024-01-15 14:30:00
+T024,B001,SALE,300,2024-01-15 14:45:00
+T025,C001,SALE,20,2024-01-15 15:00:00
+```
+
+**equipment_responses.csv**
+```
+command_id,equipment_type,command,response_status
+CMD001,scanner,SCAN_BARCODE,SUCCESS
+CMD002,printer,PRINT_RECEIPT,SUCCESS
+CMD003,scanner,SCAN_BARCODE,SUCCESS
+CMD004,printer,PRINT_RECEIPT,SUCCESS
+CMD005,scanner,SCAN_BARCODE,SUCCESS
+CMD006,printer,PRINT_RECEIPT,SUCCESS
+CMD007,printer,PRINT_RECEIPT,ERROR
+CMD008,printer,PRINT_RECEIPT,SUCCESS
+CMD009,scanner,SCAN_BARCODE,SUCCESS
+CMD010,printer,PRINT_RECEIPT,SUCCESS
+CMD011,printer,PRINT_RECEIPT,SUCCESS
+CMD012,scanner,SCAN_BARCODE,SUCCESS
+CMD013,printer,PRINT_RECEIPT,SUCCESS
+CMD014,printer,PRINT_RECEIPT,SUCCESS
+CMD015,scanner,SCAN_BARCODE,ERROR
+CMD016,printer,PRINT_RECEIPT,SUCCESS
+CMD017,scanner,SCAN_BARCODE,SUCCESS
+CMD018,printer,PRINT_RECEIPT,SUCCESS
+CMD019,scanner,SCAN_BARCODE,SUCCESS
+CMD020,printer,PRINT_RECEIPT,SUCCESS
+```
+
+
+# Answer Format Specifications
+
+## Required JSON Submission Format
+
+Submit your solution as **test_submission.json** with the following exact structure:
+
+```json
+{
+  "source_code": "string - your complete program code",
+  "final_inventory": [
+    {
+      "item_code": "string - exact item code from CSV",
+      "item_name": "string - exact item name from CSV", 
+      "current_quantity": integer - final quantity after all transactions,
+      "reorder_threshold": integer - threshold value from initial inventory
+    }
+  ],
+  "low_stock_alerts": [
+    {
+      "item_code": "string - item code where current_quantity < reorder_threshold",
+      "current_quantity": integer - current stock level,
+      "reorder_threshold": integer - minimum threshold value
+    }
+  ],
+  "rejected_transactions": [
+    {
+      "transaction_id": "string - exact transaction ID from CSV",
+      "reason": "string - brief explanation of rejection reason"
+    }
+  ],
+  "daily_summary": {
+    "total_transactions_processed": integer - count of successfully processed transactions,
+    "total_shipments": integer - count of SHIP transactions processed,
+    "total_sales": integer - count of SALE transactions processed,
+    "total_rejected": integer - count of rejected transactions
+  },
+  "equipment_commands": [
+    {
+      "transaction_id": "string - exact transaction ID that triggered command",
+      "equipment": "string - either 'scanner' or 'printer'",
+      "command": "string - either 'SCAN_BARCODE' or 'PRINT_RECEIPT'",
+      "status": "string - either 'SUCCESS' or 'ERROR'"
+    }
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": integer - total scanner commands sent,
+    "scanner_successful": integer - scanner commands with SUCCESS status,
+    "scanner_failed": integer - scanner commands with ERROR status,
+    "printer_commands_sent": integer - total printer commands sent,
+    "printer_successful": integer - printer commands with SUCCESS status,
+    "printer_failed": integer - printer commands with ERROR status
+  },
+  "testing_notes": "string - brief description of testing performed and any issues found"
+}
+```
+
+## Format Requirements
+
+### String Values
+- **item_code**: Use exact codes from CSV files (e.g., "A001", "B002")
+- **item_name**: Use exact names from initial_inventory.csv
+- **transaction_id**: Use exact IDs from transactions.csv (e.g., "T001", "T022")
+- **equipment**: Must be exactly "scanner" or "printer" (lowercase)
+- **command**: Must be exactly "SCAN_BARCODE" or "PRINT_RECEIPT" (uppercase)
+- **status**: Must be exactly "SUCCESS" or "ERROR" (uppercase)
+
+### Integer Values
+- All quantity and count fields must be whole numbers (no decimals)
+- Negative quantities are not allowed in final inventory
+- All summary counts must equal the sum of their components
+
+### Array Ordering
+- **final_inventory**: Order by item_code alphabetically
+- **low_stock_alerts**: Order by item_code alphabetically  
+- **rejected_transactions**: Order by transaction_id
+- **equipment_commands**: Order by the sequence transactions were processed
+
+### Equipment Command Mapping Rules
+- SHIP transactions → scanner equipment, SCAN_BARCODE command
+- SALE transactions → printer equipment, PRINT_RECEIPT command
+- Command status determined by matching with equipment_responses.csv in order
+
+### Validation Rules
+- All item_codes in transactions must exist in initial_inventory.csv or be rejected
+- Sales cannot reduce inventory below 0 (reject transaction if insufficient stock)
+- Equipment responses are consumed sequentially from equipment_responses.csv
+- Low stock alerts only for items where current_quantity < reorder_threshold
+
+### Source Code Format
+- Include complete, executable program code as a single string
+- Use proper escape characters for quotes and newlines within the JSON string
+- Code should be readable and well-commented
+
+
+ADDITONAL MATERIAL ONLY AVAILABLE TO THE EVALUATOR (NOT THE CANDIDATE):
+
+Exam Overview:
+# Basic Computer Programming Practical Exam Design
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to **actually write, update, and maintain functional computer programs** that solve real-world business problems. Unlike theoretical assessments, this exam requires candidates to produce working code that handles data processing, business logic, and system integration tasks commonly found in entry-level programming positions.
+
+## Strategic Exam Structure
+
+### Core Assessment Philosophy
+The exam simulates a **realistic workplace scenario** where a junior programmer receives a business requirement and must deliver a complete, working solution. This approach differentiates candidates who can actually program from those who only understand programming concepts.
+
+### Key Strategic Elements
+
+#### 1. **Multi-Step Problem Solving**
+- **Data Input Processing**: Reading and validating data from multiple sources
+- **Business Logic Implementation**: Applying rules and calculations
+- **Output Generation**: Producing formatted results and reports
+- **Error Handling**: Managing edge cases and invalid inputs
+
+#### 2. **Data Relationship Management**
+- Working with related datasets (customers, orders, inventory)
+- Implementing data joins and lookups
+- Maintaining data integrity across operations
+- Handling missing or inconsistent data
+
+#### 3. **Decision Points and Branching Logic**
+- Conditional processing based on business rules
+- Status updates and workflow management
+- Alert generation for critical conditions
+- Dynamic behavior based on data characteristics
+
+#### 4. **Real-World Constraints**
+- Time-based processing (dates, deadlines)
+- Quantity and threshold management
+- Data validation and sanitization
+- Performance considerations for data processing
+
+## Practical Assessment Components
+
+### Primary Task: Inventory Management System
+Candidates must build a complete inventory tracking system that:
+- Processes incoming shipments and sales transactions
+- Updates stock levels automatically
+- Generates alerts for low inventory
+- Produces management reports
+- Handles data validation and error cases
+
+### Secondary Integration: Equipment Control Simulation
+Candidates extend their system to:
+- Send commands to simulated equipment (printers, scanners)
+- Process equipment status responses
+- Log equipment interactions
+- Handle equipment failure scenarios
+
+## Evaluation Strategy
+
+### Success Indicators
+- **Functional Code**: Programs execute without errors
+- **Correct Logic**: Business rules implemented accurately
+- **Data Integrity**: Proper handling of data relationships
+- **Error Management**: Graceful handling of edge cases
+- **Code Organization**: Clear structure and maintainability
+
+### Differentiation Factors
+- **Problem Decomposition**: How candidates break down complex requirements
+- **Data Flow Design**: Understanding of how data moves through the system
+- **Integration Thinking**: Ability to connect multiple system components
+- **Practical Decision Making**: Choosing appropriate solutions for real constraints
+
+## Optimal Exam Structure
+
+### Phase 1: Core Programming (45 minutes)
+- Implement basic inventory tracking functionality
+- Process transaction data and update records
+- Generate simple reports and alerts
+
+### Phase 2: System Integration (30 minutes)
+- Add equipment control capabilities
+- Implement cross-system data sharing
+- Handle integration error scenarios
+
+### Phase 3: Enhancement and Testing (15 minutes)
+- Add requested feature enhancements
+- Test edge cases and document findings
+- Optimize performance or add validation
+
+## Key Design Principles
+
+### 1. **Authentic Complexity**
+Problems mirror real workplace challenges without being overwhelming for entry-level candidates.
+
+### 2. **Measurable Outcomes**
+Each component produces specific, verifiable outputs that can be automatically evaluated.
+
+### 3. **Progressive Difficulty**
+Tasks build from basic programming to system integration, allowing candidates to demonstrate their skill ceiling.
+
+### 4. **Practical Constraints**
+Time limits and resource constraints mirror real development environments.
+
+## Evaluation Framework
+
+### Structured JSON Submission
+Candidates submit:
+- Source code files
+- Test results and outputs
+- Documentation of design decisions
+- Reflection on challenges encountered
+
+### Automated + Manual Review
+- Automated testing of core functionality
+- Manual review of code quality and approach
+- Assessment of problem-solving methodology
+- Evaluation of real-world applicability
+
+This exam design ensures that successful candidates can actually perform the essential tasks of computer programming in a professional environment, not just demonstrate theoretical knowledge.
+
+Evaluator materials:
+
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+## Materials Design and Expected Outcomes
+
+### Data Structure Design
+The test materials were carefully constructed to create predictable, verifiable outcomes while testing all required programming capabilities:
+
+**Initial Inventory (10 items):**
+- Items grouped by category (A=Widgets, B=Gadgets, C=Tools, D=Components, E=Supplies)
+- Varying starting quantities (40-300) and reorder thresholds (20-75)
+- Designed to trigger low stock alerts after transaction processing
+
+**Transaction Processing (25 transactions):**
+- Mix of SHIP (add inventory) and SALE (subtract inventory) transactions
+- Includes deliberate test cases for error handling
+- Sequential processing required to maintain data integrity
+
+### Key Relationships and Expected Results
+
+**Final Inventory Calculations:**
+- A001: 100 + 50 - 80 + 60 = 130 (above threshold of 25)
+- A002: 75 + 30 - 120 - 50 = -65 → Invalid sale T012 rejected, final = 55 (above threshold of 30)
+- B001: 200 - 25 + 75 - 300 = -50 → Invalid sale T024 rejected, final = 250 (above threshold of 50)
+- B002: 40 - 30 - 5 = 5 (LOW STOCK ALERT - below threshold of 25)
+- C001: 150 - 60 - 45 - 20 = 25 (LOW STOCK ALERT - below threshold of 40)
+- C002: 80 + 25 - 30 = 75 (above threshold of 35)
+- D001: 300 + 100 - 150 = 250 (above threshold of 75)
+- D002: 120 - 40 + 80 = 160 (above threshold of 60)
+- E001: 90 - 15 + 40 = 115 (above threshold of 20)
+- E002: 180 - 90 - 45 = 45 (above threshold of 45)
+
+**Error Cases (3 total):**
+1. T022: Invalid item code "X999" (doesn't exist in inventory)
+2. T012: A002 sale of 120 would create negative inventory (75+30-120 = -15)
+3. T024: B001 sale of 300 would create negative inventory (200-25+75-300 = -50)
+
+**Equipment Commands:**
+- SHIP transactions generate scanner commands (8 total)
+- SALE transactions generate printer commands (14 valid sales)
+- Equipment responses include 2 ERROR statuses (CMD007, CMD015)
+- Commands are processed sequentially, matching transaction order
+
+**Daily Summary:**
+- Total transactions processed: 22 (25 minus 3 rejected)
+- Total shipments: 8
+- Total sales: 14
+- Total rejected: 3
+
+**Low Stock Alerts:**
+- B002: quantity 5, threshold 25
+- C001: quantity 25, threshold 40
+
+### Tricky Elements and Common Pitfalls
+
+1. **Sequential Processing Required**: Transactions must be processed in order since later transactions depend on updated inventory levels from earlier ones.
+
+2. **Negative Inventory Prevention**: Candidates must check if a sale would create negative inventory BEFORE processing it.
+
+3. **Invalid Item Codes**: Transaction T022 references non-existent item "X999" - must be rejected.
+
+4. **Equipment Command Mapping**: 
+   - SHIP → scanner/SCAN_BARCODE
+   - SALE → printer/PRINT_RECEIPT
+   - Only valid transactions should generate equipment commands
+
+5. **Equipment Response Processing**: Equipment responses are provided in a separate file and must be matched to commands by sequential order (CMD001 corresponds to first equipment command sent, etc.).
+
+6. **Threshold Comparison**: Low stock alerts trigger when current_quantity < reorder_threshold (strictly less than, not less than or equal).
+
+### Hidden Information Requiring Careful Reading
+
+- Equipment commands are only sent for VALID transactions (rejected transactions don't generate equipment commands)
+- Equipment responses must be processed in the order commands were sent
+- The reorder threshold comparison uses strict inequality (<)
+- Transaction timestamps are provided but not required for processing logic
+- Item codes follow a pattern but candidates shouldn't assume this pattern extends beyond provided data
+
+This design ensures that candidates who correctly implement all business logic will produce identical, verifiable results, while those who miss edge cases or make logical errors will produce detectably different outputs.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+Evaluation information:
+# Basic Computer Programming Practical Exam - Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "source_code": "# Complete working program code would be provided by candidate",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25},
+    {"item_code": "A002", "item_name": "Widget Beta", "current_quantity": 55, "reorder_threshold": 30},
+    {"item_code": "B001", "item_name": "Gadget Pro", "current_quantity": 250, "reorder_threshold": 50},
+    {"item_code": "B002", "item_name": "Gadget Lite", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "item_name": "Tool Master", "current_quantity": 25, "reorder_threshold": 40}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "current_quantity": 25, "reorder_threshold": 40}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T007", "reason": "Insufficient inventory"},
+    {"transaction_id": "T012", "reason": "Insufficient inventory"},
+    {"transaction_id": "T013", "reason": "Invalid item code"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 11,
+    "total_shipments": 3,
+    "total_sales": 8,
+    "total_rejected": 3
+  },
+  "equipment_commands": [
+    {"transaction_id": "T001", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T002", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T003", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T004", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T005", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T006", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T008", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "ERROR"},
+    {"transaction_id": "T009", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T010", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T011", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T014", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"}
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": 3,
+    "scanner_successful": 2,
+    "scanner_failed": 1,
+    "printer_commands_sent": 8,
+    "printer_successful": 8,
+    "printer_failed": 0
+  },
+  "testing_notes": "System successfully processed valid transactions and rejected invalid ones. Equipment integration working correctly with proper error handling."
+}
+```
+
+## Detailed Answer Derivation
+
+### Final Inventory Calculations
+
+Starting from initial_inventory.csv, process each valid transaction in chronological order:
+
+**A001 (Widget Alpha)**: Starting quantity 100
+- T001: SHIP +50 → 150
+- T005: SALE -80 → 70
+- **Final: 70**
+
+**A002 (Widget Beta)**: Starting quantity 75
+- T003: SHIP +30 → 105
+- T007: SALE -120 → **REJECTED** (would result in -15, insufficient inventory)
+- T011: SALE -50 → 55
+- **Final: 55**
+
+**B001 (Gadget Pro)**: Starting quantity 200
+- T002: SALE -25 → 175
+- T008: SHIP +75 → 250
+- T012: SALE -300 → **REJECTED** (would result in -50, insufficient inventory)
+- **Final: 250**
+
+**B002 (Gadget Lite)**: Starting quantity 40
+- T006: SALE -30 → 10
+- T010: SALE -5 → 5
+- **Final: 5**
+
+**C001 (Tool Master)**: Starting quantity 150
+- T004: SALE -60 → 90
+- T009: SALE -45 → 45
+- T014: SALE -20 → 25
+- **Final: 25**
+
+### Rejected Transactions Analysis
+
+1. **T007**: A002 SALE 120
+   - Current stock after T003: 105
+   - Attempted sale: 120
+   - Result would be: 105 - 120 = -15 (negative inventory not allowed)
+   - **Reason**: "Insufficient inventory"
+
+2. **T012**: B001 SALE 300
+   - Current stock after T008: 250
+   - Attempted sale: 300
+   - Result would be: 250 - 300 = -50 (negative inventory not allowed)
+   - **Reason**: "Insufficient inventory"
+
+3. **T013**: X999 SALE 10
+   - Item code X999 does not exist in initial_inventory.csv
+   - **Reason**: "Invalid item code"
+
+### Low Stock Alerts
+
+Items where current_quantity < reorder_threshold:
+- **A001**: 70 ≥ 25 ❌ (No alert needed)
+- **A002**: 55 ≥ 30 ❌ (No alert needed)
+- **B001**: 250 ≥ 50 ❌ (No alert needed)
+- **B002**: 5 < 25 ✅ (Alert required)
+- **C001**: 25 < 40 ✅ (Alert required)
+
+### Equipment Commands Mapping
+
+Equipment responses are consumed sequentially from equipment_responses.csv. Only successful (non-rejected) transactions generate equipment commands:
+
+**Valid transactions processed in order:**
+1. T001 (SHIP) → scanner, SCAN_BARCODE → SUCCESS (uses CMD001)
+2. T002 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD002)
+3. T003 (SHIP) → scanner, SCAN_BARCODE → SUCCESS (uses CMD003)
+4. T004 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD004)
+5. T005 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD005)
+6. T006 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD006)
+7. T008 (SHIP) → scanner, SCAN_BARCODE → ERROR (uses CMD007)
+8. T009 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD008)
+9. T010 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD009)
+10. T011 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD010)
+11. T014 (SALE) → printer, PRINT_RECEIPT → SUCCESS (uses CMD011)
+
+### Daily Summary Calculations
+
+- **Total transactions processed**: 11 (14 total - 3 rejected)
+- **Total shipments**: 3 (T001, T003, T008)
+- **Total sales**: 8 (T002, T004, T005, T006, T009, T010, T011, T014)
+- **Total rejected**: 3 (T007, T012, T013)
+
+### Equipment Summary Calculations
+
+- **Scanner commands sent**: 3 (from T001, T003, T008)
+- **Scanner successful**: 2 (T001 and T003 succeeded)
+- **Scanner failed**: 1 (T008 failed)
+- **Printer commands sent**: 8 (from all SALE transactions)
+- **Printer successful**: 8 (all printer commands succeeded)
+- **Printer failed**: 0
+
+## Passing Criteria and Scoring Rubric
+
+### Overall Passing Threshold: 80%
+
+**Total Points: 100**
+**Minimum Passing Score: 80 points**
+
+### Detailed Scoring Breakdown
+
+**1. Final Inventory Calculations (35 points)**
+- All 5 items calculated correctly: 35 points
+- 4 items correct: 28 points
+- 3 items correct: 21 points
+- 2 items correct: 14 points
+- 1 item correct: 7 points
+- 0 items correct: 0 points
+
+**2. Transaction Validation and Rejection Logic (25 points)**
+- All 3 rejections identified correctly with proper reasons: 25 points
+- 2 rejections correct (with reasons): 17 points
+- 1 rejection correct (with reason): 8 points
+- Rejections identified but reasons incorrect: 5 points
+- No rejections identified correctly: 0 points
+
+**3. Low Stock Alert Generation (10 points)**
+- Correct identification of B002 and C001 only: 10 points
+- One correct alert (either B002 or C001): 5 points
+- Incorrect alerts or missing required alerts: 0 points
+
+**4. Daily Summary Accuracy (10 points)**
+- All 4 summary counts correct: 10 points
+- 3 out of 4 counts correct: 7 points
+- 2 out of 4 counts correct: 5 points
+- 1 out of 4 counts correct: 2 points
+- No counts correct: 0 points
+
+**5. Equipment Integration (15 points)**
+- Equipment commands correctly mapped and sequenced (10 points)
+- Equipment summary calculations correct (5 points)
+- Partial equipment functionality: 7-12 points
+- No equipment integration: 0 points
+
+**6. Code Quality and Execution (5 points)**
+- Code executes without errors and produces correct output: 5 points
+- Code executes with minor issues but produces mostly correct results: 3 points
+- Code partially functional: 1 point
+- Code doesn't execute or produces no meaningful output: 0 points
+
+### Critical Success Requirements
+
+To achieve a passing score (80+), candidates must demonstrate:
+
+1. **Core Programming Competency**: Accurate processing of at least 80% of inventory calculations
+2. **Business Logic Implementation**: Proper validation and rejection of invalid transactions
+3. **Data Integration Skills**: Basic ability to work with multiple data sources
+4. **System Thinking**: Understanding of how different components interact
+
+### Acceptable Variations
+
+- Different programming languages (Python, Java, C#, JavaScript, etc.)
+- Alternative data structure approaches (lists vs. dictionaries)
+- Minor variations in error message wording (as long as meaning is clear)
+- Different but logically equivalent code organization
+- Reasonable alternative approaches to equipment response mapping
+
+### Automatic Failure Conditions (Below 50%)
+
+- Non-executable code that produces no output
+- Missing critical JSON fields (final_inventory, rejected_transactions)
+- Major calculation errors affecting majority of inventory items
+- Complete absence of transaction validation
+- Incorrect data types in JSON output
+
+### Grade Boundaries
+
+- **90-100 points**: Excellent - Professional level competency
+- **80-89 points**: Good - **PASSING** - Entry-level competency demonstrated
+- **70-79 points**: Satisfactory - **NOT PASSING** - Some skills present but insufficient
+- **60-69 points**: Needs Improvement - **NOT PASSING** - Basic understanding lacking
+- **Below 60 points**: Unsatisfactory - **NOT PASSING** - Fundamental skills missing
+
+This evaluation framework ensures that candidates who pass can perform essential computer programming tasks in a professional environment while providing clear, objective assessment criteria.
+
+Grading script
+
+
+Answer key (Evaluator-Only):
+
+
+(Note: The answer key is passed to the grading script as 'answer_key.json'.)

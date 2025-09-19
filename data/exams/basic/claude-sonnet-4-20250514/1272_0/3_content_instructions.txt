@@ -1,0 +1,134 @@
+# Basic Practical Exam: Program Revision, Repair, and Expansion
+
+## Exam Instructions
+
+You will work with a legacy e-commerce inventory management system that requires maintenance and improvements. Your task is to analyze, repair, and enhance the existing codebase to meet specified requirements.
+
+## Time Limit
+90 minutes total
+
+## What You Need to Accomplish
+
+### Phase 1: System Analysis (20 minutes)
+- Run the provided inventory management system
+- Identify all functional issues, bugs, and performance problems
+- Document your findings in the required JSON format
+
+### Phase 2: Bug Repairs (30 minutes)
+- Fix all identified bugs to make the system fully functional
+- Ensure all existing features work as originally intended
+- Verify your fixes through testing
+
+### Phase 3: Feature Enhancement (30 minutes)
+- Implement the new "Low Stock Alert" feature according to specifications
+- Integrate the feature seamlessly with existing code
+- Maintain consistency with existing code patterns
+
+### Phase 4: Performance Optimization (10 minutes)
+- Identify and resolve the most critical performance bottleneck
+- Implement the optimization without breaking existing functionality
+
+## Materials Provided
+
+You will receive:
+1. **inventory_system.py** - Main application file
+2. **product_data.csv** - Sample product database (100 products)
+3. **requirements.txt** - System specifications document
+4. **test_cases.txt** - Expected system behaviors for validation
+
+## Specific Requirements
+
+### Bug Repair Criteria
+- All menu options must work without errors
+- Data validation must function correctly
+- File operations must complete successfully
+- Mathematical calculations must be accurate
+
+### Feature Enhancement Specifications
+The "Low Stock Alert" feature must:
+- Trigger when any product quantity falls below 10 units
+- Display product ID, name, current quantity, and recommended reorder quantity (current quantity + 50)
+- Be accessible via menu option "5"
+- Save alerts to "low_stock_alerts.txt" in the format: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+
+### Performance Optimization Target
+- Reduce the time for "Generate Sales Report" operation by at least 50%
+- Maintain identical output format and accuracy
+
+## Submission Requirements
+
+Submit your work as **test_submission.json** with this exact structure:
+
+```json
+{
+  "analysis_phase": {
+    "bugs_found": [
+      {
+        "bug_id": "BUG001",
+        "description": "Exact description of the bug",
+        "affected_function": "function_name",
+        "error_type": "runtime_error|logic_error|data_error"
+      }
+    ],
+    "performance_issues": [
+      {
+        "issue_id": "PERF001", 
+        "description": "Exact description of performance problem",
+        "affected_operation": "operation_name"
+      }
+    ],
+    "total_bugs_found": 0,
+    "total_performance_issues": 0
+  },
+  "bug_fixes": [
+    {
+      "bug_id": "BUG001",
+      "fix_description": "Exact description of what was changed",
+      "files_modified": ["filename.py"],
+      "lines_changed": [45, 67, 89],
+      "fix_verified": true
+    }
+  ],
+  "feature_enhancement": {
+    "implementation_complete": true,
+    "menu_option_added": "5",
+    "output_file_created": "low_stock_alerts.txt",
+    "alert_threshold": 10,
+    "reorder_formula": "current_quantity + 50",
+    "integration_method": "Description of how feature integrates with existing code"
+  },
+  "performance_optimization": {
+    "optimization_implemented": true,
+    "target_operation": "Generate Sales Report",
+    "optimization_technique": "Exact technique used",
+    "performance_improvement_percentage": 0,
+    "functionality_preserved": true
+  },
+  "testing_completed": {
+    "all_menu_options_tested": true,
+    "new_feature_tested": true,
+    "performance_improvement_verified": true,
+    "no_new_bugs_introduced": true
+  }
+}
+```
+
+## Important Notes
+
+- Use only the provided product data and specifications
+- Do not modify the core data structure or file formats
+- All numerical values in your JSON must be exact (no approximations)
+- Boolean values must be exactly `true` or `false`
+- Test your changes thoroughly before submission
+- Ensure your modified code runs without errors
+
+## Evaluation Criteria
+
+Your submission will be evaluated on:
+- **Functionality**: All bugs fixed and new feature works correctly
+- **Completeness**: All required tasks completed
+- **Accuracy**: JSON submission matches actual implementation
+- **Code Quality**: Clean, maintainable modifications
+- **Testing**: Evidence that changes were properly validated
+
+Good luck!

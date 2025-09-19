@@ -1,0 +1,123 @@
+# Basic Practical Exam: Program Compilation and Documentation
+
+## Time Limit: 90 minutes
+
+## Overview
+You will work with a provided Python program that contains compilation errors. Your task is to fix these errors, compile the program successfully, and create comprehensive documentation following specific requirements.
+
+## Materials Provided
+You will receive:
+- `buggy_program.py` - A Python file containing a simple inventory management system with intentional compilation errors
+- `sample_data.txt` - Sample inventory data to test the program
+- `documentation_template.md` - A template showing the required documentation structure
+- `comment_guidelines.txt` - Specific commenting requirements and examples
+
+## Tasks to Complete
+
+### Task 1: Code Compilation (25 points)
+1. Analyze the provided `buggy_program.py` file
+2. Identify and fix ALL compilation errors to make the program run successfully
+3. Test the program with the provided sample data to ensure it works correctly
+4. Document each error you fixed using the exact format specified in the guidelines
+
+### Task 2: Program Documentation (30 points)
+Create comprehensive documentation that includes:
+1. **Program Overview**: Write exactly 3-4 sentences describing what the program does
+2. **Function Documentation**: For each function, provide:
+   - Purpose (1 sentence)
+   - Input parameters (name, type, description)
+   - Return value (type and description)
+   - Usage example
+3. **Installation Instructions**: Step-by-step instructions (numbered list)
+4. **User Guide**: How to run the program and interpret outputs
+
+### Task 3: Code Commenting (25 points)
+Add inline comments to the corrected code following these requirements:
+1. Add a header comment block with program title, author (use "Exam Candidate"), and date
+2. Add function-level docstrings for each function using the provided format
+3. Add inline comments explaining complex logic (minimum 5 comments)
+4. Add comments explaining any non-obvious variable names or calculations
+
+### Task 4: Revision Documentation (20 points)
+Document your changes using this exact format:
+1. List each compilation error fixed with:
+   - Line number where error occurred
+   - Type of error (syntax, import, logic, etc.)
+   - Exact change made
+   - Reason for the change
+2. List any improvements made beyond fixing errors
+3. Provide a summary of testing performed
+
+## Submission Requirements
+
+Submit your work as a JSON file named `test_submission.json` with this exact structure:
+
+```json
+{
+  "corrected_code": "// Your complete corrected Python code here",
+  "compilation_fixes": [
+    {
+      "line_number": 0,
+      "error_type": "syntax|import|logic|other",
+      "change_made": "Exact description of fix",
+      "reason": "Why this fix was necessary"
+    }
+  ],
+  "program_documentation": {
+    "overview": "3-4 sentence program description",
+    "functions": [
+      {
+        "name": "function_name",
+        "purpose": "One sentence description",
+        "parameters": [
+          {
+            "name": "param_name",
+            "type": "data_type",
+            "description": "Parameter description"
+          }
+        ],
+        "return_value": {
+          "type": "return_type",
+          "description": "Return value description"
+        },
+        "usage_example": "Code example showing how to call function"
+      }
+    ],
+    "installation_instructions": [
+      "Step 1 description",
+      "Step 2 description"
+    ],
+    "user_guide": "Instructions for running and using the program"
+  },
+  "commented_code": "// Your code with all required comments added",
+  "revision_log": {
+    "errors_fixed": [
+      {
+        "line_number": 0,
+        "error_type": "Type of error",
+        "change_made": "What was changed",
+        "reason": "Why change was needed"
+      }
+    ],
+    "improvements_made": [
+      "Description of improvement 1",
+      "Description of improvement 2"
+    ],
+    "testing_summary": "Description of testing performed to verify program works"
+  },
+  "program_runs_successfully": true
+}
+```
+
+## Success Criteria
+- Program compiles and runs without errors
+- All required documentation sections are complete
+- Comments follow the specified format and guidelines
+- JSON submission follows the exact structure provided
+- All fixes and changes are properly documented
+
+## Important Notes
+- Use only the provided template formats and structures
+- Test your program thoroughly before submission
+- Ensure your JSON file is valid and properly formatted
+- The program must run successfully with the provided sample data

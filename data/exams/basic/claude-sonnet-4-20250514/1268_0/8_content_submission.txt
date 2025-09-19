@@ -1,0 +1,132 @@
+# Answer Format Specifications
+
+## Required Submission Format
+
+The candidate must submit their findings in a file named **test_submission.json** with the exact structure and field names specified below. All JSON syntax must be valid.
+
+## JSON Structure Requirements
+
+```json
+{
+  "program_1_calculator": {
+    "execution_successful": boolean,
+    "issues_found": [
+      {
+        "issue_description": "string",
+        "severity": "string",
+        "test_case": "string", 
+        "expected_result": "string",
+        "actual_result": "string"
+      }
+    ],
+    "total_test_cases_run": integer,
+    "failed_test_cases": integer,
+    "deployment_recommendation": "string"
+  },
+  "program_2_data_processor": {
+    "execution_successful": boolean,
+    "issues_found": [
+      {
+        "issue_description": "string",
+        "severity": "string",
+        "test_case": "string",
+        "expected_result": "string", 
+        "actual_result": "string"
+      }
+    ],
+    "total_records_processed": integer,
+    "processing_errors": integer,
+    "deployment_recommendation": "string"
+  },
+  "program_3_inventory_system": {
+    "execution_successful": boolean,
+    "issues_found": [
+      {
+        "issue_description": "string",
+        "severity": "string",
+        "test_case": "string",
+        "expected_result": "string",
+        "actual_result": "string"
+      }
+    ],
+    "functions_tested": integer,
+    "functions_with_errors": integer,
+    "deployment_recommendation": "string"
+  },
+  "overall_assessment": {
+    "total_critical_issues": integer,
+    "total_high_issues": integer,
+    "total_medium_issues": integer,
+    "total_low_issues": integer,
+    "overall_recommendation": "string"
+  }
+}
+```
+
+## Field Format Requirements
+
+### Boolean Fields
+- `execution_successful`: Must be exactly `true` or `false` (lowercase, no quotes)
+
+### String Fields - Severity Classification
+- `severity`: Must use exactly one of these values:
+  - `"CRITICAL"`
+  - `"HIGH"`
+  - `"MEDIUM"`
+  - `"LOW"`
+
+### String Fields - Deployment Recommendations
+- `deployment_recommendation`: Must use exactly one of these values:
+  - `"READY"`
+  - `"NEEDS_FIXES"`
+  - `"REQUIRES_TESTING"`
+- `overall_recommendation`: Must use exactly one of these values:
+  - `"READY"`
+  - `"NEEDS_FIXES"`
+  - `"REQUIRES_TESTING"`
+
+### Integer Fields
+- All count fields must contain actual integer values (not strings)
+- `total_test_cases_run`: Count of test cases executed for calculator
+- `failed_test_cases`: Count of test cases that failed for calculator
+- `total_records_processed`: Count of customer records processed
+- `processing_errors`: Count of errors encountered during data processing
+- `functions_tested`: Count of inventory system functions tested
+- `functions_with_errors`: Count of functions that had errors
+- `total_critical_issues`, `total_high_issues`, `total_medium_issues`, `total_low_issues`: Sum counts across all programs
+
+### String Fields - Issue Documentation
+- `issue_description`: Clear, specific description of the problem found
+- `test_case`: Exact input or scenario that caused the issue
+- `expected_result`: What should have happened according to requirements
+- `actual_result`: What actually happened when the test was run
+
+### Array Fields
+- `issues_found`: Array of issue objects. If no issues found, use empty array `[]`
+- Each issue object must contain all five required fields
+
+## Formatting Standards
+
+### Text Content
+- All string values must be enclosed in double quotes
+- Issue descriptions should be concise but specific
+- Test cases should include exact inputs used
+- Results should include actual output values or error messages
+
+### Numerical Precision
+- Integer fields: Whole numbers only, no decimal points
+- When referencing monetary values in text fields: Use format `$X.XX` (dollar sign, two decimal places)
+- When referencing percentages in text fields: Use format `X.XX%` (two decimal places)
+
+### Special Cases
+- If a program fails to execute at all, set `execution_successful: false`
+- If no issues are found for a program, use `"issues_found": []`
+- All numerical count fields must reflect actual testing performed
+- Issue arrays can contain multiple issue objects if multiple problems are found
+
+## Validation Requirements
+- JSON must be syntactically valid
+- All required fields must be present
+- No additional fields beyond those specified
+- All enum values (severity, recommendations) must match exactly as specified
+- File must be named exactly `test_submission.json`

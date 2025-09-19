@@ -1,0 +1,368 @@
+# Basic Computer Programming Practical Exam
+
+## Exam Instructions
+You are a junior programmer at TechCorp Industries. Your manager has assigned you to build a basic inventory management system. You have 90 minutes to complete this practical programming exam.
+
+## Your Assignment
+
+### Phase 1: Core Inventory Management (70 minutes)
+Build a program that processes inventory transactions and maintains accurate stock levels.
+
+**Requirements:**
+1. **Read and process transaction data** from the provided CSV file
+2. **Update inventory levels** based on transactions (shipments add stock, sales subtract stock)
+3. **Generate low stock alerts** for items with quantity below their reorder threshold
+4. **Produce a daily summary report** with total transactions processed
+5. **Handle basic validation** - reject transactions that would create negative inventory
+
+**Business Rules:**
+- Shipment transactions (type "SHIP") add to inventory
+- Sale transactions (type "SALE") subtract from inventory  
+- Sales cannot reduce inventory below 0 (reject these transactions)
+- Generate alerts when current stock < reorder_threshold
+- All item codes must exist in the initial inventory file
+
+### Phase 2: Equipment Integration (15 minutes)
+Add basic equipment control to your system.
+
+1. **Send equipment commands** when processing valid transactions:
+   - SHIP transactions → send "SCAN_BARCODE" command to scanner
+   - SALE transactions → send "PRINT_RECEIPT" command to printer
+2. **Track equipment responses** using the provided equipment_responses.csv file
+3. **Generate basic equipment summary** showing total commands sent and success/failure counts
+
+### Phase 3: Final Testing (5 minutes)
+Test your complete system and document any issues found.
+
+## Materials Provided
+
+**initial_inventory.csv**
+```
+item_code,item_name,current_quantity,reorder_threshold
+A001,Widget Alpha,100,25
+A002,Widget Beta,75,30
+B001,Gadget Pro,200,50
+B002,Gadget Lite,40,25
+C001,Tool Master,150,40
+```
+
+**transactions.csv**
+```
+transaction_id,item_code,transaction_type,quantity,timestamp
+T001,A001,SHIP,50,2024-01-15 09:00:00
+T002,B001,SALE,25,2024-01-15 09:15:00
+T003,A002,SHIP,30,2024-01-15 09:30:00
+T004,C001,SALE,60,2024-01-15 09:45:00
+T005,A001,SALE,80,2024-01-15 10:00:00
+T006,B002,SALE,30,2024-01-15 10:15:00
+T007,A002,SALE,120,2024-01-15 10:30:00
+T008,B001,SHIP,75,2024-01-15 10:45:00
+T009,C001,SALE,45,2024-01-15 11:00:00
+T010,B002,SALE,5,2024-01-15 11:15:00
+T011,A002,SALE,50,2024-01-15 11:30:00
+T012,B001,SALE,300,2024-01-15 11:45:00
+T013,X999,SALE,10,2024-01-15 12:00:00
+T014,C001,SALE,20,2024-01-15 12:15:00
+```
+
+**equipment_responses.csv**
+```
+command_id,equipment_type,command,response_status
+CMD001,scanner,SCAN_BARCODE,SUCCESS
+CMD002,printer,PRINT_RECEIPT,SUCCESS
+CMD003,scanner,SCAN_BARCODE,SUCCESS
+CMD004,printer,PRINT_RECEIPT,SUCCESS
+CMD005,printer,PRINT_RECEIPT,SUCCESS
+CMD006,printer,PRINT_RECEIPT,SUCCESS
+CMD007,printer,PRINT_RECEIPT,ERROR
+CMD008,scanner,SCAN_BARCODE,SUCCESS
+CMD009,printer,PRINT_RECEIPT,SUCCESS
+CMD010,printer,PRINT_RECEIPT,SUCCESS
+CMD011,printer,PRINT_RECEIPT,SUCCESS
+CMD012,printer,PRINT_RECEIPT,SUCCESS
+```
+
+## Submission Requirements
+
+Submit your solution as **test_submission.json** containing:
+
+```json
+{
+  "source_code": "your complete program code as a string",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 150, "reorder_threshold": 25}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 15, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T123", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 12,
+    "total_shipments": 3,
+    "total_sales": 9,
+    "total_rejected": 3
+  },
+  "equipment_commands": [
+    {"transaction_id": "T001", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"}
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": 3,
+    "scanner_successful": 3,
+    "scanner_failed": 0,
+    "printer_commands_sent": 9,
+    "printer_successful": 8,
+    "printer_failed": 1
+  },
+  "testing_notes": "Brief description of any issues found during testing"
+}
+```
+
+## Format Requirements
+
+### String Values
+- **item_code**: Use exact codes from CSV files (e.g., "A001", "B002")
+- **item_name**: Use exact names from initial_inventory.csv
+- **transaction_id**: Use exact IDs from transactions.csv (e.g., "T001", "T007")
+- **equipment**: Must be exactly "scanner" or "printer" (lowercase)
+- **command**: Must be exactly "SCAN_BARCODE" or "PRINT_RECEIPT" (uppercase)
+- **status**: Must be exactly "SUCCESS" or "ERROR" (uppercase)
+
+### Integer Values
+- All quantity and count fields must be whole numbers (no decimals)
+- Negative quantities are not allowed in final inventory
+- All summary counts must equal the sum of their components
+
+### Array Ordering
+- **final_inventory**: Order by item_code alphabetically
+- **low_stock_alerts**: Order by item_code alphabetically  
+- **rejected_transactions**: Order by transaction_id
+- **equipment_commands**: Order by the sequence transactions were processed
+
+### Equipment Command Mapping Rules
+- SHIP transactions → scanner equipment, SCAN_BARCODE command
+- SALE transactions → printer equipment, PRINT_RECEIPT command
+- Command status determined by matching with equipment_responses.csv in order
+- Only successful (non-rejected) transactions generate equipment commands
+
+### Validation Rules
+- All item_codes in transactions must exist in initial_inventory.csv or be rejected
+- Sales cannot reduce inventory below 0 (reject transaction if insufficient stock)
+- Equipment responses are consumed sequentially from equipment_responses.csv
+- Low stock alerts only for items where current_quantity < reorder_threshold
+
+### Source Code Format
+- Include complete, executable program code as a single string
+- Use proper escape characters for quotes and newlines within the JSON string
+- Code should be readable and well-commented
+
+## Important Notes
+- Use the exact item codes, transaction types, and equipment names provided in the data files
+- Your program must handle all transactions in the provided CSV file
+- Equipment command types are: "SCAN_BARCODE" for shipments, "PRINT_RECEIPT" for sales
+- Equipment types are: "scanner" and "printer"
+- Response statuses are: "SUCCESS" or "ERROR"
+- All numerical values in your JSON output must be exact integers
+- Test your program thoroughly before submitting
+
+## Evaluation Criteria
+Your solution will be evaluated on:
+- **Functionality**: Does your program correctly process all transactions?
+- **Accuracy**: Are inventory levels and calculations correct?
+- **Error Handling**: Does your program properly reject invalid transactions?
+- **Integration**: Does equipment control work correctly?
+- **Code Quality**: Is your code well-structured and maintainable?
+
+## Helpful Tips
+- Start with Phase 1 and get the basic inventory management working first
+- Use simple data structures like dictionaries/maps to store inventory data
+- Process transactions one at a time in order
+- Test with a few transactions before processing the entire file
+- The equipment integration can be added after the core functionality works
+
+Good luck! Remember to test your solution before submitting.
+# Basic Computer Programming Practical Exam
+
+## Exam Instructions
+You are a junior programmer at TechCorp Industries. Your manager has assigned you to build a basic inventory management system. You have 90 minutes to complete this practical programming exam.
+
+## Your Assignment
+
+### Phase 1: Core Inventory Management (70 minutes)
+Build a program that processes inventory transactions and maintains accurate stock levels.
+
+**Requirements:**
+1. **Read and process transaction data** from the provided CSV file
+2. **Update inventory levels** based on transactions (shipments add stock, sales subtract stock)
+3. **Generate low stock alerts** for items with quantity below their reorder threshold
+4. **Produce a daily summary report** with total transactions processed
+5. **Handle basic validation** - reject transactions that would create negative inventory
+
+**Business Rules:**
+- Shipment transactions (type "SHIP") add to inventory
+- Sale transactions (type "SALE") subtract from inventory  
+- Sales cannot reduce inventory below 0 (reject these transactions)
+- Generate alerts when current stock < reorder_threshold
+- All item codes must exist in the initial inventory file
+
+### Phase 2: Equipment Integration (15 minutes)
+Add basic equipment control to your system.
+
+1. **Send equipment commands** when processing valid transactions:
+   - SHIP transactions → send "SCAN_BARCODE" command to scanner
+   - SALE transactions → send "PRINT_RECEIPT" command to printer
+2. **Track equipment responses** using the provided equipment_responses.csv file
+3. **Generate basic equipment summary** showing total commands sent and success/failure counts
+
+### Phase 3: Final Testing (5 minutes)
+Test your complete system and document any issues found.
+
+## Materials Provided
+
+**initial_inventory.csv**
+```
+item_code,item_name,current_quantity,reorder_threshold
+A001,Widget Alpha,100,25
+A002,Widget Beta,75,30
+B001,Gadget Pro,200,50
+B002,Gadget Lite,40,25
+C001,Tool Master,150,40
+```
+
+**transactions.csv**
+```
+transaction_id,item_code,transaction_type,quantity,timestamp
+T001,A001,SHIP,50,2024-01-15 09:00:00
+T002,B001,SALE,25,2024-01-15 09:15:00
+T003,A002,SHIP,30,2024-01-15 09:30:00
+T004,C001,SALE,60,2024-01-15 09:45:00
+T005,A001,SALE,80,2024-01-15 10:00:00
+T006,B002,SALE,30,2024-01-15 10:15:00
+T007,A002,SALE,120,2024-01-15 10:30:00
+T008,B001,SHIP,75,2024-01-15 10:45:00
+T009,C001,SALE,45,2024-01-15 11:00:00
+T010,B002,SALE,5,2024-01-15 11:15:00
+T011,A002,SALE,50,2024-01-15 11:30:00
+T012,B001,SALE,300,2024-01-15 11:45:00
+T013,X999,SALE,10,2024-01-15 12:00:00
+T014,C001,SALE,20,2024-01-15 12:15:00
+```
+
+**equipment_responses.csv**
+```
+command_id,equipment_type,command,response_status
+CMD001,scanner,SCAN_BARCODE,SUCCESS
+CMD002,printer,PRINT_RECEIPT,SUCCESS
+CMD003,scanner,SCAN_BARCODE,SUCCESS
+CMD004,printer,PRINT_RECEIPT,SUCCESS
+CMD005,printer,PRINT_RECEIPT,SUCCESS
+CMD006,printer,PRINT_RECEIPT,SUCCESS
+CMD007,printer,PRINT_RECEIPT,ERROR
+CMD008,scanner,SCAN_BARCODE,SUCCESS
+CMD009,printer,PRINT_RECEIPT,SUCCESS
+CMD010,printer,PRINT_RECEIPT,SUCCESS
+CMD011,printer,PRINT_RECEIPT,SUCCESS
+CMD012,printer,PRINT_RECEIPT,SUCCESS
+```
+
+## Submission Requirements
+
+Submit your solution as **test_submission.json** containing:
+
+```json
+{
+  "source_code": "your complete program code as a string",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 150, "reorder_threshold": 25}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 15, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T123", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 12,
+    "total_shipments": 3,
+    "total_sales": 9,
+    "total_rejected": 3
+  },
+  "equipment_commands": [
+    {"transaction_id": "T001", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"}
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": 3,
+    "scanner_successful": 3,
+    "scanner_failed": 0,
+    "printer_commands_sent": 9,
+    "printer_successful": 8,
+    "printer_failed": 1
+  },
+  "testing_notes": "Brief description of any issues found during testing"
+}
+```
+
+## Format Requirements
+
+### String Values
+- **item_code**: Use exact codes from CSV files (e.g., "A001", "B002")
+- **item_name**: Use exact names from initial_inventory.csv
+- **transaction_id**: Use exact IDs from transactions.csv (e.g., "T001", "T007")
+- **equipment**: Must be exactly "scanner" or "printer" (lowercase)
+- **command**: Must be exactly "SCAN_BARCODE" or "PRINT_RECEIPT" (uppercase)
+- **status**: Must be exactly "SUCCESS" or "ERROR" (uppercase)
+
+### Integer Values
+- All quantity and count fields must be whole numbers (no decimals)
+- Negative quantities are not allowed in final inventory
+- All summary counts must equal the sum of their components
+
+### Array Ordering
+- **final_inventory**: Order by item_code alphabetically
+- **low_stock_alerts**: Order by item_code alphabetically  
+- **rejected_transactions**: Order by transaction_id
+- **equipment_commands**: Order by the sequence transactions were processed
+
+### Equipment Command Mapping Rules
+- SHIP transactions → scanner equipment, SCAN_BARCODE command
+- SALE transactions → printer equipment, PRINT_RECEIPT command
+- Command status determined by matching with equipment_responses.csv in order
+- Only successful (non-rejected) transactions generate equipment commands
+
+### Validation Rules
+- All item_codes in transactions must exist in initial_inventory.csv or be rejected
+- Sales cannot reduce inventory below 0 (reject transaction if insufficient stock)
+- Equipment responses are consumed sequentially from equipment_responses.csv
+- Low stock alerts only for items where current_quantity < reorder_threshold
+
+### Source Code Format
+- Include complete, executable program code as a single string
+- Use proper escape characters for quotes and newlines within the JSON string
+- Code should be readable and well-commented
+
+## Important Notes
+- Use the exact item codes, transaction types, and equipment names provided in the data files
+- Your program must handle all transactions in the provided CSV file
+- Equipment command types are: "SCAN_BARCODE" for shipments, "PRINT_RECEIPT" for sales
+- Equipment types are: "scanner" and "printer"
+- Response statuses are: "SUCCESS" or "ERROR"
+- All numerical values in your JSON output must be exact integers
+- Test your program thoroughly before submitting
+
+## Evaluation Criteria
+Your solution will be evaluated on:
+- **Functionality**: Does your program correctly process all transactions?
+- **Accuracy**: Are inventory levels and calculations correct?
+- **Error Handling**: Does your program properly reject invalid transactions?
+- **Integration**: Does equipment control work correctly?
+- **Code Quality**: Is your code well-structured and maintainable?
+
+## Helpful Tips
+- Start with Phase 1 and get the basic inventory management working first
+- Use simple data structures like dictionaries/maps to store inventory data
+- Process transactions one at a time in order
+- Test with a few transactions before processing the entire file
+- The equipment integration can be added after the core functionality works
+
+Good luck! Remember to test your solution before submitting.

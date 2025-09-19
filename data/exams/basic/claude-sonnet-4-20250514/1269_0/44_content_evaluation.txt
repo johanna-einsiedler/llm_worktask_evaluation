@@ -1,0 +1,199 @@
+# Basic Practical Exam: Program Compilation and Documentation - Answer Key
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "corrected_code": "# Inventory Management System\n# Author: Exam Candidate\n# Contains intentional compilation errors for exam purposes\nimport os\nimport sys\nfrom datetime import datetime\nimport json\n\nclass InventoryManager:\n    def __init__(self):\n        self.inventory = {}\n        self.transaction_log = []\n    \n    def load_inventory(self, filename):\n        \"\"\"Load inventory data from file\"\"\"\n        try:\n            with open(filename, 'r') as file:\n                for line in file:\n                    parts = line.strip().split(',')\n                    if len(parts) == 4:\n                        item_id = parts[0]\n                        name = parts[1]\n                        quantity = int(parts[2])\n                        price = float(parts[3])\n                        self.inventory[item_id] = {\n                            'name': name,\n                            'quantity': quantity,\n                            'price': price\n                        }\n        except FileNotFoundError:\n            print(f\"Error: File {filename} not found\")\n            return False\n        return True\n\n    def add_item(self, item_id, name, quantity, price):\n        \"\"\"Add new item to inventory\"\"\"\n        if item_id in self.inventory:\n            self.inventory[item_id]['quantity'] += quantity\n        else:\n            self.inventory[item_id] = {\n                'name': name,\n                'quantity': quantity,\n                'price': price\n            }\n        \n        # Log the transaction\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'add',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n\n    def remove_item(self, item_id, quantity):\n        \"\"\"Remove items from inventory\"\"\"\n        if item_id not in self.inventory:\n            print(f\"Error: Item {item_id} not found in inventory\")\n            return\n        if self.inventory[item_id]['quantity'] < quantity:\n            print(f\"Error: Not enough {self.inventory[item_id]['name']} in stock\")\n            return\n        \n        self.inventory[item_id]['quantity'] -= quantity\n        \n        # Log the transaction\n        self.transaction_log.append({\n            'timestamp': datetime.now().isoformat(),\n            'action': 'remove',\n            'item_id': item_id,\n            'quantity': quantity\n        })\n\n    def get_item_info(self, item_id):\n        \"\"\"Get information about specific item\"\"\"\n        if item_id in self.inventory:\n            return self.inventory[item_id]\n        return None\n\n    def calculate_total_value(self):\n        \"\"\"Calculate total value of all inventory\"\"\"\n        total = 0\n        for item in self.inventory.values():\n            total += item['quantity'] * item['price']\n        return total\n\n    def generate_report(self):\n        \"\"\"Generate inventory report\"\"\"\n        print(\"\\n=== INVENTORY REPORT ===\")\n        print(f\"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\")\n        print(\"-\" * 50)\n        \n        for item_id, item_data in self.inventory.items():\n            print(f\"ID: {item_id}\")\n            print(f\"Name: {item_data['name']}\")\n            print(f\"Quantity: {item_data['quantity']}\")\n            print(f\"Price: ${item_data['price']:.2f}\")\n            print(f\"Total Value: ${item_data['quantity'] * item_data['price']:.2f}\")\n            print(\"-\" * 30)\n        \n        print(f\"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}\")\n\ndef main():\n    # Create inventory manager instance\n    manager = InventoryManager()\n    \n    # Load sample data\n    if manager.load_inventory('sample_data.txt'):\n        print(\"Inventory loaded successfully!\")\n    else:\n        print(\"Failed to load inventory data\")\n        return\n    \n    # Test adding items\n    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)\n    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing\n    \n    # Test removing items\n    manager.remove_item('ITEM002', 3)\n    \n    # Test item lookup\n    item_info = manager.get_item_info('ITEM003')\n    if item_info:\n        print(f\"Found item: {item_info['name']} - Quantity: {item_info['quantity']}\")\n    \n    # Generate final report\n    manager.generate_report()\n\nif __name__ == \"__main__\":\n    main()",
+  "errors_fixed": [
+    {
+      "line": 25,
+      "description": "Added missing closing brace '}' for inventory dictionary in load_inventory function",
+      "error_type": "Syntax Error"
+    },
+    {
+      "line": 65,
+      "description": "Fixed transaction log dictionary syntax by adding proper curly braces around dictionary entries",
+      "error_type": "Syntax Error"
+    },
+    {
+      "line": 75,
+      "description": "Added missing colon ':' after if statement in get_item_info function",
+      "error_type": "Syntax Error"
+    },
+    {
+      "line": 118,
+      "description": "Added missing colon ':' after if __name__ == '__main__' statement",
+      "error_type": "Syntax Error"
+    }
+  ],
+  "program_documentation": {
+    "overview": "This program is an Inventory Management System that helps businesses track their product inventory. It can load inventory data from text files, add new items or update existing quantities, remove items from stock, and generate detailed reports showing current inventory levels and total values.",
+    "key_functions": [
+      {
+        "name": "load_inventory",
+        "purpose": "Loads inventory data from a CSV file into the system",
+        "parameters": "filename (string)",
+        "returns": "success status (boolean)"
+      },
+      {
+        "name": "add_item", 
+        "purpose": "Adds new items to inventory or increases quantity of existing items",
+        "parameters": "item_id (string), name (string), quantity (int), price (float)",
+        "returns": "nothing"
+      },
+      {
+        "name": "remove_item",
+        "purpose": "Removes specified quantity of items from inventory with error checking",
+        "parameters": "item_id (string), quantity (int)", 
+        "returns": "nothing"
+      },
+      {
+        "name": "get_item_info",
+        "purpose": "Retrieves detailed information about a specific inventory item",
+        "parameters": "item_id (string)",
+        "returns": "item data dictionary or None"
+      },
+      {
+        "name": "calculate_total_value",
+        "purpose": "Calculates the total monetary value of all inventory items",
+        "parameters": "none",
+        "returns": "total value (float)"
+      },
+      {
+        "name": "generate_report",
+        "purpose": "Displays a comprehensive formatted inventory report to the console",
+        "parameters": "none", 
+        "returns": "nothing"
+      }
+    ],
+    "how_to_run": [
+      "1. Ensure Python 3.x is installed on your system",
+      "2. Save the corrected code as 'buggy_program.py' and place sample_data.txt in the same directory",
+      "3. Open a terminal or command prompt and navigate to the directory containing the files",
+      "4. Run the command: python buggy_program.py",
+      "5. The program will automatically load the sample data, perform test operations, and display the inventory report"
+    ]
+  },
+  "testing_performed": "I tested the program by running it with the provided sample_data.txt file. The program successfully loaded all 4 inventory items (laptops, monitors, keyboards, USB cables), added a new wireless mouse item, increased the laptop quantity by 5, removed 3 monitors from inventory, looked up keyboard information, and generated a final report showing correct calculations including the total inventory value.",
+  "program_works": "YES"
+}
+```
+
+## Explanation of Correct Answers and How They Were Derived
+
+### Critical Compilation Errors Identified:
+
+1. **Line 25 - Missing Closing Brace**:
+   - **Issue**: The inventory dictionary in the `load_inventory()` function was missing its closing brace `}`
+   - **Original Code**: The dictionary definition ended abruptly after `'price': price` without proper closure
+   - **Fix**: Added the missing `}` to properly close the dictionary structure
+   - **Why Critical**: This is a fundamental syntax error that prevents Python from parsing the code at all
+
+2. **Line 65 - Invalid Dictionary Syntax**:
+   - **Issue**: The transaction log entry was missing proper dictionary structure with curly braces
+   - **Original Code**: Had bare key-value pairs without dictionary wrapper: `'timestamp': datetime.now().isoformat(), 'action': 'remove'...`
+   - **Fix**: Wrapped the dictionary entries in proper curly braces `{}`
+   - **Why Critical**: Python requires dictionaries to be enclosed in braces; this was a syntax error
+
+3. **Line 75 - Missing Colon in If Statement**:
+   - **Issue**: The if statement in `get_item_info()` was missing the required colon
+   - **Original Code**: `if item_id in self.inventory` (missing colon)
+   - **Fix**: Added colon to make it `if item_id in self.inventory:`
+   - **Why Critical**: Python syntax requires colons after if statements; this prevents compilation
+
+4. **Line 118 - Missing Colon in Main Guard**:
+   - **Issue**: The `if __name__ == "__main__"` statement was missing its colon
+   - **Original Code**: `if __name__ == "__main__"` (missing colon)
+   - **Fix**: Added colon to make it `if __name__ == "__main__":`
+   - **Why Critical**: Required Python syntax for conditional statements
+
+### Documentation Quality Standards Applied:
+
+**Program Overview Requirements:**
+- Must clearly explain the program's business purpose (inventory management)
+- Should mention key capabilities (loading data, adding/removing items, reporting)
+- Must be accessible to both technical and non-technical audiences
+- Should be 2-3 complete sentences as specified
+
+**Function Documentation Standards:**
+- Each function must include: clear name, concise purpose description, parameter names with types, return value description
+- Documentation should focus on what the function does for users, not implementation details
+- Must cover all major public methods that users would interact with
+- Parameter types should be specified (string, int, float, boolean, etc.)
+
+**How to Run Instructions:**
+- Must provide step-by-step instructions that a new user could follow successfully
+- Should include prerequisite requirements (Python installation)
+- Must specify exact file names and commands
+- Should be complete enough for someone unfamiliar with Python to execute
+
+### Testing Verification Process:
+
+The testing description demonstrates that the candidate:
+- Actually executed the program with the provided sample data
+- Verified that all core functionality works (loading, adding, removing, reporting)
+- Observed specific results (exact inventory values, item counts)
+- Confirmed the program produces expected output without errors
+- Tested edge cases like adding to existing items and removing inventory
+
+## Passing Criteria
+
+### Scoring Breakdown (100 points total):
+
+**Task 1: Code Debugging (40 points)**
+- Fix missing closing brace (Line 25): 12 points - **CRITICAL FOR COMPILATION**
+- Fix dictionary syntax error (Line 65): 10 points - **CRITICAL FOR COMPILATION**  
+- Fix missing colon in if statement (Line 75): 9 points - **CRITICAL FOR COMPILATION**
+- Fix missing colon in main guard (Line 118): 9 points - **CRITICAL FOR COMPILATION**
+- **Minimum to pass Task 1**: 32/40 points (must fix at least 3 of 4 critical syntax errors)
+
+**Task 2: Basic Documentation (35 points)**
+- Program overview (2-3 sentences): 8 points
+- Key functions documentation (6 functions × 4 points each): 24 points
+- How to run instructions: 3 points
+- **Minimum to pass Task 2**: 28/35 points (80% completion required)
+
+**Task 3: Code Comments (25 points)**
+- Header comment with program title and author: 8 points
+- Function-level comments (existing docstrings acceptable): 12 points
+- Additional logic comments (minimum 3): 5 points
+- **Minimum to pass Task 3**: 20/25 points (80% completion required)
+
+### Overall Passing Requirements:
+
+**Absolute Requirements (Automatic Failure if Not Met):**
+- Program must compile and run successfully after fixes
+- Must follow the exact text format specified in exam instructions
+- Must identify and fix at least 3 of the 4 critical syntax errors
+
+**Minimum Total Score for Passing:**
+- **80/100 points overall**
+- Must achieve minimum scores in each task as specified above
+- Cannot pass with less than 32/40 on debugging (program must work)
+
+### Differentiation Between Competency Levels:
+
+**Entry-Level Competent Candidates (80%+ score) will:**
+- Systematically identify all syntax errors that prevent compilation
+- Understand the difference between syntax errors and logical improvements
+- Write documentation that explains program value to business users
+- Provide complete, testable instructions for program execution
+- Demonstrate actual program testing through specific, accurate result descriptions
+
+**Struggling Candidates (<80% score) will:**
+- Miss one or more critical syntax errors, leaving program non-functional
+- Focus on minor improvements while ignoring compilation-blocking issues
+- Write documentation that merely restates code without explaining business value
+- Provide incomplete or incorrect execution instructions
+- Give vague testing descriptions suggesting they didn't actually run the program
+
+**Red Flags Indicating Incompetence:**
+- Program still fails to compile after attempted fixes
+- Missing the critical closing brace error (Line 25) - most obvious syntax issue
+- Documentation that contradicts actual program functionality
+- Testing description that doesn't match program's actual behavior
+- Failure to follow the specified submission format
+- Claiming program works when it demonstrably doesn't compile
+
+This exam effectively separates candidates who can perform real debugging and documentation tasks from those with only theoretical programming knowledge. The combination of critical syntax errors, comprehensive documentation requirements, and mandatory testing verification mirrors the daily responsibilities of entry-level programmers in professional environments.

@@ -1,0 +1,237 @@
+# Basic Practical Exam Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "analysis_phase": {
+    "bugs_found": [
+      {
+        "bug_id": "BUG001",
+        "description": "Stock updates not saved to CSV file - missing save_products() call in update_stock method",
+        "affected_function": "update_stock"
+      },
+      {
+        "bug_id": "BUG002", 
+        "description": "Menu doesn't pause for user input after operations - results disappear immediately",
+        "affected_function": "run"
+      }
+    ],
+    "performance_issues": [
+      {
+        "issue_id": "PERF001",
+        "description": "Unnecessary 100-iteration loop in generate_sales_report causing slow execution and calculation errors",
+        "affected_operation": "Generate Sales Report"
+      }
+    ],
+    "total_bugs_found": 2,
+    "total_performance_issues": 1
+  },
+  "bug_fixes": [
+    {
+      "bug_id": "BUG001",
+      "fix_description": "Added self.save_products() call at end of update_stock method to persist changes to CSV",
+      "fix_verified": true
+    },
+    {
+      "bug_id": "BUG002",
+      "fix_description": "Added input('Press Enter to continue...') after each menu operation to pause for user",
+      "fix_verified": true
+    }
+  ],
+  "feature_enhancement": {
+    "implementation_complete": true,
+    "menu_option_added": "5",
+    "alert_threshold": 10,
+    "integration_method": "Added new low_stock_alert() method to InventorySystem class with menu integration"
+  },
+  "performance_optimization": {
+    "optimization_implemented": true,
+    "target_operation": "Generate Sales Report",
+    "optimization_technique": "Removed redundant 100-iteration loop and corresponding division operations",
+    "functionality_preserved": true
+  },
+  "testing_completed": {
+    "basic_functions_tested": true,
+    "new_feature_tested": true,
+    "performance_improvement_verified": true
+  }
+}
+```
+
+## Explanation of Correct Answers and Derivation
+
+### Analysis Phase - Bug Identification
+
+**BUG001 - Missing Data Persistence (Critical)**
+- **Location**: `update_stock()` method, after line `self.products[product_id]['quantity'] = new_qty`
+- **Issue**: Changes to product quantities are made in memory but never saved to the CSV file
+- **Detection Method**: Test stock update, restart program, verify changes are lost
+- **Evidence**: Comment in code states "BUG: Missing call to save_products() - changes not persisted"
+- **Impact**: Critical - all stock updates are temporary and lost on program restart
+
+**BUG002 - User Experience Issue (Critical)**
+- **Location**: `run()` method main loop, after each menu operation
+- **Issue**: No pause after operations, menu immediately redisplays without user seeing results
+- **Detection Method**: Run any menu option, observe results disappear immediately
+- **Evidence**: Comment in code states "BUG: Missing input() pause - menu immediately redisplays without user seeing results"
+- **Impact**: Critical - users cannot read operation results
+
+**PERF001 - Performance Bottleneck (Critical)**
+- **Location**: `generate_sales_report()` method, lines with `for _ in range(100):`
+- **Issue**: Unnecessary 100-iteration loop multiplies all calculations by 100, then attempts to correct with division
+- **Detection Method**: Sales report takes excessive time and shows incorrect fractional values
+- **Evidence**: Comments in code identify "PERFORMANCE BUG" and "BUG: Division by 100 to compensate"
+- **Impact**: Critical - makes feature unusable and produces wrong results
+
+### Bug Fixes - Implementation Solutions
+
+**Fix for BUG001**: Add persistence call
+```python
+self.products[product_id]['quantity'] = new_qty
+print(f"Stock updated successfully. New quantity: {new_qty}")
+self.save_products()  # Add this line
+```
+
+**Fix for BUG002**: Add user pause
+```python
+elif choice == '1':
+    self.view_all_products()
+    input("Press Enter to continue...")  # Add after each operation
+```
+
+**Fix for PERF001**: Remove redundant loop and divisions
+```python
+# Remove: for _ in range(100):
+# Keep only: for product_id, details in self.products.items():
+# Remove all: / 100 division operations
+```
+
+### Feature Enhancement - Low Stock Alert Implementation
+
+**Required Implementation**:
+```python
+def low_stock_alert(self):
+    """Check and display low stock alerts"""
+    low_stock_products = []
+    
+    for product_id, details in self.products.items():
+        if details['quantity'] < 10:  # Threshold from requirements
+            reorder_qty = details['quantity'] + 50  # Formula from requirements
+            low_stock_products.append({
+                'id': product_id,
+                'name': details['name'],
+                'current_qty': details['quantity'],
+                'reorder_qty': reorder_qty
+            })
+    
+    if not low_stock_products:
+        print("No low stock items found.")
+        return
+    
+    # Display alerts
+    print("\n=== LOW STOCK ALERTS ===")
+    for item in low_stock_products:
+        print(f"Product ID: {item['id']}")
+        print(f"Name: {item['name']}")
+        print(f"Current Quantity: {item['current_qty']}")
+        print(f"Recommended Reorder Quantity: {item['reorder_qty']}")
+        print("-" * 40)
+    
+    # Save to file
+    with open('low_stock_alerts.txt', 'w') as file:
+        for item in low_stock_products:
+            file.write(f"{item['id']},{item['name']},{item['current_qty']},{item['reorder_qty']}\n")
+    
+    print(f"Alerts saved to low_stock_alerts.txt")
+
+# Add to display_menu():
+print("5. Low Stock Alert")
+
+# Add to run() method:
+elif choice == '5':
+    self.low_stock_alert()
+```
+
+**Key Requirements Met**:
+- Threshold: quantity < 10 units
+- Display format: Product ID, Name, Current Quantity, Recommended Reorder Quantity
+- Reorder formula: current_quantity + 50
+- File output: CSV format to "low_stock_alerts.txt"
+- Menu integration: Option "5"
+
+### Performance Optimization
+
+**Target**: Remove obvious performance bottleneck in sales report
+**Solution**: Remove the redundant 100-iteration loop and compensating divisions
+- **Before**: O(100n) time complexity with incorrect calculations
+- **After**: O(n) time complexity with correct calculations
+- **Expected Improvement**: ~99% performance improvement
+- **Verification**: Same output format and accuracy, dramatically faster execution
+
+## Passing Criteria
+
+### Minimum Requirements for 80% Pass (Entry-Level Competency)
+
+#### Critical Success Factors (Must Have):
+1. **Core Functionality Restored**: Both critical bugs (BUG001 and BUG002) correctly identified and fixed
+2. **Feature Implementation**: Low Stock Alert feature functional with correct threshold (10) and file output
+3. **Performance Target Met**: Sales report performance issue identified and resolved
+4. **Proper Documentation**: JSON submission accurately reflects work performed
+
+#### Detailed Scoring Breakdown (100 points total):
+
+**Analysis Phase (20 points)**
+- Identify BUG001 (missing save): 8 points
+- Identify BUG002 (menu pause): 7 points
+- Identify PERF001 (performance loop): 5 points
+
+**Bug Fixes (40 points)**
+- Fix BUG001 (add save call): 20 points
+- Fix BUG002 (add menu pause): 20 points
+
+**Feature Enhancement (30 points)**
+- Implement Low Stock Alert method: 20 points
+- Correct file output format: 5 points
+- Proper menu integration: 5 points
+
+**Performance Optimization (10 points)**
+- Remove redundant loop: 7 points
+- Maintain identical functionality: 3 points
+
+### Pass/Fail Thresholds:
+
+**80%+ (Pass - Entry Level Competent)**: 80+ points
+- Must include: Both critical bugs fixed, feature implemented, performance improved
+- Demonstrates ability to maintain existing codebases effectively
+
+**60-79% (Marginal - Needs Development)**: 60-79 points  
+- Some critical issues addressed but missing key elements
+- May indicate gaps in systematic debugging approach
+
+**<60% (Fail - Insufficient Competency)**: <60 points
+- Major functionality remains broken
+- Indicates inability to perform basic program maintenance tasks
+
+### Automatic Failure Conditions:
+- Code contains syntax errors preventing execution
+- JSON submission format completely incorrect or missing
+- No evidence of actual testing (claims fixes work but they don't)
+- New feature completely non-functional
+- Performance optimization makes system slower or breaks functionality
+- Either critical bug (BUG001 or BUG002) remains unfixed
+
+### Quality Indicators for Strong Performance (90%+):
+- Systematic approach to bug identification (tests each function methodically)
+- Clean, maintainable code modifications that follow existing patterns
+- Proper error handling in new feature implementation
+- Comprehensive testing documented with specific examples
+- Clear, accurate problem descriptions in JSON submission
+- Additional improvements beyond minimum requirements
+
+### Expected Results from Sample Data:
+- **Low Stock Items** (quantity < 10): P002 (8), P006 (6), P009 (9), P012 (7)
+- **Performance Improvement**: Sales report should complete in <1 second vs. original ~10+ seconds
+- **Stock Update Test**: Update P002 from 8 to 15, restart program, verify change persists
+
+This evaluation framework ensures that candidates who pass can actually perform real-world program maintenance tasks, while those who fail lack the practical skills needed for entry-level programming positions.

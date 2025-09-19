@@ -1,0 +1,886 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> # Basic Practical Exam: Program Revision, Repair, and Expansion
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to **perform hands-on program modification tasks** that mirror real-world scenarios where existing codebases need maintenance, bug fixes, and feature enhancements. The exam goes beyond theoretical knowledge to test actual implementation skills in a controlled environment.
+
+### Key Assessment Objectives:
+- **Code Analysis**: Ability to understand and navigate existing codebases
+- **Bug Identification & Resolution**: Practical debugging and repair skills
+- **Feature Implementation**: Adding new functionality while maintaining code integrity
+- **Code Quality**: Writing maintainable, efficient modifications
+- **Documentation**: Properly documenting changes and decisions
+
+## Strategic Exam Structure
+
+### Multi-Layered Challenge Design
+The exam presents a **realistic software maintenance scenario** with interconnected components that require candidates to:
+
+1. **Analyze existing code architecture** before making changes
+2. **Prioritize multiple issues** (bugs vs. enhancements vs. performance)
+3. **Make incremental improvements** while maintaining system stability
+4. **Handle dependencies** between different code modules
+5. **Validate changes** through testing and verification
+
+### Differentiation Strategy: Practical vs. Theoretical Knowledge
+
+#### What Separates Actual Performers from Conceptual Understanders:
+
+**Real Practitioners Will:**
+- Systematically analyze code before making changes
+- Identify root causes rather than just symptoms
+- Consider side effects and edge cases
+- Write clean, maintainable modifications
+- Test their changes thoroughly
+- Document their reasoning and approach
+
+**Theoretical-Only Candidates Will:**
+- Jump to solutions without proper analysis
+- Fix symptoms without addressing underlying issues
+- Introduce new bugs while fixing existing ones
+- Write functional but poorly structured code
+- Skip validation steps
+- Provide minimal or unclear documentation
+
+## Exam Structure: "Legacy E-Commerce System Maintenance"
+
+### Scenario Context
+Candidates receive a **partially functional e-commerce inventory management system** with multiple interconnected issues requiring different types of interventions:
+
+### Phase 1: Code Analysis & Issue Identification (20 minutes)
+- **Practical Element**: Candidates must actually run and interact with the system
+- **Strategic Component**: Multiple issues of varying complexity and type
+- **Differentiation**: Real practitioners will systematically catalog issues by severity and type
+
+### Phase 2: Bug Repair (30 minutes)
+- **Practical Element**: Fix actual runtime errors and logic bugs
+- **Strategic Component**: Bugs with cascading effects across modules
+- **Differentiation**: Experienced programmers will trace root causes through multiple files
+
+### Phase 3: Feature Enhancement (30 minutes)
+- **Practical Element**: Implement new functionality that integrates with existing code
+- **Strategic Component**: Requires understanding of existing architecture patterns
+- **Differentiation**: Skilled developers will maintain consistency with existing code style and patterns
+
+### Phase 4: Performance Optimization (10 minutes)
+- **Practical Element**: Identify and resolve performance bottlenecks
+- **Strategic Component**: Trade-offs between different optimization approaches
+- **Differentiation**: Experienced programmers will choose appropriate optimizations based on actual profiling
+
+## Key Strategic Elements for Maximum Differentiation
+
+### 1. **Interconnected Dependencies**
+- Changes in one module affect others
+- Tests whether candidates consider system-wide impacts
+- Reveals understanding of software architecture principles
+
+### 2. **Multiple Valid Solutions**
+- Different approaches with varying trade-offs
+- Tests decision-making and justification skills
+- Reveals depth of programming experience
+
+### 3. **Hidden Complexity**
+- Issues that appear simple but have deeper implications
+- Tests thorough analysis vs. surface-level fixes
+- Reveals systematic thinking vs. ad-hoc problem solving
+
+### 4. **Real-World Constraints**
+- Legacy code patterns that must be maintained
+- Backward compatibility requirements
+- Tests adaptability and professional judgment
+
+## Evaluation Framework
+
+### Structured JSON Submission Requirements:
+```json
+{
+  "analysis_phase": {
+    "identified_issues": [...],
+    "priority_ranking": [...],
+    "architectural_observations": "..."
+  },
+  "bug_fixes": {
+    "fix_1": {
+      "issue_description": "...",
+      "root_cause": "...",
+      "solution_approach": "...",
+      "files_modified": [...],
+      "testing_performed": "..."
+    }
+  },
+  "enhancements": {
+    "feature_implementation": "...",
+    "integration_approach": "...",
+    "design_decisions": "..."
+  },
+  "performance_optimizations": [...],
+  "overall_reflection": "..."
+}
+```
+
+### Success Indicators for Entry-Level Competency (80%+ threshold):
+- **Functional Solutions**: Code actually works as intended
+- **Systematic Approach**: Evidence of methodical problem-solving
+- **Basic Testing**: Verification that changes work correctly
+- **Clear Documentation**: Understandable explanations of changes
+- **Code Quality**: Modifications follow basic best practices
+
+This exam design ensures that only candidates who can **actually perform** program maintenance tasks will succeed, while providing clear differentiation between theoretical knowledge and practical capability.</examoverview>
+    Here is the exam: <exam> # Basic Practical Exam: Program Revision, Repair, and Expansion
+
+## Exam Instructions
+You will work with a legacy e-commerce inventory management system that requires maintenance and improvements. Your task is to analyze, repair, and enhance the existing codebase to meet specified requirements.
+
+## Time Limit
+90 minutes total
+
+## What You Need to Accomplish
+### Phase 1: System Analysis and Bug Repairs (40 minutes)
+- Run the provided inventory management system
+- Identify and fix the 2 most critical bugs that prevent basic operation
+- The bugs are clearly marked with comments in the code
+- Verify your fixes through testing
+
+### Phase 2: Feature Enhancement (35 minutes)
+- Implement the new "Low Stock Alert" feature according to specifications
+- Complete the provided template function with the missing logic
+- Test the new functionality
+
+### Phase 3: Performance Optimization (15 minutes)
+- Fix the obvious performance bottleneck in the sales report
+- The problematic code is clearly marked with comments
+- Simply remove the unnecessary loop and its compensation logic
+
+## Materials Provided
+You will receive:
+1. **inventory_system.py** - Main application file (contains 2 intentional bugs with clear markers)
+2. **product_data.csv** - Sample product database (15 products)
+3. **requirements.txt** - System specifications document
+4. **test_cases.txt** - Expected system behaviors for validation
+
+## Specific Requirements
+### Bug Repair Criteria
+The 2 critical bugs are:
+- **Bug 1**: Stock updates don't save permanently (missing save call - marked in code)
+- **Bug 2**: Menu doesn't pause for user input (missing pause - marked in code)
+
+### Feature Enhancement Specifications
+The "Low Stock Alert" feature must:
+- Trigger when any product quantity falls below 10 units
+- Display product ID, name, current quantity, and recommended reorder quantity (current quantity + 50)
+- Be accessible via menu option "5"
+- Save alerts to "low_stock_alerts.txt" in the format: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+- Complete the provided template function with the missing implementation
+
+### Performance Optimization Target
+- Remove the clearly marked unnecessary loop (lines with "PERFORMANCE BUG" comments)
+- Remove the compensation division logic
+- Maintain identical output format and accuracy
+
+## Submission Requirements
+Submit your work as **test_submission.json** with this simplified structure:
+```json
+{
+  "bugs_fixed": ["BUG001", "BUG002"],
+  "feature_complete": true,
+  "performance_optimized": true,
+  "testing_completed": true
+}
+```
+
+## Important Notes
+- The bugs are clearly marked with "BUG:" comments in the code
+- The performance issue is marked with "PERFORMANCE BUG:" comments
+- A template function for the low stock alert feature is provided with clear TODO comments
+- Focus on the marked issues - don't look for additional problems
+- Test your changes to ensure they work correctly
+
+## Evaluation Criteria
+Your submission will be evaluated on:
+- **Critical Bug Fixes**: Both marked bugs are fixed correctly (50%)
+- **Feature Implementation**: Low stock alert feature works as specified (30%)
+- **Performance Optimization**: Unnecessary loop removed, report runs fast (20%)
+
+Good luck!
+
+**inventory_system.py**
+```python
+import csv
+import os
+from datetime import datetime
+
+class InventorySystem:
+    def __init__(self):
+        self.products = {}
+        self.load_products()
+    
+    def load_products(self):
+        """Load products from CSV file"""
+        try:
+            with open('product_data.csv', 'r') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    product_id = row['product_id']
+                    self.products[product_id] = {
+                        'name': row['product_name'],
+                        'category': row['category'],
+                        'price': float(row['price']),
+                        'quantity': int(row['quantity']),
+                        'supplier': row['supplier']
+                    }
+        except FileNotFoundError:
+            print("Error: product_data.csv not found")
+
+    def display_menu(self):
+        """Display main menu options"""
+        print("\n=== INVENTORY MANAGEMENT SYSTEM ===")
+        print("1. View All Products")
+        print("2. Search Product")
+        print("3. Update Stock")
+        print("4. Generate Sales Report")
+        print("5. Low Stock Alert")
+        print("0. Exit")
+        print("=====================================")
+
+    def view_all_products(self):
+        """Display all products in inventory"""
+        if not self.products:
+            print("No products in inventory")
+            return
+        
+        print(f"\n{'ID':<10} {'Name':<25} {'Category':<15} {'Price':<10} {'Qty':<8} {'Supplier':<15}")
+        print("-" * 90)
+        for product_id, details in self.products.items():
+            print(f"{product_id:<10} {details['name']:<25} {details['category']:<15} "
+                  f"${details['price']:<9.2f} {details['quantity']:<8} {details['supplier']:<15}")
+
+    def search_product(self):
+        """Search for a specific product"""
+        search_id = input("Enter Product ID to search: ").strip()
+        if search_id in self.products:
+            product = self.products[search_id]
+            print(f"\nProduct Found:")
+            print(f"ID: {search_id}")
+            print(f"Name: {product['name']}")
+            print(f"Category: {product['category']}")
+            print(f"Price: ${product['price']:.2f}")
+            print(f"Quantity: {product['quantity']}")
+            print(f"Supplier: {product['supplier']}")
+        else:
+            print("Product not found")
+
+    def update_stock(self):
+        """Update product stock quantity"""
+        product_id = input("Enter Product ID: ").strip()
+        if product_id not in self.products:
+            print("Product not found")
+            return
+        
+        try:
+            current_qty = self.products[product_id]['quantity']
+            print(f"Current quantity: {current_qty}")
+            
+            new_qty = input("Enter new quantity: ")
+            new_qty = int(new_qty)
+            if new_qty < 0:
+                print("Quantity cannot be negative")
+                return
+            
+            self.products[product_id]['quantity'] = new_qty
+            print(f"Stock updated successfully. New quantity: {new_qty}")
+            # BUG: Missing call to save_products() - changes not persisted to file
+        except ValueError:
+            print("Invalid quantity entered")
+
+    def save_products(self):
+        """Save current product data back to CSV"""
+        try:
+            with open('product_data.csv', 'w', newline='') as file:
+                fieldnames = ['product_id', 'product_name', 'category', 'price', 'quantity', 'supplier']
+                writer = csv.DictWriter(file, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for product_id, details in self.products.items():
+                    writer.writerow({
+                        'product_id': product_id,
+                        'product_name': details['name'],
+                        'category': details['category'],
+                        'price': details['price'],
+                        'quantity': details['quantity'],
+                        'supplier': details['supplier']
+                    })
+        except Exception as e:
+            print(f"Error saving products: {e}")
+
+    def low_stock_alert(self):
+        """Check for products with low stock and generate alerts"""
+        print("\n=== LOW STOCK ALERT ===")
+        
+        low_stock_products = []
+        
+        # TODO: Loop through self.products and find items with quantity < 10
+        # For each low stock item, create a dictionary with:
+        # {'id': product_id, 'name': product_name, 'current_qty': quantity, 'reorder_qty': quantity + 50}
+        # Add each dictionary to low_stock_products list
+        
+        if not low_stock_products:
+            print("No products are currently low in stock.")
+            return
+        
+        # Display low stock items
+        print(f"{'Product ID':<12} {'Product Name':<25} {'Current Qty':<12} {'Reorder Qty':<12}")
+        print("-" * 65)
+        
+        # TODO: Loop through low_stock_products and print each item in the format above
+        
+        # Save to file
+        try:
+            with open('low_stock_alerts.txt', 'w') as file:
+                # TODO: Write each low stock item to file in format: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+                pass
+            print(f"\nLow stock alerts saved to 'low_stock_alerts.txt'")
+        except Exception as e:
+            print(f"Error saving alerts to file: {e}")
+
+    def generate_sales_report(self):
+        """Generate comprehensive sales and inventory report"""
+        print("\nGenerating Sales Report...")
+        
+        # Calculate statistics
+        total_products = len(self.products)
+        total_inventory_value = 0
+        category_stats = {}
+        supplier_stats = {}
+        low_stock_items = []
+        
+        # PERFORMANCE BUG: This unnecessary loop makes the report 100x slower - REMOVE THIS LOOP
+        for _ in range(100):
+            for product_id, details in self.products.items():
+                value = details['price'] * details['quantity']
+                total_inventory_value += value
+                
+                # Category statistics
+                category = details['category']
+                if category not in category_stats:
+                    category_stats[category] = {'count': 0, 'value': 0}
+                category_stats[category]['count'] += 1
+                category_stats[category]['value'] += value
+                
+                # Supplier statistics  
+                supplier = details['supplier']
+                if supplier not in supplier_stats:
+                    supplier_stats[supplier] = {'count': 0, 'value': 0}
+                supplier_stats[supplier]['count'] += 1
+                supplier_stats[supplier]['value'] += value
+                
+                # Low stock check
+                if details['quantity'] < 15:
+                    low_stock_items.append({
+                        'id': product_id,
+                        'name': details['name'],
+                        'quantity': details['quantity']
+                    })
+        
+        # PERFORMANCE BUG: This division compensates for the unnecessary loop above - REMOVE THESE DIVISIONS
+        total_inventory_value = total_inventory_value / 100
+        for category in category_stats:
+            category_stats[category]['value'] = category_stats[category]['value'] / 100
+            category_stats[category]['count'] = category_stats[category]['count'] / 100
+        for supplier in supplier_stats:
+            supplier_stats[supplier]['value'] = supplier_stats[supplier]['value'] / 100
+            supplier_stats[supplier]['count'] = supplier_stats[supplier]['count'] / 100
+        
+        # Display report
+        print(f"\n=== INVENTORY REPORT ===")
+        print(f"Total Products: {total_products}")
+        print(f"Total Inventory Value: ${total_inventory_value:.2f}")
+        
+        print(f"\nCategory Breakdown:")
+        for category, stats in category_stats.items():
+            print(f"  {category}: {int(stats['count'])} items, ${stats['value']:.2f}")
+        
+        print(f"\nSupplier Breakdown:")
+        for supplier, stats in supplier_stats.items():
+            print(f"  {supplier}: {int(stats['count'])} items, ${stats['value']:.2f}")
+        
+        print(f"\nLow Stock Items (< 15 units):")
+        for item in low_stock_items:
+            print(f"  {item['id']}: {item['name']} ({item['quantity']} units)")
+
+    def run(self):
+        """Main program loop"""
+        while True:
+            self.display_menu()
+            choice = input("\nEnter your choice: ").strip()
+            
+            if choice == '1':
+                self.view_all_products()
+            elif choice == '2':
+                self.search_product()
+            elif choice == '3':
+                self.update_stock()
+            elif choice == '4':
+                self.generate_sales_report()
+            elif choice == '5':
+                self.low_stock_alert()
+            elif choice == '0':
+                print("Goodbye!")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+            
+            # BUG: Missing pause for user to read results before showing menu again
+            # Add: input("\nPress Enter to continue...")
+
+if __name__ == "__main__":
+    system = InventorySystem()
+    system.run()
+```
+
+**product_data.csv**
+```csv
+product_id,product_name,category,price,quantity,supplier
+P001,Wireless Bluetooth Headphones,Electronics,79.99,25,TechCorp
+P002,Organic Cotton T-Shirt,Clothing,24.99,8,FashionPlus
+P003,Stainless Steel Water Bottle,Home & Garden,19.99,45,EcoSupply
+P004,Smartphone Case,Electronics,15.99,12,TechCorp
+P005,Yoga Mat,Sports & Fitness,35.99,18,FitGear
+P006,Coffee Mug Set,Home & Garden,29.99,6,KitchenPro
+P007,Running Shoes,Sports & Fitness,89.99,22,SportMax
+P008,Desk Lamp,Electronics,42.99,14,TechCorp
+P009,Backpack,Clothing,65.99,9,FashionPlus
+P010,Protein Powder,Health & Beauty,49.99,31,HealthFirst
+P011,Wireless Mouse,Electronics,25.99,16,TechCorp
+P012,Face Moisturizer,Health & Beauty,32.99,7,BeautyWorld
+P013,Kitchen Knife Set,Home & Garden,78.99,11,KitchenPro
+P014,Fitness Tracker,Electronics,129.99,19,FitGear
+P015,Sunglasses,Clothing,45.99,13,FashionPlus
+```
+
+**requirements.txt**
+```
+INVENTORY MANAGEMENT SYSTEM - REQUIREMENTS SPECIFICATION
+
+SYSTEM OVERVIEW:
+The inventory management system must provide basic CRUD operations for product management, stock tracking, and reporting capabilities.
+
+FUNCTIONAL REQUIREMENTS:
+
+1. PRODUCT VIEWING
+   - Display all products in tabular format
+   - Show: Product ID, Name, Category, Price, Quantity, Supplier
+   - Handle empty inventory gracefully
+
+2. PRODUCT SEARCH
+   - Search by exact Product ID match
+   - Display complete product details when found
+   - Show "Product not found" message for invalid IDs
+
+3. STOCK MANAGEMENT
+   - Update product quantities
+   - Validate non-negative quantities
+   - Save changes to persistent storage (CSV file)
+   - Display current quantity before update
+
+4. SALES REPORTING
+   - Calculate total inventory value
+   - Provide category-wise breakdown (count and value)
+   - Provide supplier-wise breakdown (count and value)
+   - Identify low stock items (quantity < 15)
+   - Performance target: Complete within 2 seconds
+
+5. LOW STOCK ALERTS (NEW FEATURE)
+   - Menu option "5" to check low stock
+   - Alert threshold: quantity < 10 units
+   - Display: Product ID, Name, Current Quantity, Recommended Reorder Quantity
+   - Reorder formula: current_quantity + 50
+   - Save alerts to "low_stock_alerts.txt"
+   - File format: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+
+CRITICAL BUGS TO FIX:
+1. Stock updates don't save to CSV file (missing save_products() call)
+2. Menu doesn't pause for user to read results (missing input pause)
+
+PERFORMANCE ISSUE TO FIX:
+- Sales report has unnecessary 100x loop that makes it very slow
+- Remove the loop and the compensation division logic
+
+DATA VALIDATION REQUIREMENTS:
+- Product IDs must be exact matches (case-sensitive)
+- Quantities must be non-negative integers
+- Prices must be positive numbers with 2 decimal places
+- All CSV operations must preserve data integrity
+
+ERROR HANDLING REQUIREMENTS:
+- Graceful handling of file not found errors
+- Input validation for all user entries
+- Clear error messages for invalid operations
+- System must not crash on invalid input
+```
+
+**test_cases.txt**
+```
+INVENTORY SYSTEM TEST CASES
+
+TEST CASE 1: SYSTEM STARTUP
+Expected: System loads without errors, displays main menu with option 5
+Products loaded: 15 items from product_data.csv
+
+TEST CASE 2: VIEW ALL PRODUCTS
+Input: Menu option "1"
+Expected: Display 15 products in tabular format
+Verify: All product details visible, proper formatting
+
+TEST CASE 3: SEARCH EXISTING PRODUCT
+Input: Menu option "2", Product ID "P001"
+Expected: Display complete details for Wireless Bluetooth Headphones
+Price: $79.99, Quantity: 25, Supplier: TechCorp
+
+TEST CASE 4: UPDATE STOCK - VALID
+Input: Menu option "3", Product ID "P002", New quantity "15"
+Expected: Stock updated successfully, changes saved to CSV
+Verify: P002 quantity changed from 8 to 15 and persists after restart
+
+TEST CASE 5: GENERATE SALES REPORT
+Input: Menu option "4"
+Expected: Complete report showing inventory statistics in under 2 seconds
+Verify: Performance is acceptable after optimization
+
+TEST CASE 6: LOW STOCK ALERTS (NEW FEATURE)
+Input: Menu option "5"
+Expected: 
+- Display products with quantity < 10: P002, P006, P009, P012
+- Show recommended reorder quantities (current + 50)
+- Create "low_stock_alerts.txt" file with correct format
+
+TEST CASE 7: MENU PAUSE FUNCTIONALITY
+Input: Any menu option
+Expected: System waits for user to press Enter before showing menu again
+Verify: User can read results before menu reappears
+
+TEST CASE 8: EXIT SYSTEM
+Input: Menu option "0"
+Expected: "Goodbye!" message, system terminates
+
+BUGS TO FIX (CLEARLY MARKED IN CODE):
+1. Stock updates don't save to CSV file - missing save_products() call
+2. Menu doesn't pause for user input - missing input() statement
+3. Sales report performance issue - unnecessary 100x loop with compensation logic
+
+IMPLEMENTATION GUIDE:
+- Look for "BUG:" comments in the code
+- Look for "PERFORMANCE BUG:" comments in the code
+- Complete the TODO comments in the low_stock_alert() function
+- Focus only on the marked issues
+``` <exam>
+    Here is some additional material only available to the exam evaluator: <materials_evaluator> 
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+## Materials Design and Evaluation Guide
+
+### **Product Data Structure (product_data.csv)**
+The CSV contains exactly 20 products with the following intentional design elements:
+
+**Categories Distribution:**
+- Electronics: 8 products (P001, P004, P008, P011, P014, P016, P018)
+- Clothing: 3 products (P002, P009, P015)
+- Home & Garden: 4 products (P003, P006, P013, P020)
+- Sports & Fitness: 3 products (P005, P007, P019)
+- Health & Beauty: 2 products (P010, P012)
+
+**Supplier Distribution:**
+- TechCorp: 6 products
+- FashionPlus: 3 products
+- FitGear: 3 products
+- KitchenPro: 2 products
+- Others: 1 product each
+
+**Stock Levels (Intentionally Designed):**
+- **Low Stock (< 10 units):** P002(8), P006(6), P009(9), P012(7) = 4 products
+- **Medium Stock (10-20 units):** P004(12), P008(14), P013(11), P015(13), P018(21), P005(18), P014(19) = 7 products  
+- **High Stock (> 20 units):** Remaining 9 products
+
+**Total Inventory Value Calculation:**
+Exact value: $1,033.60 (sum of price × quantity for all products)
+
+### **Embedded Bugs in inventory_system.py**
+
+**BUG001 - Menu Option Missing (Line 142-154)**
+- Issue: No menu option "5" for Low Stock Alerts
+- Type: Logic error
+- Expected Fix: Add elif choice == '5': with low_stock_alert() method
+
+**BUG002 - Performance Issue (Lines 95-97)**
+- Issue: Unnecessary 1000-iteration loop in generate_sales_report()
+- Type: Performance error
+- Expected Fix: Remove the for _ in range(1000): loop
+- Current execution time: ~10 seconds, Target: <2 seconds
+
+**BUG003 - File Handling Error (Line 12)**
+- Issue: FileNotFoundError not properly handled, system continues with empty products dict
+- Type: Runtime error
+- Expected Fix: Either exit gracefully or provide better error handling
+
+### **Expected Correct Answers**
+
+**Analysis Phase:**
+- Total bugs: 3 (menu missing, performance loop, file handling)
+- Performance issues: 1 (sales report generation)
+
+**Bug Fixes:**
+- BUG001: Add menu option 5 and implement low_stock_alert() method
+- BUG002: Remove unnecessary loop, fix calculation logic
+- BUG003: Improve file error handling
+
+**Feature Enhancement:**
+- Implement low_stock_alert() method
+- Threshold: quantity < 10
+- Alert products: P002, P006, P009, P012
+- Reorder quantities: 58, 56, 59, 57 respectively
+- Output file: "low_stock_alerts.txt"
+
+**Performance Optimization:**
+- Remove 1000-iteration loop
+- Expected improvement: >90% (from ~10s to <1s)
+- Technique: "Eliminated redundant loop iteration"
+
+### **Common Pitfalls and Tricky Elements**
+
+1. **Performance Bug Disguised as Complex Logic:**
+   - The 1000-iteration loop appears to be intentional calculation logic
+   - Candidates may try to optimize other parts instead of removing the loop
+   - The division by 1000 at the end is a clue that the loop is unnecessary
+
+2. **Low Stock Threshold Confusion:**
+   - Requirements specify two different thresholds: <15 for reports, <10 for alerts
+   - Candidates must implement the correct threshold (10) for the new feature
+
+3. **File Format Precision:**
+   - The alert file format must be exact: "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY"
+   - No spaces, specific order, CSV format
+
+4. **Menu Integration:**
+   - New feature must be menu option "5", not appended to existing options
+   - Must maintain existing menu structure and flow
+
+### **Evaluation Scoring Guide**
+
+**80%+ Performance Indicators:**
+- Identifies all 3 bugs correctly
+- Implements working low stock alert feature
+- Removes performance bottleneck (1000-loop)
+- Maintains existing functionality
+- Provides accurate JSON submission with exact values
+
+**Below 80% Indicators:**
+- Misses the performance loop bug
+- Implements incorrect threshold values
+- Breaks existing functionality while fixing bugs
+- Provides approximate rather than exact values in JSON
+- Fails to properly integrate new feature with menu system
+
+### **Cross-References Between Materials**
+
+- **product_data.csv ↔ test_cases.txt:** Test cases reference specific products (P001, P002, etc.) with exact expected values
+- **requirements.txt ↔ inventory_system.py:** Requirements specify features that are missing or broken in the code
+- **test_cases.txt ↔ JSON submission:** Test case results should match JSON reported values exactly
+
+The materials are designed to test real programming skills rather than theoretical knowledge, with multiple interconnected issues that require systematic analysis and careful implementation.
+
+</MATERIALS_EXPLANATION_FOR_EVALUATOR> </materials_evaluator>
+    Here is the information given to the evaluator: <evaluation> # Basic Practical Exam Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "bugs_fixed": ["BUG001", "BUG002"],
+  "feature_complete": true,
+  "performance_optimized": true,
+  "testing_completed": true,
+  "detailed_solutions": {
+    "bug_001": {
+      "description": "Stock updates not saved to CSV file",
+      "location": "update_stock() method after quantity assignment",
+      "fix": "Add self.save_products() call",
+      "verification": "Stock changes persist after program restart"
+    },
+    "bug_002": {
+      "description": "Menu doesn't pause for user input",
+      "location": "run() method after each menu operation",
+      "fix": "Add input('\\nPress Enter to continue...') statement",
+      "verification": "System waits for user input before showing menu"
+    },
+    "feature_enhancement": {
+      "threshold": 10,
+      "expected_low_stock_items": ["P002", "P006", "P009", "P012"],
+      "reorder_formula": "current_quantity + 50",
+      "file_format": "PRODUCT_ID,PRODUCT_NAME,CURRENT_QTY,REORDER_QTY",
+      "menu_option": "5"
+    },
+    "performance_fix": {
+      "remove_loop": "for _ in range(100):",
+      "remove_divisions": "All /100 compensation calculations",
+      "expected_improvement": "99% faster execution time"
+    }
+  }
+}
+```
+
+## Explanation of Correct Answers and Derivation
+
+### Critical Bug Fixes (50% of total score)
+
+**BUG001 - Missing Data Persistence**
+- **Location**: `update_stock()` method, line 85
+- **Issue**: Stock quantity updates are made in memory (`self.products[product_id]['quantity'] = new_qty`) but never saved to the CSV file
+- **Evidence**: Clear comment in code states "BUG: Missing call to save_products() - changes not persisted to file"
+- **Correct Fix**: Add `self.save_products()` after the quantity update
+- **Verification Method**: Update a product's stock, exit program, restart, and verify the change persisted
+- **Why Critical**: Without this fix, all stock updates are lost when the program closes
+
+**BUG002 - Missing User Interface Pause**
+- **Location**: `run()` method main loop, after each menu operation
+- **Issue**: After executing any menu option, the menu immediately redisplays without allowing users to read the results
+- **Evidence**: Clear comment states "BUG: Missing pause for user to read results before showing menu again"
+- **Correct Fix**: Add `input("\nPress Enter to continue...")` after each menu operation in the main loop
+- **Verification Method**: Execute any menu option and confirm system waits for Enter key
+- **Why Critical**: Poor user experience makes the system difficult to use effectively
+
+### Feature Enhancement - Low Stock Alert (30% of total score)
+
+**Implementation Requirements**:
+- **Alert Threshold**: Products with quantity < 10 units
+- **Expected Low Stock Items** (from provided sample data):
+  - P002: Organic Cotton T-Shirt (8 units) → Reorder: 58
+  - P006: Coffee Mug Set (6 units) → Reorder: 56
+  - P009: Backpack (9 units) → Reorder: 59
+  - P012: Face Moisturizer (7 units) → Reorder: 57
+
+**Correct Implementation Logic**:
+```python
+# Loop through products to find low stock items
+for product_id, details in self.products.items():
+    if details['quantity'] < 10:
+        low_stock_products.append({
+            'id': product_id,
+            'name': details['name'],
+            'current_qty': details['quantity'],
+            'reorder_qty': details['quantity'] + 50
+        })
+
+# Display and save results
+for item in low_stock_products:
+    print(f"{item['id']:<12} {item['name']:<25} {item['current_qty']:<12} {item['reorder_qty']:<12}")
+
+# Save to file in CSV format
+with open('low_stock_alerts.txt', 'w') as file:
+    for item in low_stock_products:
+        file.write(f"{item['id']},{item['name']},{item['current_qty']},{item['reorder_qty']}\n")
+```
+
+**Derivation**: The template function provides clear TODO comments indicating exactly what needs to be implemented. The requirements specify the threshold (< 10), reorder formula (current + 50), and file format.
+
+### Performance Optimization (20% of total score)
+
+**PERF001 - Unnecessary Loop Removal**
+- **Location**: `generate_sales_report()` method, lines 140-170
+- **Issue**: Redundant `for _ in range(100):` loop makes all calculations 100 times, requiring compensation divisions
+- **Evidence**: Clear comments mark "PERFORMANCE BUG: This unnecessary loop makes the report 100x slower - REMOVE THIS LOOP"
+- **Correct Fix**: 
+  1. Remove the entire `for _ in range(100):` loop wrapper
+  2. Remove all `/100` division operations that compensate for the loop
+  3. Keep the single iteration through products intact
+- **Expected Result**: Report execution time drops from ~10 seconds to <1 second
+- **Verification**: Time the report generation before and after the fix
+
+## Passing Criteria and Scoring Framework
+
+### Total Points: 100
+
+**Critical Bug Fixes: 50 points**
+- BUG001 (Stock persistence): 25 points
+- BUG002 (Menu pause): 25 points
+
+**Feature Enhancement: 30 points**
+- Low stock detection logic: 15 points
+- Correct file output format: 10 points
+- Proper display formatting: 5 points
+
+**Performance Optimization: 20 points**
+- Loop removal: 15 points
+- Functionality preservation: 5 points
+
+### Pass/Fail Thresholds
+
+**80%+ (Pass - Entry Level Competent): 80+ points**
+- **Minimum Requirements**: 
+  - Both critical bugs must be fixed
+  - Low stock feature must be functional
+  - Performance optimization must be implemented
+  - All changes must be tested and working
+
+**60-79% (Marginal - Needs Development): 60-79 points**
+- Some critical functionality working but significant gaps remain
+- May indicate incomplete testing or systematic approach
+
+**<60% (Fail - Insufficient Competency): <60 points**
+- Major functionality remains broken
+- Indicates inability to perform basic program maintenance
+
+### Automatic Failure Conditions
+- JSON submission missing or incorrectly formatted
+- Code contains syntax errors preventing execution
+- Either critical bug (BUG001 or BUG002) remains unfixed
+- Performance optimization breaks existing functionality
+- No evidence of testing performed
+
+### Quality Indicators for Exceptional Performance (90%+)
+- Systematic testing approach with specific examples
+- Clean code modifications following existing patterns
+- Additional improvements beyond minimum requirements
+- Comprehensive understanding demonstrated in implementation
+- Error handling considerations
+
+### Expected Test Results for Verification
+
+**Stock Persistence Test**:
+1. Run program, select option 3 (Update Stock)
+2. Update P002 from quantity 8 to 15
+3. Exit program (option 0)
+4. Restart program, search for P002 (option 2)
+5. Verify quantity shows 15 (not reverted to 8)
+
+**Low Stock Alert Test**:
+1. Run program, select option 5 (Low Stock Alert)
+2. Should display exactly 4 products: P002, P006, P009, P012
+3. Should create "low_stock_alerts.txt" file
+4. File should contain 4 lines in format: "P002,Organic Cotton T-Shirt,8,58"
+
+**Performance Test**:
+1. Run program, select option 4 (Generate Sales Report)
+2. Report should complete in under 2 seconds
+3. All statistics should be mathematically correct
+4. No fractional product counts should appear
+
+**Menu Pause Test**:
+1. Run any menu option
+2. System should display results and wait
+3. User must press Enter to return to main menu
+
+This evaluation framework ensures candidates demonstrate actual programming maintenance capabilities with clear differentiation between competent and incompetent performance levels. </evaluation>
+
+    ## Your assignment
+    Based on the given information, create a Python script named 'task_evaluation.py' that reads in the candidate submission and the answer key provided as arguments in the command line. The script should:
+    - Accept two arguments in the following order:
+    1. The **first argument** is the name of the candidate submission JSON file (e.g., `test_submission.json`).
+    2. The **second argument** is the name of the answer key JSON file (e.g., `answer_key.json`).
+    - Automatically score the test performance based on the provided files.
+    - Save the results as `test_results.json` in the same folder as the script.
+    - In addition to the detailed test results, `test_results.json` should include one variable `overall_score` with the percentage of points achieved by the candidate.
+
+    The script should be runnable from the command line like this:
+    ```bash
+    python task_evaluation.py test_submission.json answer_key.json
+    ```

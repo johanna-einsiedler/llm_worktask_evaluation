@@ -1,0 +1,195 @@
+# Basic Computer Programming Practical Exam - Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "source_code": "# Complete working program code would be provided by candidate",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25},
+    {"item_code": "A002", "item_name": "Widget Beta", "current_quantity": 105, "reorder_threshold": 30},
+    {"item_code": "B001", "item_name": "Gadget Pro", "current_quantity": 250, "reorder_threshold": 50},
+    {"item_code": "B002", "item_name": "Gadget Lite", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "item_name": "Tool Master", "current_quantity": 45, "reorder_threshold": 40}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "A002", "current_quantity": 105, "reorder_threshold": 30},
+    {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T007", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 9,
+    "total_shipments": 3,
+    "total_sales": 6,
+    "total_rejected": 1
+  },
+  "testing_notes": "System successfully processed valid transactions and rejected T007 due to insufficient inventory for B002."
+}
+```
+
+## Detailed Answer Derivation
+
+### Step-by-Step Transaction Processing
+
+Processing transactions in chronological order from the provided CSV:
+
+**Initial Inventory:**
+- A001: 100, A002: 75, B001: 200, B002: 40, C001: 150
+
+**Transaction Processing:**
+
+1. **T001** (09:00): A001 SHIP +50 → A001: 100 + 50 = 150 ✅
+2. **T002** (09:15): B001 SALE -25 → B001: 200 - 25 = 175 ✅
+3. **T003** (09:30): A002 SHIP +30 → A002: 75 + 30 = 105 ✅
+4. **T004** (09:45): C001 SALE -60 → C001: 150 - 60 = 90 ✅
+5. **T005** (10:00): A001 SALE -80 → A001: 150 - 80 = 70 ✅
+6. **T006** (10:15): B002 SALE -30 → B002: 40 - 30 = 10 ✅
+7. **T007** (10:30): B002 SALE -30 → B002: 10 - 30 = -20 ❌ **REJECTED** (Insufficient inventory)
+8. **T008** (10:45): B001 SHIP +75 → B001: 175 + 75 = 250 ✅
+9. **T009** (11:00): C001 SALE -45 → C001: 90 - 45 = 45 ✅
+10. **T010** (11:15): B002 SALE -5 → B002: 10 - 5 = 5 ✅
+
+### Final Inventory Calculations
+
+**A001 (Widget Alpha)**: 100 + 50 - 80 = **70**
+**A002 (Widget Beta)**: 75 + 30 = **105** 
+**B001 (Gadget Pro)**: 200 - 25 + 75 = **250**
+**B002 (Gadget Lite)**: 40 - 30 - 5 = **5** (T007 rejected)
+**C001 (Tool Master)**: 150 - 60 - 45 = **45**
+
+### Low Stock Alert Analysis
+
+Items where current_quantity < reorder_threshold:
+- **A002**: 105 ≥ 30 (No alert needed) ❌ *Correction: This was an error in my initial answer*
+- **B002**: 5 < 25 ✅ (Alert required)
+
+**Corrected Low Stock Alerts:**
+```json
+"low_stock_alerts": [
+  {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25}
+]
+```
+
+### Rejected Transactions Analysis
+
+**T007**: B002 SALE 30
+- Current B002 stock at time of T007: 10 (after T006)
+- Attempted sale: 30
+- Result would be: 10 - 30 = -20 (negative inventory not allowed)
+- **Status**: REJECTED - "Insufficient inventory"
+
+### Daily Summary Calculations
+
+- **Total transactions processed**: 9 (10 attempted - 1 rejected)
+- **Total shipments**: 3 (T001, T003, T008)
+- **Total sales**: 6 (T002, T004, T005, T006, T009, T010)
+- **Total rejected**: 1 (T007)
+
+## Corrected Complete Answer Key
+
+```json
+{
+  "source_code": "# Complete working program code would be provided by candidate",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 70, "reorder_threshold": 25},
+    {"item_code": "A002", "item_name": "Widget Beta", "current_quantity": 105, "reorder_threshold": 30},
+    {"item_code": "B001", "item_name": "Gadget Pro", "current_quantity": 250, "reorder_threshold": 50},
+    {"item_code": "B002", "item_name": "Gadget Lite", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "item_name": "Tool Master", "current_quantity": 45, "reorder_threshold": 40}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T007", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 9,
+    "total_shipments": 3,
+    "total_sales": 6,
+    "total_rejected": 1
+  },
+  "testing_notes": "System successfully processed valid transactions and rejected T007 due to insufficient inventory for B002."
+}
+```
+
+## Passing Criteria and Scoring Rubric
+
+### Overall Passing Threshold: 80%
+
+**Total Points: 100**
+**Minimum Passing Score: 80 points**
+
+### Detailed Scoring Breakdown
+
+**1. Final Inventory Calculations (40 points)**
+- All 5 items calculated correctly: 40 points
+- 4 items correct: 32 points
+- 3 items correct: 24 points
+- 2 items correct: 16 points
+- 1 item correct: 8 points
+- 0 items correct: 0 points
+
+**2. Transaction Validation and Rejection Logic (25 points)**
+- T007 correctly identified as rejected with proper reason: 25 points
+- T007 identified as rejected but incorrect reason: 15 points
+- T007 not identified as rejected: 0 points
+
+**3. Low Stock Alert Generation (15 points)**
+- Correct identification of B002 only: 15 points
+- B002 identified plus incorrect additional alerts: 10 points
+- Missing B002 or only incorrect alerts: 0 points
+
+**4. Daily Summary Accuracy (15 points)**
+- All 4 summary counts correct: 15 points
+- 3 out of 4 counts correct: 11 points
+- 2 out of 4 counts correct: 7 points
+- 1 out of 4 counts correct: 3 points
+- No counts correct: 0 points
+
+**5. Code Quality and Execution (5 points)**
+- Code executes without errors and produces correct output: 5 points
+- Code executes with minor issues but produces mostly correct results: 3 points
+- Code partially functional: 1 point
+- Code doesn't execute or produces no meaningful output: 0 points
+
+### Critical Success Requirements
+
+To achieve a passing score (80+), candidates must demonstrate:
+
+1. **Core Programming Competency**: Accurate processing of at least 4 out of 5 inventory calculations (32+ points)
+2. **Business Logic Implementation**: Proper identification of T007 rejection (15+ points)
+3. **Data Processing Skills**: Accurate daily summary calculations (11+ points)
+4. **Basic Alert Logic**: Correct low stock identification (10+ points)
+5. **Functional Code**: Working program that executes (3+ points)
+
+**Minimum combination for passing**: 32 + 15 + 11 + 10 + 3 = 71 points (below threshold)
+**Realistic passing combination**: 40 + 25 + 15 + 7 + 3 = 90 points
+
+### Grade Boundaries
+
+- **90-100 points**: Excellent - Professional level competency
+- **80-89 points**: Good - **PASSING** - Entry-level competency demonstrated
+- **70-79 points**: Satisfactory - **NOT PASSING** - Some skills present but insufficient
+- **60-69 points**: Needs Improvement - **NOT PASSING** - Basic understanding lacking
+- **Below 60 points**: Unsatisfactory - **NOT PASSING** - Fundamental skills missing
+
+### Key Assessment Points
+
+**Must-Have for Passing (80+ points):**
+- Perfect or near-perfect inventory calculations (32-40 points)
+- Correct transaction rejection logic (25 points)
+- Accurate summary calculations (11-15 points)
+- Working executable code (3-5 points)
+- Basic alert functionality (10-15 points)
+
+**Common Failure Points:**
+- Incorrect chronological processing of transactions
+- Missing validation for negative inventory
+- Arithmetic errors in inventory calculations
+- Incorrect understanding of low stock alert criteria
+- Non-functional or non-executable code
+
+This evaluation framework ensures that candidates who pass demonstrate the essential programming skills needed for entry-level computer programming positions, including data processing, business logic implementation, and error handling.

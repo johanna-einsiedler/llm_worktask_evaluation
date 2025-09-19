@@ -1,0 +1,239 @@
+
+
+**File: buggy_program.py**
+```python
+# Inventory Management System
+# Contains intentional compilation errors for exam purposes
+
+import os
+import sys
+from datetime import datetime
+import json
+
+class InventoryManager:
+    def __init__(self):
+        self.inventory = {}
+        self.transaction_log = []
+    
+    def load_inventory(self, filename):
+        """Load inventory data from file"""
+        try:
+            with open(filename, 'r') as file:
+                for line in file:
+                    parts = line.strip().split(',')
+                    if len(parts) == 4:
+                        item_id = parts[0]
+                        name = parts[1]
+                        quantity = int(parts[2])
+                        price = float(parts[3])
+                        self.inventory[item_id] = {
+                            'name': name,
+                            'quantity': quantity,
+                            'price': price
+                        }
+        except FileNotFoundError:
+            print(f"Error: File {filename} not found")
+            return False
+        return True
+    
+    def add_item(self, item_id, name, quantity, price):
+        """Add new item to inventory"""
+        if item_id in self.inventory:
+            self.inventory[item_id]['quantity'] += quantity
+        else:
+            self.inventory[item_id] = {
+                'name': name,
+                'quantity': quantity,
+                'price': price
+            }
+        
+        # Log the transaction
+        self.transaction_log.append({
+            'timestamp': datetime.now().isoformat(),
+            'action': 'add',
+            'item_id': item_id,
+            'quantity': quantity
+        })
+    
+    def remove_item(self, item_id, quantity):
+        """Remove items from inventory"""
+        if item_id not in self.inventory:
+            print(f"Error: Item {item_id} not found in inventory")
+            return False
+        
+        if self.inventory[item_id]['quantity'] < quantity:
+            print(f"Error: Not enough {self.inventory[item_id]['name']} in stock")
+            return False
+        
+        self.inventory[item_id]['quantity'] -= quantity
+        
+        # Log the transaction
+        self.transaction_log.append({
+            'timestamp': datetime.now().isoformat(),
+            'action': 'remove',
+            'item_id': item_id,
+            'quantity': quantity
+        })
+        return True
+    
+    def get_item_info(self, item_id):
+        """Get information about specific item"""
+        if item_id in self.inventory:
+            return self.inventory[item_id]
+        return None
+    
+    def calculate_total_value(self):
+        """Calculate total value of all inventory"""
+        total = 0
+        for item in self.inventory.values():
+            total += item['quantity'] * item['price']
+        return total
+    
+    def generate_report(self):
+        """Generate inventory report"""
+        print("\n=== INVENTORY REPORT ===")
+        print(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("-" * 50)
+        
+        for item_id, item_data in self.inventory.items():
+            print(f"ID: {item_id}")
+            print(f"Name: {item_data['name']}")
+            print(f"Quantity: {item_data['quantity']}")
+            print(f"Price: ${item_data['price']:.2f}")
+            print(f"Total Value: ${item_data['quantity'] * item_data['price']:.2f}")
+            print("-" * 30)
+        
+        print(f"TOTAL INVENTORY VALUE: ${self.calculate_total_value():.2f}")
+
+def main():
+    # Create inventory manager instance
+    manager = InventoryManager()
+    
+    # Load sample data
+    if manager.load_inventory('sample_data.txt'):
+        print("Inventory loaded successfully!")
+    else:
+        print("Failed to load inventory data")
+        return
+    
+    # Test adding items
+    manager.add_item('ITEM005', 'Wireless Mouse', 15, 29.99)
+    manager.add_item('ITEM001', 'Laptop Computer', 5, 899.99)  # Add to existing
+    
+    # Test removing items
+    manager.remove_item('ITEM002', 3)
+    
+    # Test item lookup
+    item_info = manager.get_item_info('ITEM003')
+    if item_info:
+        print(f"Found item: {item_info['name']} - Quantity: {item_info['quantity']}")
+    
+    # Generate final report
+    manager.generate_report()
+
+if __name__ == "__main__":
+    main()
+```
+
+**File: sample_data.txt**
+```
+ITEM001,Laptop Computer,10,899.99
+ITEM002,Desktop Monitor,25,249.50
+ITEM003,Keyboard,50,45.00
+ITEM004,USB Cable,100,12.99
+```
+
+**File: documentation_template.md**
+```markdown
+# Program Documentation Template
+
+## Program Overview
+[Write 3-4 sentences describing what the program does and its main purpose]
+
+## Function Documentation
+
+### Function Name: [function_name]
+**Purpose:** [One sentence describing what the function does]
+
+**Parameters:**
+- `parameter_name` (type): Description of parameter
+- `parameter_name` (type): Description of parameter
+
+**Return Value:**
+- Type: [return_type]
+- Description: [What the function returns]
+
+**Usage Example:**
+```python
+# Example code showing how to use the function
+result = function_name(param1, param2)
+```
+
+## Installation Instructions
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+## User Guide
+[Instructions for how to run the program and interpret the outputs]
+```
+
+**File: comment_guidelines.txt**
+```
+# Code Commenting Guidelines
+
+## Header Comment Block Format:
+```python
+"""
+Program Title: [Title]
+Author: Exam Candidate
+Date: [Current Date]
+Description: [Brief description]
+"""
+```
+
+## Function Docstring Format:
+```python
+def function_name(param1, param2):
+    """
+    Brief description of what the function does.
+    
+    Args:
+        param1 (type): Description of parameter
+        param2 (type): Description of parameter
+    
+    Returns:
+        type: Description of return value
+    
+    Raises:
+        ExceptionType: Description of when exception is raised
+    """
+```
+
+## Inline Comment Requirements:
+- Explain WHY code does something, not just WHAT it does
+- Comment complex logic or calculations
+- Explain non-obvious variable names
+- Add comments before code blocks that perform specific tasks
+- Minimum 5 inline comments required
+
+## Examples of Good vs Bad Comments:
+
+### Good Comments:
+```python
+# Calculate tax based on regional rate (8.5% for this location)
+tax_amount = subtotal * 0.085
+
+# Retry connection up to 3 times before failing
+for attempt in range(3):
+```
+
+### Bad Comments:
+```python
+# Set x to 5
+x = 5
+
+# Loop through items
+for item in items:
+```
+```

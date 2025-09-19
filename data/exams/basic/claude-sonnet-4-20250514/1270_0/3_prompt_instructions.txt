@@ -1,0 +1,129 @@
+Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> # Basic Computer Programming Practical Exam Design
+
+## Exam Overview and Purpose
+
+This practical exam assesses a candidate's ability to **actually write, update, and maintain functional computer programs** that solve real-world business problems. Unlike theoretical assessments, this exam requires candidates to produce working code that handles data processing, business logic, and system integration tasks commonly found in entry-level programming positions.
+
+## Strategic Exam Structure
+
+### Core Assessment Philosophy
+The exam simulates a **realistic workplace scenario** where a junior programmer receives a business requirement and must deliver a complete, working solution. This approach differentiates candidates who can actually program from those who only understand programming concepts.
+
+### Key Strategic Elements
+
+#### 1. **Multi-Step Problem Solving**
+- **Data Input Processing**: Reading and validating data from multiple sources
+- **Business Logic Implementation**: Applying rules and calculations
+- **Output Generation**: Producing formatted results and reports
+- **Error Handling**: Managing edge cases and invalid inputs
+
+#### 2. **Data Relationship Management**
+- Working with related datasets (customers, orders, inventory)
+- Implementing data joins and lookups
+- Maintaining data integrity across operations
+- Handling missing or inconsistent data
+
+#### 3. **Decision Points and Branching Logic**
+- Conditional processing based on business rules
+- Status updates and workflow management
+- Alert generation for critical conditions
+- Dynamic behavior based on data characteristics
+
+#### 4. **Real-World Constraints**
+- Time-based processing (dates, deadlines)
+- Quantity and threshold management
+- Data validation and sanitization
+- Performance considerations for data processing
+
+## Practical Assessment Components
+
+### Primary Task: Inventory Management System
+Candidates must build a complete inventory tracking system that:
+- Processes incoming shipments and sales transactions
+- Updates stock levels automatically
+- Generates alerts for low inventory
+- Produces management reports
+- Handles data validation and error cases
+
+### Secondary Integration: Equipment Control Simulation
+Candidates extend their system to:
+- Send commands to simulated equipment (printers, scanners)
+- Process equipment status responses
+- Log equipment interactions
+- Handle equipment failure scenarios
+
+## Evaluation Strategy
+
+### Success Indicators
+- **Functional Code**: Programs execute without errors
+- **Correct Logic**: Business rules implemented accurately
+- **Data Integrity**: Proper handling of data relationships
+- **Error Management**: Graceful handling of edge cases
+- **Code Organization**: Clear structure and maintainability
+
+### Differentiation Factors
+- **Problem Decomposition**: How candidates break down complex requirements
+- **Data Flow Design**: Understanding of how data moves through the system
+- **Integration Thinking**: Ability to connect multiple system components
+- **Practical Decision Making**: Choosing appropriate solutions for real constraints
+
+## Optimal Exam Structure
+
+### Phase 1: Core Programming (45 minutes)
+- Implement basic inventory tracking functionality
+- Process transaction data and update records
+- Generate simple reports and alerts
+
+### Phase 2: System Integration (30 minutes)
+- Add equipment control capabilities
+- Implement cross-system data sharing
+- Handle integration error scenarios
+
+### Phase 3: Enhancement and Testing (15 minutes)
+- Add requested feature enhancements
+- Test edge cases and document findings
+- Optimize performance or add validation
+
+## Key Design Principles
+
+### 1. **Authentic Complexity**
+Problems mirror real workplace challenges without being overwhelming for entry-level candidates.
+
+### 2. **Measurable Outcomes**
+Each component produces specific, verifiable outputs that can be automatically evaluated.
+
+### 3. **Progressive Difficulty**
+Tasks build from basic programming to system integration, allowing candidates to demonstrate their skill ceiling.
+
+### 4. **Practical Constraints**
+Time limits and resource constraints mirror real development environments.
+
+## Evaluation Framework
+
+### Structured JSON Submission
+Candidates submit:
+- Source code files
+- Test results and outputs
+- Documentation of design decisions
+- Reflection on challenges encountered
+
+### Automated + Manual Review
+- Automated testing of core functionality
+- Manual review of code quality and approach
+- Assessment of problem-solving methodology
+- Evaluation of real-world applicability
+
+This exam design ensures that successful candidates can actually perform the essential tasks of computer programming in a professional environment, not just demonstrate theoretical knowledge. </examoverview>
+
+    ### Your assignment:
+
+    Based on the explanation write clear, concise instructions for the candidate including:
+    - The actual test they need perform, i.e. the tasks that need to be done or questions that need to be answered.
+    - What they need to accomplish (without prescribing specific methods)
+    - Brief description of any materials that will be provided
+    - That they will have to submit their answers as a JSON file.
+
+    IMPORTANT: When designing the test, eliminate any opportunities for candidates to make arbitrary choices (like custom account codes, naming conventions, or classification systems) that would complicate evaluation. Either:
+    - Provide pre-defined structures/codes that must be used, or
+    - Design questions with objectively verifiable numerical/text answers that don't depend on the candidate's approach. 
+    - You can ask for text answers that can be compared to an exact match, but avoid asking for text answers such as justification that require interpretation and/or with many possible correct answers.

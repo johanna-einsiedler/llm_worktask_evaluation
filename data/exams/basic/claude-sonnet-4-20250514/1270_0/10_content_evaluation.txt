@@ -1,0 +1,228 @@
+# Basic Computer Programming Practical Exam - Answer Key and Evaluation Guide
+
+## Complete Answer Key (JSON Format)
+
+```json
+{
+  "source_code": "# Complete working program code would be provided by candidate",
+  "final_inventory": [
+    {"item_code": "A001", "item_name": "Widget Alpha", "current_quantity": 130, "reorder_threshold": 25},
+    {"item_code": "A002", "item_name": "Widget Beta", "current_quantity": 55, "reorder_threshold": 30},
+    {"item_code": "B001", "item_name": "Gadget Pro", "current_quantity": 250, "reorder_threshold": 50},
+    {"item_code": "B002", "item_name": "Gadget Lite", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "item_name": "Tool Master", "current_quantity": 25, "reorder_threshold": 40},
+    {"item_code": "C002", "item_name": "Tool Basic", "current_quantity": 75, "reorder_threshold": 35},
+    {"item_code": "D001", "item_name": "Component X", "current_quantity": 250, "reorder_threshold": 75},
+    {"item_code": "D002", "item_name": "Component Y", "current_quantity": 160, "reorder_threshold": 60},
+    {"item_code": "E001", "item_name": "Supply Pack", "current_quantity": 115, "reorder_threshold": 20},
+    {"item_code": "E002", "item_name": "Supply Kit", "current_quantity": 45, "reorder_threshold": 45}
+  ],
+  "low_stock_alerts": [
+    {"item_code": "A002", "current_quantity": 55, "reorder_threshold": 30},
+    {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "current_quantity": 25, "reorder_threshold": 40}
+  ],
+  "rejected_transactions": [
+    {"transaction_id": "T012", "reason": "Insufficient inventory"},
+    {"transaction_id": "T022", "reason": "Invalid item code"},
+    {"transaction_id": "T024", "reason": "Insufficient inventory"}
+  ],
+  "daily_summary": {
+    "total_transactions_processed": 22,
+    "total_shipments": 8,
+    "total_sales": 14,
+    "total_rejected": 3
+  },
+  "equipment_commands": [
+    {"transaction_id": "T001", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T002", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T003", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T004", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T005", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T006", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T007", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "ERROR"},
+    {"transaction_id": "T008", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T009", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T010", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T011", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T013", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T014", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T015", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T016", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "ERROR"},
+    {"transaction_id": "T017", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T018", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T019", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T020", "equipment": "scanner", "command": "SCAN_BARCODE", "status": "SUCCESS"},
+    {"transaction_id": "T021", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T023", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"},
+    {"transaction_id": "T025", "equipment": "printer", "command": "PRINT_RECEIPT", "status": "SUCCESS"}
+  ],
+  "equipment_summary": {
+    "scanner_commands_sent": 8,
+    "scanner_successful": 7,
+    "scanner_failed": 1,
+    "printer_commands_sent": 14,
+    "printer_successful": 13,
+    "printer_failed": 1
+  },
+  "testing_notes": "System successfully processed valid transactions and rejected invalid ones. Equipment integration working correctly with proper error handling."
+}
+```
+
+## Detailed Answer Derivation
+
+### Final Inventory Calculations
+
+Starting from initial_inventory.csv, process each valid transaction:
+
+**A001 (Widget Alpha)**: 100 + 50 - 80 + 60 = 130
+- T001: SHIP +50 → 150
+- T008: SALE -80 → 70  
+- T018: SHIP +60 → 130
+
+**A002 (Widget Beta)**: 75 + 30 - 50 = 55
+- T003: SHIP +30 → 105
+- T012: SALE -120 → REJECTED (insufficient stock)
+- T023: SALE -50 → 55
+
+**B001 (Gadget Pro)**: 200 - 25 + 75 = 250
+- T002: SALE -25 → 175
+- T013: SHIP +75 → 250
+- T024: SALE -300 → REJECTED (insufficient stock)
+
+**B002 (Gadget Lite)**: 40 - 30 - 5 = 5
+- T007: SALE -30 → 10
+- T017: SALE -5 → 5
+
+**C001 (Tool Master)**: 150 - 60 - 45 - 20 = 25
+- T004: SALE -60 → 90
+- T014: SALE -45 → 45
+- T025: SALE -20 → 25
+
+**C002 (Tool Basic)**: 80 + 25 - 30 = 75
+- T009: SHIP +25 → 105
+- T019: SALE -30 → 75
+
+**D001 (Component X)**: 300 + 100 - 150 = 250
+- T005: SHIP +100 → 400
+- T015: SALE -150 → 250
+
+**D002 (Component Y)**: 120 - 40 + 80 = 160
+- T010: SALE -40 → 80
+- T020: SHIP +80 → 160
+
+**E001 (Supply Pack)**: 90 - 15 + 40 = 115
+- T006: SALE -15 → 75
+- T016: SHIP +40 → 115
+
+**E002 (Supply Kit)**: 180 - 90 - 45 = 45
+- T011: SALE -90 → 90
+- T021: SALE -45 → 45
+
+### Rejected Transactions Analysis
+
+1. **T012**: A002 SALE 120 - Current stock (105) insufficient for sale of 120
+2. **T022**: X999 SALE 10 - Item code X999 doesn't exist in inventory
+3. **T024**: B001 SALE 300 - Current stock (175) insufficient for sale of 300
+
+### Low Stock Alerts
+
+Items where current_quantity < reorder_threshold:
+- **A002**: 55 < 30 ❌ (Actually 55 > 30, so NO alert)
+- **B002**: 5 < 25 ✅ 
+- **C001**: 25 < 40 ✅
+
+**CORRECTION**: A002 should NOT be in low stock alerts since 55 > 30.
+
+### Equipment Commands Mapping
+
+Equipment responses are consumed sequentially from equipment_responses.csv:
+- SHIP transactions → scanner, SCAN_BARCODE
+- SALE transactions → printer, PRINT_RECEIPT
+- Only successful (non-rejected) transactions generate equipment commands
+
+### Daily Summary Calculations
+
+- **Total processed**: 22 (25 total - 3 rejected)
+- **Shipments**: 8 (T001, T003, T005, T009, T013, T016, T018, T020)
+- **Sales**: 14 (remaining valid transactions)
+- **Rejected**: 3 (T012, T022, T024)
+
+## Corrected Answer Key
+
+```json
+{
+  "low_stock_alerts": [
+    {"item_code": "B002", "current_quantity": 5, "reorder_threshold": 25},
+    {"item_code": "C001", "current_quantity": 25, "reorder_threshold": 40}
+  ]
+}
+```
+
+## Passing Criteria
+
+### Minimum Requirements for Passing (80% threshold):
+
+**Core Functionality (60 points)**
+- Correct final inventory calculations: 30 points
+- Proper transaction rejection logic: 15 points  
+- Accurate daily summary: 15 points
+
+**Integration Features (25 points)**
+- Equipment command generation: 15 points
+- Equipment status tracking: 10 points
+
+**Code Quality (15 points)**
+- Working, executable code: 10 points
+- Proper error handling: 5 points
+
+**Total: 100 points**
+**Passing Score: 80 points**
+
+### Detailed Scoring Rubric
+
+**Final Inventory (30 points)**
+- All 10 items calculated correctly: 30 points
+- 8-9 items correct: 24 points
+- 6-7 items correct: 18 points
+- 4-5 items correct: 12 points
+- Below 4 items correct: 0 points
+
+**Transaction Processing (15 points)**
+- All 3 rejections identified correctly: 15 points
+- 2 rejections correct: 10 points
+- 1 rejection correct: 5 points
+- No rejections identified: 0 points
+
+**Low Stock Alerts (10 points)**
+- Correct identification of B002 and C001: 10 points
+- One correct alert: 5 points
+- Incorrect alerts: 0 points
+
+**Equipment Integration (25 points)**
+- All equipment commands correct: 25 points
+- Equipment summary accurate: included in above
+- Partial equipment functionality: 15 points
+- No equipment integration: 0 points
+
+**Code Execution (20 points)**
+- Code runs without errors: 20 points
+- Code runs with minor errors: 15 points
+- Code partially functional: 10 points
+- Code doesn't execute: 0 points
+
+### Common Acceptable Variations
+
+- Minor formatting differences in source code
+- Different variable names or code structure
+- Alternative valid approaches to data processing
+- Reasonable testing notes reflecting actual findings
+
+### Automatic Failure Conditions
+
+- Non-executable code
+- Missing required JSON fields
+- Incorrect data types (strings vs integers)
+- Major calculation errors (>50% of inventory wrong)
+
+This answer key provides comprehensive evaluation criteria while maintaining the practical, real-world focus of the exam.
