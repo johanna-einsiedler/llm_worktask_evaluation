@@ -1,0 +1,92 @@
+{
+  "candidate": {
+    "name": "Official Answer Key",
+    "email": "grader@example.com"
+  },
+  "env": {
+    "language": "python3",
+    "entrypoint": "run_exam.py",
+    "db_file": "telemetry.db"
+  },
+  "ingestion": {
+    "rows_loaded": 14,
+    "rows_skipped": 2,
+    "note": "Skipped 1 malformed timestamp and 1 duplicate row; inserted one row with NULL cpu_percent."
+  },
+  "results": {
+    "total_rows": 14,
+    "top_hosts_by_avg_cpu": [
+      {
+        "host": "host-03",
+        "avg_cpu": 72.88
+      },
+      {
+        "host": "host-02",
+        "avg_cpu": 69.67
+      },
+      {
+        "host": "host-01",
+        "avg_cpu": 15.17
+      }
+    ],
+    "hourly_stats_for_host": [
+      {
+        "hour_start": "2024-03-01T00:00:00Z",
+        "avg_cpu": 55.0,
+        "max_mem_mb": 2048
+      },
+      {
+        "hour_start": "2024-03-01T01:00:00Z",
+        "avg_cpu": 60.0,
+        "max_mem_mb": 2100
+      },
+      {
+        "hour_start": "2024-03-01T03:00:00Z",
+        "avg_cpu": 88.0,
+        "max_mem_mb": 2150
+      },
+      {
+        "hour_start": "2024-03-01T05:00:00Z",
+        "avg_cpu": 92.0,
+        "max_mem_mb": 2300
+      },
+      {
+        "hour_start": "2024-03-01T06:00:00Z",
+        "avg_cpu": 61.5,
+        "max_mem_mb": 2310
+      }
+    ],
+    "cpu_spike_periods": [
+      {
+        "host": "host-03",
+        "start_ts": "2024-03-01T01:10:00Z",
+        "end_ts": "2024-03-01T01:30:00Z"
+      }
+    ]
+  },
+  "after_insert": {
+    "inserted_record_ok": true,
+    "updated_avg_cpu_for_host": 74.0
+  },
+  "schema_and_choices": {
+    "schema_description": "Single flat telemetry table (telemetry) with typed columns: timestamp (UTC, stored as ISO8601 text or SQLite datetime), host (TEXT), cpu_percent (REAL, nullable), mem_mb (INTEGER), disk_io_kb (INTEGER), net_io_kb (INTEGER), event_type (TEXT). I created an index on (host, timestamp) for efficient per-host time-ordered queries. Duplicate rows are detected by exact equality on all columns and skipped; empty numeric cpu_percent is stored as NULL.",
+    "suggested_improvements": [
+      "Partition or prune old data by date (monthly/day partitions) and add retention policies to limit storage growth.",
+      "Batch ingestion with write-ahead buffering and add monitoring/alerting for malformed data rates; consider compression and columnar export for analytics."
+    ]
+  },
+  "run_instructions": "python3 run_exam.py",
+  "optional": {
+    "errors": [
+      "Ingestion derivation: telemetry.csv contains 16 data lines. Controlled edge cases per evaluator notes: one malformed timestamp (2024-03-01T25:00:00Z) — this must be skipped; one exact duplicate row (final line duplicates 2024-03-01T00:10:00Z host-03) — this must be detected and skipped. One row (2024-03-01T02:10:00Z host-01) has empty cpu_percent and should be inserted with cpu_percent = NULL. Therefore rows_skipped = 2 and rows_loaded = 14. Note text reflects these choices.",
+      "Total rows: After ingest the DB contains 14 rows (rows_loaded). This is results.total_rows = 14.",
+      "Top hosts by average CPU derivation: Averages exclude NULL cpu_percent values. Calculations from inserted rows (after skipping malformed and duplicate):\n- host-03 cpu values: 12.0, 91.0, 95.5, 93.0 => sum=291.5 count=4 => avg=72.875 => 72.88 (rounded to 2 decimals).\n- host-02 cpu values: 55.0, 60.0, 88.0, 92.0, 93.0, 30.0 => sum=418.0 count=6 => avg=69.6666667 => 69.67.\n- host-01 cpu values (non-null only): 10.5, 20.0, 15.0 => sum=45.5 count=3 => avg=15.1666667 => 15.17.\nThese produce the ordered top 3 in results.top_hosts_by_avg_cpu.",
+      "Hourly stats for target host derivation: target_host.txt = host-02. Using the loaded rows for host-02 (timestamps and cpu/mem):\n- 2024-03-01T00:05:00Z => hour 00:00:00 => cpu 55.0 mem 2048\n- 2024-03-01T01:00:00Z => hour 01:00:00 => cpu 60.0 mem 2100\n- 2024-03-01T03:00:00Z => hour 03:00:00 => cpu 88.0 mem 2150\n- 2024-03-01T05:00:00Z => hour 05:00:00 => cpu 92.0 mem 2300\n- 2024-03-01T06:00:00Z => two samples 2024-03-01T06:00:00Z (93.0, mem 2310) and 2024-03-01T06:10:00Z (30.0, mem 2000) => avg_cpu = (93.0+30.0)/2 = 61.5, max_mem_mb = 2310.\nHours with no host-02 data (e.g., 02:00) are omitted. Hour-start timestamps are truncated to the top of hour in UTC.",
+      "CPU spike detection derivation: For each host, order samples by timestamp and find contiguous sequences where cpu_percent > 90 for at least 3 successive samples (NULL or cpu <= 90 breaks a sequence). host-03 has samples at 01:10 (91.0), 01:20 (95.5), 01:30 (93.0) — three consecutive >90 samples => one spike period from start_ts 2024-03-01T01:10:00Z to end_ts 2024-03-01T01:30:00Z. No other host meets the >=3 consecutive >90 rule.",
+      "Insert record derivation: insert_record.json provides host-02 at 2024-03-01T06:30:00Z with cpu=100.0. Prior host-02 cpu sum/count (non-null) = 418.0 / 6. After inserting the new non-null value: sum=518.0 count=7 => updated_avg = 518.0 / 7 = 74.0. inserted_record_ok = true.",
+      "Rounding and types: Numeric averages are provided as JSON numbers. Averages were rounded to two decimal places where appropriate (top_hosts_by_avg_cpu) and hourly averages shown with reasonable precision (two decimals or one where exact). Timestamps are ISO8601 (UTC) strings, hour_start values truncated to top-of-hour.",
+      "Passing criteria (automatable): To pass the basic exam (per rubric) a candidate must meet the following minimal checks (80% threshold):\n1) ingestion.rows_loaded == 14 and ingestion.rows_skipped == 2 (30% of score allocation) — essential for end-to-end correctness.\n2) results.total_rows == 14 (5 pts) and results.top_hosts_by_avg_cpu matches the three host/avg pairs exactly (10 pts).\n3) hourly_stats_for_host contains the correct hour buckets for target host (10 pts) and cpu_spike_periods contains the host-03 spike period correctly (15 pts).\n4) after_insert.inserted_record_ok == true and after_insert.updated_avg_cpu_for_host == 74.0 (10+5 pts).\n5) schema_and_choices present and run_instructions valid (10 pts total across documentation and reproducibility). Partial credit: if a candidate documents a consistent, different ingestion policy in schema_description and their reported ingestion counts and downstream results are consistent with that policy, award partial credit accordingly. However, automated grader should expect the canonical values above for full credit.",
+      "Notes for graders: If a candidate uses a different but explicitly stated policy (e.g., keeps duplicates), accept if they document it and the reported numbers match their policy. The automatic grader should compare against this answer key by default; manual review can apply partial credit for consistent deviations."
+    ]
+  }
+}

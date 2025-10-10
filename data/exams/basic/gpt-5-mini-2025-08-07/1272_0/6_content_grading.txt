@@ -1,0 +1,557 @@
+Here's the requested Python grading script. Save it as task_evaluation.py and run it as described:
+
+python task_evaluation.py test_submission.json answer_key.json
+
+The script loads the candidate submission and an answer key JSON, applies automated grading rules consistent with the evaluator instructions you provided, and writes a detailed test_results.json in the same directory.
+
+Note: the script uses only standard libraries and includes robust error handling and explanatory deduction reasons.
+
+```python
+#!/usr/bin/env python3
+"""
+task_evaluation.py
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Produces:
+    test_results.json in the current working directory.
+
+The script implements automated grading logic described in the exam materials.
+"""
+import json
+import sys
+import os
+import math
+import statistics
+import traceback
+
+# ---------- Helper utilities ----------
+
+def safe_load_json(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f), None
+    except Exception as e:
+        return None, str(e)
+
+def contains_passed(text):
+    if not text:
+        return False
+    # look for lines like "3 passed" or "4 passed in 0.12s"
+    import re
+    m = re.search(r'(\d+)\s+passed', text, re.IGNORECASE)
+    return bool(m)
+
+def extract_pass_count(text):
+    if not text:
+        return 0
+    import re
+    m = re.search(r'(\d+)\s+passed', text, re.IGNORECASE)
+    if m:
+        try:
+            return int(m.group(1))
+        except:
+            return 0
+    return 0
+
+def mean_safe(arr):
+    try:
+        if not arr:
+            return None
+        return statistics.mean(arr)
+    except:
+        return None
+
+def float_eq_tol(a, b, tol=0.10):
+    # tolerance fractional
+    if a is None or b is None:
+        return False
+    if b == 0:
+        return abs(a - b) < 1e-9
+    return abs(a - b) / b <= tol
+
+def normalize_str(s):
+    if s is None:
+        return ""
+    return str(s).strip()
+
+def contains_string_case_insensitive(container, substring):
+    if not container:
+        return False
+    return substring.lower() in container.lower()
+
+# ---------- Grading logic ----------
+
+def grade_submission(candidate, answer_key):
+    # Prepare results structure
+    results = {
+        "per_component": {},
+        "deductions": [],
+        "total_points": 0.0,
+        "max_points": 100.0,
+        "overall_score": 0.0
+    }
+
+    # Weighting per evaluator instructions
+    weights = {
+        "correctness": 50.0,
+        "reproducibility": 15.0,
+        "performance": 15.0,
+        "code_quality": 10.0,
+        "explanation": 10.0
+    }
+
+    # We'll compute subtotals and explanations for each main component.
+    # Initialize earned points
+    earned = {
+        "correctness": 0.0,
+        "reproducibility": 0.0,
+        "performance": 0.0,
+        "code_quality": 0.0,
+        "explanation": 0.0
+    }
+
+    deductions = []
+
+    # Helper to safely access fields
+    def get_field(d, path, default=None):
+        cur = d
+        try:
+            for p in path:
+                cur = cur[p]
+            return cur
+        except Exception:
+            return default
+
+    # Basic presence checks
+    # Ensure required top-level fields exist
+    required_top_fields = ["candidate_name", "start_time_utc", "end_time_utc", "tasks", "performance", "how_to_reproduce"]
+    missing_top = [f for f in required_top_fields if f not in candidate]
+    if missing_top:
+        msg = f"Missing top-level fields in submission: {missing_top}"
+        deductions.append(msg)
+        # We continue but note deduction; some components will be penalized
+
+    # ---------- Correctness & completeness (50 points) ----------
+    # Subparts:
+    # - Original tests passing after fixes (30 points)
+    # - Two targeted bugs fixed (10 points)
+    # - New feature implemented (10 points)
+
+    correctness_points = 0.0
+    correctness_max = weights["correctness"]
+
+    # 1) Original tests passing: look for evidence of pytest output with passed counts in candidate tasks (prefer Finalize, else T1/T2)
+    passed_count = 0
+    passed_texts = []
+    for t in candidate.get("tasks", []):
+        ko = t.get("key_outputs", "")
+        if ko and contains_passed(ko):
+            passed_texts.append(ko)
+            passed_count += extract_pass_count(ko)
+    # If no tasks show passed, also check final_notes or performance section might contain lines (rare)
+    if passed_count > 0:
+        # Award full 30 if we at least see tests passing and the candidate reports new tests passing too
+        # But ensure candidate added at least one new test (Task 2 requirement)
+        new_tests = candidate.get("new_tests", [])
+        if new_tests and len(new_tests) >= 1:
+            correctness_points += 30.0
+        else:
+            # They show tests passing but didn't include a new test file -> partial
+            correctness_points += 20.0
+            deductions.append("Candidate's test outputs indicate tests passed but new_tests is empty or missing; required new automated test for the feature appears absent.")
+    else:
+        # No evidence of final tests passing
+        deductions.append("No evidence of final pytest passing in submission outputs. Expect tests to pass after fixes.")
+        correctness_points += 0.0
+
+    # 2) Targeted bugs fixed (10 points): parse_date and dedupe_records normalization
+    bug_fix_points = 0.0
+    # Check files_changed for code/deduper.py and examine unified_diff or content strings for indicators
+    files_changed = []
+    for t in candidate.get("tasks", []):
+        for f in t.get("files_changed", []):
+            files_changed.append(f)
+    # Map by filename
+    fc_by_name = {f.get("filename", ""): f for f in files_changed}
+
+    deduper = fc_by_name.get("code/deduper.py")
+    if deduper and deduper.get("unified_diff"):
+        ud = deduper.get("unified_diff", "")
+        # Check parse_date fix: presence of "%Y-%m-%d" or 'strptime' format used
+        parse_fixed = ("%Y-%m-%d" in ud) or ("datetime.strptime" in ud and "%d-%m-%Y" not in ud)
+        # Check dedupe normalization: presence of "strip(" or ".strip()" and "Transaction_ID"
+        dedupe_fixed = ("strip(" in ud or ".strip()" in ud) and "Transaction_ID" in ud
+        if parse_fixed and dedupe_fixed:
+            bug_fix_points = 10.0
+        elif parse_fixed or dedupe_fixed:
+            bug_fix_points = 5.0
+            if not parse_fixed:
+                deductions.append("parse_date fix not detected in code/deduper.py unified_diff; expected change to parse YYYY-MM-DD.")
+            if not dedupe_fixed:
+                deductions.append("dedupe_records normalization (strip Transaction_ID) not detected in code/deduper.py unified_diff.")
+        else:
+            deductions.append("Neither parse_date fix nor dedupe_records normalization changes were detected in code/deduper.py unified_diff.")
+            bug_fix_points = 0.0
+    else:
+        deductions.append("code/deduper.py not found among changed files or missing unified_diff; cannot verify bug fixes automatically.")
+        bug_fix_points = 0.0
+
+    correctness_points += bug_fix_points
+
+    # 3) New feature implemented (10 points): --since-date and test verifying it
+    feature_points = 0.0
+    # Check that code/main.py was modified and includes '--since-date'
+    main_change = fc_by_name.get("code/main.py")
+    main_has_flag = False
+    if main_change and main_change.get("unified_diff"):
+        ud = main_change.get("unified_diff", "")
+        if "--since-date" in ud or "since_date" in ud:
+            main_has_flag = True
+    else:
+        # Also check any tasks.files_changed for code/main.py in case different key
+        for f in files_changed:
+            if f.get("filename") == "code/main.py" and f.get("unified_diff"):
+                if "--since-date" in f.get("unified_diff", ""):
+                    main_has_flag = True
+
+    # Check new_tests contains a test that mentions since-date or boundary date "2023-01-05"
+    new_tests = candidate.get("new_tests", [])
+    new_test_ok = False
+    if new_tests:
+        for nt in new_tests:
+            fn = nt.get("filename", "")
+            content = nt.get("content", "") or ""
+            if "since-date" in content or "--since-date" in content or "2023-01-05" in content or "since_date" in fn or "since_date" in content or "sinceDate" in content:
+                new_test_ok = True
+                break
+
+    if main_has_flag and new_test_ok:
+        feature_points = 10.0
+    elif main_has_flag or new_test_ok:
+        feature_points = 5.0
+        if not main_has_flag:
+            deductions.append("CLI flag --since-date not detected in code/main.py changes.")
+        if not new_test_ok:
+            deductions.append("New test for --since-date not detected in new_tests content.")
+    else:
+        deductions.append("Neither --since-date implementation in code/main.py nor new test were detected.")
+        feature_points = 0.0
+
+    correctness_points += feature_points
+
+    # Bound correctness to max
+    correctness_points = max(0.0, min(correctness_points, correctness_max))
+    earned["correctness"] = correctness_points
+
+    # ---------- Tests & reproducibility (15 points) ----------
+    repro_max = weights["reproducibility"]
+    repro_points = 0.0
+
+    # Criteria: baseline run reported, how_to_reproduce present, new test included and passing
+    # 1) Baseline outputs present in T0.key_outputs or performance.before_run_times (5 pts)
+    t0 = None
+    for t in candidate.get("tasks", []):
+        if t.get("id", "").upper() == "T0":
+            t0 = t
+            break
+    baseline_ok = False
+    if t0 and normalize_str(t0.get("key_outputs", "")):
+        baseline_ok = True
+    elif candidate.get("performance", {}).get("before_run_times"):
+        baseline_ok = True
+
+    if baseline_ok:
+        repro_points += 5.0
+    else:
+        deductions.append("Baseline outputs not clearly provided in T0.key_outputs or performance.before_run_times.")
+
+    # 2) how_to_reproduce present & non-empty (5 pts)
+    how_to = normalize_str(candidate.get("how_to_reproduce", ""))
+    if how_to and len(how_to) > 10:
+        repro_points += 5.0
+    else:
+        deductions.append("how_to_reproduce is missing or too short; grader needs exact commands to reproduce results.")
+
+    # 3) new test included and passing (5 pts)
+    new_tests_present = bool(candidate.get("new_tests"))
+    new_test_passed = False
+    if new_tests_present:
+        # Look for evidence overall tests pass after addition
+        final_pass_found = False
+        # Prefer Finalize task
+        for t in candidate.get("tasks", []):
+            if t.get("id", "").lower() == "finalize" and t.get("key_outputs"):
+                if contains_passed(t.get("key_outputs", "")):
+                    final_pass_found = True
+                    break
+        # fallback: any task contains 'passed'
+        if not final_pass_found:
+            for t in candidate.get("tasks", []):
+                if t.get("key_outputs") and contains_passed(t.get("key_outputs", "")):
+                    final_pass_found = True
+                    break
+        if final_pass_found:
+            new_test_passed = True
+
+    if new_tests_present and new_test_passed:
+        repro_points += 5.0
+    else:
+        if not new_tests_present:
+            deductions.append("No new test files provided in new_tests; Task 2 requires adding one automated test.")
+        else:
+            deductions.append("No clear evidence that the new test passed (no 'passed' lines found in task outputs).")
+
+    # Bound and record
+    repro_points = max(0.0, min(repro_points, repro_max))
+    earned["reproducibility"] = repro_points
+
+    # ---------- Performance (15 points) ----------
+    perf_max = weights["performance"]
+    perf_points = 0.0
+
+    perf = candidate.get("performance", {})
+    before_times = perf.get("before_run_times") or []
+    after_times = perf.get("after_run_times") or []
+    bench_cmd = perf.get("benchmark_command", "")
+
+    perf_problems = []
+
+    def valid_number_list(lst):
+        if not isinstance(lst, list) or len(lst) == 0:
+            return False
+        for el in lst:
+            if not isinstance(el, (int, float)):
+                return False
+        return True
+
+    if not valid_number_list(before_times):
+        perf_problems.append("performance.before_run_times missing or invalid (expected non-empty list of numbers).")
+    if not valid_number_list(after_times):
+        perf_problems.append("performance.after_run_times missing or invalid (expected non-empty list of numbers).")
+
+    if perf_problems:
+        deductions.extend(perf_problems)
+        perf_points = 0.0
+    else:
+        mean_before = mean_safe(before_times)
+        mean_after = mean_safe(after_times)
+        if mean_before is None or mean_after is None or mean_after <= 0:
+            deductions.append("Could not compute meaningful benchmark means from provided times.")
+            perf_points = 0.0
+        else:
+            factor = mean_before / mean_after if mean_after > 0 else float('inf')
+            # Full credit if factor >= 2.0
+            if factor >= 2.0:
+                perf_points = perf_max
+            elif factor > 1.0:
+                # linear interpolation between 1x (0 points) and 2x (full points)
+                perf_points = perf_max * (factor - 1.0) / (2.0 - 1.0)
+            else:
+                perf_points = 0.0
+            # Additional check: benchmark_command should be present and non-empty (soft)
+            if not bench_cmd or len(str(bench_cmd).strip()) == 0:
+                deductions.append("performance.benchmark_command missing or empty; expected command used to run benchmark.")
+    earned["performance"] = perf_points
+
+    # ---------- Code quality & clarity (10 points) ----------
+    qc_max = weights["code_quality"]
+    qc_points = 0.0
+    # Heuristics:
+    # - Changed file set should be small and focused (<=6 files) -> 4 pts
+    # - Each changed file should include unified_diff or full content -> 3 pts
+    # - No disallowed high-level changes (renames of many top-level files) -> 3 pts
+
+    changed_filenames = [f.get("filename", "") for f in files_changed]
+    unique_changed = list(set([n for n in changed_filenames if n]))
+    if len(unique_changed) == 0:
+        deductions.append("No changed files were included in files_changed; cannot review code diffs.")
+    # 1) size of change
+    if 1 <= len(unique_changed) <= 6:
+        qc_points += 4.0
+    elif 7 <= len(unique_changed) <= 12:
+        qc_points += 2.0
+        deductions.append("Large number of changed files; consider keeping edits focused and minimal.")
+    else:
+        # none or too many
+        qc_points += 0.0
+        if len(unique_changed) == 0:
+            deductions.append("No changed files reported.")
+        else:
+            deductions.append("Too many changed files; expected small focused edits.")
+
+    # 2) diffs included
+    diffs_present = 0
+    for f in files_changed:
+        if f.get("unified_diff"):
+            diffs_present += 1
+    if diffs_present >= max(1, len(unique_changed)):
+        qc_points += 3.0
+    elif diffs_present > 0:
+        qc_points += 1.5
+        deductions.append("Some changed files lack unified_diff content; diffs help graders apply patches quickly.")
+    else:
+        deductions.append("No unified_diff content found for changed files.")
+
+    # 3) short_summary presence and concise messages
+    summaries_ok = 0
+    for t in candidate.get("tasks", []):
+        ss = normalize_str(t.get("short_summary", ""))
+        if ss and len(ss) >= 10:
+            summaries_ok += 1
+    # if most tasks have summaries award points
+    num_tasks = len(candidate.get("tasks", [])) or 1
+    if summaries_ok >= max(3, num_tasks - 1):
+        qc_points += 3.0
+    elif summaries_ok >= 1:
+        qc_points += 1.0
+        deductions.append("Some task short_summary entries are missing or too short.")
+    else:
+        deductions.append("Task short_summary entries are largely missing.")
+
+    # Bound qc_points
+    qc_points = max(0.0, min(qc_points, qc_max))
+    earned["code_quality"] = qc_points
+
+    # ---------- Explanation & process (10 points) ----------
+    exp_max = weights["explanation"]
+    exp_points = 0.0
+    # Heuristics:
+    # - final_notes non-empty and explanatory -> 5 pts
+    # - tasks contain minutes_spent and short_summary for each task -> 5 pts
+
+    final_notes = normalize_str(candidate.get("final_notes", ""))
+    if final_notes and len(final_notes) >= 20:
+        exp_points += 5.0
+    else:
+        deductions.append("final_notes is missing or too short; graders need a concise summary of remaining issues, assumptions, and tradeoffs.")
+
+    # tasks have minutes_spent and short_summary
+    tasks = candidate.get("tasks", [])
+    tasks_with_meta = 0
+    for t in tasks:
+        ms = t.get("minutes_spent")
+        ss = normalize_str(t.get("short_summary", ""))
+        if (isinstance(ms, (int, float)) and ms >= 0) and ss and len(ss) >= 10:
+            tasks_with_meta += 1
+    if tasks and tasks_with_meta >= max(3, len(tasks) - 1):
+        exp_points += 5.0
+    elif tasks_with_meta >= 1:
+        exp_points += 2.0
+        deductions.append("Some tasks are missing minutes_spent or sufficiently descriptive short_summary entries.")
+    else:
+        deductions.append("Task metadata (minutes_spent/short_summary) largely missing or invalid.")
+
+    exp_points = max(0.0, min(exp_points, exp_max))
+    earned["explanation"] = exp_points
+
+    # ---------- Aggregate and final ----------
+
+    total_earned = sum(earned.values())
+    results["per_component"] = {
+        "correctness": {"earned": earned["correctness"], "max": weights["correctness"]},
+        "reproducibility": {"earned": earned["reproducibility"], "max": weights["reproducibility"]},
+        "performance": {"earned": earned["performance"], "max": weights["performance"]},
+        "code_quality": {"earned": earned["code_quality"], "max": weights["code_quality"]},
+        "explanation": {"earned": earned["explanation"], "max": weights["explanation"]}
+    }
+
+    results["total_points"] = round(total_earned, 2)
+    results["max_points"] = 100.0
+    pct = (total_earned / 100.0) * 100.0
+    results["overall_score"] = round(pct, 2)
+    results["deductions"] = deductions
+
+    # Additional detailed checks / notes: include performance summary if available
+    perf_summary = {}
+    try:
+        perf_summary["benchmark_command"] = bench_cmd or ""
+        perf_summary["before_mean_ms"] = mean_safe(before_times) if before_times else None
+        perf_summary["after_mean_ms"] = mean_safe(after_times) if after_times else None
+        if perf_summary["before_mean_ms"] and perf_summary["after_mean_ms"]:
+            perf_summary["improvement_factor"] = round(perf_summary["before_mean_ms"] / perf_summary["after_mean_ms"], 2)
+        else:
+            perf_summary["improvement_factor"] = None
+    except Exception:
+        perf_summary["error"] = "Could not compute performance summary."
+
+    results["performance_summary"] = perf_summary
+
+    # Add contextual pointers: which required files changed
+    results["files_changed_summary"] = {
+        "changed_files": unique_changed,
+        "num_changed_files": len(unique_changed)
+    }
+
+    return results
+
+# ---------- Main script ----------
+
+def main():
+    out_path = "test_results.json"
+    if len(sys.argv) < 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        sys.exit(2)
+
+    cand_path = sys.argv[1]
+    key_path = sys.argv[2]
+
+    candidate_json, err = safe_load_json(cand_path)
+    if candidate_json is None:
+        err_out = {
+            "error": f"Failed to load candidate submission JSON: {err}"
+        }
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(err_out, f, indent=2)
+        print(f"Error loading candidate submission JSON: {err}. Wrote {out_path} with error details.")
+        sys.exit(1)
+
+    answer_json, err2 = safe_load_json(key_path)
+    if answer_json is None:
+        err_out = {
+            "error": f"Failed to load answer key JSON: {err2}"
+        }
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(err_out, f, indent=2)
+        print(f"Error loading answer key JSON: {err2}. Wrote {out_path} with error details.")
+        sys.exit(1)
+
+    try:
+        results = grade_submission(candidate_json, answer_json)
+    except Exception as e:
+        tb = traceback.format_exc()
+        err_out = {
+            "error": "Unexpected error during grading.",
+            "exception": str(e),
+            "traceback": tb
+        }
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(err_out, f, indent=2)
+        print(f"Unexpected error during grading. Wrote {out_path} with traceback.")
+        sys.exit(1)
+
+    # Save results
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"Grading complete. Results written to {out_path}. Overall score: {results.get('overall_score')}%")
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+What the script checks (summary)
+- Verifies presence of required top-level fields.
+- Detects evidence of pytest passing in task outputs.
+- Confirms code/deduper.py contains parse_date and dedupe normalization changes (via unified_diff text).
+- Confirms code/main.py contains --since-date (via unified_diff text) and that the candidate added at least one new test related to the feature.
+- Computes benchmark improvement factor and awards performance points (full credit if >=2x improvement).
+- Checks that reproduction steps and final notes are present.
+- Awards partial credit and provides human-readable deduction reasons stored in test_results.json.
+
+If you want the grader to be stricter/looser about specific checks (e.g., require particular filenames or exact phrasing), adjust the heuristics inside grade_submission accordingly.

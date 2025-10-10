@@ -1,0 +1,688 @@
+Here's the requested grading script. Save it as task_evaluation.py and run it as described:
+
+python task_evaluation.py test_submission.json answer_key.json
+
+The script:
+- Loads candidate and answer-key JSON files.
+- Applies an automated grading policy aligned with the rubric in the exam materials.
+- Produces test_results.json in the same directory as the script with a per-category breakdown, explanations for deductions, totals, and overall_score (0–100).
+
+Script (task_evaluation.py):
+
+```python
+#!/usr/bin/env python3
+"""
+task_evaluation.py
+
+Automated grader for the Inventory CLI basic practical exam.
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Outputs:
+    test_results.json in the same directory as this script.
+
+Requirements:
+    - Uses only Python standard library.
+    - Robust error handling for invalid/missing JSON or missing fields.
+"""
+
+import json
+import os
+import sys
+import traceback
+
+# ---------- Utility helpers ----------
+
+def load_json(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        raise ValueError(f"Failed to load JSON from {path}: {e}")
+
+def safe_get(d, key, default=None):
+    return d.get(key) if isinstance(d, dict) else default
+
+def parse_flag(cmd, flag):
+    """
+    Extract the value for a flag from a shell-like command string.
+    Supports:
+      --flag value
+      --flag=value
+    Returns the value (string) or None if not found.
+    """
+    parts = []
+    # Very simple tokenizer: split by spaces but keep quoted sequences
+    cur = None
+    in_quote = False
+    quote_char = None
+    token = ""
+    for ch in cmd:
+        if in_quote:
+            if ch == quote_char:
+                in_quote = False
+                parts.append(token)
+                token = ""
+                cur = None
+            else:
+                token += ch
+        else:
+            if ch in ('"', "'"):
+                in_quote = True
+                quote_char = ch
+                token = ""
+            elif ch.isspace():
+                if token != "":
+                    parts.append(token)
+                    token = ""
+            else:
+                token += ch
+    if token != "":
+        parts.append(token)
+
+    # Search for flag
+    for i, p in enumerate(parts):
+        if p == flag:
+            if i + 1 < len(parts):
+                return parts[i + 1]
+            else:
+                return None
+        if p.startswith(flag + "="):
+            return p.split("=", 1)[1]
+    return None
+
+def looks_like_command(cmd, entry_point, name):
+    """
+    Check whether 'cmd' string appears to be an invocation of entry_point with command name.
+    If entry_point is empty, only check for command name presence.
+    """
+    if not cmd or not isinstance(cmd, str):
+        return False
+    if name not in cmd.split():
+        return False
+    if entry_point:
+        # Normalize spaces and compare beginning
+        ep_norm = " ".join(entry_point.strip().split())
+        cmd_norm = " ".join(cmd.strip().split())
+        return cmd_norm.startswith(ep_norm) and ((" " + name + " ") in (" " + cmd_norm + " "))
+    return True
+
+def parse_stdout_json(stdout_str):
+    """
+    Try to parse stdout_str as JSON. Return parsed object or None.
+    """
+    if not stdout_str or not isinstance(stdout_str, str):
+        return None
+    s = stdout_str.strip()
+    try:
+        return json.loads(s)
+    except Exception:
+        # Maybe the string contains multiple lines and JSON is on one line -> try first line
+        first_line = s.splitlines()[0].strip() if s.splitlines() else s
+        try:
+            return json.loads(first_line)
+        except Exception:
+            return None
+
+def clean_text(s):
+    if s is None:
+        return ""
+    return str(s).strip()
+
+# ---------- Grading logic ----------
+
+def grade(candidate, answer):
+    """
+    Main grading logic. Returns a result dict with breakdown, explanations,
+    total points, max points, percentage, and overall_score numeric.
+    """
+    results = {
+        "breakdown": {},
+        "explanations": [],
+        "total_points": 0,
+        "max_points": 100,
+        "percentage": 0.0,
+        "overall_score": 0.0
+    }
+
+    deductions = []
+
+    # Basic validation of candidate submission file
+    required_keys = ["language", "entry_point", "persistence_file", "commands_run",
+                     "short_description", "self_assessment", "time_taken_minutes"]
+    missing_keys = [k for k in required_keys if k not in candidate]
+    if missing_keys:
+        results["explanations"].append(f"Submission missing required top-level keys: {missing_keys}")
+        # If essential keys are missing, still continue with available data but grade harshly.
+    
+    entry_point = clean_text(candidate.get("entry_point", ""))
+    persistence_file = clean_text(candidate.get("persistence_file", ""))
+    commands_run = candidate.get("commands_run", [])
+    short_desc = clean_text(candidate.get("short_description", ""))
+    self_assess = candidate.get("self_assessment", {})
+
+    # Ensure commands_run is list
+    if not isinstance(commands_run, list):
+        results["explanations"].append("commands_run is not an array/list. No command evidence to grade.")
+        commands_run = []
+
+    # Extract for convenience: list of command dicts
+    parsed_cmds = []
+    for i, c in enumerate(commands_run):
+        if not isinstance(c, dict):
+            parsed_cmds.append({"cmd": None, "stdout": None, "stderr": None, "exit_code": None})
+            continue
+        parsed_cmds.append({
+            "cmd": clean_text(c.get("cmd", "")),
+            "stdout": c.get("stdout", ""),
+            "stderr": c.get("stderr", ""),
+            "exit_code": c.get("exit_code", None)
+        })
+
+    # ---------------- Core Functionality (60 points) ----------------
+    core_total = 60
+    core_scores = {
+        "add": {"points": 8, "achieved": 0, "reason": ""},
+        "list": {"points": 8, "achieved": 0, "reason": ""},
+        "update": {"points": 8, "achieved": 0, "reason": ""},
+        "delete": {"points": 8, "achieved": 0, "reason": ""},
+        "find": {"points": 8, "achieved": 0, "reason": ""}
+    }
+
+    # Functions to detect successful command usage
+    def has_successful_command(name):
+        for entry in parsed_cmds:
+            cmd = entry["cmd"]
+            if cmd and looks_like_command(cmd, entry_point, name):
+                if isinstance(entry.get("exit_code"), int) and entry["exit_code"] == 0:
+                    return True
+        return False
+
+    for name in core_scores:
+        if has_successful_command(name):
+            core_scores[name]["achieved"] = core_scores[name]["points"]
+            core_scores[name]["reason"] = f"Found successful '{name}' invocation (exit_code 0)."
+        else:
+            core_scores[name]["achieved"] = 0
+            core_scores[name]["reason"] = f"No successful '{name}' invocation detected (exit_code 0 required)."
+
+    core_points_earned = sum(v["achieved"] for v in core_scores.values())
+    results["breakdown"]["core_functionality"] = {
+        "max_points": core_total,
+        "points_earned": core_points_earned,
+        "details": {k: {"points": v["points"], "earned": v["achieved"], "note": v["reason"]} for k, v in core_scores.items()}
+    }
+
+    # ---------------- Persistence (15 points) ----------------
+    persist_total = 15
+    persist_earned = 0
+    persist_notes = []
+
+    # Strategy:
+    # - Find SKUs added by candidate (from add commands)
+    # - Find a later list --format json that contains those SKUs (parsed JSON)
+    added_skus = []
+    for entry in parsed_cmds:
+        cmd = entry["cmd"]
+        if cmd and " add " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "add"):
+            sku_val = parse_flag(cmd, "--sku")
+            if sku_val:
+                added_skus.append(sku_val)
+
+    added_skus = list(dict.fromkeys([s for s in added_skus if s]))  # unique preserve order
+
+    # Find a list command that includes added SKUs in its JSON stdout.
+    list_matches = []
+    for idx, entry in enumerate(parsed_cmds):
+        cmd = entry["cmd"]
+        if cmd and " list " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "list"):
+            # parse stdout as JSON
+            json_out = parse_stdout_json(entry.get("stdout", ""))
+            list_matches.append((idx, entry, json_out))
+
+    if not added_skus:
+        persist_notes.append("No 'add' commands with --sku found; cannot verify persistence of added SKUs.")
+        persist_earned = 0
+    else:
+        # Search for any list output that contains all added SKUs
+        best_match_count = 0
+        best_match_idx = None
+        for idx, entry, json_out in list_matches:
+            if isinstance(json_out, list):
+                # collect skus from json_out
+                skus_in_list = set()
+                for obj in json_out:
+                    if isinstance(obj, dict):
+                        sku = obj.get("sku") or obj.get("SKU") or obj.get("Sku")
+                        if sku:
+                            skus_in_list.add(str(sku))
+                # how many of added_skus present?
+                count = sum(1 for s in added_skus if s in skus_in_list)
+                if count > best_match_count:
+                    best_match_count = count
+                    best_match_idx = idx
+        if best_match_count == 0:
+            persist_notes.append(f"Added SKUs found: {added_skus} but no subsequent list --format json showed these SKUs.")
+            persist_earned = 0
+        else:
+            # award proportional points: full if all present, else proportional
+            proportion = best_match_count / len(added_skus)
+            persist_earned = int(round(proportion * persist_total))
+            persist_notes.append(f"{best_match_count}/{len(added_skus)} added SKU(s) found in a list output; awarding {persist_earned}/{persist_total} points.")
+
+    results["breakdown"]["persistence"] = {
+        "max_points": persist_total,
+        "points_earned": persist_earned,
+        "notes": persist_notes
+    }
+
+    # ---------------- Exit codes & error messages for invalid commands (5 points) ----------------
+    exit_total = 5
+    exit_earned = 0
+    exit_notes = []
+
+    # Detect any command with non-zero exit_code and non-empty stderr
+    found_error = False
+    for entry in parsed_cmds:
+        exit_code = entry.get("exit_code")
+        stderr = clean_text(entry.get("stderr", ""))
+        if isinstance(exit_code, int) and exit_code != 0 and stderr:
+            found_error = True
+            exit_notes.append(f"Found error run: cmd='{entry.get('cmd')}', exit_code={exit_code}, stderr='{stderr}'")
+            break
+
+    if found_error:
+        exit_earned = exit_total
+    else:
+        exit_notes.append("No evidence of error runs with non-zero exit code and stderr. Deductions: robustness of error reporting may be insufficient.")
+
+    results["breakdown"]["exit_and_error_reporting"] = {
+        "max_points": exit_total,
+        "points_earned": exit_earned,
+        "notes": exit_notes
+    }
+
+    # ---------------- Robustness & Input validation (10 points) ----------------
+    robust_total = 10
+    robust_earned = 0
+    robust_notes = []
+
+    # Duplicate SKU rejection (6 pts)
+    dup_total = 6
+    dup_earned = 0
+    dup_detected = False
+    # Look for an add command that returned non-zero and stderr mentions duplicate/already exists OR explicit add attempt for SKU that had been added earlier and got non-zero
+    # Build map of add attempts by sku in order
+    add_attempts = []
+    for entry in parsed_cmds:
+        cmd = entry["cmd"]
+        if cmd and " add " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "add"):
+            sku = parse_flag(cmd, "--sku")
+            add_attempts.append((sku, entry.get("exit_code"), clean_text(entry.get("stderr", "")), cmd))
+    # Detect duplicate: multiple add attempts for same sku where later attempt failed with error mentioning 'exist' or similar
+    sku_first_seen = {}
+    for sku, exit_code, stderr, cmd in add_attempts:
+        if not sku:
+            continue
+        if sku in sku_first_seen and isinstance(exit_code, int) and exit_code != 0:
+            # check stderr words
+            if any(w in stderr.lower() for w in ["exist", "duplicate", "already exists", "already exists"]):
+                dup_detected = True
+                dup_earned = dup_total
+                robust_notes.append(f"Duplicate SKU rejection detected: later add for {sku} failed with stderr '{stderr}'.")
+                break
+    # Alternative evidence: any non-zero add failure with stderr containing 'duplicate' etc.
+    if not dup_detected:
+        for sku, exit_code, stderr, cmd in add_attempts:
+            if isinstance(exit_code, int) and exit_code != 0 and any(w in stderr.lower() for w in ["exist", "duplicate", "already exists"]):
+                dup_detected = True
+                dup_earned = dup_total
+                robust_notes.append(f"Duplicate SKU rejection detected (heuristic): add cmd '{cmd}' failed with stderr '{stderr}'.")
+                break
+    if not dup_detected:
+        robust_notes.append("No clear evidence of duplicate-SKU rejection in add commands. Deducting up to 6 points.")
+
+    # Negative quantity rejection (4 pts)
+    neg_total = 4
+    neg_earned = 0
+    neg_detected = False
+    # Look for any add/update with negative qty in command and non-zero exit_code with stderr
+    for entry in parsed_cmds:
+        cmd = entry.get("cmd", "")
+        if not cmd:
+            continue
+        # check for '--qty -' pattern or '--qty=-' or '--change -' etc.
+        if "--qty" in cmd and ("-") in cmd:
+            qty_val = parse_flag(cmd, "--qty")
+            if qty_val and qty_val.lstrip().startswith("-"):
+                if isinstance(entry.get("exit_code"), int) and entry["exit_code"] != 0:
+                    stderr = clean_text(entry.get("stderr", ""))
+                    if stderr:
+                        neg_detected = True
+                        neg_earned = neg_total
+                        robust_notes.append(f"Negative quantity rejected as shown by cmd '{cmd}' and stderr '{stderr}'.")
+                        break
+        if "--change" in cmd:
+            change_val = parse_flag(cmd, "--change")
+            if change_val and (change_val.startswith("-") or change_val.startswith("+-")):
+                if isinstance(entry.get("exit_code"), int) and entry["exit_code"] != 0:
+                    stderr = clean_text(entry.get("stderr", ""))
+                    if stderr:
+                        neg_detected = True
+                        neg_earned = neg_total
+                        robust_notes.append(f"Negative relative change rejected as shown by cmd '{cmd}' and stderr '{stderr}'.")
+                        break
+    # Also check for import CSV negative qty evidence in stderr
+    if not neg_detected:
+        for entry in parsed_cmds:
+            stderr = clean_text(entry.get("stderr", ""))
+            if stderr and any(w in stderr.lower() for w in ["negative", "qty", "quantity", "invalid quantity", "must be >= 0"]):
+                neg_detected = True
+                neg_earned = neg_total
+                robust_notes.append(f"Detected stderr indicating negative qty rejection: '{stderr}'.")
+                break
+
+    if not neg_detected:
+        robust_notes.append("No clear evidence of rejecting negative quantities. Deducting up to 4 points.")
+
+    robust_earned = dup_earned + neg_earned
+    results["breakdown"]["robustness_input_validation"] = {
+        "max_points": robust_total,
+        "points_earned": robust_earned,
+        "notes": robust_notes
+    }
+
+    # ---------------- Deterministic & Scriptable outputs (10 points) ----------------
+    det_total = 10
+    det_earned = 0
+    det_notes = []
+
+    # 6 points: JSON output for list
+    list_json_ok = False
+    for entry in parsed_cmds:
+        cmd = entry.get("cmd", "")
+        if cmd and " list " in (" " + cmd + " ") and "--format json" in cmd:
+            j = parse_stdout_json(entry.get("stdout", ""))
+            if isinstance(j, list):
+                list_json_ok = True
+                det_notes.append("Found 'list --format json' with valid JSON array stdout.")
+                break
+            else:
+                det_notes.append("Found 'list --format json' but stdout did not parse as JSON array.")
+    if list_json_ok:
+        det_earned += 6
+    else:
+        det_notes.append("Missing or invalid 'list --format json' output; deducting 6 points.")
+
+    # 4 points: reproducible CLI contract (entry_point accuracy and usage)
+    cli_contract_ok = False
+    if entry_point:
+        count_cmds_using_entry = 0
+        for entry in parsed_cmds:
+            cmd = entry.get("cmd", "")
+            if cmd:
+                if cmd.strip().startswith(entry_point.strip()):
+                    count_cmds_using_entry += 1
+        if count_cmds_using_entry >= 3:
+            cli_contract_ok = True
+            det_notes.append(f"At least {count_cmds_using_entry} recorded commands start with declared entry_point '{entry_point}'.")
+    else:
+        det_notes.append("No entry_point declared in submission.")
+
+    if cli_contract_ok:
+        det_earned += 4
+    else:
+        det_notes.append("CLI reproducibility check failed (fewer than 3 commands that start with entry_point). Deducting 4 points.")
+
+    results["breakdown"]["deterministic_scriptable_outputs"] = {
+        "max_points": det_total,
+        "points_earned": det_earned,
+        "notes": det_notes
+    }
+
+    # ---------------- Code quality & organization (10 points) ----------------
+    code_total = 10
+    code_earned = 0
+    code_notes = []
+
+    # Heuristics for automated scoring:
+    # - short_description presence and <=200 words -> 4 points
+    # - self_assessment.implemented_required present and boolean -> 2 points
+    # - self_assessment.bonus_features present (list) -> 2 points
+    # - self_assessment.known_issues present (string) -> 2 points
+
+    # short_description check
+    sd_words = short_desc.split()
+    if short_desc and 0 < len(sd_words) <= 200:
+        code_earned += 4
+    else:
+        code_notes.append("short_description missing or exceeds 200 words (<=200 required). Deducting up to 4 points.")
+
+    # implemented_required
+    if isinstance(self_assess, dict) and isinstance(self_assess.get("implemented_required"), bool):
+        code_earned += 2
+    else:
+        code_notes.append("self_assessment.implemented_required missing or not boolean. Deducting up to 2 points.")
+
+    # bonus_features list presence
+    if isinstance(self_assess, dict) and isinstance(self_assess.get("bonus_features", None), list):
+        code_earned += 2
+    else:
+        code_notes.append("self_assessment.bonus_features missing or not a list. Deducting up to 2 points.")
+
+    # known_issues presence (can be empty string)
+    if isinstance(self_assess, dict) and "known_issues" in self_assess:
+        code_earned += 2
+    else:
+        code_notes.append("self_assessment.known_issues missing. Deducting up to 2 points.")
+
+    # Cap code_earned at code_total
+    code_earned = min(code_earned, code_total)
+    results["breakdown"]["code_quality_and_organization"] = {
+        "max_points": code_total,
+        "points_earned": code_earned,
+        "notes": code_notes
+    }
+
+    # ---------------- Submission completeness & clarity (10 points) ----------------
+    sub_total = 10
+    sub_earned = 0
+    sub_notes = []
+
+    # 5 points: test_submission.json present and well-formed (we have it)
+    # 5 points: commands recorded and outputs included (each command has cmd/stdout/stderr/exit_code)
+    # Already loaded; check commands_run elements for keys
+    well_formed = True
+    for i, entry in enumerate(parsed_cmds):
+        if not isinstance(entry, dict):
+            well_formed = False
+            sub_notes.append(f"commands_run entry at index {i} not an object.")
+            continue
+        if entry.get("cmd") is None:
+            well_formed = False
+            sub_notes.append(f"commands_run[{i}] missing 'cmd'.")
+        if "stdout" not in commands_run[i]:
+            well_formed = False
+            sub_notes.append(f"commands_run[{i}] missing 'stdout'.")
+        if "stderr" not in commands_run[i]:
+            well_formed = False
+            sub_notes.append(f"commands_run[{i}] missing 'stderr'.")
+        if "exit_code" not in commands_run[i]:
+            well_formed = False
+            sub_notes.append(f"commands_run[{i}] missing 'exit_code'.")
+
+    if well_formed:
+        sub_earned += 5
+    else:
+        sub_notes.append("commands_run entries are not all well-formed. Deducting up to 5 points.")
+
+    # Check that demonstration covered required sequence:
+    # - at least 3 distinct add commands
+    # - at least one update
+    # - at least one delete
+    # - at least one find
+    # - at least one list after adds (for persistence demonstration)
+    required_demo_notes = []
+    add_count = 0
+    add_skus_set = set()
+    update_count = 0
+    delete_count = 0
+    find_count = 0
+    list_after_add = False
+
+    # find index of first add, and then any list after that
+    first_add_idx = None
+    for idx, entry in enumerate(parsed_cmds):
+        cmd = entry.get("cmd", "")
+        if cmd and " add " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "add"):
+            sku = parse_flag(cmd, "--sku")
+            if sku:
+                add_skus_set.add(sku)
+            add_count += 1
+            if first_add_idx is None:
+                first_add_idx = idx
+        if cmd and " update " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "update"):
+            update_count += 1
+        if cmd and " delete " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "delete"):
+            delete_count += 1
+        if cmd and " find " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "find"):
+            find_count += 1
+    # check list after first add
+    if first_add_idx is not None:
+        for idx in range(first_add_idx + 1, len(parsed_cmds)):
+            entry = parsed_cmds[idx]
+            cmd = entry.get("cmd", "")
+            if cmd and " list " in (" " + cmd + " ") and looks_like_command(cmd, entry_point, "list"):
+                # ensure success
+                if isinstance(entry.get("exit_code"), int) and entry.get("exit_code") == 0:
+                    list_after_add = True
+                    break
+
+    demo_ok = True
+    missing_demo_reasons = []
+    if add_count < 3 and len(add_skus_set) < 3:
+        demo_ok = False
+        missing_demo_reasons.append(f"Needs at least 3 add commands with distinct SKUs; found adds={add_count}, distinct SKUs={len(add_skus_set)}.")
+    if update_count < 1:
+        demo_ok = False
+        missing_demo_reasons.append("No update command detected.")
+    if delete_count < 1:
+        demo_ok = False
+        missing_demo_reasons.append("No delete command detected.")
+    if find_count < 1:
+        demo_ok = False
+        missing_demo_reasons.append("No find command detected.")
+    if not list_after_add:
+        demo_ok = False
+        missing_demo_reasons.append("No list command after adds to demonstrate persistence.")
+
+    if demo_ok:
+        sub_earned += 5
+    else:
+        sub_notes.append("Demonstration incomplete: " + "; ".join(missing_demo_reasons))
+
+    sub_earned = min(sub_earned, sub_total)
+    results["breakdown"]["submission_completeness_and_clarity"] = {
+        "max_points": sub_total,
+        "points_earned": sub_earned,
+        "notes": sub_notes
+    }
+
+    # ---------------- Sum up totals ----------------
+    total_earned = (
+        core_points_earned +
+        persist_earned +
+        exit_earned +
+        robust_earned +
+        det_earned +
+        code_earned +
+        sub_earned
+    )
+
+    results["total_points"] = total_earned
+    results["max_points"] = 100
+    pct = (total_earned / 100.0) * 100.0
+    results["percentage"] = round(pct, 2)
+    results["overall_score"] = round(pct, 2)
+
+    # Compose human-readable explanations for why points were awarded/deducted (aggregate)
+    explanation_lines = []
+    explanation_lines.append("Core functionality per-command breakdown:")
+    for k, v in results["breakdown"]["core_functionality"]["details"].items():
+        explanation_lines.append(f" - {k}: earned {v['earned']}/{v['points']} - {v['note']}")
+    explanation_lines.append(f"Persistence: earned {results['breakdown']['persistence']['points_earned']}/{results['breakdown']['persistence']['max_points']}. Notes: {results['breakdown']['persistence']['notes']}")
+    explanation_lines.append(f"Exit/error reporting: earned {results['breakdown']['exit_and_error_reporting']['points_earned']}/{results['breakdown']['exit_and_error_reporting']['max_points']}. Notes: {results['breakdown']['exit_and_error_reporting']['notes']}")
+    explanation_lines.append(f"Robustness/input validation: earned {results['breakdown']['robustness_input_validation']['points_earned']}/{results['breakdown']['robustness_input_validation']['max_points']}. Notes: {results['breakdown']['robustness_input_validation']['notes']}")
+    explanation_lines.append(f"Deterministic/scriptable outputs: earned {results['breakdown']['deterministic_scriptable_outputs']['points_earned']}/{results['breakdown']['deterministic_scriptable_outputs']['max_points']}. Notes: {results['breakdown']['deterministic_scriptable_outputs']['notes']}")
+    explanation_lines.append(f"Code quality/organization: earned {results['breakdown']['code_quality_and_organization']['points_earned']}/{results['breakdown']['code_quality_and_organization']['max_points']}. Notes: {results['breakdown']['code_quality_and_organization']['notes']}")
+    explanation_lines.append(f"Submission completeness/clarity: earned {results['breakdown']['submission_completeness_and_clarity']['points_earned']}/{results['breakdown']['submission_completeness_and_clarity']['max_points']}. Notes: {results['breakdown']['submission_completeness_and_clarity']['notes']}")
+
+    results["explanations"] = explanation_lines
+
+    return results
+
+# ---------- Main execution ----------
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>", file=sys.stderr)
+        sys.exit(2)
+
+    cand_path = sys.argv[1]
+    ans_path = sys.argv[2]
+
+    # Load candidate and answer key JSON
+    try:
+        candidate = load_json(cand_path)
+    except Exception as e:
+        print(f"Error loading candidate submission: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        answer = load_json(ans_path)
+    except Exception as e:
+        print(f"Error loading answer key: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    # Grade
+    try:
+        results = grade(candidate, answer)
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Error during grading: {e}\n{tb}", file=sys.stderr)
+        sys.exit(2)
+
+    # Save test_results.json next to this script
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results.json")
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"Grading complete. Results written to: {out_path}")
+        # Print overall score numeric as required
+        print(f"overall_score = {results['overall_score']}")
+    except Exception as e:
+        print(f"Failed to write results file: {e}", file=sys.stderr)
+        sys.exit(2)
+
+if __name__ == "__main__":
+    main()
+```
+
+Notes on behavior and grading decisions:
+- This grader focuses on machine-verifiable evidence recorded in test_submission.json (commands_run, stdout, stderr, exit_code).
+- It follows the rubric from the exam materials:
+  - Core functionality (add/list/update/delete/find): 60 points (8 each).
+  - Persistence: 15 points (checks added SKUs appear in list JSON).
+  - Exit codes & error reporting: 5 points (looks for non-zero exit_code + stderr evidence).
+  - Robustness/validation: 10 points (duplicate SKU and negative qty detection).
+  - Deterministic/scriptable outputs: 10 points (list --format json parse + CLI usage consistency).
+  - Code quality & organization: 10 points (heuristic checks on short_description and self_assessment fields).
+  - Submission completeness & clarity: 10 points.
+- The script is intentionally tolerant: it parses JSON outputs where possible and accepts variations (e.g., numeric formatting).
+- Because graders cannot execute the candidate's code here, the script relies on the candidate's recorded commands and outputs. Manual spot checks (running the candidate's program) are recommended for robust evaluation; this script automates the objective checks described above.
+
+If you'd like, I can:
+- Adjust scoring weights or stricter heuristics (e.g., require exact SKUs from answer key).
+- Extend the grader to actually execute the candidate's entry_point commands (requires a runtime and files present).
+- Provide unit tests for this grader.

@@ -1,0 +1,39 @@
+```json
+{
+  "candidate_name": "",
+  "time_taken_minutes": null,
+  "task_results": [
+    {
+      "task_id": "A-bugfix",
+      "status": "",
+      "files_modified": [],
+      "patch_unified_diff": "",
+      "pre_fix_test_output": "",
+      "post_fix_test_output": "",
+      "explanation": "",
+      "unit_tests_added_or_modified": [],
+      "self_assessed_confidence": ""
+    },
+    {
+      "task_id": "B-adapt_env",
+      "status": "",
+      "files_modified": [],
+      "patch_unified_diff": "",
+      "run_output_after_adaptation": "",
+      "explanation": "",
+      "risks_or_limitations": ""
+    },
+    {
+      "task_id": "C-performance",
+      "status": "",
+      "files_modified": [],
+      "patch_unified_diff": "",
+      "benchmark_before_ms": null,
+      "benchmark_after_ms": null,
+      "bench_command_run": "",
+      "explanation": ""
+    }
+  ],
+  "other_notes": ""
+}
+```

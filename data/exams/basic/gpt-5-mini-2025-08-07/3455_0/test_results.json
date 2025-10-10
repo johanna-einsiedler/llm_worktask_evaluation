@@ -1,0 +1,34 @@
+{
+  "per_task": {
+    "task1": {
+      "points_awarded": 30,
+      "points_available": 30,
+      "messages": []
+    },
+    "task2": {
+      "points_awarded": 40,
+      "points_available": 40,
+      "messages": []
+    },
+    "task3": {
+      "points_awarded": 15,
+      "points_available": 15,
+      "messages": []
+    },
+    "task4": {
+      "points_awarded": 10,
+      "points_available": 10,
+      "messages": []
+    },
+    "code_hygiene": {
+      "points_awarded": 5,
+      "points_available": 5,
+      "messages": []
+    }
+  },
+  "total_points": 100,
+  "max_points": 100,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "messages": []
+}

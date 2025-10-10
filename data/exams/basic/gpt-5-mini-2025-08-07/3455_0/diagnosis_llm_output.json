@@ -1,0 +1,9 @@
+{
+  "prompt_summary": "LLM diagnosis of answer key self-test failure",
+  "response_raw": "{\n  \"diagnosis\": \"grading_script_issue\",\n  \"rationale\": \"The self-grade lost 7 points: 5 points because the grader penalized env.db_file (telemetry.db) not found on disk and 2 points because optional.errors was non-empty. The answer key JSON intentionally documents errors and references a DB filename but does not include a physical DB file; the grader's filesystem check and penalty for documented warnings caused the reduced score.\",\n  \"recommendation\": \"Regenerate the grading_script to avoid penalizing missing filesystem artifacts when grading the answer key (or to treat non-empty optional.errors as explanatory when grading the key). Update the script to base comparisons on JSON content only or special-case answer-key self-evaluation, then re-run grading.\"\n}",
+  "parsed_result": {
+    "diagnosis": "grading_script_issue",
+    "rationale": "The self-grade lost 7 points: 5 points because the grader penalized env.db_file (telemetry.db) not found on disk and 2 points because optional.errors was non-empty. The answer key JSON intentionally documents errors and references a DB filename but does not include a physical DB file; the grader's filesystem check and penalty for documented warnings caused the reduced score.",
+    "recommendation": "Regenerate the grading_script to avoid penalizing missing filesystem artifacts when grading the answer key (or to treat non-empty optional.errors as explanatory when grading the key). Update the script to base comparisons on JSON content only or special-case answer-key self-evaluation, then re-run grading."
+  }
+}

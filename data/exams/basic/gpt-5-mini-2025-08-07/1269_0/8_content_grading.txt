@@ -1,0 +1,665 @@
+# task_evaluation.py
+"""
+Automated grader for the CSV Summarizer Basic Practical Exam.
+
+Usage:
+    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+
+This script compares a candidate's submission (test_submission.json) against an
+answer key (answer_key.json) and produces test_results.json summarizing detailed
+scores, deductions, and the overall percentage score (overall_score).
+
+Implementation notes:
+- Uses only standard Python libraries.
+- Performs semantic JSON comparisons for program outputs allowing small numeric
+  tolerances.
+- Applies the weighted scoring rubric described in the exam materials.
+"""
+
+import json
+import os
+import sys
+import math
+import re
+
+# --- Configurable scoring weights (must sum to 100) ---
+WEIGHTS = {
+    "functional_primary": 40,    # Task A primary output correctness
+    "functional_revision": 20,   # Task B group-by output correctness
+    "readability": 20,           # Code readability and commenting
+    "documentation": 15,         # README and CHANGELOG
+    "packaging": 5               # Packaging & reproducibility (schema/files)
+}
+
+# Numeric tolerance for semantic float comparisons
+FLOAT_TOL = 1e-6
+
+
+# --- Utility helpers ---
+def load_json_file(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load JSON from '{path}': {e}")
+
+
+def find_file_entry(submission_json, filename):
+    """Return the 'files' entry matching path == filename, or None."""
+    files = submission_json.get("files", [])
+    for entry in files:
+        # accept either exact or trailing path match
+        if entry.get("path", "") == filename or entry.get("path", "").endswith("/" + filename):
+            return entry
+    return None
+
+
+def find_captured_output(submission_json, name):
+    """Return the captured_outputs entry matching name == name, or None."""
+    for entry in submission_json.get("captured_outputs", []):
+        if entry.get("name") == name or entry.get("path") == name:
+            return entry
+    return None
+
+
+def normalize_text_for_comparison(s):
+    """Trim trailing/leading whitespace and collapse multiple spaces/newlines for rough string compare."""
+    if s is None:
+        return ""
+    return re.sub(r"\s+", " ", s.strip())
+
+
+def try_parse_json_text(s):
+    try:
+        return json.loads(s)
+    except Exception:
+        return None
+
+
+def floats_close(a, b, tol=FLOAT_TOL):
+    return abs(a - b) <= tol
+
+
+def compare_json_semantic(expected_obj, candidate_obj, path=""):
+    """
+    Recursively compare two JSON-like Python objects.
+    Returns (equal_boolean, details_list).
+    details_list is populated with human-readable messages for mismatches.
+    For numbers: uses absolute tolerance FLOAT_TOL.
+    """
+    details = []
+
+    if type(expected_obj) != type(candidate_obj):
+        # Allow int vs float as same type consideration
+        if isinstance(expected_obj, (int, float)) and isinstance(candidate_obj, (int, float)):
+            # treat as numbers -> compare
+            if not floats_close(float(expected_obj), float(candidate_obj)):
+                details.append(f"Numeric mismatch at '{path}': expected {expected_obj}, got {candidate_obj}")
+                return False, details
+            else:
+                return True, details
+        details.append(f"Type mismatch at '{path}': expected {type(expected_obj).__name__}, got {type(candidate_obj).__name__}")
+        return False, details
+
+    # Primitive types
+    if isinstance(expected_obj, (int, float)):
+        if not floats_close(float(expected_obj), float(candidate_obj)):
+            details.append(f"Numeric mismatch at '{path}': expected {expected_obj}, got {candidate_obj}")
+            return False, details
+        return True, details
+
+    if expected_obj is None or isinstance(expected_obj, str) or isinstance(expected_obj, bool):
+        if expected_obj != candidate_obj:
+            details.append(f"Value mismatch at '{path}': expected {repr(expected_obj)}, got {repr(candidate_obj)}")
+            return False, details
+        return True, details
+
+    # Lists
+    if isinstance(expected_obj, list):
+        if len(expected_obj) != len(candidate_obj):
+            details.append(f"List length mismatch at '{path}': expected {len(expected_obj)}, got {len(candidate_obj)}")
+            return False, details
+        for i, (e_item, c_item) in enumerate(zip(expected_obj, candidate_obj)):
+            eq, subd = compare_json_semantic(e_item, c_item, path + f"[{i}]")
+            if not eq:
+                details.extend(subd)
+                return False, details
+        return True, details
+
+    # Dicts: keys ordering is not significant for semantic equality
+    if isinstance(expected_obj, dict):
+        exp_keys = set(expected_obj.keys())
+        cand_keys = set(candidate_obj.keys())
+        if exp_keys != cand_keys:
+            details.append(f"Dict keys mismatch at '{path}': expected keys {sorted(list(exp_keys))}, got {sorted(list(cand_keys))}")
+            # Still attempt to compare overlapping keys to surface numeric mismatches
+            common = exp_keys & cand_keys
+            for k in common:
+                eq, subd = compare_json_semantic(expected_obj[k], candidate_obj[k], path + f".{k}")
+                if not eq:
+                    details.extend(subd)
+            return False, details
+        # Compare values for each key
+        for k in sorted(exp_keys):
+            eq, subd = compare_json_semantic(expected_obj[k], candidate_obj[k], path + f".{k}")
+            if not eq:
+                details.extend(subd)
+                return False, details
+        return True, details
+
+    # Fallback
+    if expected_obj != candidate_obj:
+        details.append(f"Unknown-value mismatch at '{path}': {expected_obj} != {candidate_obj}")
+        return False, details
+    return True, details
+
+
+# --- Scoring helper functions ---
+def score_functional_component(candidate_text, expected_text, max_points, label):
+    """
+    Compare candidate's output text to expected text for a functional component.
+    Returns (points_awarded, notes_list).
+    Scoring policy:
+      - If texts normalized equal (whitespace-insensitive): full points.
+      - Else, if both parse as JSON and semantic comparison passes within FLOAT_TOL: 90% of points.
+      - Else, if both parse as JSON and numeric values match but structure differs (keys mismatch): 50% of points.
+      - Else, zero points.
+    """
+    notes = []
+    if candidate_text is None:
+        notes.append(f"{label}: candidate missing captured output.")
+        return 0.0, notes
+
+    # Quick exact-ish compare after stripping whitespace differences
+    if normalize_text_for_comparison(candidate_text) == normalize_text_for_comparison(expected_text):
+        notes.append(f"{label}: exact match after normalization.")
+        return float(max_points), notes
+
+    # Try JSON parse
+    expected_obj = try_parse_json_text(expected_text)
+    candidate_obj = try_parse_json_text(candidate_text)
+    if expected_obj is not None and candidate_obj is not None:
+        # Semantic compare
+        eq, detail = compare_json_semantic(expected_obj, candidate_obj)
+        if eq:
+            notes.append(f"{label}: semantic JSON match (numbers within tolerance), formatting/ordering differs.")
+            points = max_points * 0.90
+            return round(points, 2), notes + detail
+        else:
+            # If keys differ but numeric values present and equal for overlapping keys, give partial credit
+            # We'll attempt to compute how many numeric leafs matched vs expected
+            expected_numbers = []
+
+            def collect_numbers(obj, path=""):
+                if isinstance(obj, (int, float)):
+                    expected_numbers.append((path, float(obj)))
+                elif isinstance(obj, list):
+                    for i, v in enumerate(obj):
+                        collect_numbers(v, f"{path}[{i}]")
+                elif isinstance(obj, dict):
+                    for k, v in obj.items():
+                        collect_numbers(v, f"{path}.{k}" if path else k)
+
+            candidate_numbers = []
+            collect_numbers(expected_obj, "")
+            collect_numbers(candidate_obj, "")
+
+            # crude numeric overlap check: count how many candidate numeric values are near any expected numeric
+            matched = 0
+            for _, cval in candidate_numbers:
+                for _, eval_ in expected_numbers:
+                    if floats_close(cval, eval_):
+                        matched += 1
+                        break
+            if expected_numbers:
+                frac = matched / len(expected_numbers)
+            else:
+                frac = 0.0
+            if frac >= 0.8:
+                points = max_points * 0.5
+                notes.append(f"{label}: structure differs but {matched}/{len(expected_numbers)} numeric values matched ~{frac:.2%}. Partial credit awarded.")
+                notes.extend(detail)
+                return round(points, 2), notes
+            else:
+                notes.append(f"{label}: JSON differs semantically. No functional credit. Details: " + "; ".join(detail))
+                return 0.0, notes
+    else:
+        notes.append(f"{label}: cannot parse one or both outputs as JSON; performing normalized text comparison failed.")
+        # As a last-ditch attempt, try to find numeric substrings overlap:
+        nums_expected = re.findall(r"-?\d+\.\d+|-?\d+", expected_text)
+        nums_cand = re.findall(r"-?\d+\.\d+|-?\d+", candidate_text)
+        if nums_expected and nums_cand:
+            # compare counts of matched numbers approximately
+            matched = 0
+            used = set()
+            for ne in nums_expected:
+                try:
+                    ne_f = float(ne)
+                except Exception:
+                    continue
+                for i, nc in enumerate(nums_cand):
+                    if i in used:
+                        continue
+                    try:
+                        nc_f = float(nc)
+                    except Exception:
+                        continue
+                    if floats_close(ne_f, nc_f):
+                        matched += 1
+                        used.add(i)
+                        break
+            if nums_expected:
+                frac = matched / len(nums_expected)
+            else:
+                frac = 0.0
+            if frac >= 0.9:
+                pts = max_points * 0.5
+                notes.append(f"{label}: numeric substring overlap high ({matched}/{len(nums_expected)}). Partial credit {pts} awarded.")
+                return round(pts, 2), notes
+        notes.append(f"{label}: no meaningful match found; zero points.")
+        return 0.0, notes
+
+
+def score_readability_and_comments(submission_json, language):
+    """
+    Heuristic scoring for code readability and commenting.
+
+    For the chosen language, identify the primary source file name per spec:
+      - Python -> summarizer.py
+      - Java -> Summarizer.java
+      - C -> summarizer.c
+
+    Scoring breakdown (total WEIGHTS['readability']):
+      - Top-of-file header comment: 5 points
+      - Function docstrings / per-top-level-function docs: up to 10 points (proportional)
+      - Inline comments / explanation lines: up to 5 points
+    """
+    max_points = WEIGHTS["readability"]
+    notes = []
+    pts = 0.0
+
+    lang_file_map = {"Python": "summarizer.py", "Java": "Summarizer.java", "C": "summarizer.c"}
+    src_name = lang_file_map.get(language, "summarizer.py")
+    entry = find_file_entry(submission_json, src_name)
+    if not entry:
+        notes.append(f"Source file {src_name} not found in submission files.")
+        return 0.0, notes
+
+    content = entry.get("content", "")
+    lines = content.splitlines()
+
+    # Top-of-file header comment detection
+    header_present = False
+    # Look at first 10 non-empty lines for comment or triple-quoted docstring
+    head_snippet = "\n".join(lines[:12]) if lines else ""
+    if language == "Python":
+        if re.search(r"^\s*#.+", head_snippet, flags=re.MULTILINE):
+            header_present = True
+        elif re.search(r'^\s*("""|\'\'\')', head_snippet):
+            header_present = True
+    else:
+        # For C/Java, look for /* ... */ or // comments near top
+        if re.search(r"/\*.+?\*/", head_snippet, flags=re.DOTALL) or re.search(r"^\s*//", head_snippet, flags=re.MULTILINE):
+            header_present = True
+
+    if header_present:
+        pts += 5.0
+        notes.append("Top-of-file header comment present (+5).")
+    else:
+        notes.append("Top-of-file header comment missing (0/5).")
+
+    # Count top-level functions and docstrings/comments for them
+    func_count = 0
+    docstring_count = 0
+    if language == "Python":
+        # Detect 'def ' as top-level functions (no strict parsing)
+        for m in re.finditer(r'^\s*def\s+([a-zA-Z_]\w*)\s*\(', content, flags=re.MULTILINE):
+            func_count += 1
+            func_name = m.group(1)
+            # find text immediately after def line (next non-empty line); check for triple-quoted docstring
+            # locate position
+            start = m.end()
+            # get content after def until next def or EOF, but simpler: check shortly after
+            snippet = content[start:start + 200]
+            if re.search(r'^\s*("""|\'\'\')', snippet):
+                docstring_count += 1
+        # If no def found, treat module-level functions as 1 (the script's main logic)
+        if func_count == 0:
+            func_count = 1
+            # Check if module has triple-quoted header or function-level docstring
+            if re.search(r'^\s*def\s+main\s*\(', content, flags=re.MULTILINE):
+                # check for docstring in main
+                m = re.search(r'^\s*def\s+main\s*\([^\)]*\)\s*:\s*(?:\n\s*("""|\'\'\'))', content, flags=re.MULTILINE)
+                if m:
+                    docstring_count += 1
+            # Also consider top-of-file triple quote as module docstring
+            if re.search(r'^\s*("""|\'\'\')', head_snippet):
+                docstring_count += 1
+    else:
+        # For Java/C: detect common function patterns: returnType name(...)
+        func_count = len(re.findall(r'^[\w\<\>\[\]]+\s+([a-zA-Z_]\w*)\s*\([^)]*\)\s*\{', content, flags=re.MULTILINE))
+        # docstrings are /* ... */ immediately preceding function
+        docstring_count = len(re.findall(r'/\*[\s\S]+?\*/\s*\n\s*[^\n]+\s*\(', content))
+
+        if func_count == 0:
+            # treat as 1 logical function for scripts
+            func_count = 1
+            # check for top-of-file comment
+            if header_present:
+                docstring_count += 1
+
+    # Docstring-based scoring (max 10 points)
+    doc_points_max = 10.0
+    doc_ratio = min(docstring_count / func_count, 1.0) if func_count > 0 else 0.0
+    doc_points = round(doc_points_max * doc_ratio, 2)
+    pts += doc_points
+    notes.append(f"Function docstrings: {docstring_count}/{func_count} -> {doc_points}/{doc_points_max} points.")
+
+    # Inline comments scoring: count lines with inline comments excluding header area
+    comment_lines = 0
+    for i, line in enumerate(lines):
+        # ignore header region (first 20 lines) for inline comments count
+        if i < 12:
+            continue
+        if language == "Python":
+            if "#" in line:
+                # avoid counting shebang only
+                if not re.match(r'^\s*#\!', line):
+                    comment_lines += 1
+        else:
+            if "//" in line or "/*" in line or "*/" in line:
+                comment_lines += 1
+    inline_points = 0.0
+    inline_points_max = 5.0
+    if comment_lines >= 3:
+        inline_points = inline_points_max
+    elif comment_lines == 2:
+        inline_points = inline_points_max * 0.6
+    elif comment_lines == 1:
+        inline_points = inline_points_max * 0.3
+    else:
+        inline_points = 0.0
+    pts += inline_points
+    notes.append(f"Inline comment lines (excluding header): {comment_lines} -> {inline_points}/{inline_points_max} points.")
+
+    pts = round(pts, 2)
+    return pts, notes
+
+
+def score_documentation_and_changelog(submission_json, expected_primary_cmd, expected_revision_cmd):
+    """
+    Score README.md and CHANGELOG.md.
+
+    README (10 points):
+      - Presence (1)
+      - Contains primary_run_command and revision_run_command exact substrings (8)
+      - Contains a paragraph describing purpose (heuristic: > 30 chars) (1)
+
+    CHANGELOG (5 points):
+      - Presence and at least two non-empty entries (>=2 dated/bullet lines) -> full points
+      - Otherwise partial
+    """
+    max_points = WEIGHTS["documentation"]
+    readme_points = 0.0
+    changelog_points = 0.0
+    notes = []
+
+    # README
+    readme_entry = find_file_entry(submission_json, "README.md")
+    if not readme_entry:
+        notes.append("README.md missing.")
+    else:
+        readme_text = readme_entry.get("content", "")
+        if len(readme_text.strip()) < 30:
+            notes.append("README.md present but too short to describe purpose.")
+        else:
+            readme_points += 1.0  # purpose presence
+            notes.append("README.md contains a descriptive paragraph (+1).")
+
+        # check for run commands presence
+        found_primary = expected_primary_cmd and expected_primary_cmd.strip() in readme_text
+        found_revision = expected_revision_cmd and expected_revision_cmd.strip() in readme_text
+        if found_primary and found_revision:
+            readme_points += 8.0
+            notes.append("README.md contains exact primary and revision run commands (+8).")
+        else:
+            # partial credit: if commands present with minor whitespace differences, try normalized search
+            normalized_readme = normalize_text_for_comparison(readme_text)
+            norm_primary = normalize_text_for_comparison(expected_primary_cmd or "")
+            norm_revision = normalize_text_for_comparison(expected_revision_cmd or "")
+            found_p = norm_primary and (norm_primary in normalized_readme)
+            found_r = norm_revision and (norm_revision in normalized_readme)
+            if found_p and found_r:
+                readme_points += 6.0
+                notes.append("README.md contains run commands with minor formatting differences (+6).")
+            elif found_p or found_r:
+                readme_points += 3.0
+                notes.append("README.md contains one of the run commands (+3).")
+            else:
+                notes.append("README.md does not contain expected run commands (0/8).")
+
+    # CHANGELOG
+    changelog_entry = find_file_entry(submission_json, "CHANGELOG.md")
+    if not changelog_entry:
+        notes.append("CHANGELOG.md missing.")
+    else:
+        changelog_text = changelog_entry.get("content", "")
+        # Count meaningful lines (non-empty) and entries that look like bullets or dated lines
+        lines = [ln.strip() for ln in changelog_text.splitlines() if ln.strip()]
+        # Count lines that look like entries (start with date or '- ' or '* ')
+        entry_like = [ln for ln in lines if re.match(r'^\d{4}|\-', ln) or re.match(r'^[A-Za-z].+ - ', ln)]
+        if len(entry_like) >= 2 or len(lines) >= 2:
+            changelog_points = 5.0
+            notes.append("CHANGELOG.md has at least two entries (+5).")
+        elif len(lines) == 1:
+            changelog_points = 2.0
+            notes.append("CHANGELOG.md has one entry (+2).")
+        else:
+            notes.append("CHANGELOG.md has no clear entries (0/5).")
+
+    total = round(readme_points + changelog_points, 2)
+    # Cap at max_points
+    total = min(total, max_points)
+    return total, notes
+
+
+def score_packaging_and_repro(submission_json):
+    """
+    Score packaging and reproducibility (5 points).
+
+    Criteria:
+      - submission JSON includes required top-level fields (candidate_name, language, time_minutes_used, primary_run_command, revision_run_command, files, captured_outputs, README, changelog)
+      - files array contains: data.csv, out_initial.json, out_groupby.json, README.md, CHANGELOG.md, and source file for chosen language.
+      - captured_outputs contains out_initial.json and out_groupby.json entries.
+
+    Award full points if all present, partial otherwise.
+    """
+    max_points = WEIGHTS["packaging"]
+    notes = []
+    pts = 0.0
+
+    required_keys = ["candidate_name", "language", "time_minutes_used", "primary_run_command", "revision_run_command", "files", "captured_outputs", "README", "changelog"]
+    missing = [k for k in required_keys if k not in submission_json]
+    if missing:
+        notes.append(f"Missing top-level fields in submission JSON: {missing}")
+    else:
+        pts += 1.0  # small credit for schema presence
+        notes.append("Submission JSON contains required top-level fields (+1).")
+
+    # Check files present
+    files_present = {entry.get("path", "") for entry in submission_json.get("files", [])}
+    # Required files set
+    lang = submission_json.get("language", "Python")
+    lang_file_map = {"Python": "summarizer.py", "Java": "Summarizer.java", "C": "summarizer.c"}
+    src_name = lang_file_map.get(lang, "summarizer.py")
+    required_files = {"data.csv", "out_initial.json", "out_groupby.json", "README.md", "CHANGELOG.md", src_name}
+    missing_files = [f for f in required_files if f not in files_present]
+    if not missing_files:
+        pts += 4.0
+        notes.append("All required files present in 'files' array (+4).")
+    else:
+        # partial credit proportionally
+        have = len(required_files) - len(missing_files)
+        frac = have / len(required_files)
+        pts += round(4.0 * frac, 2)
+        notes.append(f"Missing files in 'files' array: {missing_files}. Partial points awarded ({frac*100:.0f}%).")
+
+    # captured_outputs presence
+    caps = {entry.get("name") for entry in submission_json.get("captured_outputs", [])}
+    missing_caps = [n for n in ("out_initial.json", "out_groupby.json") if n not in caps]
+    if not missing_caps:
+        notes.append("Captured outputs include both out_initial.json and out_groupby.json.")
+    else:
+        notes.append(f"Captured outputs missing: {missing_caps}")
+
+    total = min(round(pts, 2), max_points)
+    return total, notes
+
+
+# --- Main grading flow ---
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
+        sys.exit(2)
+
+    submission_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+
+    # Prepare output container
+    results = {
+        "scores": {},
+        "notes": [],
+        "total_points": 0.0,
+        "max_points": 100.0,
+        "overall_score": 0.0
+    }
+
+    # Load files with error handling
+    try:
+        submission = load_json_file(submission_path)
+    except Exception as e:
+        print(f"Error loading submission JSON: {e}")
+        # Write minimal results with error
+        results["notes"].append(str(e))
+        results["overall_score"] = 0.0
+        with open("test_results.json", "w", encoding="utf-8") as outf:
+            json.dump(results, outf, indent=2)
+        sys.exit(1)
+
+    try:
+        answer_key = load_json_file(answer_key_path)
+    except Exception as e:
+        print(f"Error loading answer key JSON: {e}")
+        results["notes"].append(str(e))
+        results["overall_score"] = 0.0
+        with open("test_results.json", "w", encoding="utf-8") as outf:
+            json.dump(results, outf, indent=2)
+        sys.exit(1)
+
+    # Fetch expected captured outputs from answer key
+    expected_initial = None
+    expected_groupby = None
+
+    # Try common places: answer_key['captured_outputs'] or answer_key['files']
+    if isinstance(answer_key.get("captured_outputs"), list):
+        for entry in answer_key.get("captured_outputs", []):
+            name = entry.get("name", "")
+            if name == "out_initial.json":
+                expected_initial = entry.get("content", "")
+            if name == "out_groupby.json":
+                expected_groupby = entry.get("content", "")
+    # fallback: search in files
+    if expected_initial is None:
+        for entry in answer_key.get("files", []):
+            if entry.get("path", "") == "out_initial.json" or entry.get("path", "").endswith("/out_initial.json"):
+                expected_initial = entry.get("content", "")
+    if expected_groupby is None:
+        for entry in answer_key.get("files", []):
+            if entry.get("path", "") == "out_groupby.json" or entry.get("path", "").endswith("/out_groupby.json"):
+                expected_groupby = entry.get("content", "")
+
+    # Extract candidate captured outputs
+    cand_initial_entry = find_captured_output(submission, "out_initial.json")
+    cand_group_entry = find_captured_output(submission, "out_groupby.json")
+    cand_initial_text = cand_initial_entry.get("content") if cand_initial_entry else None
+    cand_group_text = cand_group_entry.get("content") if cand_group_entry else None
+
+    # 1) Functional: Primary (Task A)
+    primary_points, primary_notes = score_functional_component(
+        cand_initial_text, expected_initial or "", WEIGHTS["functional_primary"], "Primary (Task A)"
+    )
+    results["scores"]["functional_primary"] = {
+        "points": primary_points,
+        "max_points": WEIGHTS["functional_primary"],
+        "notes": primary_notes
+    }
+
+    # 2) Functional: Revision (Task B)
+    revision_points, revision_notes = score_functional_component(
+        cand_group_text, expected_groupby or "", WEIGHTS["functional_revision"], "Revision (Task B)"
+    )
+    results["scores"]["functional_revision"] = {
+        "points": revision_points,
+        "max_points": WEIGHTS["functional_revision"],
+        "notes": revision_notes
+    }
+
+    # 3) Readability & comments
+    cand_language = submission.get("language", "Python")
+    readability_points, readability_notes = score_readability_and_comments(submission, cand_language)
+    results["scores"]["readability"] = {
+        "points": readability_points,
+        "max_points": WEIGHTS["readability"],
+        "notes": readability_notes
+    }
+
+    # 4) Documentation & changelog
+    primary_cmd = submission.get("primary_run_command", "")
+    revision_cmd = submission.get("revision_run_command", "")
+    doc_points, doc_notes = score_documentation_and_changelog(submission, primary_cmd, revision_cmd)
+    results["scores"]["documentation"] = {
+        "points": doc_points,
+        "max_points": WEIGHTS["documentation"],
+        "notes": doc_notes
+    }
+
+    # 5) Packaging & reproducibility
+    pack_points, pack_notes = score_packaging_and_repro(submission)
+    results["scores"]["packaging"] = {
+        "points": pack_points,
+        "max_points": WEIGHTS["packaging"],
+        "notes": pack_notes
+    }
+
+    # Aggregate totals
+    total_points = sum(v["points"] for v in results["scores"].values())
+    results["total_points"] = round(total_points, 2)
+    results["max_points"] = sum(WEIGHTS.values())
+    overall_percentage = round((results["total_points"] / results["max_points"]) * 100.0, 2) if results["max_points"] > 0 else 0.0
+    results["overall_score"] = overall_percentage
+
+    # Add pass/fail note according to Basic exam threshold 80%
+    results["pass_threshold"] = 80.0
+    results["pass"] = overall_percentage >= results["pass_threshold"]
+
+    # Add summary notes
+    summary_notes = []
+    summary_notes.append(f"Computed overall score: {results['overall_score']}% ({results['total_points']}/{results['max_points']})")
+    if not results["pass"]:
+        summary_notes.append(f"Candidate did not meet passing threshold of {results['pass_threshold']}%.")
+    else:
+        summary_notes.append("Candidate meets passing threshold.")
+    results["notes"].extend(summary_notes)
+
+    # Save results to test_results.json (same directory as script current working dir)
+    try:
+        with open("test_results.json", "w", encoding="utf-8") as outf:
+            json.dump(results, outf, indent=2)
+        print("Grading complete. Results written to test_results.json")
+    except Exception as e:
+        print(f"Failed to write results: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

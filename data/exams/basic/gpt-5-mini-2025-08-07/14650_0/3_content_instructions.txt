@@ -1,0 +1,160 @@
+### Exam Title
+Updating and stabilizing automated tests (Basic practical exam)
+
+---
+
+### Instructions for Candidate
+
+You have 90 minutes total. Work locally in the provided repository using only the available tools: a code execution environment (terminal) and a text editor. No internet or external resources are allowed.
+
+Follow these steps in order and keep to the time suggestions below:
+
+1. Setup & initial run — (10 minutes)
+   - Read the repo README. Identify the single command to run the test suite (e.g., ./run_tests.sh or npm test or python -m pytest).
+   - Run the test suite once and capture the raw output (stdout/stderr). Save the full raw output for inclusion in your submission (see Submission Format).
+   - Note which tests fail or are flaky from this initial run.
+
+2. Diagnosis — (15 minutes)
+   - Inspect the failing test(s) and the system-under-test (SUT) code and test code to determine why tests fail.
+   - Decide whether failures are due to a changed SUT contract/behaviour (tests need updating) or a SUT bug. For this basic exam you must assume tests should be updated to match the SUT. Do not modify SUT/source files.
+   - Document the root cause for each failing test (name the test, paste the failure message, and state the root cause succinctly).
+
+3. Fix & update tests — (45 minutes)
+   - Modify only test files. Do NOT change SUT/source files (for example, do not change anything under src/, app/, or similar directories). If you change any non-test file you will be penalized.
+   - Make minimal, safe changes to bring tests in line with the current SUT behaviour:
+     - Update assertions/selectors/test data where names or formats changed.
+     - Fix at least one flaky test by applying a focused stabilization (add a small wait, a robust assertion, or a deterministic approach). Do not remove tests, skip them, or broadly increase all timeouts.
+     - Keep edits small, well-named, and readable. You may add a tiny helper in tests/ only if it meaningfully reduces duplication.
+   - After edits, run the test suite locally and ensure all tests pass.
+
+4. Verification & capture final output — (10 minutes)
+   - Run the test command and capture the final raw stdout/stderr after your changes.
+   - Ensure the test run demonstrates the failing tests from step 1 are now passing and that you introduced no regressions.
+
+5. Prepare submission — (10 minutes)
+   - Create a single JSON file named test_submission.json containing the exact fields specified in the Submission Format section below.
+   - Do not submit any other files. The submission must be only test_submission.json.
+
+Notes and constraints
+- You must complete all work within the repository provided. Do not fetch external libraries or change environment configuration beyond what is in the repo.
+- Only edit files under the tests/ directory (or files whose names clearly indicate they are test files). Do not edit production/SUT files.
+- Preserve original test structure as much as possible: avoid large rewrites.
+- Capture raw outputs exactly as produced by the test runner; include both stdout and stderr text in your JSON.
+
+Suggested time allocation reminder
+- Setup & first run: 10 minutes
+- Diagnosis: 15 minutes
+- Fix & update tests: 45 minutes
+- Final verification & capture: 10 minutes
+- Submission preparation: 10 minutes
+
+---
+
+### Expected Outcome
+
+By the end of the exam you must produce a single file, test_submission.json, containing:
+
+- Candidate metadata (name and start/end timestamps).
+- The raw initial test run output (before edits).
+- The raw final test run output (after edits).
+- A list of files you modified (relative paths).
+- For each modified file: the complete updated file content (as a string).
+- A diagnostics array mapping each originally failing test to its failure message, root cause, and the action you took.
+- The exact commands you used to run tests.
+- Clear, minimal reproduction steps so an evaluator can reproduce your runs from the repository root.
+- A short rationale (2–4 sentences) summarizing your approach and decisions.
+- Optional: a short self-time breakdown (minutes for each phase).
+
+Required behavioral outcomes
+- Tests that were failing due to expected test mismatches should pass after your changes.
+- You must stabilize at least one flaky test by targeted changes (not by removing the test).
+- You must not change SUT/source files.
+
+---
+
+### Provided Materials
+
+The repository you will receive (unzipped into the working directory) will contain:
+
+- A small SUT (tiny module or static files) used by the tests.
+- A test suite (6–8 tests; implemented with pytest or Jest/Node, depending on repo).
+- A test-run script (for example ./run_tests.sh, npm test or similar) and a README with the command to run tests.
+- A requirements.txt or package.json with only local/packaged dependencies (no internet install required).
+- The README explicitly instructing you to produce test_submission.json as the single submission artifact.
+
+You will not be provided internet access or extra documentation beyond the repository files.
+
+---
+
+### Submission Format
+
+You must submit exactly one file named test_submission.json at repo root. This JSON must be valid UTF-8 and parseable.
+
+All fields below are required unless marked optional. Use ISO 8601 format for timestamps (UTC recommended).
+
+Top-level JSON fields (types and short guidance):
+
+- candidate_name (string)
+  - Your full name.
+
+- start_time (string, ISO8601)
+  - When you started the exam (UTC/ISO8601).
+
+- end_time (string, ISO8601)
+  - When you finished the exam (UTC/ISO8601).
+
+- initial_test_output (string)
+  - Raw stdout and stderr text from the first test run (before any edits). Include the full output.
+
+- final_test_output (string)
+  - Raw stdout and stderr text from the final test run (after edits). Include the full output.
+
+- files_modified (array of strings)
+  - Relative paths of files you changed (e.g., ["tests/test_api.py"]).
+
+- modified_files (object)
+  - Mapping from relative file path to the full updated file content as a string.
+  - Example: { "tests/test_api.py": "import pytest\n\ndef test_x():\n    ..." }
+
+- diagnostics (array of objects)
+  - One object per failing test you diagnosed. Each object must have:
+    - test_name (string) — the test function or test id that failed (as shown by the test runner)
+    - failure_message (string) — the failure output or assertion text from the initial run
+    - root_cause (string) — 1–2 sentence explanation of why the test failed (what changed)
+    - action_taken (string) — 1–2 sentence description of the change you made to the tests
+
+- run_commands (array of strings)
+  - Exact command(s) you used to run the tests locally (for initial and final runs). Example: ["./run_tests.sh", "python -m pytest -q"]
+
+- reproduction_instructions (string)
+  - Step-by-step commands an evaluator can run from the repository root to reproduce your initial and final runs and to verify tests pass with your changes. Include environment setup commands if needed (venv activation, pip install -r requirements.txt, etc.).
+
+- short_rationale (string)
+  - 2–4 sentence summary of your overall approach and why you made the changes you did.
+
+- self_time_breakdown (object, optional)
+  - { "setup_minutes": int, "diagnosis_minutes": int, "fix_minutes": int, "verification_minutes": int, "submission_minutes": int }
+
+Formatting and submission rules (strict)
+- Submit only test_submission.json. Do not include additional files, patches, or zipped content.
+- When embedding file contents in modified_files, include the entire file as a single string with newline characters preserved.
+- If you edited multiple files, ensure each appears in files_modified and modified_files.
+- If you made no change to a particular originally failing test because you judged the SUT was incorrect, you must still include that test in diagnostics and explain why you did not modify it. (However, remember that for this basic exam you are required to update tests only — do not modify SUT.)
+
+Example diagnostics object (illustrative)
+{
+  "test_name": "tests/test_user.py::test_user_full_name",
+  "failure_message": "AssertionError: 'name' key not found in response",
+  "root_cause": "SUT renamed response field 'name' to 'full_name'",
+  "action_taken": "Updated test to assert 'full_name' and adjusted expected string formatting"
+}
+
+Final checklist before submission
+- initial_test_output included and captured exactly.
+- final_test_output included and shows passing tests.
+- All modified test files included in modified_files with full content.
+- diagnostics explains each failing test and your actions.
+- reproduction_instructions are precise and runnable.
+- Submission file named exactly: test_submission.json
+
+Good luck. Work clearly and keep edits minimal and well-justified.

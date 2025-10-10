@@ -1,0 +1,271 @@
+### Exam Title
+Inventory CLI — Basic Practical Programming Exam (90 minutes)
+
+---
+
+### Instructions for Candidate
+
+Goal
+- Build a small, single-author CLI program that manages an inventory of items and persists data to disk.
+- The program must be runnable in the provided execution environment using only built-in/standard libraries. You may choose any language available (e.g., python3, node, java), but you must state your language in the submission.
+
+Time limit
+- You have 90 minutes total. Suggested pacing:
+  - 5–10 min: design & choose persistence format (JSON file or SQLite recommended)
+  - 45–55 min: implement functionality
+  - 15–20 min: run demonstration commands and capture outputs
+  - 5–10 min: prepare test_submission.json and finalize files
+
+What you must implement (required)
+- Data model: each item must include at minimum:
+  - sku (string, unique)
+  - name (string)
+  - qty (integer, >= 0)
+  - optional: price (decimal) or description
+
+- CLI commands (exact names and flags are required):
+  1. add
+     - Syntax: <entry_point> add --sku <SKU> --name <NAME> --qty <N> [--price <P>]
+     - Adds a new item. If SKU already exists, error (non-zero exit) and message on stderr.
+  2. list
+     - Syntax: <entry_point> list [--sort sku|name|qty] [--format json|text]
+     - Lists all items. When run with --format json, stdout must be valid JSON array of item objects.
+  3. update
+     - Syntax: <entry_point> update --sku <SKU> (--qty <new_qty> | --change +N|-N)
+     - Updates quantity (either absolute or relative). Invalid quantities (<0) must be rejected with non-zero exit.
+  4. delete
+     - Syntax: <entry_point> delete --sku <SKU>
+     - Deletes an item by SKU. If SKU does not exist, return non-zero exit and stderr message.
+  5. find
+     - Syntax: <entry_point> find --sku <SKU>
+       OR
+       <entry_point> find --name <substring>
+     - Returns matching items. When run with --format json, stdout must be a JSON array with matching item objects.
+
+- Persistence:
+  - Your program must save inventory to disk and load it on startup.
+  - Use either:
+    - a JSON file (recommended) OR
+    - an SQLite DB (acceptable)
+  - If you choose a JSON file, implement safe write semantics (e.g., write to a temp file then atomically rename) to avoid corrupted files on save.
+  - On startup, if the persistence file exists, it must be loaded and subsequent commands should operate on that data.
+
+- Deterministic, machine-parseable output:
+  - list and find must support --format json and produce valid JSON on stdout when asked.
+  - Error messages must go to stderr.
+  - Exit codes: 0 = success, non-zero = error.
+
+- Robustness / validation:
+  - Reject duplicate SKUs when adding.
+  - Reject negative quantities.
+  - Return informative error messages on stderr and non-zero exit codes for invalid operations.
+
+Demonstration requirements (must be shown in your recorded commands)
+- Create at least 3 distinct items with add.
+- Update the quantity of at least one item.
+- Delete at least one item.
+- Search/find at least one item by SKU or name substring.
+- Demonstrate persistence across program invocations: perform add(s), exit, run a new invocation that lists items and shows previously added items still present.
+
+What you may NOT use
+- No internet access or external packages. Only standard libraries in the provided execution environment are allowed.
+
+Files you must produce in your submission directory
+- Source code files implementing the CLI.
+- Any persistence file(s) your program creates during your demonstration (e.g., data.json or inventory.db).
+- test_submission.json (exact filename required) — see schema below.
+
+How to capture demonstration runs
+- For every run you show in test_submission.json, capture:
+  - exact command you ran
+  - stdout (or a short excerpt if long) — when using --format json, include the JSON output
+  - stderr (empty string if none)
+  - exit code
+
+Hints
+- Prefer JSON persistence for speed.
+- Provide an easy-to-run entry point (example: python3 inventory.py ...).
+- You do not need to implement concurrency beyond single-user CLI. A simple atomic write is sufficient for file durability.
+- Keep CLI parsing simple and deterministic so the grader can script checks.
+
+---
+
+### Expected Outcome
+
+By the end of the test you must produce:
+- A working CLI program implementing add, list, update, delete, find with persistence and validation.
+- A short sequence of commands (minimum: add 3 items, update one, delete one, find one, restart and list to prove persistence) with captured outputs and exit codes recorded in test_submission.json.
+- test_submission.json (exact name) describing the program, entry command, persistence filename, the demonstration commands and outputs, a short description of design choices, and a brief self-assessment.
+
+Evaluation will be automated or manual against objective checks:
+- Correct commands exist and behave as specified (add/list/find/update/delete).
+- Persistence works (items remain after program restart).
+- JSON output for list/find when requested.
+- Proper exit codes and stderr on error cases.
+- The test_submission.json file is complete and well-formed.
+
+Passing criteria (informal)
+- You must implement all required commands and persistence and provide the required demonstration. The grading rubric will check functional behavior and required validations. Aim to complete fully within 90 minutes.
+
+---
+
+### Provided Materials
+
+You will be given:
+- A computer with:
+  - code execution environment (language runtimes for common languages such as python3)
+  - a text editor
+  - no internet access and only standard libraries available
+
+No starter code is provided. You must create all files yourself in the submission directory.
+
+---
+
+### Submission Format
+
+You must submit a single directory containing:
+- all source files required to run your program
+- any persistence file(s) generated during your demo (optional but recommended)
+- a file named exactly test_submission.json that follows this schema (the grader will expect this exact structure and keys).
+
+test_submission.json schema (required fields — include exactly these keys)
+
+{
+  "language": "string",                // e.g. "python3"
+  "entry_point": "string",             // exact command to run the program, e.g. "python3 inventory.py"
+  "persistence_file": "string",        // filename used to store data, e.g. "inventory.json"
+  "commands_run": [                    // chronological array of demonstration runs (minimum sequence described above)
+    {
+      "cmd": "string",                 // exact command executed
+      "stdout": "string",              // captured stdout (short excerpt allowed), include JSON output when used
+      "stderr": "string",              // captured stderr (empty string if none)
+      "exit_code": integer             // numeric exit code returned by the command
+    }
+    // ... more command objects in order
+  ],
+  "short_description": "string",       // <= 200 words. How to run your program and summary of design choices (persistence, format)
+  "self_assessment": {
+    "implemented_required": boolean,   // true if you implemented all required features
+    "bonus_features": ["string"],      // list any optional extras implemented (can be empty)
+    "known_issues": "string"           // brief note of any known limitations or bugs (empty string if none)
+  },
+  "time_taken_minutes": integer        // your estimate of minutes spent (<=90)
+}
+
+Example (minimal) commands_run entry:
+
+{
+  "cmd": "python3 inventory.py add --sku SKU001 --name \"Widget\" --qty 10",
+  "stdout": "{\"status\":\"ok\",\"item\":{\"sku\":\"SKU001\",\"name\":\"Widget\",\"qty\":10}}",
+  "stderr": "",
+  "exit_code": 0
+}
+
+Mandatory submission rules (objective constraints)
+- The CLI flag names and command names must match those listed in this instruction (add, list, update, delete, find and their flags).
+- list and find must support --format json and produce valid JSON when used.
+- Errors must print to stderr and return a non-zero exit code.
+- test_submission.json must be well-formed JSON and contain all required fields above.
+- Include the persistence file name you used in the persistence_file field.
+
+Optional bonus features (not required to pass; list implemented ones in self_assessment.bonus_features)
+- CSV import/export
+- Atomic write to persistence file (if using JSON, write-to-temp-and-rename)
+- A small automated test script that runs and asserts expected outputs
+- Sorting/pagination options on list
+
+Good luck. Work within the 90-minute time limit and keep your implementation simple, robust, and scriptable.File: seed_items.json
+Content (valid JSON array; 5 items):
+
+[
+  {
+    "sku": "SKU001",
+    "name": "Alpha Widget",
+    "qty": 10,
+    "price": 12.50,
+    "description": "Standard alpha model"
+  },
+  {
+    "sku": "SKU002",
+    "name": "Beta Widget",
+    "qty": 5,
+    "price": 15.00,
+    "description": "Beta variant with improved durability"
+  },
+  {
+    "sku": "SKU003",
+    "name": "Gamma Gadget",
+    "qty": 20,
+    "price": 7.25,
+    "description": "Small gadget used in assemblies"
+  },
+  {
+    "sku": "SKU004",
+    "name": "Delta Tool",
+    "qty": 2,
+    "price": 55.00,
+    "description": "Heavy-duty hand tool"
+  },
+  {
+    "sku": "SKU005",
+    "name": "Epsilon Part",
+    "qty": 0,
+    "price": 3.99,
+    "description": "Spare part; currently out of stock"
+  }
+]
+
+File: import_extra.csv
+Content (CSV with header; 3 rows; deliberate cases to exercise validation)
+
+sku,name,qty,price,description
+SKU003,Gamma Gadget Duplicate,5,7.25,Duplicate SKU003 to test duplicate-rejection
+SKU006,Zeta Accessory,8,4.50,New accessory item for import
+SKU007,Theta Component,-5,9.99,Invalid negative quantity to test validation
+
+File: scenario_instructions.txt
+Content (plain text; deterministic suggested sequence the candidate may use when demonstrating persistence; these are suggestions only — you may choose a different persistence filename in your implementation):
+
+Suggested deterministic demonstration sequence (use to record runs in test_submission.json):
+1) Start with a fresh workspace (no persistence file present).
+2) Add three items (use add command): SKU001, SKU002, SKU006 (or add new SKUs).
+   Example:
+     <entry_point> add --sku SKU001 --name "Alpha Widget" --qty 10 --price 12.50
+     <entry_point> add --sku SKU002 --name "Beta Widget" --qty 5 --price 15.00
+     <entry_point> add --sku SKU006 --name "Zeta Accessory" --qty 8 --price 4.50
+3) List items in JSON format to capture state:
+     <entry_point> list --format json
+4) Update one item's quantity (absolute or relative):
+     <entry_point> update --sku SKU001 --qty 12
+   or
+     <entry_point> update --sku SKU002 --change +3
+5) Delete one item:
+     <entry_point> delete --sku SKU005
+6) Find by SKU and by name substring:
+     <entry_point> find --sku SKU003 --format json
+     <entry_point> find --name "Widget" --format json
+7) Restart (run a new invocation) and list to demonstrate persistence:
+     (exit and run) <entry_point> list --format json
+8) Optional: attempt to add SKU003 again to confirm duplicate-SKU rejection:
+     <entry_point> add --sku SKU003 --name "Gamma Gadget Duplicate" --qty 5
+
+Notes:
+- Replace <entry_point> with your program command (e.g., python3 inventory.py).
+- When recording outputs in test_submission.json, include stdout JSON for list/find commands and any stderr messages for invalid operations.
+- If you choose to implement CSV import, you may use import_extra.csv as a deterministic input file.
+
+End of supplied materials.```json
+{
+  "language": "",
+  "entry_point": "",
+  "persistence_file": "",
+  "commands_run": [],
+  "short_description": "",
+  "self_assessment": {
+    "implemented_required": null,
+    "bonus_features": [],
+    "known_issues": ""
+  },
+  "time_taken_minutes": null
+}
+```

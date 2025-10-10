@@ -1,0 +1,691 @@
+```python
+# task_evaluation.py
+"""
+Automated grader for the "Test planning practical — Basic level" exam.
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Produces:
+    test_results.json in the current working directory.
+
+Notes:
+- Uses only Python standard library.
+- Performs deterministic checks and scoring per the provided rubric.
+- Designed to be tolerant of capitalization and minor formatting differences.
+"""
+
+import sys
+import json
+import os
+from datetime import datetime, timedelta
+
+# ---------- Configuration / constants ----------
+TOTAL_POINTS = 100
+WEIGHTS = {
+    "assumptions": 5,
+    "schedule": 30,
+    "estimates": 15,
+    "risk_prioritisation": 15,
+    "contingency_options": 10,
+    "entry_exit_criteria": 10,
+    "strategy_summary": 10,
+}
+
+# Fixed dates / windows from brief
+CODE_FREEZE = "2025-10-20"
+TEST_ENV_A_FROM = "2025-10-21"
+TEST_ENV_A_TO = "2025-10-30"
+UAT_FROM = "2025-10-27"
+UAT_TO = "2025-11-01"
+PUBLIC_HOLIDAY = "2025-10-23"
+RELEASE_DATE = "2025-11-03"
+
+# Resource capacities
+RESOURCE_CAPACITY = {
+    "Alice": 8,
+    "Bob": 8,
+    "Charlie": 4,  # 50% availability => 4 hours per working day
+}
+
+FEATURE_IDS = {"F1", "F2", "F3", "F4", "F5", "F6"}
+
+# ---------- Helper functions ----------
+def load_json(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_json(path, obj):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2)
+
+def parse_date(s):
+    # Expect YYYY-MM-DD
+    return datetime.strptime(s, "%Y-%m-%d").date()
+
+def is_weekend(d):
+    return d.weekday() >= 5  # 5 = Saturday, 6 = Sunday
+
+def working_days_between(start_date_str, end_date_str, exclude_dates=None):
+    # returns list of working dates inclusive between start and end, excluding weekends and exclude_dates set
+    if exclude_dates is None:
+        exclude_dates = set()
+    start = parse_date(start_date_str)
+    end = parse_date(end_date_str)
+    if end < start:
+        return []
+    days = []
+    cur = start
+    while cur <= end:
+        if (not is_weekend(cur)) and (cur.isoformat() not in exclude_dates):
+            days.append(cur.isoformat())
+        cur += timedelta(days=1)
+    return days
+
+def count_working_days(start_date_str, end_date_str, exclude_dates=None):
+    return len(working_days_between(start_date_str, end_date_str, exclude_dates))
+
+def safe_get(d, key, default=None):
+    return d.get(key, default) if isinstance(d, dict) else default
+
+def lower_joined(strings):
+    return " ".join(s.lower() for s in strings if isinstance(s, str))
+
+# ---------- Grading functions ----------
+def grade_assumptions(candidate, answer_key):
+    points = 0
+    reasons = []
+    maxp = WEIGHTS["assumptions"]
+    asum = candidate.get("assumptions", [])
+    if not isinstance(asum, list):
+        reasons.append("assumptions field missing or not a list.")
+        return 0, reasons
+
+    # Basic checks: at least 3 assumptions
+    if len(asum) >= 3:
+        points = maxp * 0.6  # base credit for count
+        reasons.append(f"{len(asum)} assumptions provided (>=3) -> base credit.")
+    else:
+        reasons.append(f"Only {len(asum)} assumptions provided (need >=3).")
+
+    # Check for specific important assumption mentions
+    text = " ".join(asum).lower()
+    keywords = {
+        "automation": "automation/Charlie availability",
+        "charlie": "Charlie (automation) mentioned",
+        "defect": "defect turnaround mentioned",
+        "security": "security scan or vulnerability mentioned",
+        "test data": "test data preparation mentioned",
+    }
+    hit_count = 0
+    for kw, desc in keywords.items():
+        if kw in text:
+            hit_count += 1
+            reasons.append(f"Assumption includes: {desc}.")
+    # Award up to remaining credit if 2+ of key topics mentioned
+    if hit_count >= 2:
+        points += maxp * 0.4
+        reasons.append("Key operational assumptions present -> additional credit.")
+    else:
+        reasons.append(f"Key assumption coverage low ({hit_count} key mentions). Partial credit only.")
+
+    points = min(points, maxp)
+    return round(points, 2), reasons
+
+def validate_schedule_tasks(schedule):
+    # Basic validation of schedule structure
+    problems = []
+    if not isinstance(schedule, list) or len(schedule) == 0:
+        problems.append("schedule missing or empty.")
+        return problems
+
+    ids = set()
+    for t in schedule:
+        if not isinstance(t, dict):
+            problems.append("schedule contains non-object entries.")
+            continue
+        tid = t.get("id")
+        if tid is None:
+            problems.append("A schedule task is missing 'id'.")
+        else:
+            if tid in ids:
+                problems.append(f"Duplicate schedule task id {tid}.")
+            ids.add(tid)
+        # check required fields
+        for fld in ("name","start_date","end_date","duration_days","dependencies","assigned"):
+            if fld not in t:
+                problems.append(f"Task id {tid}: missing field '{fld}'.")
+        # date format check
+        for date_field in ("start_date","end_date"):
+            try:
+                parse_date(t.get(date_field, ""))
+            except Exception:
+                problems.append(f"Task id {tid}: invalid date format for {date_field}.")
+        # assigned must be list
+        if not isinstance(t.get("assigned", []), list):
+            problems.append(f"Task id {tid}: 'assigned' must be a list.")
+    return problems
+
+def grade_schedule(candidate, answer_key):
+    maxp = WEIGHTS["schedule"]
+    reasons = []
+    points = 0.0
+
+    schedule = candidate.get("schedule", [])
+    problems = validate_schedule_tasks(schedule)
+    if problems:
+        reasons.extend(problems)
+        return 0.0, reasons
+
+    # Prepare quick maps
+    tasks_by_id = {t["id"]: t for t in schedule}
+    exclude_dates = {PUBLIC_HOLIDAY}
+    # 1) Check no tasks start before test window (post code-freeze) and no tasks on public holiday and dates are weekdays
+    violations = []
+    for t in schedule:
+        start = t["start_date"]
+        end = t["end_date"]
+        # start must be >= TEST_ENV_A_FROM or at least >= 2025-10-21 (post code-freeze) for test-design etc.
+        # Accept tasks that are test-design starting from 2025-10-21.
+        sd = parse_date(start)
+        if sd < parse_date(TEST_ENV_A_FROM):
+            violations.append(f"Task id {t['id']} '{t.get('name')}' starts before {TEST_ENV_A_FROM} (start: {start}).")
+        # no task day should be public holiday
+        days = working_days_between(start, end, exclude_dates)
+        if count_working_days(start, end, exclude_dates) == 0:
+            # maybe all days are weekends/holiday -> still a violation
+            violations.append(f"Task id {t['id']} '{t.get('name')}' has no working days between {start} and {end} (after excluding weekends/holiday).")
+        # Check duration_days matches inclusive working days
+        expected_dur = count_working_days(start, end, exclude_dates)
+        declared = t.get("duration_days")
+        if expected_dur != declared:
+            violations.append(f"Task id {t['id']} '{t.get('name')}' duration_days {declared} doesn't match actual working days {expected_dur} between {start} and {end} (excluding weekends/holiday).")
+        # Check none of working days is public holiday explicitly
+        if PUBLIC_HOLIDAY in working_days_between(start, end, set()):
+            violations.append(f"Task id {t['id']}: schedule includes the public holiday {PUBLIC_HOLIDAY} which is non-working.")
+        # Check start/end are weekdays
+        try:
+            for date_field in (start, end):
+                d = parse_date(date_field)
+                if is_weekend(d):
+                    violations.append(f"Task id {t['id']} '{t.get('name')}' has a weekend date {date_field} (should be working days only).")
+        except Exception:
+            pass
+
+        # Check assigned resources are only allowed ones
+        for r in t.get("assigned", []):
+            if r not in RESOURCE_CAPACITY:
+                violations.append(f"Task id {t['id']} assigned to unknown resource '{r}'.")
+
+    if violations:
+        reasons.append("Schedule violations found:")
+        reasons.extend(violations)
+    else:
+        reasons.append("No obvious schedule violations for pre/post-code-freeze, public holiday, weekends, or unknown resources.")
+        points += maxp * 0.5  # base credit for respecting date rules
+
+    # 2) Resource over-allocation check per working day
+    # Build calendar of resource hours per date
+    resource_day_hours = {}  # resource -> date -> hours
+    for res in RESOURCE_CAPACITY.keys():
+        resource_day_hours[res] = {}
+
+    for t in schedule:
+        days = working_days_between(t["start_date"], t["end_date"], {PUBLIC_HOLIDAY})
+        assigned = t.get("assigned", [])
+        for d in days:
+            for r in assigned:
+                # each assigned resource assumed to work full day on task -> 8 hours for full testers, 8 hours for task; check capacity later
+                # We will add 8 hours for each resource (tasks are not split by role) — but Charlie's capacity is 4h/day, so over-allocation will be detected.
+                h = resource_day_hours.setdefault(r, {}).get(d, 0)
+                h += 8
+                resource_day_hours[r][d] = h
+
+    over_alloc = []
+    for r, days in resource_day_hours.items():
+        cap = RESOURCE_CAPACITY.get(r, 8)
+        for d, hours in days.items():
+            if hours > cap:
+                over_alloc.append(f"Resource '{r}' over-allocated on {d}: assigned {hours}h > capacity {cap}h.")
+    if over_alloc:
+        reasons.append("Resource over-allocation detected:")
+        reasons.extend(over_alloc)
+    else:
+        reasons.append("No resource over-allocations detected across scheduled working days.")
+        points += maxp * 0.25  # credit for reasonable resource allocation
+
+    # 3) Environment window and milestone sequencing checks
+    env_violations = []
+    # Identify system testing tasks -> expect them within Test Env A window
+    for t in schedule:
+        name = t.get("name", "").lower()
+        if "system testing" in name or name.startswith("system testing") or "system test" in name:
+            # ensure start and end within Test Env A window
+            s = parse_date(t["start_date"])
+            e = parse_date(t["end_date"])
+            if s < parse_date(TEST_ENV_A_FROM) or e > parse_date(TEST_ENV_A_TO):
+                env_violations.append(f"Task id {t['id']} '{t['name']}' system testing outside Test Env A window ({TEST_ENV_A_FROM}..{TEST_ENV_A_TO}).")
+        if "uat" in name or "acceptance" in name:
+            s = parse_date(t["start_date"])
+            e = parse_date(t["end_date"])
+            if s < parse_date(UAT_FROM) or e > parse_date(UAT_TO):
+                env_violations.append(f"Task id {t['id']} '{t['name']}' UAT outside UAT window ({UAT_FROM}..{UAT_TO}).")
+        if "security" in name or "vulnerability" in name or "security scan" in name:
+            # must be in Test Env A and before UAT_FROM
+            s = parse_date(t["start_date"])
+            e = parse_date(t["end_date"])
+            if s < parse_date(TEST_ENV_A_FROM) or e > parse_date(TEST_ENV_A_TO):
+                env_violations.append(f"Security scan task id {t['id']} must be scheduled in Test Env A ({TEST_ENV_A_FROM}..{TEST_ENV_A_TO}).")
+            if e >= parse_date(UAT_FROM):
+                env_violations.append(f"Security scan task id {t['id']} must complete before UAT starts ({UAT_FROM}).")
+
+    if env_violations:
+        reasons.append("Environment/milestone violations:")
+        reasons.extend(env_violations)
+    else:
+        reasons.append("Environment windows and security scan timing respected where identifiable.")
+        points += maxp * 0.15
+
+    # 4) Dependencies sequencing: ensure dependency ids exist and start_date >= dependency end_date
+    dep_issues = []
+    for t in schedule:
+        deps = t.get("dependencies", [])
+        sid = t["id"]
+        sdate = parse_date(t["start_date"])
+        for dep in deps:
+            dep_task = tasks_by_id.get(dep)
+            if not dep_task:
+                dep_issues.append(f"Task {sid} depends on missing task id {dep}.")
+            else:
+                dep_end = parse_date(dep_task["end_date"])
+                # We require that the start_date is >= dependency end_date (same day start allowed rarely; we'll allow >=)
+                if sdate < dep_end:
+                    dep_issues.append(f"Task {sid} starts {sdate} before dependency {dep} ends ({dep_end}).")
+    if dep_issues:
+        reasons.append("Dependency sequencing issues found:")
+        reasons.extend(dep_issues)
+    else:
+        reasons.append("Dependencies reference valid tasks and sequencing appears logical.")
+        points += maxp * 0.1
+
+    # 5) Check that schedule includes key milestone tasks names: test design, system testing, UAT, regression, security scan, release readiness
+    names_lower = [t.get("name","").lower() for t in schedule]
+    required_phrases = {
+        "test design": False,
+        "system testing": False,
+        "uat": False,
+        "regression": False,
+        "security": False,
+        "release": False,
+        "test data": False,
+    }
+    for nl in names_lower:
+        for k in required_phrases:
+            if k in nl:
+                required_phrases[k] = True
+    missing = [k for k, v in required_phrases.items() if not v]
+    if missing:
+        reasons.append(f"Schedule is missing identifiable milestone/task types: {missing} (look for names containing these phrases). Partial credit may be given if schedule uses different naming but logically includes these phases.")
+        # give small credit if many present
+        present_count = sum(1 for v in required_phrases.values() if v)
+        points += (maxp * 0.0) + (maxp * 0.0)  # none extra
+    else:
+        reasons.append("Schedule includes identifiable milestones: test design, system testing, UAT, regression, security, release, test data.")
+        points += maxp * 0.0  # already scored earlier; keep distribution
+
+    # Summarize schedule score
+    # We distributed points: 50% for date rules, 25% for resource allocation, 15% env windows, 10% dependencies.
+    # Already added accordingly. Ensure cap.
+    points = max(0.0, min(points, maxp))
+    return round(points,2), reasons
+
+def grade_estimates(candidate, answer_key):
+    maxp = WEIGHTS["estimates"]
+    reasons = []
+    points = 0.0
+
+    estimates = candidate.get("estimates", [])
+    if not isinstance(estimates, list) or len(estimates) == 0:
+        reasons.append("No estimates provided.")
+        return 0.0, reasons
+
+    # Check that estimates reference valid features
+    feature_hours = {}
+    total_estimated_hours = 0
+    invalid_feature_refs = []
+    for e in estimates:
+        fid = e.get("feature_id")
+        hours = e.get("estimated_hours")
+        act = e.get("activity", "")
+        if fid not in FEATURE_IDS:
+            invalid_feature_refs.append(fid)
+            continue
+        if not isinstance(hours, int):
+            reasons.append(f"Estimate for {fid} {act} has non-integer hours.")
+            continue
+        feature_hours[fid] = feature_hours.get(fid, 0) + hours
+        total_estimated_hours += hours
+
+    if invalid_feature_refs:
+        reasons.append(f"Estimates reference invalid feature ids: {invalid_feature_refs}")
+
+    reasons.append(f"Total estimated hours across all features: {total_estimated_hours}h.")
+
+    # Compute available tester capacity between earliest scheduled start and release date
+    # Use schedule dates if present else use code freeze -> release window
+    schedule = candidate.get("schedule", [])
+    if schedule:
+        try:
+            earliest = min(parse_date(t["start_date"]) for t in schedule)
+            latest = parse_date(RELEASE_DATE)
+        except Exception:
+            earliest = parse_date(TEST_ENV_A_FROM)
+            latest = parse_date(RELEASE_DATE)
+    else:
+        earliest = parse_date(TEST_ENV_A_FROM)
+        latest = parse_date(RELEASE_DATE)
+
+    # Build working days between earliest and release, excluding holiday and weekends
+    days = []
+    cur = earliest
+    exclude_dates = {PUBLIC_HOLIDAY}
+    while cur <= latest:
+        if (not is_weekend(cur)) and (cur.isoformat() not in exclude_dates):
+            days.append(cur.isoformat())
+        cur += timedelta(days=1)
+    total_capacity_hours = 0
+    for r, cap in RESOURCE_CAPACITY.items():
+        total_capacity_hours += cap * len(days)
+    reasons.append(f"Available total tester capacity between {earliest} and {latest}: {total_capacity_hours}h (Alice/Bob full, Charlie 50%).")
+
+    # If estimated hours exceed capacity by large margin -> heavy deduction
+    if total_estimated_hours == 0:
+        reasons.append("Total estimated hours is 0 -> invalid.")
+        return 0.0, reasons
+
+    if total_estimated_hours <= total_capacity_hours * 1.2:
+        points = maxp  # reasonable
+        reasons.append("Estimates fit within available capacity (with 20% buffer) -> full credit.")
+    elif total_estimated_hours <= total_capacity_hours * 1.5:
+        points = maxp * 0.6
+        reasons.append("Estimates somewhat high vs capacity (<=150%), partial credit.")
+    else:
+        points = maxp * 0.2
+        reasons.append("Estimates exceed available capacity by large margin -> low credit.")
+
+    # Also check that automation_setup estimates align with presence of automation tasks in schedule
+    # If candidate included automation_setup estimates > 0, but no schedule task with 'automation' in name, give small deduction
+    automation_est_hours = sum(e.get("estimated_hours",0) for e in estimates if e.get("activity","").lower() == "automation_setup")
+    has_automation_task = any("automation" in t.get("name","").lower() for t in schedule)
+    if automation_est_hours > 0 and not has_automation_task:
+        reasons.append("automation_setup hours provided but no corresponding 'automation' task found in schedule -> inconsistency.")
+        points -= maxp * 0.1
+
+    points = max(0.0, min(points, maxp))
+    return round(points,2), reasons
+
+def grade_risk_prioritisation(candidate, answer_key):
+    maxp = WEIGHTS["risk_prioritisation"]
+    reasons = []
+    points = 0.0
+
+    rp = candidate.get("risk_prioritisation", [])
+    if not isinstance(rp, list) or len(rp) == 0:
+        reasons.append("risk_prioritisation missing or empty.")
+        return 0.0, reasons
+
+    # Find entries for F2 and F5 and "Third-party API instability"
+    # Normalize keys for tolerance
+    lower_map = {}
+    for r in rp:
+        key = r.get("feature_id_or_risk","").strip().lower()
+        lower_map[key] = r
+
+    # Check F2 priority==1
+    f2 = lower_map.get("f2")
+    if f2 and isinstance(f2.get("priority"), int) and f2["priority"] == 1:
+        points += maxp * 0.5
+        reasons.append("F2 ranked priority 1 (correct).")
+    else:
+        reasons.append("F2 not ranked priority 1 or missing. Partial/no credit.")
+
+    # Check F5 priority==2 (or 1 acceptable)
+    f5 = lower_map.get("f5")
+    if f5 and isinstance(f5.get("priority"), int) and f5["priority"] in (1,2):
+        points += maxp * 0.35
+        reasons.append("F5 ranked high (1 or 2) (correct).")
+    else:
+        reasons.append("F5 not ranked high (1/2) or missing. Partial/no credit.")
+
+    # Check presence of rationale for top items (ensure short rationales present)
+    top_rationales = 0
+    for key in ("f2","f5","f1","f6"):
+        r = lower_map.get(key)
+        if r and isinstance(r.get("rationale",""), str) and len(r.get("rationale","").strip()) > 10:
+            top_rationales += 1
+    if top_rationales >= 2:
+        points += maxp * 0.15
+        reasons.append("Concise rationales present for top items.")
+    else:
+        reasons.append("Rationales for top items missing or too short.")
+
+    points = max(0.0, min(points, maxp))
+    return round(points,2), reasons
+
+def grade_contingency_options(candidate, answer_key):
+    maxp = WEIGHTS["contingency_options"]
+    reasons = []
+    points = 0.0
+
+    options = candidate.get("contingency_options", [])
+    if not isinstance(options, list) or len(options) != 2:
+        reasons.append(f"contingency_options must be an array of exactly two objects. Found: {len(options) if isinstance(options, list) else 'invalid'}.")
+        return 0.0, reasons
+
+    valid_count = 0
+    for opt in options:
+        if all(isinstance(opt.get(k,""), str) and opt.get(k,"").strip() for k in ("description","expected_quality_impact","rationale")):
+            valid_count += 1
+        else:
+            reasons.append(f"Contingency option {opt.get('option_id','?')} missing one of description/expected_quality_impact/rationale or fields blank.")
+
+    if valid_count == 2:
+        points = maxp
+        reasons.append("Two contingency options present with descriptions, impacts and rationales.")
+    elif valid_count == 1:
+        points = maxp * 0.6
+        reasons.append("One contingency option fully specified, partial credit.")
+    else:
+        reasons.append("Contingency options not properly specified.")
+
+    return round(points,2), reasons
+
+def grade_entry_exit_criteria(candidate, answer_key):
+    maxp = WEIGHTS["entry_exit_criteria"]
+    reasons = []
+    points = 0.0
+
+    eec = candidate.get("entry_exit_criteria", {})
+    required_phases = ["test_design","system_testing","uat_testing","regression","release"]
+    missing = []
+    valid_count = 0
+    exit_quality_ok = False
+    for phase in required_phases:
+        phase_obj = eec.get(phase)
+        if not phase_obj or not isinstance(phase_obj, dict):
+            missing.append(phase)
+            continue
+        entry = phase_obj.get("entry", [])
+        exit = phase_obj.get("exit", [])
+        if not entry or not isinstance(entry, list) or not exit or not isinstance(exit, list):
+            reasons.append(f"Phase {phase} has empty or invalid entry/exit arrays.")
+        else:
+            valid_count += 1
+            # check for presence of "No open critical" or similar in exits for major phases
+            exit_text = " ".join(exit).lower()
+            if "no open critical" in exit_text or "no open critical defects" in exit_text or "no open critical/major" in exit_text or "no open critical or major" in exit_text:
+                exit_quality_ok = True
+
+    if missing:
+        reasons.append(f"Missing phases in entry_exit_criteria: {missing}")
+
+    # Scoring: full credit if all phases present and exit contains concrete quality gate indicator
+    if len(missing) == 0 and valid_count == len(required_phases):
+        points += maxp * 0.7
+        reasons.append("All required phases present.")
+        if exit_quality_ok:
+            points += maxp * 0.3
+            reasons.append("Exit criteria include measurable quality gate (e.g., 'No open critical defects').")
+        else:
+            reasons.append("Exit criteria lack explicit measurable quality gate (e.g., 'No open critical defects'). Partial credit.")
+    else:
+        # partial
+        points += maxp * (valid_count / len(required_phases)) * 0.7
+        if exit_quality_ok:
+            points += maxp * 0.15
+        reasons.append("Partial credit based on phases provided and exit criteria presence.")
+
+    points = max(0.0, min(points, maxp))
+    return round(points,2), reasons
+
+def grade_strategy_summary(candidate, answer_key):
+    maxp = WEIGHTS["strategy_summary"]
+    reasons = []
+    points = 0.0
+
+    summary = candidate.get("strategy_summary", "")
+    if not isinstance(summary, str) or not summary.strip():
+        reasons.append("strategy_summary missing or empty.")
+        return 0.0, reasons
+
+    text = summary.lower()
+    # Must include release day communication plan: who and when
+    # We'll check presence of "alice" or "bob" AND "product" or "product owner" or "po" and presence of a date/time or 'on 2025-11-03' or 'by' together
+    has_alice_bob = ("alice" in text) or ("bob" in text)
+    has_stakeholder = ("product owner" in text) or ("product" in text) or ("dev lead" in text) or ("po" in text)
+    has_when = ("2025-11-03" in text) or ("on 2025-11-03" in text) or ("release day" in text) or ("10:") in text or ("by " in text)
+
+    if has_alice_bob and has_stakeholder and has_when:
+        points = maxp
+        reasons.append("Strategy summary includes release-day communication plan naming QA and stakeholders and timing -> full credit.")
+    else:
+        reasons.append("Strategy summary missing some communication plan elements (must name QA (Alice/Bob), stakeholders (Product Owner/Dev Lead) and timing).")
+        # partial credit based on coverage
+        score = 0.0
+        if has_alice_bob:
+            score += 0.4
+            reasons.append("Strategy names QA resource(s).")
+        if has_stakeholder:
+            score += 0.35
+            reasons.append("Strategy mentions stakeholders.")
+        if has_when:
+            score += 0.25
+            reasons.append("Strategy includes timing/reference to release day.")
+        points = maxp * score
+
+    return round(points,2), reasons
+
+# ---------- Main evaluation orchestration ----------
+def evaluate(candidate_path, answerkey_path):
+    results = {
+        "scores": {},
+        "explanations": {},
+        "total_points": 0.0,
+        "max_points": TOTAL_POINTS,
+        "percentage": 0.0,
+        "overall_score": 0.0,
+    }
+
+    # Load files
+    try:
+        candidate = load_json(candidate_path)
+    except Exception as e:
+        results["explanations"]["fatal"] = [f"Failed to load candidate submission JSON: {e}"]
+        save_json("test_results.json", results)
+        print("Wrote test_results.json with error info.")
+        return
+
+    try:
+        answer_key = load_json(answerkey_path)
+    except Exception as e:
+        results["explanations"]["fatal"] = [f"Failed to load answer key JSON: {e}"]
+        save_json("test_results.json", results)
+        print("Wrote test_results.json with error info.")
+        return
+
+    # Basic schema presence checks
+    required_top_keys = ["submission_metadata","assumptions","resources","schedule","test_scope","estimates","risk_prioritisation","contingency_options","entry_exit_criteria","strategy_summary"]
+    missing_keys = [k for k in required_top_keys if k not in candidate]
+    if missing_keys:
+        results["explanations"]["fatal"] = [f"Candidate submission missing top-level keys: {missing_keys}"]
+        save_json("test_results.json", results)
+        print("Wrote test_results.json with error info.")
+        return
+
+    # Grade each section
+    s_assumptions, e_assumptions = grade_assumptions(candidate, answer_key)
+    results["scores"]["assumptions"] = s_assumptions
+    results["explanations"]["assumptions"] = e_assumptions
+
+    s_schedule, e_schedule = grade_schedule(candidate, answer_key)
+    results["scores"]["schedule"] = s_schedule
+    results["explanations"]["schedule"] = e_schedule
+
+    s_estimates, e_estimates = grade_estimates(candidate, answer_key)
+    results["scores"]["estimates"] = s_estimates
+    results["explanations"]["estimates"] = e_estimates
+
+    s_risk, e_risk = grade_risk_prioritisation(candidate, answer_key)
+    results["scores"]["risk_prioritisation"] = s_risk
+    results["explanations"]["risk_prioritisation"] = e_risk
+
+    s_cont, e_cont = grade_contingency_options(candidate, answer_key)
+    results["scores"]["contingency_options"] = s_cont
+    results["explanations"]["contingency_options"] = e_cont
+
+    s_eec, e_eec = grade_entry_exit_criteria(candidate, answer_key)
+    results["scores"]["entry_exit_criteria"] = s_eec
+    results["explanations"]["entry_exit_criteria"] = e_eec
+
+    s_strategy, e_strategy = grade_strategy_summary(candidate, answer_key)
+    results["scores"]["strategy_summary"] = s_strategy
+    results["explanations"]["strategy_summary"] = e_strategy
+
+    total = sum(results["scores"].values())
+    results["total_points"] = round(total, 2)
+    results["percentage"] = round((total / TOTAL_POINTS) * 100, 2)
+    results["overall_score"] = results["percentage"]
+
+    # Add simple pass/fail suggestion
+    results["pass_recommendation"] = "PASS" if results["percentage"] >= 80.0 else "FAIL"
+    # Provide some quick qualitative notes
+    qual_notes = []
+    if results["scores"]["schedule"] < WEIGHTS["schedule"] * 0.6:
+        qual_notes.append("Schedule score low: check dates vs environment windows, public holiday handling, durations or resource allocation.")
+    if results["scores"]["estimates"] < WEIGHTS["estimates"] * 0.6:
+        qual_notes.append("Estimates appear inconsistent with capacity or missing.")
+    if results["scores"]["assumptions"] < WEIGHTS["assumptions"]:
+        qual_notes.append("Assumptions incomplete: include Charlie/automation and defect turnaround assumptions.")
+    results["qualitative_notes"] = qual_notes
+
+    # Save results
+    save_json("test_results.json", results)
+    print("Evaluation complete. Results saved to test_results.json.")
+
+# ---------- Entrypoint ----------
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        sys.exit(1)
+    cand_path = sys.argv[1]
+    key_path = sys.argv[2]
+
+    if not os.path.exists(cand_path):
+        print(f"Candidate submission file not found: {cand_path}")
+        sys.exit(1)
+    if not os.path.exists(key_path):
+        print(f"Answer key file not found: {key_path}")
+        sys.exit(1)
+
+    evaluate(cand_path, key_path)
+```

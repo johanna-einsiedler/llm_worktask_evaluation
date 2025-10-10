@@ -1,0 +1,107 @@
+{
+  "categories": {
+    "correctness": {
+      "earned": 50.0,
+      "max": 50.0,
+      "notes": [
+        "Candidate tests passed: 4 >= expected 4. Full correctness credit."
+      ]
+    },
+    "reproducibility": {
+      "earned": 15.0,
+      "max": 15.0,
+      "notes": [
+        "how_to_reproduce provided.",
+        "1 new test(s) provided.",
+        "Files changed/unified diffs provided for T1, T2, and T3."
+      ]
+    },
+    "performance": {
+      "earned": 15.0,
+      "max": 15.0,
+      "notes": [
+        "Candidate avg_before=208.88 ms, avg_after=22.06 ms, ratio=9.47x.",
+        "Performance improvement meets or exceeds 2x target. Full credit."
+      ]
+    },
+    "code_quality": {
+      "earned": 10.0,
+      "max": 10.0,
+      "notes": [
+        "Files changed (unique): ['code/deduper.py', 'code/main.py', 'tests/test_since_date.py']",
+        "Changes limited to expected files; awarding full code-quality credit."
+      ]
+    },
+    "explanation": {
+      "earned": 10.0,
+      "max": 10.0,
+      "notes": [
+        "final_notes provided.",
+        "5/5 tasks include short_summary; awarding 6.0 points of 6 possible."
+      ]
+    }
+  },
+  "deductions": [],
+  "total_points": 100.0,
+  "max_points": 100.0,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "notes": [
+    "Candidate PASS (score 100.0% >= threshold 80.0%)."
+  ],
+  "task_statuses": {
+    "T0": {
+      "present": true,
+      "status_field": "done",
+      "minutes_spent": 12
+    },
+    "T1": {
+      "present": true,
+      "status_field": "done",
+      "minutes_spent": 30
+    },
+    "T2": {
+      "present": true,
+      "status_field": "done",
+      "minutes_spent": 20
+    },
+    "T3": {
+      "present": true,
+      "status_field": "done",
+      "minutes_spent": 16
+    },
+    "Finalize": {
+      "present": true,
+      "status_field": "done",
+      "minutes_spent": 12
+    }
+  },
+  "raw_candidate_summary": {
+    "candidate_name": "Model Candidate",
+    "candidate_email": "candidate@example.com",
+    "candidate_passed_tests_detected": 4,
+    "expected_passed_tests": 4,
+    "candidate_benchmark": {
+      "before": [
+        210.12,
+        205.43,
+        212.07,
+        208.91,
+        207.88
+      ],
+      "after": [
+        22.1,
+        21.9,
+        22.45,
+        21.85,
+        22.0
+      ],
+      "command": "python3 bench/benchmark.py"
+    },
+    "changed_files": [
+      "code/deduper.py",
+      "code/main.py",
+      "tests/test_since_date.py"
+    ]
+  }
+}

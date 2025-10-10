@@ -1,0 +1,664 @@
+```json
+{
+  "submission_metadata": {
+    "candidate_name": "Answer Key (Examiner)",
+    "candidate_email": "examiner@example.com",
+    "time_started": "2025-10-21T09:00",
+    "time_finished": "2025-10-21T10:30",
+    "time_taken_minutes": 90
+  },
+  "assumptions": [
+    "Charlie (Automation Engineer) at 50% availability = 4 productive hours per working day.",
+    "The '8 full working days' automation_setup to reach 40% automation would require 8 * 8 = 64 hours; at Charlie's 50% availability this would take 16 working days and is not practical in the available window, so only a targeted 16-hour automation_setup is planned (to stabilize critical regression for F2 and F5).",
+    "Defect turnaround time for test-identified defects is assumed to be 2 working days for non-critical fixes; critical defects will be triaged and fixed within 1 working day where possible.",
+    "Security vulnerability scan must be executed in Test Environment A and completed before UAT start (i.e., on or before 2025-10-26).",
+    "Test data preparation requires 2 working days and is a shared activity between Alice and Bob starting immediately after code freeze.",
+    "Weekends (Sat/Sun) and public holiday 2025-10-23 are non-working and excluded from durations and scheduling."
+  ],
+  "resources": [
+    {
+      "name": "Alice",
+      "role": "Tester",
+      "availability_percent": 100
+    },
+    {
+      "name": "Bob",
+      "role": "Tester",
+      "availability_percent": 100
+    },
+    {
+      "name": "Charlie",
+      "role": "Automation Engineer",
+      "availability_percent": 50
+    }
+  ],
+  "schedule": [
+    {
+      "id": 1,
+      "name": "Test design F2 (Payments)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-24",
+      "duration_days": 3,
+      "dependencies": [],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Test design F5 (Third-party API integration)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-24",
+      "duration_days": 3,
+      "dependencies": [],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Test design F3 (Search & filtering)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-22",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Test design F4 (Reporting dashboard)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-22",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Test design F6 (Performance improvements)",
+      "start_date": "2025-10-22",
+      "end_date": "2025-10-24",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Test design F1 (User login & sessions)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-21",
+      "duration_days": 1,
+      "dependencies": [],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Test data preparation (shared)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-22",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Automation setup (targeted, 16h)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-27",
+      "duration_days": 4,
+      "dependencies": [],
+      "assigned": [
+        "Charlie"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Security vulnerability scan (Test Env A)",
+      "start_date": "2025-10-24",
+      "end_date": "2025-10-24",
+      "duration_days": 1,
+      "dependencies": [],
+      "assigned": [
+        "Charlie",
+        "Alice"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "System testing F2 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-30",
+      "duration_days": 4,
+      "dependencies": [
+        1,
+        7
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "System testing F5 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-30",
+      "duration_days": 4,
+      "dependencies": [
+        2,
+        7
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "System testing F3 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-28",
+      "duration_days": 2,
+      "dependencies": [
+        3,
+        7
+      ],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "System testing F4 (Test Env A)",
+      "start_date": "2025-10-29",
+      "end_date": "2025-10-30",
+      "duration_days": 2,
+      "dependencies": [
+        4,
+        7
+      ],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "System testing F6 (Test Env A)",
+      "start_date": "2025-10-29",
+      "end_date": "2025-10-30",
+      "duration_days": 2,
+      "dependencies": [
+        5,
+        7
+      ],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "System testing F1 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-27",
+      "duration_days": 1,
+      "dependencies": [
+        6,
+        7
+      ],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "UAT (Acceptance) F2",
+      "start_date": "2025-10-30",
+      "end_date": "2025-10-31",
+      "duration_days": 2,
+      "dependencies": [
+        10,
+        9
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "UAT (Acceptance) F5",
+      "start_date": "2025-10-30",
+      "end_date": "2025-10-31",
+      "duration_days": 2,
+      "dependencies": [
+        11,
+        9
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "UAT (Acceptance) F3/F4/F6 (grouped)",
+      "start_date": "2025-10-30",
+      "end_date": "2025-10-31",
+      "duration_days": 2,
+      "dependencies": [
+        12,
+        13,
+        14,
+        9
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Final regression run (UAT)",
+      "start_date": "2025-10-31",
+      "end_date": "2025-10-31",
+      "duration_days": 1,
+      "dependencies": [
+        16,
+        17,
+        18,
+        8
+      ],
+      "assigned": [
+        "Alice",
+        "Bob",
+        "Charlie"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Performance smoke (final regression)",
+      "start_date": "2025-10-31",
+      "end_date": "2025-10-31",
+      "duration_days": 1,
+      "dependencies": [
+        19
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "Verify fixes (QA verification of dev fixes)",
+      "start_date": "2025-10-31",
+      "end_date": "2025-11-03",
+      "duration_days": 2,
+      "dependencies": [
+        19
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Release readiness & communication",
+      "start_date": "2025-11-03",
+      "end_date": "2025-11-03",
+      "duration_days": 1,
+      "dependencies": [
+        21
+      ],
+      "assigned": [
+        "Alice",
+        "Bob",
+        "Charlie"
+      ]
+    }
+  ],
+  "test_scope": [
+    {
+      "feature_id": "F1",
+      "name": "User login & sessions",
+      "complexity": "L",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 3
+    },
+    {
+      "feature_id": "F2",
+      "name": "Payments",
+      "complexity": "H",
+      "required_test_types": [
+        "unit",
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory",
+        "security"
+      ],
+      "priority": 1
+    },
+    {
+      "feature_id": "F3",
+      "name": "Search & filtering",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 4
+    },
+    {
+      "feature_id": "F4",
+      "name": "Reporting dashboard",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 5
+    },
+    {
+      "feature_id": "F5",
+      "name": "Third-party API integration",
+      "complexity": "H",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory",
+        "security"
+      ],
+      "priority": 2
+    },
+    {
+      "feature_id": "F6",
+      "name": "Performance improvements",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "perf",
+        "exploratory"
+      ],
+      "priority": 3
+    }
+  ],
+  "estimates": [
+    {
+      "feature_id": "F2",
+      "activity": "test_design",
+      "estimated_hours": 24
+    },
+    {
+      "feature_id": "F2",
+      "activity": "test_execution",
+      "estimated_hours": 32
+    },
+    {
+      "feature_id": "F2",
+      "activity": "automation_setup",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F2",
+      "activity": "regression",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F2",
+      "activity": "exploratory",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F5",
+      "activity": "test_design",
+      "estimated_hours": 24
+    },
+    {
+      "feature_id": "F5",
+      "activity": "test_execution",
+      "estimated_hours": 32
+    },
+    {
+      "feature_id": "F5",
+      "activity": "automation_setup",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F5",
+      "activity": "regression",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F5",
+      "activity": "exploratory",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F3",
+      "activity": "test_design",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F3",
+      "activity": "test_execution",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F3",
+      "activity": "regression",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F3",
+      "activity": "exploratory",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F4",
+      "activity": "test_design",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F4",
+      "activity": "test_execution",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F4",
+      "activity": "regression",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F4",
+      "activity": "exploratory",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F6",
+      "activity": "test_design",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F6",
+      "activity": "test_execution",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F6",
+      "activity": "regression",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F6",
+      "activity": "exploratory",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F1",
+      "activity": "test_design",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F1",
+      "activity": "test_execution",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F1",
+      "activity": "regression",
+      "estimated_hours": 2
+    },
+    {
+      "feature_id": "F1",
+      "activity": "exploratory",
+      "estimated_hours": 2
+    }
+  ],
+  "risk_prioritisation": [
+    {
+      "feature_id_or_risk": "F2",
+      "priority": 1,
+      "rationale": "Payments are business-critical and complex; failures block revenue and require thorough testing including security and regression."
+    },
+    {
+      "feature_id_or_risk": "F5",
+      "priority": 2,
+      "rationale": "Third-party API instability is explicitly called out and can cause intermittent failures; prioritise integration and resiliency tests."
+    },
+    {
+      "feature_id_or_risk": "F1",
+      "priority": 3,
+      "rationale": "Login is high-impact for user access; lower complexity but critical for all flows, so validate early."
+    },
+    {
+      "feature_id_or_risk": "F6",
+      "priority": 3,
+      "rationale": "Performance improvements affect non-functional SLAs; include perf smoke and regression to ensure no regressions."
+    },
+    {
+      "feature_id_or_risk": "F3",
+      "priority": 4,
+      "rationale": "Search & filtering affects UX but is medium complexity; regressions less likely to block release."
+    },
+    {
+      "feature_id_or_risk": "F4",
+      "priority": 5,
+      "rationale": "Reporting is medium complexity but lower priority for immediate release compared to payments and integration risks."
+    },
+    {
+      "feature_id_or_risk": "Third-party API instability",
+      "priority": 1,
+      "rationale": "Called out in brief; could cause payment failures close to release—requires extensive mocking, contract tests and contingency."
+    }
+  ],
+  "contingency_options": [
+    {
+      "option_id": "C1",
+      "description": "Reduce full regression scope: run critical-path regression only (covering F1, F2, F5 and core checkout flows) and defer low-priority regression for F4 and F3 to a post-release patch.",
+      "expected_quality_impact": "Higher risk of undiscovered non-critical defects in reporting and search, but core payment and login flows remain covered to protect revenue.",
+      "rationale": "Given tight windows and limited tester hours, prioritising critical flows preserves release safety while allowing delivery on date."
+    },
+    {
+      "option_id": "C2",
+      "description": "Defer automation_setup to post-release (do only minimal targeted automation now); reassign Charlie's available time pre-release to security scan and test support.",
+      "expected_quality_impact": "Regression automation coverage remains at ~20% pre-release (no increase to 40%). More manual testing required, slightly increasing execution effort but avoids blocking schedule.",
+      "rationale": "Full 8-day automation_setup is impractical within the window at Charlie's 50% availability; delaying automation maintains testing throughput."
+    }
+  ],
+  "entry_exit_criteria": {
+    "test_design": {
+      "entry": [
+        "Code freeze completed (after 2025-10-20)",
+        "Requirements/specs for feature exist",
+        "Test data preparation task started or planned"
+      ],
+      "exit": [
+        "Test cases for feature written and reviewed",
+        "Traceability to requirements confirmed",
+        "Test data identified and allocated"
+      ]
+    },
+    "system_testing": {
+      "entry": [
+        "Test design for the feature completed and reviewed",
+        "Test data available",
+        "Test Environment A available and stable"
+      ],
+      "exit": [
+        "All critical and major defects from system tests fixed or triaged with timelines",
+        "No open critical defects",
+        "Regression test cases for changed areas produced"
+      ]
+    },
+    "uat_testing": {
+      "entry": [
+        "System testing for relevant features completed",
+        "Security scan in Test Env A completed with no blocking findings",
+        "UAT environment available (from 2025-10-27)"
+      ],
+      "exit": [
+        "Acceptance criteria for priority features met",
+        "No open critical or major defects (or fixed before release)",
+        "Stakeholder (PO) sign-off for deferred minor defects"
+      ]
+    },
+    "regression": {
+      "entry": [
+        "UAT acceptance for core flows completed",
+        "Automation smoke scripts (targeted) available where applicable",
+        "Final regression environment (UAT) available"
+      ],
+      "exit": [
+        "Regression pass rate >= 90% for critical tests OR all remaining failures are minor with sign-off",
+        "No open critical defects",
+        "Performance smoke results acceptable"
+      ]
+    },
+    "release": {
+      "entry": [
+        "Code freeze respected",
+        "All critical/major defects resolved (or explicit mitigation + sign-off)",
+        "Release readiness checklist completed"
+      ],
+      "exit": [
+        "Deployment to production completed",
+        "Post-deploy smoke tests passed",
+        "Key stakeholders notified (QA: Alice/Bob, Dev lead, Product Owner) and acceptance recorded"
+      ]
+    }
+  },
+  "strategy_summary": "Strategy: Execute targeted, risk-based testing to meet the fixed release date 2025-11-03. Prioritise Payments (F2) and Third-party API (F5) system and acceptance tests, perform test design immediately post-code-freeze (2025-10-21) and prepare test data concurrently. Use Test Environment A (2025-10-21—10-30) for system/integration and the security scan (scheduled 2025-10-24). Run UAT in the UAT window (2025-10-30—10-31) with a final regression and performance smoke on 2025-10-31. Automation: do a targeted 16-hour automation setup by Charlie to cover critical regression areas for F2 and F5; defer full 8-day automation_setup required to reach 40% until after release (see contingency C2). Contingency: if schedule becomes tighter, drop non-critical regression (C1) and defer F4/F3 deep regression post-release. Communication plan (release day): QA (Alice, Bob) will confirm final regression and performance smoke results by 10:30 on 2025-11-03; QA notifies Dev Lead and Product Owner immediately if any critical issues are found. Once post-deploy smoke passes, QA will confirm release complete to Product Owner and stakeholders by 12:00 on 2025-11-03.",
+  "optional_attachments": "EXPLANATION OF ANSWER KEY (field-by-field reasoning and derivation):\n\nsubmission_metadata:\n- Candidate/time fields are filled with a deterministic marker. time_taken_minutes=90 matches exam time-limit; this is illustrative for the answer key.\n\nassumptions:\n- Included assumptions that the candidate should make explicitly (Charlie 50% mapping to 4 hours/day, impracticality of full 8-day automation given 50% availability, defect turnaround, security scan constraints, test data prep duration). These are required because the brief is ambiguous about how to interpret '8 full working days' for a 50% resource and turnaround SLAs.\n\nresources:\n- Exactly the three resources from the brief with their availability_percent values (100, 100, 50). This is required by the schema and exam instructions.\n\nschedule (how derived):\n- Primary constraints used: code freeze 2025-10-20, Test Env A available 2025-10-21—10-30, UAT available 2025-10-27—11-01 (practical UAT days are 2025-10-27—10-31 as weekends are excluded), public holiday 2025-10-23 non-working.\n- Test design tasks start immediately after code freeze (2025-10-21). Durations are converted: 1 working day = 8 hours. Where a task spans the public holiday, the holiday is excluded from duration counts (e.g., a 3-day task starting 2025-10-21 ends 2025-10-24 because 10-23 is non-working).\n- Automation setup: chosen as a targeted 16-hour effort for critical regression (8h for F2 and 8h for F5). At Charlie's 50% availability (4h/day), this requires 4 working days; scheduled across 2025-10-21,22,24,27 (start 10-21 end 10-27 duration_days=4). This preserves Charlie's availability accounting.\n- Security scan scheduled on 2025-10-24 in Test Environment A so results are ready before UAT starts on 2025-10-27.\n- System testing placed inside Test Env A window and after test design & test data prep.\n- UAT scheduled 2025-10-30—10-31 (UAT window) with dependencies on system tests and security scan.\n- Final regression and perf smoke scheduled for 2025-10-31; verification of fixes allowed on 2025-10-31 and 2025-11-03 (weekend days excluded); verify_fixes uses two working days (10-31 and 11-03). Release readiness and communication on 2025-11-03.\n- Dependencies are feature-specific: system testing depends on test design and test data; UAT depends on system testing and security scan.\n\ntest_scope:\n- Feature list uses exact IDs and names from the brief. Complexity codes (L/M/H) follow brief. Required test types include the necessary types per feature (security included for F2/F5; perf included for F6). Priorities assigned based on risk and business impact: F2 (Payments)=1, F5 API=2, F1 login and F6 perf=3, F3=4, F4=5.\n\nestimates (how hours were computed):\n- test_design hours = duration_days * 8 hours (e.g., F2 design 3 days -> 24 hours).\n- test_execution hours = system test duration_days * 8 hours (counts total QA effort across testers).\n- automation_setup = targeted 16 hours split 8/8 between F2 and F5 to produce critical regression scripts. At Charlie's 50% availability (4h/day) this requires 4 working days in schedule which matches task id 8 duration_days=4.\n- regression and exploratory estimated modest hours consistent with final regression window (final regression is 1 working day; regression hours reflect focused, risk-based regression rather than exhaustive runs).\n- Note: Security scan is a required activity but the schema restricts estimate activity names; testers should account security scan time inside test_execution estimates (practically the security scan is scheduled as task id 9 on 2025-10-24). The schedule includes it explicitly.\n\nrisk_prioritisation:\n- F2 and F5 are top priorities because of business impact and explicit instability risk. F1 and F6 are next as they affect access and performance. F3 and F4 lower priority. Also an explicit \"Third-party API instability\" risk entry is included with highest priority.\n\ncontingency_options (why these two):\n- C1 (reduce regression scope) is the classic time-boxing option to protect core functionality when time is tight—keeps payments and login covered while deferring lower-priority regression.\n- C2 (defer automation_setup) recognises the impracticality of full automation in-window given Charlie's 50% availability; this frees Charlie to support security scan and test execution pre-release.\n\nentry_exit_criteria:\n- Concrete, measurable conditions were provided (e.g., 'No open critical defects', 'Regression pass >= 90%') as required by the rubric. These map to phases used in the schedule.\n\nstrategy_summary:\n- Concise (within 500 words) summary tying schedule to risk and priorities and including a one-paragraph release-day communication plan specifying QA (Alice/Bob) and stakeholders (Dev Lead, Product Owner). The summary references the automation decision and contingencies.\n\noptional_attachments:\n- This long text block explains how each field was derived (this section contains the examiner's explanation and the passing criteria below). It has been used because the exam instruction required an explanation for each answer and the submission must remain a single JSON file with the original schema.\n\nPASSING CRITERIA (scoring guidance for examiner):\n- Total score = 100. Passing threshold for the basic exam: >= 80 points.\n- Suggested itemized scoring (aligned to exam rubric):\n  1) Assumptions (5 pts): full marks (5) if candidate lists >=3 relevant assumptions including how they interpret Charlie's 50% availability and defect turnaround.\n  2) Schedule realism & completeness (30 pts): 20 pts for feasible schedule respecting code freeze, env windows and holiday; 10 pts for milestones/dependencies. Deduct if dates violate windows or durations don't match working-day counts.\n  3) Estimates (15 pts): 10 pts for reasonable per-feature estimates consistent with schedule durations; 5 pts for totals matching resource capacity (no obvious over-allocation). Large inconsistent numbers should be penalized.\n  4) Risk-based prioritisation (15 pts): 10 pts for clear priorities and concise rationales for top items; 5 pts for correctly identifying highest risks (F2/F5).\n  5) Contingency options (10 pts): 7 pts for two practical options; 3 pts for good rationale/stakeholder considerations.\n  6) Entry/Exit criteria (10 pts): 7 pts for concrete phase criteria; 3 pts for implementation notes (who signs off, measurable thresholds).\n  7) Strategy summary & communication (10 pts): 6 pts for concise, linked strategy; 4 pts for release-day communication plan naming roles/names and triggers.\n\nSPECIAL RULES FOR PARTIAL CREDIT / AUTOMATION INTERPRETATION:\n- If a candidate interprets '8 full working days' automation as 8 calendar working days rather than accounting for Charlie's 50% availability, accept it only if they explicitly state the assumption and adjust schedule/availability accordingly. If they assume 8 full working days of Charlie time without adjusting for 50% availability, deduct schedule/estimates points.\n- If schedule slightly exceeds available windows but a clear contingency and stakeholder communication is provided, award partial credit for reasoning.\n- Automatic major deductions (potential fail) if schedule ignores fixed constraints (code freeze, env windows, or public holiday), or if there is no contingency plan when schedule is tight.\n\nEVALUATOR CHECKLIST (quick):\n- JSON valid, keys match schema exactly.\n- Assumptions present and include automation/Carlie availability and defect turnaround.\n- Schedule respects: code freeze 2025-10-20, Test Env A 2025-10-21—10-30, UAT 2025-10-27—10-31 (working days), public holiday 2025-10-23 excluded.\n- Resource assignments use only Alice/Bob/Charlie and respect Charlie 50% where automation_setup is scheduled as a dedicated block.\n- Estimates consistent with schedule durations (1 day = 8 hours) and not hugely over-allocated across resources.\n- Risk prioritisation and contingency options are present and practical.\n- Entry/exit criteria are concrete and measurable.\n\nEND OF EXPLANATION AND PASSING CRITERIA."
+}
+```

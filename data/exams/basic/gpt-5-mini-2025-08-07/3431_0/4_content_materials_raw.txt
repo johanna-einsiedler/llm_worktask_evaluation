@@ -1,0 +1,314 @@
+<MATERIALS_FOR_CANDIDATE>
+Repository layout (all files listed below; create these exact files in the repo):
+
+README.txt
+---
+Task list and commands.
+
+Overview:
+This repository contains a small Python 3 utility that parses order lines and reports top products by total amount. You will perform three tasks in order:
+
+- Task A — Bug Fix: run tests, reproduce the failing test, fix the bug so tests pass.
+- Task B — Environment Adaptation: adapt the CLI so it can read input from stdin when requested.
+- Task C — Performance: run the benchmark, implement one small optimization to reduce runtime, and report before/after timings.
+
+Commands to run (run these before modifying any files and capture outputs exactly):
+- python3 run_tests.py
+- python3 bench.py
+- python3 src/app.py data/sample_orders.txt
+
+Task B (environment adaptation) requirement:
+- Modify src/app.py so that when invoked with the filename '-' or with a '--stdin' flag, it reads input from standard input (sys.stdin) instead of from a file path. Example invocation after adaptation:
+  - cat data/sample_orders.txt | python3 src/app.py - 
+  - cat data/sample_orders.txt | python3 src/app.py --stdin
+
+Notes:
+- Use only the provided files and Python 3 standard library.
+- Do not change test expectations in tests/test_processor.py (fix the code, not the tests).
+- Record exact console outputs pre- and post-change in test_submission.json.
+---
+
+data/sample_orders.txt
+---
+1,P01,10.0
+2,P03,30.0
+3,P02,20.0
+4,P03,5.0
+5,P01,2.5
+6,P04,15.0
+---
+
+src/processor.py
+---
+# src/processor.py
+# Small order-processing helper functions.
+
+def parse_orders(text):
+    """
+    Parse order lines from a text string.
+    Each line: order_id,product_code,amount
+    Returns a list of dicts: {'id': str, 'product': str, 'amount': float}
+    """
+    orders = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(',')
+        if len(parts) < 3:
+            continue
+        oid = parts[0].strip()
+        product = parts[1].strip()
+        try:
+            amount = float(parts[2].strip())
+        except ValueError:
+            # ignore malformed amounts
+            continue
+        orders.append({'id': oid, 'product': product, 'amount': amount})
+    return orders
+
+def compute_product_totals(orders):
+    """
+    Compute total amount per product.
+    Implementation intentionally written using repeated scans (inefficient)
+    to leave room for a measurable optimization for Task C.
+    Returns dict: {product: total_amount}
+    """
+    # collect product order in a list (preserve first-seen order)
+    products = [o['product'] for o in orders]
+    unique = []
+    for p in products:
+        if p not in unique:
+            unique.append(p)
+
+    totals = {}
+    # inefficient: for each unique product, sum by scanning orders
+    for p in unique:
+        total = 0.0
+        for o in orders:
+            if o['product'] == p:
+                total += o['amount']
+        totals[p] = total
+    return totals
+
+def top_n_products(orders, n=3):
+    """
+    Return the top N product codes by total amount as a list (product codes only).
+    NOTE: there's an intentional bug in sorting order here for Task A.
+    """
+    totals = compute_product_totals(orders)
+    # BUG: sorts ascending (smallest totals first), expected descending
+    sorted_items = sorted(totals.items(), key=lambda kv: kv[1])
+    top = [prod for prod, amt in sorted_items[:n]]
+    return top
+---
+
+src/app.py
+---
+# src/app.py
+# Command-line interface to print top products.
+
+import sys
+from processor import parse_orders, top_n_products
+
+def read_input_from_file(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+def main(argv):
+    if len(argv) < 2:
+        print("Usage: python3 src/app.py <orders_file> [top_n]")
+        print("Example: python3 src/app.py data/sample_orders.txt 3")
+        return 1
+
+    path = argv[1]
+    top_n = 3
+    if len(argv) >= 3:
+        try:
+            top_n = int(argv[2])
+        except ValueError:
+            pass
+
+    # current behavior: only reads from a file path
+    content = read_input_from_file(path)
+    orders = parse_orders(content)
+    top = top_n_products(orders, top_n)
+    for p in top:
+        print(p)
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+---
+
+tests/test_processor.py
+---
+# tests/test_processor.py
+import unittest
+from src.processor import parse_orders, compute_product_totals, top_n_products
+
+class ProcessorTests(unittest.TestCase):
+    def test_compute_product_totals(self):
+        text = "1,P01,10.0\n2,P03,30.0\n3,P02,20.0\n4,P03,5.0\n5,P01,2.5\n"
+        orders = parse_orders(text)
+        totals = compute_product_totals(orders)
+        expected = {'P01': 12.5, 'P03': 35.0, 'P02': 20.0}
+        self.assertEqual(totals, expected)
+
+    def test_top_n_products(self):
+        text = "1,P01,10.0\n2,P03,30.0\n3,P02,20.0\n4,P03,5.0\n5,P01,2.5\n"
+        orders = parse_orders(text)
+        top = top_n_products(orders, n=3)
+        # expected order: highest totals first
+        self.assertEqual(top, ['P03', 'P02', 'P01'])
+
+if __name__ == '__main__':
+    unittest.main()
+---
+
+run_tests.py
+---
+# run_tests.py
+# Simple test runner script. Run before and after edits to capture outputs.
+
+import unittest
+import sys
+
+loader = unittest.TestLoader()
+suite = loader.discover('tests')
+
+runner = unittest.TextTestRunner(verbosity=2)
+result = runner.run(suite)
+if result.wasSuccessful():
+    print("ALL TESTS PASS")
+    sys.exit(0)
+else:
+    print("SOME TESTS FAILED")
+    sys.exit(1)
+---
+
+bench.py
+---
+# bench.py
+# Deterministic benchmark that measures compute_product_totals runtime (in ms).
+# Uses a larger synthetic dataset to make the inefficient implementation measurable.
+
+import time
+from src.processor import parse_orders, compute_product_totals
+
+def make_benchmark_input(num_records=5000, num_products=500):
+    # deterministic pattern: product codes P0001..P{num_products}
+    lines = []
+    for i in range(num_records):
+        oid = str(i+1)
+        product = f"P{(i % num_products) + 1:04d}"
+        amount = ((i * 13) % 100) + 1  # deterministic numeric pattern
+        lines.append(f"{oid},{product},{amount}")
+    return "\n".join(lines) + "\n"
+
+def time_compute(text, iterations=3):
+    orders = parse_orders(text)
+    # warm-up
+    compute_product_totals(orders)
+    start = time.perf_counter()
+    for _ in range(iterations):
+        compute_product_totals(orders)
+    end = time.perf_counter()
+    total_ms = (end - start) * 1000.0
+    avg_ms = total_ms / iterations
+    return avg_ms
+
+if __name__ == "__main__":
+    text = make_benchmark_input(num_records=5000, num_products=500)
+    avg_ms = time_compute(text, iterations=3)
+    print(f"benchmark_avg_ms: {avg_ms:.3f}")
+---
+
+Notes for candidate:
+- Start by running and capturing the outputs of:
+  - python3 run_tests.py
+  - python3 bench.py
+  - python3 src/app.py data/sample_orders.txt
+- Make minimal changes to fix the failing test, adapt stdin behavior, and optimize compute_product_totals for better benchmark timing.
+- Prepare test_submission.json as specified in the exam instructions and include exact console outputs and unified diffs or updated file contents.
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How these materials were constructed and why
+
+Overall design goals
+- Small, deterministic Python 3 codebase (~200 LOC across files) with no external dependencies so candidates can run everything locally.
+- Three clear, sequential tasks:
+  - Task A (bug fix) is localized to one small faulty line in src/processor.py -> top_n_products sorting order.
+  - Task B (environment adaptation) requires a minimal CLI change in src/app.py to support reading from stdin (filename '-' or --stdin).
+  - Task C (performance) uses compute_product_totals implemented inefficiently (repeated scans) so a simple single-pass dict accumulation yields a measurable improvement on the benchmark dataset.
+
+Files and key relationships
+- src/processor.py
+  - parse_orders(text): deterministic parser used by tests, app, and benchmark.
+  - compute_product_totals(orders): intentionally inefficient (nested scans) to create room for optimization.
+  - top_n_products(orders, n): uses compute_product_totals and sorts totals. The intentional bug is sorting ascending instead of descending.
+- src/app.py
+  - Simple CLI that reads a file path and prints the top N products. Task B requires adding stdin handling here.
+- tests/test_processor.py
+  - Two unit tests:
+    - test_compute_product_totals asserts exact totals for a small inline dataset (should pass immediately).
+    - test_top_n_products asserts descending ordering of top products (this test fails before Task A is completed).
+- run_tests.py
+  - A simple wrapper that runs tests and prints PASS/FAIL, suitable for capturing pre- and post-fix outputs.
+- bench.py
+  - Generates a deterministic dataset (5,000 records, 500 unique products) such that the current O(n*m) behavior of compute_product_totals performs noticeably slower than a linear single-pass implementation. It prints an average runtime in milliseconds.
+
+Deterministic patterns and hidden relationships
+- Product code formatting is consistent:
+  - Small test dataset uses codes like P01, P02, P03 for clarity.
+  - Benchmark uses zero-padded codes P0001 .. P0500 to create many distinct products.
+- compute_product_totals is shared by both tests and the benchmark:
+  - Tests exercise correctness on small data.
+  - Benchmark exercises performance on larger data; optimizing compute_product_totals improves bench timings without changing test behavior (functional correctness remains the same).
+- The top_n_products bug is isolated to how sorted() is invoked; fixing it does not alter compute_product_totals logic, so unit tests for totals remain valid.
+
+Expected correct fixes
+- Task A expected fix:
+  - Change the sort in top_n_products to descending order (use reverse=True or sort by negative value). Minimal edit: set reverse=True in sorted(..., reverse=True) or change slicing to [-n:] reversed — but reverse=True is preferred for clarity and minimal change.
+- Task B expected adaptation:
+  - Modify src/app.py to detect path == '-' or presence of '--stdin' in argv and read from sys.stdin.read() instead of open(path).read(). Minimal changes: add a conditional before reading file; do not change tests.
+- Task C expected optimization:
+  - Replace the nested-scan accumulation in compute_product_totals with a single-pass dictionary accumulation:
+    totals = {}
+    for o in orders:
+        totals[o['product']] = totals.get(o['product'], 0.0) + o['amount']
+    return totals
+  - This reduces runtime from approximately O(n * unique_products) with multiple scans to O(n) in a single pass. On the provided benchmark (5000 records, 500 unique products), this should yield a significant measurable speedup (commonly >20% on typical machines).
+
+Common traps and candidate errors
+- Changing tests instead of fixing code. Tests should remain unchanged. Look for this during evaluation.
+- Over-broad edits (e.g., rewriting parse_orders or reformatting files) — good candidates will make minimal, well-scoped changes.
+- For Task B, forgetting to preserve existing file-reading behavior when implementing stdin support. The CLI should still accept a normal filename argument.
+- For Task C, introducing floating point inaccuracies (avoid altering numeric semantics) or returning different data shapes — maintain the same dict structure and numeric types.
+- Candidates might optimize in a way that breaks stability (different ordering of equal totals). That is acceptable if they maintain function contract (top_n_products returns any correct top N ordering based on totals) — but do not change test expectations.
+
+How these materials differentiate conceptual vs. practical skills
+- Reproducibility requirement forces the candidate to actually run run_tests.py and bench.py and paste pre-fix outputs; this proves they executed and observed the failure rather than only stating a fix.
+- Task A evaluates debugging and minimal, correct changes: the bug is small but requires the candidate to trace where ordering is determined and to run tests.
+- Task B evaluates environment adaptation skills: adding stdin handling is a common maintenance task requiring minimal but correct code changes and care for CLI behavior.
+- Task C assesses performance reasoning and measurement: candidate must run benchmark, implement a safe optimization that preserves correctness (single-pass accumulation), and report measured improvement with before/after ms numbers.
+- The materials reward minimal diffs and evidence-based changes: evaluators can apply the candidate's patch and re-run the supplied runner and bench to confirm claims.
+
+Scoring/verification notes for evaluators
+- To verify Task A: apply candidate changes, run python3 run_tests.py and confirm all tests pass.
+- To verify Task B: run both
+  - cat data/sample_orders.txt | python3 src/app.py -
+  - cat data/sample_orders.txt | python3 src/app.py --stdin
+  and confirm the printed top products are sensible (same as running with filename).
+- To verify Task C: run python3 bench.py before and after applying candidate's patch and compare the reported benchmark_avg_ms numbers to the values in test_submission.json. Expect a measurable reduction (optimistic target ~20%+).
+- Check patch size: minimal change in top_n_products (one-line change) and small controlled changes to src/app.py and src/processor.py for optimization indicate quality.
+
+Edge cases left intentionally out of scope
+- Very large file streaming or memory-limited streaming solutions are not required for the basic exam; Task B only requires stdin handling, not full streaming rework.
+- No external concurrency, database, or external I/O is involved.
+- Floating point rounding beyond sum semantics is not the focus.
+
+Conclusion
+These deterministic, compact materials provide a realistic, reproducible maintenance workload focused on debugging, adapting to a simple runtime change, and making a small measurable optimization. The three tasks are independent but sequential, allowing straightforward automated verification of candidate submissions and clear signals of practical ability.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

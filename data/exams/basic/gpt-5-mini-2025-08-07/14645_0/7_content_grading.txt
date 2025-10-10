@@ -1,0 +1,692 @@
+# task_evaluation.py
+"""
+Automated grader for the "Test planning practical — Basic level" exam.
+
+Usage:
+    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+
+Output:
+    Creates test_results.json in the same directory the script is run from.
+
+Notes:
+- Only uses Python standard library.
+- Contains heuristic checks described in the evaluator instructions.
+- Designed to be deterministic and provide clear deduction explanations.
+"""
+
+import json
+import sys
+import os
+from datetime import datetime, timedelta
+
+# Constants from the brief (used for validations)
+PUBLIC_HOLIDAY = "2025-10-23"
+CODE_FREEZE_DATE = "2025-10-20"
+TEST_ENV_A_FROM = "2025-10-21"
+TEST_ENV_A_TO = "2025-10-30"
+UAT_FROM = "2025-10-27"
+UAT_TO = "2025-11-01"
+RELEASE_DATE = "2025-11-03"
+
+# Resource names allowed
+ALLOWED_RESOURCES = {"Alice", "Bob", "Charlie"}
+
+# Scoring weights (total 100)
+WEIGHTS = {
+    "assumptions": 5,
+    "schedule": 30,
+    "estimates": 15,
+    "risk_prioritisation": 15,
+    "contingency_options": 10,
+    "entry_exit_criteria": 10,
+    "strategy_summary": 10
+}
+
+# Helper date utilities
+def parse_date(s):
+    return datetime.strptime(s, "%Y-%m-%d").date()
+
+def is_weekend(d):
+    return d.weekday() >= 5  # 5=Saturday,6=Sunday
+
+def working_days_inclusive(start_s, end_s):
+    """Count working days (Mon-Fri) inclusive between dates, excluding public holiday."""
+    start = parse_date(start_s)
+    end = parse_date(end_s)
+    if end < start:
+        return 0
+    days = 0
+    cur = start
+    holiday = parse_date(PUBLIC_HOLIDAY)
+    while cur <= end:
+        if (not is_weekend(cur)) and (cur != holiday):
+            days += 1
+        cur += timedelta(days=1)
+    return days
+
+def daterange(start_date, end_date):
+    cur = start_date
+    while cur <= end_date:
+        yield cur
+        cur += timedelta(days=1)
+
+def load_json_file(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        raise ValueError(f"Error loading JSON file '{path}': {e}")
+
+def safe_get(d, key, default=None):
+    return d.get(key, default) if isinstance(d, dict) else default
+
+# Main grading functions
+def grade_assumptions(candidate, key):
+    points_total = WEIGHTS["assumptions"]
+    comments = []
+    assumps = candidate.get("assumptions", [])
+    if not isinstance(assumps, list):
+        return 0, [f"assumptions field missing or not a list." ]
+    n = len(assumps)
+    # Heuristic: require >=3 assumptions and mention at least two key topics
+    key_topics = ["charlie", "automation", "50%", "50 percent", "environment", "env", "defect", "turnaround",
+                  "fix", "stakeholder", "sign-off", "signoff", "code freeze", "security"]
+    found_topics = set()
+    for a in assumps:
+        if not isinstance(a, str):
+            continue
+        al = a.lower()
+        for t in key_topics:
+            if t in al:
+                found_topics.add(t)
+    if n >= 3 and len(found_topics) >= 2:
+        return points_total, ["Assumptions: >=3 and includes relevant topics (automation/Charlie/env/defect/etc.)."]
+    # Partial scoring:
+    if n >= 2:
+        return int(points_total * 0.6), [f"Assumptions: {n} provided but missing some key clarifications (found topics: {sorted(list(found_topics))})."]
+    if n == 1:
+        return int(points_total * 0.2), [f"Only one assumption provided."]
+    return 0, ["No assumptions provided."]
+
+def validate_schedule_basic(candidate):
+    """
+    Validate schedule tasks for date formats, weekday/public holiday, and duration correctness.
+    Returns dict with issues list and per-task checks.
+    """
+    issues = []
+    tasks = candidate.get("schedule", [])
+    if not isinstance(tasks, list):
+        issues.append("schedule missing or not a list.")
+        return {"issues": issues, "task_map": {}}
+    task_map = {}
+    for t in tasks:
+        try:
+            tid = t["id"]
+            sd = t["start_date"]
+            ed = t["end_date"]
+            dur = t["duration_days"]
+            # parse checks
+            sd_date = parse_date(sd)
+            ed_date = parse_date(ed)
+            if ed_date < sd_date:
+                issues.append(f"Task id {tid} '{t.get('name','')}' end_date {ed} before start_date {sd}.")
+            # working days vs duration:
+            wd = working_days_inclusive(sd, ed)
+            if wd != dur:
+                issues.append(f"Task id {tid} '{t.get('name','')}' duration_days {dur} does not match working days {wd} between {sd} and {ed}.")
+            # weekend/public holiday checks for start and end
+            if is_weekend(sd_date) or is_weekend(ed_date):
+                issues.append(f"Task id {tid} '{t.get('name','')}' starts or ends on weekend ({sd} or {ed}).")
+            holiday = parse_date(PUBLIC_HOLIDAY)
+            if sd_date == holiday or ed_date == holiday:
+                issues.append(f"Task id {tid} '{t.get('name','')}' uses public holiday date {PUBLIC_HOLIDAY}.")
+            # assigned resources check
+            assigned = t.get("assigned", [])
+            if not isinstance(assigned, list) or any(not isinstance(x, str) for x in assigned):
+                issues.append(f"Task id {tid} '{t.get('name','')}' assigned field missing or invalid.")
+            else:
+                for r in assigned:
+                    if r not in ALLOWED_RESOURCES:
+                        issues.append(f"Task id {tid} '{t.get('name','')}' assigned invalid resource '{r}'.")
+            task_map[tid] = {
+                "record": t,
+                "start_date": sd_date,
+                "end_date": ed_date,
+                "duration_days": dur,
+                "assigned": assigned
+            }
+        except KeyError as e:
+            issues.append(f"Task missing required field: {e}")
+        except Exception as ex:
+            issues.append(f"Error parsing task: {ex}")
+    return {"issues": issues, "task_map": task_map}
+
+def check_dependencies(task_map):
+    issues = []
+    for tid, info in task_map.items():
+        t = info["record"]
+        deps = t.get("dependencies", [])
+        if not isinstance(deps, list):
+            issues.append(f"Task id {tid} dependencies field not a list.")
+            continue
+        for d in deps:
+            if d not in task_map:
+                issues.append(f"Task id {tid} depends on missing task id {d}.")
+                continue
+            dep_end = task_map[d]["end_date"]
+            # requirement: dependency must finish before this starts
+            if not (dep_end < info["start_date"]):
+                issues.append(f"Dependency ordering: task {tid} starts {info['start_date']} but dependency {d} ends {dep_end} (must end before start).")
+    return issues
+
+def check_resource_allocation(task_map):
+    """
+    For each date in the schedule range, compute resource assignment hours and detect over-allocation.
+    Simplifying assumptions:
+      - A task active on a day contributes 8 hours of work for that task overall per day,
+        split evenly among its assigned resources.
+      - Charlie capacity per working day = 4 hours (50%), others = 8 hours.
+    """
+    issues = []
+    if not task_map:
+        issues.append("No schedule tasks to check resource allocation.")
+        return issues
+    # determine calendar range
+    all_start = min(info["start_date"] for info in task_map.values())
+    all_end = max(info["end_date"] for info in task_map.values())
+    holiday = parse_date(PUBLIC_HOLIDAY)
+    # build per-day usage
+    # dictionary: date -> resource -> hours
+    usage = {}
+    for single in daterange(all_start, all_end):
+        if is_weekend(single) or single == holiday:
+            continue
+        usage[single] = {r: 0.0 for r in ALLOWED_RESOURCES}
+    for tid, info in task_map.items():
+        assigned = info["assigned"]
+        if not assigned:
+            continue
+        # days active
+        for d in daterange(info["start_date"], info["end_date"]):
+            if is_weekend(d) or d == holiday:
+                continue
+            # assume 8 hours/day work for the task split across assigned
+            per_resource = 8.0 / len(assigned)
+            for r in assigned:
+                # only add if r in usage dict (it is a working day)
+                if d in usage:
+                    usage[d][r] += per_resource
+    # now check per-day against capacities
+    for d, ru in sorted(usage.items()):
+        for r, hours in ru.items():
+            cap = 4.0 if r == "Charlie" else 8.0
+            # small epsilon tolerance
+            if hours - cap > 1e-6:
+                issues.append(f"Resource over-allocation: {r} has {hours:.1f}h on {d} (cap {cap}h).")
+    return issues
+
+def check_env_windows_and_milestones(task_map):
+    """
+    Check that tasks that look like system testing are within Test Env A window,
+    and UAT tasks are within UAT window. Also ensure security scan scheduled in Test Env A
+    and completed before UAT start.
+    """
+    issues = []
+    test_env_a_from = parse_date(TEST_ENV_A_FROM)
+    test_env_a_to = parse_date(TEST_ENV_A_TO)
+    uat_from = parse_date(UAT_FROM)
+    uat_to = parse_date(UAT_TO)
+    security_tasks = []
+    uat_tasks = []
+    system_tasks = []
+    for tid, info in task_map.items():
+        name = info["record"].get("name", "").lower()
+        if "security" in name:
+            security_tasks.append((tid, info))
+        if "uat" in name or "acceptance" in name:
+            uat_tasks.append((tid, info))
+        # heuristic: "system testing" or "system test" or "system" and "Test Env A" mentions
+        if "system testing" in name or "system test" in name or "test env a" in name:
+            system_tasks.append((tid, info))
+    # Check system tasks in Test Env A window
+    for tid, info in system_tasks:
+        sd = info["start_date"]
+        ed = info["end_date"]
+        if sd < test_env_a_from or ed > test_env_a_to:
+            issues.append(f"System/Test Env A task id {tid} '{info['record'].get('name','')}' outside Test Env A window ({TEST_ENV_A_FROM}..{TEST_ENV_A_TO}).")
+    # Check UAT tasks in UAT window
+    for tid, info in uat_tasks:
+        sd = info["start_date"]
+        ed = info["end_date"]
+        if sd < uat_from or ed > uat_to:
+            issues.append(f"UAT task id {tid} '{info['record'].get('name','')}' outside UAT window ({UAT_FROM}..{UAT_TO}).")
+    # Security scan must be in Test Env A and complete before earliest UAT start
+    if security_tasks:
+        for tid, info in security_tasks:
+            sd = info["start_date"]
+            ed = info["end_date"]
+            if sd < test_env_a_from or ed > test_env_a_to:
+                issues.append(f"Security task id {tid} scheduled outside Test Env A window.")
+            # earliest UAT start among uat_tasks
+            if uat_tasks:
+                earliest_uat = min(x[1]["start_date"] for x in uat_tasks)
+                if ed >= earliest_uat:
+                    issues.append(f"Security task id {tid} ends {ed} which is not before earliest UAT start {earliest_uat}.")
+    else:
+        issues.append("No security vulnerability scan task found in schedule.")
+    return issues
+
+def check_code_freeze_and_release(task_map):
+    issues = []
+    code_freeze_next_day = parse_date(CODE_FREEZE_DATE) + timedelta(days=1)
+    release_date = parse_date(RELEASE_DATE)
+    for tid, info in task_map.items():
+        sd = info["start_date"]
+        ed = info["end_date"]
+        if sd < code_freeze_next_day:
+            issues.append(f"Task id {tid} starts {sd} before code-freeze-following day {code_freeze_next_day}. Tests should not start before code freeze completion (2025-10-20).")
+        if ed > release_date:
+            issues.append(f"Task id {tid} ends {ed} after release date {release_date}.")
+    return issues
+
+def grade_schedule(candidate):
+    points_total = WEIGHTS["schedule"]
+    comments = []
+    res = validate_schedule_basic(candidate)
+    basic_issues = res["issues"]
+    task_map = res["task_map"]
+    # If schedule list is missing or invalid
+    if basic_issues and not task_map:
+        return 0, ["Schedule missing or invalid: " + "; ".join(basic_issues)]
+    # Start with full and deduct for found issues per rubric heuristics
+    score = points_total
+    deductions = []
+    # Basic issues (date/duration/weekday/invalid resource)
+    if basic_issues:
+        # weight: up to 8 pts
+        deduct = min(8, 2 * len(basic_issues))  # 2 pts per issue up to 8
+        score -= deduct
+        deductions.append(f"Basic schedule issues ({len(basic_issues)}): " + "; ".join(basic_issues))
+    # Dependencies
+    dep_issues = check_dependencies(task_map)
+    if dep_issues:
+        ded = min(6, 2 * len(dep_issues))  # up to 6 pts
+        score -= ded
+        deductions.append(f"Dependency issues ({len(dep_issues)}): " + "; ".join(dep_issues))
+    # Resource allocation
+    ra_issues = check_resource_allocation(task_map)
+    if ra_issues:
+        # over-allocation is severe: deduct up to 6 pts
+        ded = 6
+        score -= ded
+        deductions.append(f"Resource allocation issues ({len(ra_issues)}): " + "; ".join(ra_issues[:5]))
+    # Env windows and milestones
+    env_issues = check_env_windows_and_milestones(task_map)
+    if env_issues:
+        # up to 6 pts (we'll deduct 6 if issues)
+        ded = min(6, 2 * len(env_issues))
+        # But ensure we don't deduct more than remaining scheduled subscore (but we use top-level deduction)
+        # For simplicity, cap this deduction to remaining score possible (safe)
+        score -= ded
+        deductions.append(f"Environment/milestone issues ({len(env_issues)}): " + "; ".join(env_issues))
+    # Code freeze & release checks
+    cf_issues = check_code_freeze_and_release(task_map)
+    if cf_issues:
+        ded = min(4, 2 * len(cf_issues))
+        score -= ded
+        deductions.append(f"Code-freeze/release issues ({len(cf_issues)}): " + "; ".join(cf_issues))
+    # Ensure score boundaries
+    if score < 0:
+        score = 0
+    if score > points_total:
+        score = points_total
+    comments.extend(deductions if deductions else ["Schedule looks feasible and respects main constraints."])
+    return int(round(score)), comments
+
+def grade_estimates(candidate, answer_key):
+    points_total = WEIGHTS["estimates"]
+    comments = []
+    cand_est = candidate.get("estimates", [])
+    key_est = answer_key.get("estimates", [])
+    if not isinstance(cand_est, list):
+        return 0, ["estimates missing or not a list."]
+    # Build totals per feature
+    def totals(est_list):
+        d = {}
+        for e in est_list:
+            fid = safe_get(e, "feature_id")
+            h = safe_get(e, "estimated_hours")
+            if not fid or not isinstance(h, (int, float)):
+                continue
+            d[fid] = d.get(fid, 0) + h
+        return d
+    cand_tot = totals(cand_est)
+    key_tot = totals(key_est)
+    # If key has no estimates (shouldn't happen) handle
+    if not key_tot:
+        return int(points_total*0.5), ["Answer key has no estimates to compare against."]
+    # For each feature in key, compute closeness score
+    per_feature_scores = []
+    feature_comments = []
+    for fid, k_total in key_tot.items():
+        c_total = cand_tot.get(fid, None)
+        if c_total is None:
+            per_feature_scores.append(0.0)
+            feature_comments.append(f"No estimates found for feature {fid}.")
+        else:
+            if k_total == 0:
+                # if key says zero, but candidate has >0, penalize slightly
+                rel = abs(c_total - k_total)
+                score_frac = 1.0 if rel == 0 else max(0.0, 1.0 - min(1.0, rel / (max(1.0, c_total))))
+            else:
+                rel_diff = abs(c_total - k_total) / float(k_total)
+                if rel_diff <= 0.2:
+                    score_frac = 1.0
+                elif rel_diff <= 0.5:
+                    score_frac = 0.6
+                else:
+                    score_frac = 0.2
+            per_feature_scores.append(score_frac)
+            feature_comments.append(f"{fid}: key={k_total}h cand={c_total}h -> score_frac={score_frac:.2f}")
+    # average fraction -> map to 10 pts (for main estimate correctness)
+    avg_frac = sum(per_feature_scores) / len(per_feature_scores)
+    primary_points = avg_frac * 10.0  # allocate 10 points for alignment with key
+    # Now capacity check: candidate total hours vs available hours until release
+    # Calculate available working days from earliest schedule start (or code freeze next day) to RELEASE_DATE inclusive
+    # Determine known earliest start from candidate schedule if possible, else assume after code freeze next day.
+    schedule = candidate.get("schedule", [])
+    earliest_start = None
+    latest_end = None
+    try:
+        for t in schedule:
+            sd = parse_date(t["start_date"])
+            ed = parse_date(t["end_date"])
+            if earliest_start is None or sd < earliest_start:
+                earliest_start = sd
+            if latest_end is None or ed > latest_end:
+                latest_end = ed
+    except Exception:
+        earliest_start = parse_date(CODE_FREEZE_DATE) + timedelta(days=1)
+        latest_end = parse_date(RELEASE_DATE)
+    # Bound latest_end by release date
+    release_date = parse_date(RELEASE_DATE)
+    if latest_end is None or latest_end > release_date:
+        latest_end = release_date
+    if earliest_start is None or earliest_start < (parse_date(CODE_FREEZE_DATE) + timedelta(days=1)):
+        earliest_start = parse_date(CODE_FREEZE_DATE) + timedelta(days=1)
+    # Count working days between earliest_start and latest_end
+    total_working_days = 0
+    for d in daterange(earliest_start, latest_end):
+        if is_weekend(d) or d == parse_date(PUBLIC_HOLIDAY):
+            continue
+        total_working_days += 1
+    # Available hours
+    available_hours = total_working_days * (8 + 8 + 4)  # Alice(8) + Bob(8) + Charlie(4)
+    candidate_total_hours = sum(v for v in cand_tot.values())
+    if candidate_total_hours == 0:
+        capacity_points = 0
+        comments.append("Candidate provided no estimate hours.")
+    else:
+        # If candidate_total_hours <= available_hours -> full 5
+        if candidate_total_hours <= available_hours:
+            capacity_points = 5.0
+        elif candidate_total_hours <= available_hours * 1.2:
+            # small excess -> partial
+            frac = 1 - (candidate_total_hours - available_hours) / (available_hours * 0.2)
+            capacity_points = max(0.0, 5.0 * frac)
+        else:
+            capacity_points = 0.0
+        comments.append(f"Candidate total estimated hours = {candidate_total_hours}; available hours ≈ {available_hours}; capacity_points = {capacity_points:.2f}")
+    total_points = primary_points + capacity_points  # out of 15
+    # clamp
+    if total_points < 0:
+        total_points = 0
+    if total_points > points_total:
+        total_points = points_total
+    # Compose comments
+    comments.append("Per-feature estimate alignment: " + "; ".join(feature_comments[:10]))
+    return int(round(total_points)), comments
+
+def grade_risk_prioritisation(candidate, answer_key):
+    points_total = WEIGHTS["risk_prioritisation"]
+    comments = []
+    cand_risks = candidate.get("risk_prioritisation", [])
+    if not isinstance(cand_risks, list) or len(cand_risks) == 0:
+        return 0, ["No risk_prioritisation provided."]
+    # Build a map of feature -> priority and count rationales
+    prio_map = {}
+    rationale_count = 0
+    for r in cand_risks:
+        key_id = safe_get(r, "feature_id_or_risk")
+        p = safe_get(r, "priority")
+        rat = safe_get(r, "rationale", "")
+        if key_id:
+            prio_map[str(key_id)] = p
+        if isinstance(rat, str) and rat.strip():
+            rationale_count += 1
+    # Check that F2 has priority 1 (or 1-2) and F5 1-2
+    score = 0
+    # 10 pts for correct top items
+    top_items_ok = 0
+    for fid in ["F2", "F5"]:
+        p = prio_map.get(fid)
+        if isinstance(p, int) and p <= 2:
+            top_items_ok += 1
+    score += int((top_items_ok / 2.0) * 10)  # 0,5,10 mapping
+    comments.append(f"Top-risk items identified correctly: {top_items_ok}/2 (F2,F5).")
+    # 5 pts for rationale coverage: expecting at least top 5 items with short rationale
+    if rationale_count >= 5:
+        score += 5
+        comments.append("Found >=5 rationales provided.")
+    elif rationale_count >= 3:
+        score += 3
+        comments.append(f"Only {rationale_count} rationales provided; partial credit.")
+    else:
+        comments.append(f"Only {rationale_count} rationales provided; low score for rationale clarity.")
+    if score > points_total:
+        score = points_total
+    return int(score), comments
+
+def grade_contingency_options(candidate):
+    points_total = WEIGHTS["contingency_options"]
+    comments = []
+    conts = candidate.get("contingency_options", [])
+    if not isinstance(conts, list):
+        return 0, ["contingency_options missing or not a list."]
+    if len(conts) != 2:
+        # partial credit if at least one provided
+        if len(conts) == 1:
+            return int(points_total * 0.5), ["Only one contingency option provided."]
+        else:
+            return 0, [f"Expected exactly two contingency options, found {len(conts)}."]
+    # Heuristics: check each option has description & rationale, and mentions common practical options
+    score = 0
+    praises = []
+    practical_keywords = ["regress", "automation", "defer", "defer", "delay", "drop", "scope", "reduce", "post-release", "priority", "critical"]
+    ok_count = 0
+    for c in conts:
+        desc = safe_get(c, "description", "")
+        rat = safe_get(c, "rationale", "")
+        if not desc or not isinstance(desc, str) or not desc.strip():
+            comments.append("A contingency option is missing a description.")
+            continue
+        if not rat or not isinstance(rat, str) or not rat.strip():
+            comments.append("A contingency option is missing a rationale.")
+            continue
+        # check for practical keyword presence
+        ld = desc.lower() + " " + rat.lower()
+        if any(k in ld for k in practical_keywords):
+            ok_count += 1
+    if ok_count == 2:
+        score = points_total
+        praises.append("Two practical contingency options provided.")
+    elif ok_count == 1:
+        score = int(points_total * 0.6)
+        praises.append("One practical contingency option provided.")
+    else:
+        score = int(points_total * 0.3)
+        praises.append("Contingency options provided but not practical or specific.")
+    comments.extend(praises)
+    return int(score), comments
+
+def grade_entry_exit_criteria(candidate):
+    points_total = WEIGHTS["entry_exit_criteria"]
+    comments = []
+    eec = candidate.get("entry_exit_criteria", {})
+    required_phases = ["test_design", "system_testing", "uat_testing", "regression", "release"]
+    if not isinstance(eec, dict):
+        return 0, ["entry_exit_criteria missing or not an object."]
+    missing = [p for p in required_phases if p not in eec]
+    if missing:
+        # deduct heavily
+        return int(points_total * 0.3), [f"Missing phases: {missing}."]
+    # Check each phase has entry and exit lists with at least one concrete item
+    phase_issues = []
+    measurable_found = False
+    for p in required_phases:
+        ph = eec.get(p, {})
+        entries = ph.get("entry", [])
+        exits = ph.get("exit", [])
+        if not isinstance(entries, list) or not entries:
+            phase_issues.append(f"Phase {p} missing entry criteria.")
+        if not isinstance(exits, list) or not exits:
+            phase_issues.append(f"Phase {p} missing exit criteria.")
+        # look for measurable strings in exits like 'No open critical', '>=', 'pass', '90%'
+        for ex in exits:
+            if isinstance(ex, str):
+                low = ex.lower()
+                if "no open critical" in low or "no open critical defects" in low or ">=" in low or "pass" in low or "sign-off" in low or "90%" in low:
+                    measurable_found = True
+    score = 0
+    if not phase_issues:
+        score += 7  # criteria existence points
+        comments.append("All required phases present with entry and exit criteria.")
+    else:
+        # partial
+        missing_count = len(phase_issues)
+        score += max(0, 7 - missing_count * 2)
+        comments.append("Issues with phases: " + "; ".join(phase_issues))
+    # implementation notes / measurable items (3 pts)
+    if measurable_found:
+        score += 3
+        comments.append("Measurable exit criteria and sign-off elements found.")
+    else:
+        comments.append("Missing measurable exit criteria or sign-off notes.")
+    if score > points_total:
+        score = points_total
+    return int(score), comments
+
+def grade_strategy_summary(candidate):
+    points_total = WEIGHTS["strategy_summary"]
+    comments = []
+    s = candidate.get("strategy_summary", "")
+    if not isinstance(s, str) or not s.strip():
+        return 0, ["strategy_summary missing or empty."]
+    # Word count limit check (rough)
+    words = len(s.split())
+    if words > 500:
+        comments.append(f"Strategy summary too long ({words} words), should be <=500.")
+        # still grade but deduct
+    # Heuristics: check it mentions prioritisation/risk/automation/UAT AND has communication plan names/roles
+    lowered = s.lower()
+    has_priorit = "priorit" in lowered or "risk" in lowered
+    has_automation = "automation" in lowered or "charlie" in lowered
+    has_uat = "uat" in lowered
+    has_comm = False
+    # communication plan heuristics: mentions 'notify' or 'notify' and role names or 'alice'/'bob' or 'product owner' or 'dev lead'
+    if ("notify" in lowered or "notification" in lowered or "notified" in lowered or "release day" in lowered or "release-day" in lowered or "release day" in lowered):
+        if any(x in lowered for x in ["alice", "bob", "product owner", "dev lead", "qa", "qa (", "qa:" , "charlie"]):
+            has_comm = True
+    # Scoring: 6 points for tying schedule/risk/priorities; 4 for communication plan.
+    score = 0
+    if has_priorit and has_automation and has_uat:
+        score += 6
+        comments.append("Strategy ties schedule, risk, and automation decisions together.")
+    else:
+        # partial for some
+        partial = sum([1 for v in (has_priorit, has_automation, has_uat) if v])
+        score += int(6 * (partial / 3.0))
+        comments.append(f"Strategy contains elements: prioritisation={has_priorit}, automation={has_automation}, uat={has_uat}.")
+    if has_comm:
+        score += 4
+        comments.append("Communication plan present naming roles/names for release-day notifications.")
+    else:
+        comments.append("Communication plan missing or does not name roles/names/timings clearly.")
+    if score > points_total:
+        score = points_total
+    return int(score), comments
+
+def aggregate_and_write_results(breakdown, output_path):
+    total_points = sum(WEIGHTS.values())
+    earned = sum(item["score"] for item in breakdown.values())
+    percent = round((earned / total_points) * 100.0, 2) if total_points > 0 else 0.0
+    results = {
+        "scores_by_section": {},
+        "total_points_earned": int(earned),
+        "total_points_possible": total_points,
+        "percentage": percent,
+        "overall_score": percent
+    }
+    for k, v in breakdown.items():
+        results["scores_by_section"][k] = {
+            "score": v["score"],
+            "max_score": WEIGHTS[k],
+            "comments": v["comments"]
+        }
+    # save to test_results.json
+    try:
+        with open("test_results.json", "w", encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+    except Exception as e:
+        print(f"Error writing results file: {e}")
+    return results
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
+        sys.exit(2)
+    sub_path = sys.argv[1]
+    key_path = sys.argv[2]
+    # Load files
+    try:
+        candidate = load_json_file(sub_path)
+    except Exception as e:
+        print(f"Failed to load candidate submission: {e}")
+        sys.exit(1)
+    try:
+        answer_key = load_json_file(key_path)
+    except Exception as e:
+        print(f"Failed to load answer key: {e}")
+        sys.exit(1)
+    # Basic schema presence check
+    required_top_keys = ["submission_metadata","assumptions","resources","schedule","test_scope","estimates",
+                         "risk_prioritisation","contingency_options","entry_exit_criteria","strategy_summary"]
+    missing_top = [k for k in required_top_keys if k not in candidate]
+    if missing_top:
+        # still try to grade what is present but note missing keys
+        print(f"Warning: Candidate submission missing top-level keys: {missing_top}")
+    # Run graders
+    breakdown = {}
+    sc, c = grade_assumptions(candidate, answer_key)
+    breakdown["assumptions"] = {"score": sc, "comments": c}
+    sc, c = grade_schedule(candidate)
+    breakdown["schedule"] = {"score": sc, "comments": c}
+    sc, c = grade_estimates(candidate, answer_key)
+    breakdown["estimates"] = {"score": sc, "comments": c}
+    sc, c = grade_risk_prioritisation(candidate, answer_key)
+    breakdown["risk_prioritisation"] = {"score": sc, "comments": c}
+    sc, c = grade_contingency_options(candidate)
+    breakdown["contingency_options"] = {"score": sc, "comments": c}
+    sc, c = grade_entry_exit_criteria(candidate)
+    breakdown["entry_exit_criteria"] = {"score": sc, "comments": c}
+    sc, c = grade_strategy_summary(candidate)
+    breakdown["strategy_summary"] = {"score": sc, "comments": c}
+    # Aggregate and write results
+    results = aggregate_and_write_results(breakdown, os.getcwd())
+    # Print summary to stdout
+    print(json.dumps(results, indent=2))
+    # Exit code 0
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()

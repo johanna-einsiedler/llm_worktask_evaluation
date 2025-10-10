@@ -1,0 +1,84 @@
+```json
+{
+  "language": "python3",
+  "entry_point": "python3 inventory.py",
+  "persistence_file": "inventory.json",
+  "commands_run": [
+    {
+      "cmd": "python3 inventory.py add --sku SKU001 --name \"Alpha Widget\" --qty 10 --price 12.50",
+      "stdout": "{\"status\":\"ok\",\"item\":{\"sku\":\"SKU001\",\"name\":\"Alpha Widget\",\"qty\":10,\"price\":12.5}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py add --sku SKU002 --name \"Beta Widget\" --qty 5 --price 15.00",
+      "stdout": "{\"status\":\"ok\",\"item\":{\"sku\":\"SKU002\",\"name\":\"Beta Widget\",\"qty\":5,\"price\":15.0}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py add --sku SKU006 --name \"Zeta Accessory\" --qty 8 --price 4.50",
+      "stdout": "{\"status\":\"ok\",\"item\":{\"sku\":\"SKU006\",\"name\":\"Zeta Accessory\",\"qty\":8,\"price\":4.5}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py list --format json",
+      "stdout": "[{\"sku\":\"SKU001\",\"name\":\"Alpha Widget\",\"qty\":10,\"price\":12.5},{\"sku\":\"SKU002\",\"name\":\"Beta Widget\",\"qty\":5,\"price\":15.0},{\"sku\":\"SKU006\",\"name\":\"Zeta Accessory\",\"qty\":8,\"price\":4.5}]",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py update --sku SKU001 --qty 12",
+      "stdout": "{\"status\":\"ok\",\"item\":{\"sku\":\"SKU001\",\"name\":\"Alpha Widget\",\"qty\":12,\"price\":12.5}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py delete --sku SKU002",
+      "stdout": "{\"status\":\"deleted\",\"sku\":\"SKU002\"}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py find --sku SKU001 --format json",
+      "stdout": "[{\"sku\":\"SKU001\",\"name\":\"Alpha Widget\",\"qty\":12,\"price\":12.5}]",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py find --name \"Widget\" --format json",
+      "stdout": "[{\"sku\":\"SKU001\",\"name\":\"Alpha Widget\",\"qty\":12,\"price\":12.5}]",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py list --format json",
+      "stdout": "[{\"sku\":\"SKU001\",\"name\":\"Alpha Widget\",\"qty\":12,\"price\":12.5},{\"sku\":\"SKU006\",\"name\":\"Zeta Accessory\",\"qty\":8,\"price\":4.5}]",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "cmd": "python3 inventory.py add --sku SKU001 --name \"Alpha Widget Duplicate\" --qty 5 --price 12.50",
+      "stdout": "",
+      "stderr": "Error: SKU 'SKU001' already exists",
+      "exit_code": 1
+    },
+    {
+      "cmd": "python3 inventory.py add --sku SKU007 --name \"Theta Component\" --qty -5 --price 9.99",
+      "stdout": "",
+      "stderr": "Error: qty must be >= 0",
+      "exit_code": 1
+    }
+  ],
+  "short_description": "Implementation choices and demonstration summary: Language: python3. Entry point: 'python3 inventory.py'. Persistence: JSON file named 'inventory.json' (reads on startup, writes atomically via write-to-temp-and-rename). CLI produces deterministic JSON for list/find when --format json is used; add/update/delete return small JSON status messages on success; errors are written to stderr with non-zero exit codes. The recorded commands exercise all required functionality: (1) add three items (SKU001, SKU002, SKU006), (2) list in JSON, (3) update SKU001 qty, (4) delete SKU002, (5) find by sku and by name substring, (6) demonstrate persistence by running list again (separate invocation) and observing saved state, (7) include validation error cases (duplicate SKU and negative qty). Each commands_run entry maps to the deterministic outputs above. Explanation of how answers were derived: outputs for add/update/delete were chosen to be machine-parseable JSON status messages; list/find --format json return a JSON array of item objects (sku, name, qty, price). The persistence file was named per the persistence_file field. Passing criteria (practical): implement all required commands and persistence, ensure list/find --format json produce valid JSON, validations reject duplicate SKUs and negative quantities with stderr and non-zero exit codes, and demonstrate persistence across invocations. ",
+  "self_assessment": {
+    "implemented_required": true,
+    "bonus_features": [
+      "atomic_write"
+    ],
+    "known_issues": ""
+  },
+  "time_taken_minutes": 80
+}
+```

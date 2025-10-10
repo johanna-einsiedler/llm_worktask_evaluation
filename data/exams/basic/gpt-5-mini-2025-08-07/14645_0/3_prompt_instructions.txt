@@ -1,0 +1,207 @@
+Here is the exam overview written by another exam designer:
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can take a realistic short-project brief and produce a practical, realistic test schedule/strategy that aligns scope, resources, risks and delivery date — i.e., that they can plan test activities so the team can realistically meet the release commitment.
+
+This exam verifies real-world capability to:
+- convert project scope and delivery constraints into a concrete, time-boxed test plan and schedule;
+- prioritise tests and scope based on risk and constraints;
+- estimate effort and allocate limited test resources;
+- produce clear entry/exit criteria and contingency decisions to protect delivery quality.
+
+### Core Competencies
+The basic exam tests whether the candidate can:
+1. Interpret project scope, milestones and constraints.
+2. Create a time-based test schedule with milestones and dependencies.
+3. Produce simple, justifiable effort estimates and resource assignments.
+4. Prioritise features/tests using risk-based reasoning.
+5. Define clear entry/exit criteria and contingency (scope-reduction) options when schedule/resource constraints exist.
+6. Produce clear, concise documentation (strategy summary + spreadsheet schedule) suitable for hand-off to the team.
+
+### Recommended Structure
+Total time: 90 minutes.
+
+Number of tasks: 4 short, sequential, hands-on tasks that mirror a real planning workflow. Each task requires output in a clearly defined JSON structure and uses the spreadsheet (for the schedule) and text editor (for free text summaries). Suggested time allocation:
+- Task 1 (10 minutes): Read project brief + state assumptions (deliverable: assumptions list).
+- Task 2 (30 minutes): Create a test schedule in spreadsheet form with milestones, dependencies, resource assignment, and a daily/weekly timeline that meets the delivery date (deliverable: schedule data in JSON form).
+- Task 3 (30 minutes): Risk-based prioritisation + scope reduction options + effort estimates per feature/test area (deliverable: prioritisation list, estimates, and 2 contingency options).
+- Task 4 (20 minutes): Produce a concise test strategy summary including entry/exit criteria, critical open risks and mitigation actions (deliverable: short text summary).
+
+Deliverables (all returned in a single file named test_submission.json):
+- assumptions: array of strings
+- schedule: array of rows (date, task id, task name, start date, end date, duration days, dependencies, assigned resource)
+- resources: list of testers and FTEs / availability
+- test_scope: list of features/modules with priority and test types required
+- estimates: effort hours per test activity or per feature
+- risk_prioritisation: list of risks/features with priority rationale and mitigations
+- contingency_options: two options (what to remove/reduce, impact, justification)
+- entry_exit_criteria: structured object with entry_criteria[], exit_criteria[]
+- strategy_summary: short text (max ~300 words)
+- signed_time_taken: candidate-reported minutes used (for evaluator sanity check)
+
+(Provide evaluators a simple JSON schema — see “Practical Elements” below.)
+
+### Practicality — How to make it hands-on
+- Give a compact, realistic project brief with clear release date, feature list, limited test team (e.g., 2 testers + part-time automation), environments availability windows, and high-level risks. The brief must include explicit constraints (deadline, resource count, blackout dates).
+- Require a schedule with concrete dates, task durations, and dependencies (not just a narrative). The candidate must use spreadsheet thinking (Gantt-like schedule) and convert that into the JSON schedule rows — practical, not theoretical.
+- Require effort estimates per task/feature and explicit assignment to named resources.
+- Force decision-making by giving a schedule that is tight enough to require prioritisation and contingency decisions.
+
+This turns knowledge into applied planning: candidate produces a usable schedule and scoping choices, not just definitions.
+
+### Strategic elements (decision points that separate concept from capability)
+Include these in the brief so candidates must make trade-offs:
+- A fixed release date that leaves very little slack (e.g., 2 weeks for testing) unless scope is reduced.
+- A mandatory production-deployment freeze window (e.g., no testing on a public holiday or environment downtime).
+- Partial automation capability (e.g., 40% of regression can be automated but automation requires 10 days setup).
+- A high-priority but complex feature that could consume significant test effort.
+- A risk of third-party API instability near release.
+
+Decision points candidates must resolve:
+- Whether to delay regression, reduce scope, remove some low-priority test types (e.g., exploratory vs full regression), or request more resources.
+- Whether to invest time in automation setup versus doing manual tests.
+- How to sequence integration and system testing with limited environment availability.
+- What to place as entry/exit criteria for each test phase to decide if a phase starts or release is allowed.
+
+These strategic choices reveal ability to prioritize and balance risk vs schedule.
+
+### Practical Elements to Include (concrete exam content suggestions)
+Provide the candidate a concise project brief (one page) that includes:
+- Release date (fixed) and code freeze date.
+- Feature list: 6-8 features or modules, each with short description and rough complexity (low/medium/high).
+- Available test team: e.g., 2 full-time testers + 1 part-time automation engineer (50%).
+- Environment availability: e.g., Test env A: available Mar 10–Mar 24; UAT: Mar 18–Mar 25.
+- Known constraints: 1 major public holiday in test window; existing automation coverage 20%.
+- Non-functional items: basic performance smoke, security scan required pre-release.
+- Delivery expectation: “Release only if critical/major defects fixed; minor defects may be deferred with stakeholder sign-off.”
+
+Tasks to require:
+1. State assumptions (if anything in brief is unclear).
+2. Produce a schedule that meets delivery date or shows necessary scope reduction; include start/end dates, durations, dependencies and resources.
+3. Provide effort estimates by feature and test type: test design, test execution, automation setup, regression.
+4. Produce risk-based prioritisation: rank features/tests and give short justification (1–2 sentences each).
+5. Provide two contingency options (what to drop or delay, impact on quality).
+6. Define entry/exit criteria for test phases and one very brief test communication plan for the release day (who to notify, when).
+
+All outputs must be represented in test_submission.json following the schema below.
+
+Suggested JSON schema for submission (evaluator will use this to validate):
+- submission_metadata: {candidate_name, email, time_started, time_finished, time_taken_minutes}
+- assumptions: [string]
+- resources: [{name, role, availability_percent}]
+- schedule: [{id, name, start_date(YYYY-MM-DD), end_date(YYYY-MM-DD), duration_days, dependencies:[ids], assigned:[resource_names]}]
+- test_scope: [{feature_id, name, complexity(L/M/H), required_test_types:[unit/integration/system/acceptance/regression/perf/security], priority(1-5)}]
+- estimates: [{feature_id, activity(test_design/test_execution/automation_setup/regression), estimated_hours}]
+- risk_prioritisation: [{feature_id_or_risk, priority(1-5), rationale(short)}]
+- contingency_options: [{option_id, description, expected_quality_impact, rationale}]
+- entry_exit_criteria: {phase_name: {entry: [string], exit: [string]}}
+- strategy_summary: string (max 500 words)
+- optional_attachments: (allows serialized CSV or table strings if candidate exported schedule) — evaluator can ignore if blank.
+
+You should include this schema in the exam brief so candidates know exactly how to format test_submission.json.
+
+### Evaluation Insights (what to look for and scoring)
+Scoring is itemized so a junior candidate who can do the basics should get >=80%:
+
+Total: 100 points. Passing (>80) for basic exam — target for qualified junior/entry-level.
+
+1. Assumptions (5 pts)
+- 5: Clear, relevant assumptions covering at least 3 uncertainties (e.g., environment availability, defect turnaround, stakeholder sign-off).
+- 0–4: Missing or irrelevant assumptions.
+
+2. Schedule realism & completeness (30 pts)
+- 20 pts: Feasible schedule that respects constraints/dates, shows dependencies, and assigns resources.
+- 10 pts: Logical sequencing (test design before execution, environment availability respected) and inclusion of milestones (code freeze, UAT start, release).
+- Deductions: unrealistic durations, missing dependencies, resource over-allocation.
+
+3. Estimates (15 pts)
+- 10 pts: Reasonable effort estimates per feature and activity aligned with assigned resources.
+- 5 pts: Correctly aggregated totals and match schedule durations.
+- Deductions for wildly inconsistent numbers (e.g., 2 testers cannot complete 2000 hours in 5 days).
+
+4. Risk-based prioritisation (15 pts)
+- 10 pts: Clear priority ranking with concise, logical rationale for top 5 items.
+- 5 pts: Correctly identifies highest-risk items and ties prioritisation to release impact.
+- Deductions for missing rationale or wrong risk focus.
+
+5. Contingency options (10 pts)
+- 7 pts: Two clear, practical options (scope reduction or schedule shift) with impact statements.
+- 3 pts: Good rationale and stakeholder considerations.
+- Deductions if options are not practical.
+
+6. Entry/Exit criteria & quality gates (10 pts)
+- 7 pts: Clear, test-phase appropriate criteria (e.g., pass rate, no open critical defects).
+- 3 pts: Practical implementation notes (who signs off).
+- Deductions for vague or missing criteria.
+
+7. Strategy summary & communication (10 pts)
+- 6 pts: Concise strategy that ties schedule, risk, and priorities together.
+- 4 pts: Brief communication plan (who to inform, triggers).
+- Deductions for unclear linkage to schedule or missing communications.
+
+Evaluator checks (qualitative):
+- Does the schedule meet the release date without impossible assumptions?
+- Are dependencies/holidays/environment windows respected?
+- Does prioritisation reflect risk to release rather than personal preference?
+- Are estimates and resource allocations consistent across schedule and estimate tables?
+- Is the strategy document concise and actionable?
+
+Red flags (automatic fail or large deduction):
+- Schedule ignores fixed constraints (release date, env blackout).
+- No resource assignments or clear over-allocation.
+- No contingency plan when schedule is tight.
+- Estimates are orders of magnitude unrealistic.
+
+### Example grader checklist (quick)
+- [ ] Submission file named test_submission.json and JSON valid.
+- [ ] Assumptions present (≥3).
+- [ ] Schedule contains start/end dates, dependencies, assigned resources, and meets/justifiably misses release date.
+- [ ] Estimates exist and match schedule totals.
+- [ ] Risk prioritisation with concise rationale provided.
+- [ ] Two contingency options provided.
+- [ ] Entry/exit criteria for key phases.
+- [ ] Strategy summary clear (≤500 words) and actionable.
+
+### How this distinguishes practical ability vs conceptual knowledge
+- Requiring a concrete, dated schedule forces the candidate to convert abstract knowledge into actionable planning (resource-level scheduling, dependency ordering).
+- Tight timeline + limited resources forces visible trade-offs and decisions — revealing whether candidate can prioritise and justify scope reductions.
+- Matching numerical estimates to schedule shows practical estimation skill rather than theoretical knowledge.
+- The need to produce a succinct strategy and communication plan checks ability to produce operational artifacts for stakeholders.
+
+This design keeps the exam short (90 minutes), uses only spreadsheet and text editor capabilities, is hands-on (produces a schedule and plan), and provides a clear rubric so evaluators can reliably and quickly score candidates.
+</examoverview>
+
+### Your assignment:
+Using the overview as your guiding blueprint, write clear and concise **candidate instructions** for the actual test.
+
+Your instructions must include:
+1. **Task Description** – The specific practical tasks the candidate must perform to complete the exam.
+   - Base this directly on the overview.
+   - Keep it realistic, hands-on, and doable within 90 minutes.
+   - Do not prescribe methods or tools beyond what’s listed in the context.
+2. **Expected Outcome** – What the candidate must achieve or produce by the end of the test.
+3. **Provided Materials** – Briefly describe any materials or data files that will be given.
+4. **Submission Instructions** – Instrut candidates that they must submit results as `"test_submission.json"`.
+
+### Objectivity and Evaluation Constraints
+- Avoid tasks that require subjective interpretation.
+- Eliminate arbitrary choices (e.g., naming conventions, custom IDs, formatting).
+- Define fixed structure or schema **later** (in submission node).
+
+### Output Format
+Respond in **structured markdown** with the following sections:
+
+### Exam Title
+...
+
+### Instructions for Candidate
+Step-by-step instructions.
+
+### Expected Outcome
+...
+
+### Provided Materials
+...
+
+### Submission Format
+...

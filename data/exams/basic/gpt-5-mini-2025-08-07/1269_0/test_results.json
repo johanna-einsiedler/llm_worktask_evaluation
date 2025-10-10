@@ -1,0 +1,80 @@
+{
+  "candidate_name": "Reference Solution",
+  "language": "Python",
+  "time_minutes_used": 90,
+  "scores": {
+    "functional": {
+      "primary": {
+        "score": 40.0,
+        "max": 40,
+        "messages": [
+          "Numeric column keys match expected ordering/values.",
+          "Column 'value1': all metrics match (full column credit).",
+          "Column 'value2': all metrics match (full column credit)."
+        ]
+      },
+      "revision": {
+        "score": 20.0,
+        "max": 20,
+        "messages": []
+      }
+    },
+    "code_readability": {
+      "score": 20.0,
+      "max": 20,
+      "messages": [
+        "Top-of-file header comment detected (5/5).",
+        "At least one function has a docstring (10/10).",
+        "Python main guard detected (5/5)."
+      ]
+    },
+    "documentation": {
+      "score": 15.0,
+      "max": 15,
+      "messages": [
+        "README content in field and file match.",
+        "All required run/build commands found in README (6/10).",
+        "Assumptions section found in README.",
+        "Numeric formatting (two decimal places) mentioned in README.",
+        "CHANGELOG contains at least two entries (5/5)."
+      ]
+    },
+    "packaging": {
+      "score": 5.0,
+      "max": 5,
+      "messages": [
+        "All required files present in files array (partial packaging credit).",
+        "Captured output entries present (partial packaging credit).",
+        "Primary and revision run commands present."
+      ]
+    }
+  },
+  "total_points": 100.0,
+  "max_points": 100,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "notes": {
+    "functional_messages": [
+      "Numeric column keys match expected ordering/values.",
+      "Column 'value1': all metrics match (full column credit).",
+      "Column 'value2': all metrics match (full column credit)."
+    ],
+    "packaging_messages": [
+      "All required files present in files array (partial packaging credit).",
+      "Captured output entries present (partial packaging credit).",
+      "Primary and revision run commands present."
+    ],
+    "documentation_messages": [
+      "README content in field and file match.",
+      "All required run/build commands found in README (6/10).",
+      "Assumptions section found in README.",
+      "Numeric formatting (two decimal places) mentioned in README.",
+      "CHANGELOG contains at least two entries (5/5)."
+    ],
+    "code_readability_messages": [
+      "Top-of-file header comment detected (5/5).",
+      "At least one function has a docstring (10/10).",
+      "Python main guard detected (5/5)."
+    ]
+  }
+}

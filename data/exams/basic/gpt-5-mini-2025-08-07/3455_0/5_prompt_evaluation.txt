@@ -1,0 +1,566 @@
+You are an expert exam evaluator. Your task is to generate a **complete answer key** for a practical exam based on the provided overview, exam content, evaluator-only materials, and the official candidate submission template.
+
+### Inputs
+
+- Exam overview (for evaluator context):
+<examoverview>
+### Exam Purpose
+This basic practical exam verifies that a candidate can take raw system telemetry/log data, design a simple persistent schema, reliably store the data, retrieve and manipulate it to produce analysis-ready aggregates and reports, and provide reproducible, runnable code that performs these steps. In real world terms it confirms the candidate can perform the core job of collecting and preparing system metrics data to support capacity planning, performance troubleshooting, and requirements analysis.
+
+Intended outcome: after running the candidate’s submission, an evaluator (or an automated grader) can confirm that the candidate’s code created a persistent store, executed expected queries and aggregations, handled simple data issues, and produced the requested outputs in the required JSON submission.
+
+---
+
+### Core Competencies to be Tested
+1. Data ingestion/parsing
+   - Read and validate CSV/log input, parse timestamps and numeric fields, handle missing values and duplicates.
+2. Data modeling and persistence
+   - Design a compact, sensible schema for telemetry data and implement it in a file-backed DB (SQLite recommended).
+3. Data storage & performance basics
+   - Create tables and appropriate indices; demonstrate awareness of basic performance tradeoffs for read-heavy queries.
+4. Querying & aggregation
+   - Write SQL (or equivalent) to select, filter, join, aggregate, and compute time-window metrics (averages, max, percentiles or counts).
+5. Reporting / export
+   - Produce structured outputs (JSON, CSV) required for downstream analysis.
+6. Reproducibility & automation
+   - Provide a single runnable script/CLI to perform the steps; include minimal but clear instructions.
+7. Documentation & reasoning
+   - Briefly justify schema/approach and propose one or two simple improvements.
+
+These competencies map to the kinds of work performed by junior systems-software developers working with system telemetry and capacity analysis.
+
+---
+
+### Recommended Structure (Basic exam)
+Total time allowance: 90 minutes.
+
+High-level: 4 timed tasks + final submission metadata. Expected deliverables: scripts and one JSON file named test_submission.json with prescribed fields.
+
+Tasks:
+1. Setup & Ingest (25 minutes)
+   - Input: a single CSV file (provided by exam creator) named telemetry.csv.
+   - Candidate implements a script (e.g., ingest.py or run_exam.py) that:
+     - Creates an SQLite DB file telemetry.db.
+     - Creates table(s) and indices.
+     - Loads data from telemetry.csv into the DB, performing minimal validation/normalization (parse timestamps, convert numeric types, skip or coalesce bad rows).
+   - Deliverable: DB file (telemetry.db) and ingest script.
+
+2. Query & Analysis (30 minutes)
+   - Using the DB created, candidate must run specific queries and return results:
+     - Q1: Time range count: total number of records.
+     - Q2: Top 3 hosts by average CPU usage over the entire dataset (host + avg CPU value).
+     - Q3: For a given host (specified in the task), compute hourly average CPU and peak memory for the last 24 hours in the data. Return results as an array of (hour-start-timestamp, avg_cpu, max_mem).
+     - Q4: Identify periods where CPU > 90% for at least 3 consecutive samples for any host (return host, start_ts, end_ts).
+   - Deliverable: Query results captured in test_submission.json exactly in the specified schema.
+
+3. Update & Small Manipulation (15 minutes)
+   - Implement a small function/CLI to insert one new telemetry record (provided in the task text) into the DB and update any derived table(s) if used.
+   - After insertion, re-run one relevant query (e.g., host average CPU) and provide the updated numeric result in the submission.
+
+4. Short Explanation & Recommendations (10 minutes)
+   - In test_submission.json, include:
+     - A short explanation (1–3 sentences) of the schema design choices (why columns typed that way, any normalization decisions).
+     - Two practical improvements you would make in a production setting (e.g., retention policy, partitioning, compressing, sharding, monitoring, batching writes).
+
+Final deliverable required: a single file test_submission.json with required fields (see below), plus code files and DB/outputs as allowed by evaluator.
+
+Note: Candidate must not require external network or non-standard libraries; exam should be solvable with common standard libraries (e.g., Python standard library including sqlite3, csv, datetime). The exam creator provides telemetry.csv as part of the test package.
+
+---
+
+### Practicality — How to ensure this is hands-on
+- Provide an actual telemetry.csv file (sample size 500–2000 rows) with realistic columns: timestamp (ISO 8601), host, cpu_percent (0–100), mem_mb, disk_io_kb, net_io_kb, event_type (INFO/WARN/ERROR), and possibly small controlled edge cases (a few missing CPU fields, one duplicate row, one malformed timestamp).
+- Require the candidate to run code in the provided environment (no internet) and produce a DB file and results JSON.
+- Require the output values to match exact expected results for deterministic parts so the grader can validate automatically (e.g., total row count, top 3 hosts must match).
+- Provide a single new record to insert in Task 3, so graders can automatically recompute expected updated numbers.
+- Make it clear that they should submit code, DB, and the test_submission.json; but the official required file for grading is test_submission.json (it will also contain the outputs so a grader can quickly verify).
+
+---
+
+### Strategic elements (decision points and multi-step processes)
+Design these to separate the candidates who can do and those who only know theory:
+
+1. Multi-step dependency
+   - Queries rely on the DB created in Task 1, so failure to ingest correctly will cascade. This tests end-to-end ability.
+2. Data normalization decision
+   - Candidate must choose whether to normalize host metadata (separate host table) or use a single flat table. For basic exam, either is acceptable—but the candidate must explain the choice briefly.
+3. Handling messy data
+   - The dataset contains a few malformed or missing values; candidate must either skip or coerce them, and results must match expected choices. This forces practical handling rather than theoretical answers.
+4. Indexing trade-off
+   - Candidate may create indices to make queries faster. The evaluator inspects whether indices exist (PRAGMA index_list) and whether they are sensible (e.g., index on host + timestamp).
+5. Time grouping and windowing
+   - Require hourly aggregation and detection of consecutive-high CPU windows — forces correct time parsing and ordering logic.
+6. Deterministic outputs for grading
+   - Provide specific hosts and timestamps to check for expected output so the grader can automatically confirm correctness.
+
+These strategic elements reveal mastery of practical skills rather than rote knowledge.
+
+---
+
+### test_submission.json — required schema (make this exact)
+The candidate must produce this single JSON file named test_submission.json. Fields:
+
+- candidate: { name: string, email: string (optional) }
+- env: { language: string (e.g., "python3"), entrypoint: string (filename to run), db_file: string (path to created DB) }
+- ingestion: { rows_loaded: integer, rows_skipped: integer, note: string (optional) }
+- results:
+  - total_rows: integer
+  - top_hosts_by_avg_cpu: [ { host: string, avg_cpu: number } ]   (length 3)
+  - hourly_stats_for_host: [ { hour_start: ISO8601 string, avg_cpu: number, max_mem_mb: number } ]   (for 24 hours or fewer as applicable)
+  - cpu_spike_periods: [ { host: string, start_ts: ISO8601 string, end_ts: ISO8601 string } ]
+- after_insert:
+  - inserted_record_ok: boolean
+  - updated_avg_cpu_for_host: number   (for the host used in Task 3)
+- schema_and_choices:
+  - schema_description: string  (1–4 sentences describing tables/columns and rationale)
+  - suggested_improvements: [ string, string ]  (two short suggestions)
+- run_instructions: string (exact commands to run the script(s) from the exam root; one line or a couple of lines)
+- optional: errors: [ string ] (any non-fatal warnings/errors encountered)
+
+All numeric values should be numbers (not strings) with reasonable precision (two decimal places OK). Timestamps must be ISO 8601 strings.
+
+Provide an example minimal test_submission.json skeleton in the exam materials so candidates know structure.
+
+---
+
+### Evaluation Insights — observable outputs and scoring rubric
+Total: 100 points. Passing threshold: 80+ points for basic exam.
+
+Suggested scoring breakdown:
+- Task 1: Ingest & DB creation (30 points)
+  - DB created at specified path (10)
+  - Table(s) with sensible types and columns (10)
+  - rows_loaded equals expected count and rows_skipped consistent with malformed data (10)
+- Task 2: Query & Analysis (40 points)
+  - total_rows correct (5)
+  - top 3 hosts by average CPU correct (10)
+  - hourly stats correct format and plausible numbers for the given host (10)
+  - cpu spike detection correct (15)
+- Task 3: Insert/update (15 points)
+  - insert operation succeeds, updated_avg_cpu is correct per expectation (10)
+  - code handles duplicates/validation for inserted record (5)
+- Task 4: Documentation & reproducibility (10 points)
+  - run_instructions correct and scripts runnable (5)
+  - schema_description + two practical improvements present and reasonable (5)
+- Code hygiene & robustness (5 points)
+  - minimal error handling, readable code, comments, no reliance on non-standard libraries
+
+Automatic grader checks:
+- Parse test_submission.json and verify numeric results against expected ground truth (derived from the provided telemetry.csv and known inserted record).
+- Verify DB file exists and optional PRAGMA checks (table/indices) if the grader expects to perform deeper checks.
+
+What indicates competence:
+- End-to-end working script that produces telemetry.db and the exact result numbers in test_submission.json.
+- Correct handling of timestamps and consistent hours in hourly aggregation.
+- Correct identification of continuous CPU spike periods (requires ordering and grouping).
+- Clean, reproducible run instructions and a short but sensible explanation of schema and production improvements.
+
+What flags a weak candidate:
+- Delivering only SQL or conceptual answers without executable ingest script or DB file.
+- Incorrect counts or aggregates that indicate misunderstanding of grouping/time windows.
+- No handling of malformed data, causing crashes or wildly incorrect row counts.
+- Missing run instructions or inability to reproduce outputs.
+
+---
+
+### Practical tips for the exam creator / evaluator
+- Provide telemetry.csv and a short README that states allowed languages (e.g., Python/3, Bash, etc.), time limit (90 minutes), and that no external internet or libraries are allowed.
+- Include an exact new-record JSON/CSV line to be inserted for Task 3 and precompute the expected updated numbers to enable automatic scoring.
+- Create a small automated grader script (optional) that opens test_submission.json, checks expected numeric fields and existence of telemetry.db to compute score automatically.
+- Keep dataset size moderate (500–2000 rows) so queries run quickly without needing tuning beyond a basic index.
+- Provide one known corner-case row to test robustness (e.g., timestamp "2020-13-01" malformed) and document that candidates should either skip or coerce rows and reflect skipped rows in ingestion.rows_skipped.
+
+---
+
+This structure gives a practical, end-to-end hands-on assessment of a junior systems-software engineer’s ability to store, retrieve, and manipulate telemetry data for system capability and requirements analysis, while being straightforward to grade and feasible in a 90-minute remote environment.
+</examoverview>
+
+- Full exam content:
+<exam>
+### Exam Title
+Basic Practical Exam — Telemetry Ingest, Storage, Querying, and Reporting (90 minutes)
+
+---
+
+### Instructions for Candidate
+
+You have 90 minutes to complete this practical exam. Use only the tools available in the environment: a code execution environment and a text editor. Do not use the network or non-standard libraries. Python 3 is recommended and available; if you use another language, it must be runnable in the provided environment and use only its standard library.
+
+Place all code and artifacts in the exam root folder. You will be provided with input files (see Provided Materials). Your deliverable is a single JSON file named test_submission.json (see Submission Format). You may also include your scripts and the created DB file with your submission so an evaluator can re-run your work, but the grader will primarily read test_submission.json.
+
+Follow these step-by-step tasks exactly.
+
+Task 1 — Setup & Ingest (25 minutes)
+- Create a file-backed database named telemetry.db in the exam root (SQLite is recommended and expected).
+- Design one or more tables to store the telemetry rows from telemetry.csv. Create any indices you find useful (e.g., on host and timestamp).
+- Implement an ingest script (single script/CLI entrypoint of your choice) that:
+  - Reads telemetry.csv.
+  - Parses and normalizes each row:
+    - Parse timestamps into a proper datetime value.
+    - Convert numeric fields to numeric types.
+    - Handle missing/malformed values by either coercing (e.g., empty numeric → NULL) or skipping the row.
+    - Detect and handle duplicate rows (your strategy must be consistent, documented in schema_description).
+  - Inserts valid rows into telemetry.db.
+  - Tracks rows_loaded and rows_skipped.
+- The ingest operation must be reproducible by running your entrypoint command (see Run Instructions below).
+- The DB file created must be named telemetry.db (put this path in your JSON submission).
+
+Task 2 — Query & Analysis (30 minutes)
+- Using the DB you created, produce the following query results and record them in test_submission.json:
+  Q1. total_rows: Total number of rows present in the DB after ingest.
+  Q2. top_hosts_by_avg_cpu: The top 3 hosts by average cpu_percent across the entire dataset. For each item return { host: string, avg_cpu: number } sorted descending by avg_cpu.
+  Q3. hourly_stats_for_host: For a single host specified in the provided file target_host.txt, compute time-windowed hourly aggregates for the most recent 24 hours in the dataset (or fewer if the dataset has less than 24 hours):
+     - For each hour window (hour-start timestamp in ISO8601), compute average CPU (avg_cpu) and peak memory (max_mem_mb).
+     - Return up to 24 hour buckets in chronological order (oldest first).
+     - Each item: { hour_start: ISO8601 string, avg_cpu: number, max_mem_mb: number }.
+  Q4. cpu_spike_periods: Identify periods for any host where cpu_percent > 90 for at least 3 consecutive samples (consecutive means successive recorded samples for that host ordered by timestamp with no intervening sample below or equal to 90). For each period return { host: string, start_ts: ISO8601 string, end_ts: ISO8601 string }. If multiple distinct spike sequences exist for the same host, include them all.
+
+- Make sure numeric outputs are numbers (not strings) and timestamps are ISO8601 strings.
+
+Task 3 — Insert Single Record & Recompute (15 minutes)
+- A single new telemetry record will be provided in insert_record.json. Implement a function/command in your script to insert that record into telemetry.db (after validating/parsing it the same way you did for the CSV).
+- After insertion, re-run the relevant aggregation for the host in target_host.txt and return the updated average CPU for that host in the JSON output field updated_avg_cpu_for_host. Also indicate inserted_record_ok: true/false depending on whether the insertion succeeded.
+
+Task 4 — Short Explanation & Recommendations (10 minutes)
+- In test_submission.json include:
+  - A 1–4 sentence schema_description that explains your table(s), column typing, and any normalization choices (e.g., flat table vs normalized host table).
+  - Two brief, practical suggested_improvements you would make in a production system (e.g., partitioning, retention, batching, monitoring).
+
+General requirements
+- Provide a single runnable entrypoint command (e.g., python3 run_exam.py) and include that exact command as run_instructions in test_submission.json.
+- Test_submission.json must follow the exact schema described below (Submission Format) so automated graders can parse it.
+- Do not require any external packages; only use the standard library for your language.
+- Keep your code readable and include minimal comments explaining non-obvious choices.
+- Record any non-fatal warnings encountered during execution in the optional errors array in the submission JSON.
+
+---
+
+### Expected Outcome
+
+By the end of the exam you must produce:
+- A runnable script/CLI in the exam root that:
+  - Creates telemetry.db and loads telemetry.csv.
+  - Performs the queries and the insertion.
+  - Produces the values required for test_submission.json.
+- A JSON file named test_submission.json exactly matching the Submission Format below and containing all required fields and numeric results.
+- Optionally include your telemetry.db and your scripts alongside test_submission.json so the evaluator can re-run your process. The primary artifact for grading is test_submission.json.
+
+All numeric results should be numbers (floats/integers). Timestamps must use ISO 8601 strings (e.g., "2020-05-10T14:00:00Z" or timezone-aware equivalents). Two decimal places of precision for averages is acceptable.
+
+---
+
+### Provided Materials
+
+You will be given the following files in the exam root:
+- telemetry.csv — CSV file containing system telemetry rows (columns include at minimum: timestamp, host, cpu_percent, mem_mb, disk_io_kb, net_io_kb, event_type). The dataset contains a few controlled edge cases (a few missing CPU fields, one duplicate row, one malformed timestamp).
+- target_host.txt — a plain text file containing exactly one host name. Use this host for Q3 and to compute updated_avg_cpu_for_host after insertion.
+- insert_record.json — a JSON file containing one telemetry record to be inserted in Task 3. It matches the same columns as telemetry.csv.
+
+Do not assume any other files exist. The evaluator will provide those three files packaged with the exam.
+
+---
+
+### Submission Format
+
+You must create a single JSON file named test_submission.json with the exact fields and structure below. Field names and nesting must match exactly. Numeric values must be JSON numbers. Timestamp strings must be ISO8601.
+
+Top-level fields:
+- candidate: { name: string, email: string (optional) }
+- env: { language: string, entrypoint: string, db_file: string }
+  - language: e.g., "python3"
+  - entrypoint: the exact command or filename you expect the grader to run (must match run_instructions)
+  - db_file: the path to telemetry.db you created (e.g., "telemetry.db")
+- ingestion: { rows_loaded: integer, rows_skipped: integer, note: string (optional) }
+- results:
+  - total_rows: integer
+  - top_hosts_by_avg_cpu: [ { host: string, avg_cpu: number } ]   (array length must be 3)
+  - hourly_stats_for_host: [ { hour_start: ISO8601 string, avg_cpu: number, max_mem_mb: number } ]   (up to 24 items)
+  - cpu_spike_periods: [ { host: string, start_ts: ISO8601 string, end_ts: ISO8601 string } ]
+- after_insert:
+  - inserted_record_ok: boolean
+  - updated_avg_cpu_for_host: number
+- schema_and_choices:
+  - schema_description: string  (1–4 sentences)
+  - suggested_improvements: [ string, string ]  (exactly two short suggestions)
+- run_instructions: string (the exact shell command(s) to run your solution from the exam root; one or two lines)
+- optional: errors: [ string ] (any non-fatal warnings, optional)
+
+Example minimal skeleton (you must replace placeholder values with your actual outputs):
+{
+  "candidate": { "name": "Jane Doe", "email": "jane@example.com" },
+  "env": { "language": "python3", "entrypoint": "run_exam.py", "db_file": "telemetry.db" },
+  "ingestion": { "rows_loaded": 1500, "rows_skipped": 3, "note": "Skipped 3 malformed timestamps" },
+  "results": {
+    "total_rows": 1500,
+    "top_hosts_by_avg_cpu": [
+      { "host": "host-42", "avg_cpu": 87.23 },
+      { "host": "host-7", "avg_cpu": 82.10 },
+      { "host": "host-3", "avg_cpu": 79.55 }
+    ],
+    "hourly_stats_for_host": [
+      { "hour_start": "2024-02-12T14:00:00Z", "avg_cpu": 23.5, "max_mem_mb": 2048 },
+      ...
+    ],
+    "cpu_spike_periods": [
+      { "host": "host-7", "start_ts": "2024-02-12T09:12:34Z", "end_ts": "2024-02-12T09:18:01Z" }
+    ]
+  },
+  "after_insert": { "inserted_record_ok": true, "updated_avg_cpu_for_host": 27.45 },
+  "schema_and_choices": {
+    "schema_description": "Flat telemetry table with typed columns: timestamp (UTC), host text, cpu_percent real, mem_mb integer, ...",
+    "suggested_improvements": ["Partition by date to improve query latency", "Batch writes and add write-ahead queue to reduce contention"]
+  },
+  "run_instructions": "python3 run_exam.py",
+  "optional": { "errors": [] }
+}
+
+Important notes about the JSON:
+- All keys shown in the schema above are required. The optional.errors array may be omitted if empty.
+- Keep numbers as numbers (not strings). Provide reasonable precision (two decimals OK).
+
+---
+
+Contact & Final Notes
+
+- Time limit: 90 minutes. Work efficiently and prioritize producing the required JSON with correct numeric values and timestamps over extra polish.
+- Evaluation is deterministic—your numeric answers are compared to expected values derived from telemetry.csv and insert_record.json.
+- If you cannot complete a task fully, still submit test_submission.json with the fields filled as best you can and include notes in ingestion.note or optional.errors explaining partial work.
+
+Good luck. Make sure test_submission.json is at the exam root and named exactly "test_submission.json" before you finish.File: telemetry.csv
+timestamp,host,cpu_percent,mem_mb,disk_io_kb,net_io_kb,event_type
+2024-03-01T00:00:00Z,host-01,10.5,1024,120,30,INFO
+2024-03-01T00:05:00Z,host-02,55.0,2048,500,80,INFO
+2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
+2024-03-01T01:00:00Z,host-02,60.0,2100,600,90,INFO
+2024-03-01T01:10:00Z,host-03,91.0,600,15,7,WARN
+2024-03-01T01:20:00Z,host-03,95.5,610,16,8,WARN
+2024-03-01T01:30:00Z,host-03,93.0,605,14,6,ERROR
+2024-03-01T02:00:00Z,host-01,20.0,1100,130,40,INFO
+2024-03-01T02:10:00Z,host-01,,2200,700,100,INFO
+2024-03-01T03:00:00Z,host-02,88.0,2150,650,95,INFO
+2024-03-01T04:00:00Z,host-01,15.0,1150,140,45,INFO
+2024-03-01T05:00:00Z,host-02,92.0,2300,800,110,WARN
+2024-03-01T06:00:00Z,host-02,93.0,2310,820,120,WARN
+2024-03-01T06:10:00Z,host-02,30.0,2000,300,60,INFO
+2024-03-01T25:00:00Z,host-01,50.0,1200,150,50,INFO
+2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
+
+File: target_host.txt
+host-02
+
+File: insert_record.json
+{
+  "timestamp": "2024-03-01T06:30:00Z",
+  "host": "host-02",
+  "cpu_percent": 100.0,
+  "mem_mb": 2400,
+  "disk_io_kb": 900,
+  "net_io_kb": 130,
+  "event_type": "INFO"
+}```json
+{
+  "candidate": {
+    "name": "",
+    "email": ""
+  },
+  "env": {
+    "language": "",
+    "entrypoint": "",
+    "db_file": ""
+  },
+  "ingestion": {
+    "rows_loaded": null,
+    "rows_skipped": null,
+    "note": ""
+  },
+  "results": {
+    "total_rows": null,
+    "top_hosts_by_avg_cpu": [
+      { "host": "", "avg_cpu": null },
+      { "host": "", "avg_cpu": null },
+      { "host": "", "avg_cpu": null }
+    ],
+    "hourly_stats_for_host": [],
+    "cpu_spike_periods": []
+  },
+  "after_insert": {
+    "inserted_record_ok": null,
+    "updated_avg_cpu_for_host": null
+  },
+  "schema_and_choices": {
+    "schema_description": "",
+    "suggested_improvements": [
+      "",
+      ""
+    ]
+  },
+  "run_instructions": "",
+  "optional": {
+    "errors": []
+  }
+}
+```
+</exam>
+
+- Additional materials only visible to the evaluator:
+<materials_evaluator>
+How these materials were constructed and intended grading assumptions
+
+Overview
+- Provided three deterministic files the candidate will use:
+  - telemetry.csv (16 data lines + header) — realistic telemetry columns and a few controlled edge cases.
+  - target_host.txt — the host name the candidate must use for Task 2 Q3 and Task 3.
+  - insert_record.json — the single telemetry record the candidate must insert in Task 3.
+
+Controlled edge cases and intended handling (deterministic grading assumptions)
+1. Malformed timestamp
+   - Line: 2024-03-01T25:00:00Z,... — this timestamp is invalid and should be considered malformed.
+   - Expected grader rule: skip rows with malformed timestamps (count them in rows_skipped). This is the single malformed row.
+
+2. Duplicate row
+   - The final CSV line is an exact duplicate of the row at timestamp 2024-03-01T00:10:00Z for host-03.
+   - Expected grader rule: treat exact duplicate rows (identical values across all columns) as duplicates and skip inserting the duplicate (count as skipped). This is one duplicate row.
+
+3. Missing numeric (cpu_percent)
+   - The row at 2024-03-01T02:10:00Z for host-01 has an empty cpu_percent field.
+   - Expected grader rule: coerce empty numeric fields to NULL and insert the row (do not skip it). Averages and aggregations that depend on cpu should be computed over non-NULL cpu values.
+
+Summary of expected ingestion counts (deterministic)
+- Total CSV data lines: 16
+- Expected skipped rows: 2 (1 malformed timestamp row + 1 duplicate row)
+- Expected rows_loaded inserted into DB: 14
+
+Important deterministic aggregation rules (used to compute expected numeric results)
+- Average CPU (avg_cpu) is computed excluding NULL cpu_percent values.
+- Hourly buckets use the hour-start truncated to the top of the hour in UTC (e.g., 2024-03-01T00:00:00Z).
+- Only hours that contain at least one record for the target host should be returned (chronological order, up to the most recent 24 hours).
+- Consecutive-sample CPU spikes: samples for a given host are ordered by timestamp; a spike period is any contiguous sequence of at least 3 successive samples for that host where each sample has cpu_percent > 90 (NULLs or cpu <= 90 break a sequence).
+- Duplicate detection for skipping during ingest is exact-row equality.
+
+Precomputed expected values (so evaluator can validate automatic grading)
+- Ingestion:
+  - rows_loaded: 14
+  - rows_skipped: 2
+  - note: "Skipped 1 malformed timestamp and 1 duplicate row; inserted one row with NULL cpu_percent."
+
+- Total rows in DB after ingest (results.total_rows): 14
+
+- Top 3 hosts by average CPU (results.top_hosts_by_avg_cpu), computed over non-NULL cpu values and rounded to two decimals:
+  1. host-03 — average cpu = (12.0 + 91.0 + 95.5 + 93.0) / 4 = 72.875 → 72.88
+  2. host-02 — average cpu = (55.0 + 60.0 + 88.0 + 92.0 + 93.0 + 30.0) / 6 = 69.6666667 → 69.67
+  3. host-01 — average cpu = (10.5 + 20.0 + 15.0) / 3 = 15.1666667 → 15.17
+
+- Hourly aggregates for the target host (target_host.txt contains "host-02")
+  - The most recent timestamp in the loaded dataset for host-02 is 2024-03-01T06:10:00Z, so include up to the last 24 hours (here all buckets).
+  - For host-02 the hour-buckets with data (chronological):
+    1. 2024-03-01T00:00:00Z → avg_cpu 55.00, max_mem_mb 2048
+    2. 2024-03-01T01:00:00Z → avg_cpu 60.00, max_mem_mb 2100
+    3. 2024-03-01T03:00:00Z → avg_cpu 88.00, max_mem_mb 2150
+    4. 2024-03-01T05:00:00Z → avg_cpu 92.00, max_mem_mb 2300
+    5. 2024-03-01T06:00:00Z → avg_cpu (93.0 + 30.0)/2 = 61.5 → 61.50, max_mem_mb = max(2310,2000) = 2310
+
+  - Note: hour 02:00 has no host-02 records after removing the malformed/duplicate rows and so is omitted.
+
+- CPU spike detection (results.cpu_spike_periods)
+  - host-03 has three consecutive samples >90 at:
+    - start_ts: 2024-03-01T01:10:00Z
+    - end_ts:   2024-03-01T01:30:00Z
+  - No other host meets the ">=3 consecutive samples >90" requirement.
+
+- Insert record (insert_record.json)
+  - Provided record inserts for host-02 at 2024-03-01T06:30:00Z with cpu_percent = 100.0
+  - After insertion, updated average for host-02:
+    - previous sum (non-null cpus) = 418.0 over 6 values
+    - after insert sum = 418.0 + 100.0 = 518.0 over 7 values
+    - updated_avg_cpu_for_host = 518.0 / 7 = 74.0 (report as 74.00 or 74.0)
+
+Potential traps and common candidate errors
+- Treating the malformed timestamp as valid rather than skipping it will change rows_loaded and aggregates. The timestamp 2024-03-01T25:00:00Z is intentionally invalid (hour 25).
+- Not deduplicating the exact duplicate row will cause host-03 averages to change; the duplicate is identical to an earlier row and must be skipped per expected grader rule.
+- Averaging with NULL values: candidates might include NULL as zero if they coerce missing cpu_percent to 0 — the grader expects NULLs to be excluded from averages.
+- Hour bucketing off-by-one: ensure hour_start is the top-of-hour truncation in UTC (e.g., 06:10 belongs to 06:00 hour_start).
+- Spike detection requires per-host ordering by timestamp and detecting contiguous sequences of samples >90; counting samples across hosts or unordered data will produce false results.
+
+How these materials differentiate practical skill levels
+- Parsing & validation: the malformed timestamp and missing cpu_percent test practical robustness.
+- Data modeling: a sensible flat table with appropriate types and an index on (host, timestamp) will let candidates perform the required queries quickly.
+- Querying & time windows: hourly aggregation and consecutive-sample detection test SQL/windowing and/or procedural grouping skills.
+- Reproducibility: the insert_record.json was chosen to yield a clean, round updated average (74.0) so graders can easily verify the post-insert calculation.
+
+Evaluator note
+- Use the precomputed expected values above to compare candidate test_submission.json numeric outputs.
+- If a candidate documents a different, consistent ingestion policy (e.g., they chose to keep duplicates or to skip rows with NULL cpu_percent), allow partial credit but flag differences; the automated grader should expect the scores above unless the candidate explicitly documents and follows a different ingestion rule in schema_description and the reported ingestion.rows_loaded/rows_skipped reflect that choice.
+</materials_evaluator>
+
+- Official candidate submission template (JSON object):
+<submission_template>
+{
+  "candidate": {
+    "name": "",
+    "email": ""
+  },
+  "env": {
+    "language": "",
+    "entrypoint": "",
+    "db_file": ""
+  },
+  "ingestion": {
+    "rows_loaded": null,
+    "rows_skipped": null,
+    "note": ""
+  },
+  "results": {
+    "total_rows": null,
+    "top_hosts_by_avg_cpu": [
+      { "host": "", "avg_cpu": null },
+      { "host": "", "avg_cpu": null },
+      { "host": "", "avg_cpu": null }
+    ],
+    "hourly_stats_for_host": [],
+    "cpu_spike_periods": []
+  },
+  "after_insert": {
+    "inserted_record_ok": null,
+    "updated_avg_cpu_for_host": null
+  },
+  "schema_and_choices": {
+    "schema_description": "",
+    "suggested_improvements": [
+      "",
+      ""
+    ]
+  },
+  "run_instructions": "",
+  "optional": {
+    "errors": []
+  }
+}
+</submission_template>
+
+### Your assignment
+
+1. Using the provided **submission template**, generate a **complete answer key** that:
+   - Fills in every field of the template with the **correct answer**.
+   - Preserves the exact structure of the template (nested fields, arrays, etc.).
+   - Includes relevant metadata where applicable (units, decimal places, allowed options, etc.).
+   - Produces a **valid JSON object** suitable for automated checking.
+   - Enclose the JSON output in triple backticks with `json` for clarity:
+     ```json
+     ...
+     ```
+
+2. Provide an **explanation for each answer**:
+   - Explain how the correct answer was derived.
+   - Reference the exam content, candidate instructions, and evaluator-only materials when necessary.
+
+3. Specify **passing criteria**:
+   - Define minimum requirements for passing (number or percentage of correct answers).
+   - Include any special rules for partial credit or conditional scoring.
+
+### Requirements
+
+- Do **not** change the template structure—fill it in, do not add or remove fields.
+- Do **not** include any text outside the required JSON for the answer key.
+- Ensure the answer key is **deterministic**, machine-checkable, and aligned exactly with the exam questions.
+- Use `null` or empty placeholders **only if a question cannot be evaluated**, but otherwise provide concrete answers.
+

@@ -1,0 +1,43 @@
+```json
+{
+  "candidate": {
+    "name": "",
+    "email": ""
+  },
+  "env": {
+    "language": "",
+    "entrypoint": "",
+    "db_file": ""
+  },
+  "ingestion": {
+    "rows_loaded": null,
+    "rows_skipped": null,
+    "note": ""
+  },
+  "results": {
+    "total_rows": null,
+    "top_hosts_by_avg_cpu": [
+      { "host": "", "avg_cpu": null },
+      { "host": "", "avg_cpu": null },
+      { "host": "", "avg_cpu": null }
+    ],
+    "hourly_stats_for_host": [],
+    "cpu_spike_periods": []
+  },
+  "after_insert": {
+    "inserted_record_ok": null,
+    "updated_avg_cpu_for_host": null
+  },
+  "schema_and_choices": {
+    "schema_description": "",
+    "suggested_improvements": [
+      "",
+      ""
+    ]
+  },
+  "run_instructions": "",
+  "optional": {
+    "errors": []
+  }
+}
+```

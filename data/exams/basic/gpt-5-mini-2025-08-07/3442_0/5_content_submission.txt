@@ -1,0 +1,80 @@
+```json
+{
+  "candidate_name": "",
+  "language": "",
+  "time_spent_minutes": null,
+  "task1": {
+    "schema": {},
+    "row_counts": {},
+    "persistent_store_files": []
+  },
+  "task2": {
+    "queries": {
+      "q1_total_events": "",
+      "q2_unique_users": "",
+      "q3_top3_event_types": "",
+      "q4_events_by_plan": ""
+    },
+    "results": {
+      "q1_total_events": null,
+      "q2_unique_users": null,
+      "q3_top3_event_types": [
+        {
+          "event_type": "",
+          "count": null
+        },
+        {
+          "event_type": "",
+          "count": null
+        },
+        {
+          "event_type": "",
+          "count": null
+        }
+      ],
+      "q4_events_by_plan": {}
+    }
+  },
+  "task3": {
+    "transformations": [],
+    "sample_transformed_rows": [],
+    "aggregates": {
+      "average_events_per_active_user": null,
+      "average_events_per_user_by_plan": {}
+    }
+  },
+  "task4": {
+    "report": {
+      "total_events": null,
+      "unique_users": null,
+      "average_events_per_active_user": null,
+      "top3_event_types": [
+        {
+          "event_type": "",
+          "count": null
+        },
+        {
+          "event_type": "",
+          "count": null
+        },
+        {
+          "event_type": "",
+          "count": null
+        }
+      ],
+      "events_by_plan": {},
+      "average_events_per_user_by_plan": {}
+    },
+    "design_decisions": [
+      "",
+      ""
+    ],
+    "index_created": {
+      "created": null,
+      "column": ""
+    }
+  },
+  "run_command": "",
+  "notes": ""
+}
+```

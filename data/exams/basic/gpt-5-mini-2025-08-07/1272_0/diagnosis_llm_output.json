@@ -1,0 +1,9 @@
+{
+  "prompt_summary": "LLM diagnosis of answer key self-test failure",
+  "response_raw": "{\n  \"diagnosis\": \"grading_script_issue\",\n  \"rationale\": \"The provided answer key is comprehensive and self-consistent (all required fields, diffs, tests, benchmarks and reproduction steps are present), so a correct grader should score it 100%. The 95% result points to a heuristic/logic bug in the grading script (e.g., strict/fragile checks around diffs/counting changed files or duplicate entries) rather than missing content in the answer key or submission template.\",\n  \"recommendation\": \"Regenerate/fix the grading_script: adjust its heuristics (dedup file-change counting, relax/clarify diff-presence checks, and ensure the script awards full credit when the answer key contains the expected fields). Then re-run the grading script against the answer key to confirm it yields 100%.\"\n}",
+  "parsed_result": {
+    "diagnosis": "grading_script_issue",
+    "rationale": "The provided answer key is comprehensive and self-consistent (all required fields, diffs, tests, benchmarks and reproduction steps are present), so a correct grader should score it 100%. The 95% result points to a heuristic/logic bug in the grading script (e.g., strict/fragile checks around diffs/counting changed files or duplicate entries) rather than missing content in the answer key or submission template.",
+    "recommendation": "Regenerate/fix the grading_script: adjust its heuristics (dedup file-change counting, relax/clarify diff-presence checks, and ensure the script awards full credit when the answer key contains the expected fields). Then re-run the grading script against the answer key to confirm it yields 100%."
+  }
+}

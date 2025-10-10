@@ -1,0 +1,553 @@
+# task_evaluation.py
+#!/usr/bin/env python3
+"""
+Automated grader for the basic practical exam.
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Outputs:
+    test_results.json (written next to this script / current working dir)
+
+Scoring weights (total 100):
+- Correctness & completeness: 50
+  - Tests passing: 25
+  - parse_date bug fix: 12.5
+  - dedupe_records bug fix: 12.5
+- Tests & reproducibility: 15
+  - Baseline outputs present: 5
+  - how_to_reproduce present and contains expected commands: 5
+  - new_tests added (since-date): 5
+- Performance improvement: 15
+  - Based on before/after average times; >=2x -> full points
+- Code quality & clarity: 10
+  - Heuristic based on number of changed files (fewer = better)
+- Explanation & process: 10
+  - final_notes present and per-task summaries present
+
+The script is intentionally heuristic: it tolerates formatting differences and aims to be deterministic.
+"""
+
+import json
+import os
+import re
+import sys
+from statistics import mean
+
+# ---------- Helper functions ----------
+
+def load_json(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise
+    except Exception as e:
+        raise ValueError(f"Failed to load JSON from {path}: {e}")
+
+def safe_get(d, *keys, default=None):
+    """Traverse nested dict/list keys in sequence; return default if any missing."""
+    cur = d
+    for k in keys:
+        if isinstance(cur, dict) and k in cur:
+            cur = cur[k]
+        else:
+            return default
+    return cur
+
+def find_task(submission, task_id):
+    tasks = submission.get('tasks', [])
+    for t in tasks:
+        if t.get('id', '') == task_id:
+            return t
+    return None
+
+def extract_passed_count_from_output(text):
+    """
+    Attempt to find a pytest-like 'X passed' substring and return X as int.
+    If not found, return None.
+    """
+    if not text or not isinstance(text, str):
+        return None
+    # Common patterns: "4 passed", "3 passed in 0.12s"
+    m = re.search(r'(\d+)\s+passed\b', text)
+    if m:
+        try:
+            return int(m.group(1))
+        except:
+            return None
+    # Some outputs might say "All tests passed" -> treat as unknown but positive
+    if 'all passed' in text.lower() or 'passed in' in text.lower():
+        # try to find number before 'passed in'
+        m2 = re.search(r'(\d+)\s+passed\s+in', text)
+        if m2:
+            try:
+                return int(m2.group(1))
+            except:
+                return None
+        # fallback: unknown but positive -> return 1
+        return 1
+    return None
+
+def contains_any(text, substrings):
+    if not text or not isinstance(text, str):
+        return False
+    low = text.lower()
+    for s in substrings:
+        if s.lower() in low:
+            return True
+    return False
+
+def collect_changed_files(submission):
+    files = []
+    for t in submission.get('tasks', []):
+        for fc in t.get('files_changed', []) or []:
+            fn = fc.get('filename')
+            if fn:
+                files.append((fn, fc))
+    return files
+
+def find_file_change(submission, filename):
+    for t in submission.get('tasks', []):
+        for fc in t.get('files_changed', []) or []:
+            if fc.get('filename') == filename:
+                return fc
+    return None
+
+def average(lst):
+    if not lst:
+        return None
+    try:
+        return mean(lst)
+    except:
+        return None
+
+# ---------- Grading logic ----------
+
+def grade(candidate, answer_key):
+    results = {
+        "scores": {},
+        "total_points": 0.0,
+        "max_points": 100.0,
+        "overall_score": 0.0,
+        "pass": False,
+        "reasons": []
+    }
+
+    deductions = []
+
+    # ======================================================================
+    # Prepare extracted info from answer key
+    # ======================================================================
+    try:
+        # expected final passed tests (if answer key provides)
+        ak_finalize = find_task(answer_key, "Finalize")
+        ak_expected_passed = None
+        if ak_finalize:
+            ak_expected_passed = extract_passed_count_from_output(ak_finalize.get('key_outputs', ''))
+        # fallback: attempt to parse any 'passed' count in answer_key top-level performance or other tasks
+        if ak_expected_passed is None:
+            # search all tasks for highest passed count
+            for t in answer_key.get('tasks', []):
+                pc = extract_passed_count_from_output(t.get('key_outputs', ''))
+                if pc is not None:
+                    if ak_expected_passed is None or pc > ak_expected_passed:
+                        ak_expected_passed = pc
+    except Exception:
+        ak_expected_passed = None
+
+    # ======================================================================
+    # 1) Correctness & completeness (50 points)
+    #    - Tests passing: 25
+    #    - parse_date fix: 12.5
+    #    - dedupe_records fix: 12.5
+    # ======================================================================
+    correctness_score = 0.0
+    correctness_max = 50.0
+    reasons_correctness = []
+
+    # 1a) Tests passing (25)
+    test_pass_pts = 25.0
+    candidate_passed = None
+    # Try to extract from Finalize task first, then any task with "passed"
+    candidate_finalize = find_task(candidate, "Finalize")
+    candidate_passed = None
+    if candidate_finalize:
+        candidate_passed = extract_passed_count_from_output(candidate_finalize.get('key_outputs', ''))
+    if candidate_passed is None:
+        # search all tasks for highest passed count
+        for t in candidate.get('tasks', []):
+            pc = extract_passed_count_from_output(t.get('key_outputs', ''))
+            if pc is not None:
+                if candidate_passed is None or pc > candidate_passed:
+                    candidate_passed = pc
+
+    # Evaluate
+    if ak_expected_passed:
+        # If answer key gives expected passed count, compare numerically
+        if candidate_passed is None:
+            reasons_correctness.append("Could not find candidate test pass count; no points for 'tests passing'.")
+            test_pass_score = 0.0
+        else:
+            if candidate_passed >= ak_expected_passed:
+                test_pass_score = test_pass_pts
+            else:
+                # proportional score
+                ratio = float(candidate_passed) / float(ak_expected_passed)
+                test_pass_score = test_pass_pts * max(0.0, min(1.0, ratio))
+                reasons_correctness.append(
+                    f"Candidate ran fewer tests passing ({candidate_passed}) than expected ({ak_expected_passed}); "
+                    f"awarded {test_pass_score:.2f}/{test_pass_pts} for tests passing."
+                )
+    else:
+        # No expected provided; use heuristic: if candidate shows any 'passed' and not 'failed', give full; else partial
+        any_passed = False
+        any_failed = False
+        all_outputs = " ".join([str(t.get('key_outputs','') or '') for t in candidate.get('tasks',[])])
+        if 'failed' in all_outputs.lower():
+            any_failed = True
+        if 'passed' in all_outputs.lower():
+            any_passed = True
+        if any_passed and not any_failed:
+            test_pass_score = test_pass_pts
+        elif any_passed and any_failed:
+            test_pass_score = test_pass_pts * 0.5
+            reasons_correctness.append("Candidate output contains both 'passed' and 'failed'; partial credit for tests passing.")
+        else:
+            test_pass_score = 0.0
+            reasons_correctness.append("No evidence of passing tests found; no points for tests passing.")
+    correctness_score += test_pass_score
+
+    # 1b) parse_date fix (12.5)
+    parse_pts = 12.5
+    parse_ok = False
+    # Look for code/deduper.py changes and check unified_diff/content contains "%Y-%m-%d" or "Y-%m-%d" or "datetime.strptime("
+    fc = find_file_change(candidate, "code/deduper.py")
+    if fc:
+        ud = fc.get('unified_diff', '') or ''
+        # accept changes either in T1 or T3; check for correct format string
+        if '%Y-%m-%d' in ud or '\"%Y-%m-%d\"' in ud or "'%Y-%m-%d'" in ud:
+            parse_ok = True
+        else:
+            # maybe final file content shows parse_date defined correctly without format literal? check for parse_date and datetime.strptime
+            if 'parse_date' in ud and 'strptime' in ud and ('%d-%m-%Y' not in ud):
+                parse_ok = True
+    if parse_ok:
+        correctness_score += parse_pts
+    else:
+        reasons_correctness.append("parse_date fix not detected in code/deduper.py (expected format '%Y-%m-%d'). Partial or missing fix.")
+
+    # 1c) dedupe_records fix (12.5)
+    dedupe_pts = 12.5
+    dedupe_ok = False
+    dedupe_partial = False
+    if fc:
+        ud = fc.get('unified_diff', '') or ''
+        # Two acceptable fixes:
+        # - Normalization using .strip() during comparisons (minimal correctness)
+        # - Full optimization using set 'seen' (best)
+        if 'seen' in ud and ('set(' in ud or 'seen = set' in ud):
+            dedupe_ok = True
+        elif '.strip(' in ud or "strip()" in ud:
+            dedupe_partial = True
+    # Also accept change in any other file that shows similar code changes (search all changed files)
+    if not (dedupe_ok or dedupe_partial):
+        for fn, fcobj in collect_changed_files(candidate):
+            if fn == 'code/deduper.py':
+                continue
+            ud2 = fcobj.get('unified_diff','') or ''
+            if 'strip(' in ud2 or 'seen = set' in ud2 or 'set(' in ud2:
+                dedupe_partial = True
+                break
+
+    if dedupe_ok:
+        correctness_score += dedupe_pts
+    elif dedupe_partial:
+        partial = dedupe_pts * 0.5
+        correctness_score += partial
+        reasons_correctness.append(f"dedupe_records correctness fix found but not the optimized set-based version; awarded {partial:.2f}/{dedupe_pts}.")
+    else:
+        reasons_correctness.append("dedupe_records fix not detected (expected normalization via strip() or set-based dedupe).")
+
+    # record correctness breakdown
+    results['scores']['correctness'] = {
+        "earned": round(correctness_score, 2),
+        "max": correctness_max,
+        "details": {
+            "tests_pass": round(test_pass_score,2),
+            "parse_date_fix": parse_pts if parse_ok else 0.0,
+            "dedupe_fix": dedupe_pts if dedupe_ok else (dedupe_pts*0.5 if dedupe_partial else 0.0)
+        },
+        "reasons": reasons_correctness
+    }
+
+    # ======================================================================
+    # 2) Tests & reproducibility (15 points)
+    #    - Baseline outputs present: 5
+    #    - how_to_reproduce contains expected commands: 5
+    #    - new_tests added (tests/test_since_date.py): 5
+    # ======================================================================
+    repro_score = 0.0
+    repro_max = 15.0
+    repro_reasons = []
+
+    # Baseline outputs: check T0 exists and key_outputs contains 'run_ms' or 'FAIL' or 'FAILURES' or pytest failure lines
+    t0 = find_task(candidate, "T0")
+    if t0 and t0.get('key_outputs'):
+        ko = t0.get('key_outputs','').lower()
+        if any(k in ko for k in ['run_ms', 'fail', 'failed', 'failures', 'ff.', 'f.']):
+            repro_score += 5.0
+        else:
+            # accept any non-empty baseline output as partial
+            repro_score += 2.5
+            repro_reasons.append("T0.key_outputs present but did not contain expected baseline markers ('run_ms'/'fail'); partial credit.")
+    else:
+        repro_reasons.append("Missing T0 baseline outputs; no points for baseline evidence.")
+
+    # how_to_reproduce presence and content
+    htr = candidate.get('how_to_reproduce', '') or ''
+    if htr and isinstance(htr, str):
+        # Expect the exact commands listed in README: "python3 -m pytest -q", "python3 bench/benchmark.py", and program run "python3 code/main.py sample_data/transactions.csv"
+        expected_cmds = ["python3 -m pytest -q", "python3 bench/benchmark.py", "python3 code/main.py sample_data/transactions.csv"]
+        found_cnt = 0
+        for cmd in expected_cmds:
+            if cmd in htr:
+                found_cnt += 1
+        if found_cnt == len(expected_cmds):
+            repro_score += 5.0
+        else:
+            # partial proportional
+            repro_score += 5.0 * (found_cnt / len(expected_cmds))
+            repro_reasons.append(f"how_to_reproduce missing {len(expected_cmds)-found_cnt} expected command(s).")
+    else:
+        repro_reasons.append("how_to_reproduce missing or empty; no points for reproducibility commands.")
+
+    # new_tests added: check new_tests array contains tests/test_since_date.py
+    new_tests = candidate.get('new_tests', []) or []
+    found_since = False
+    for nt in new_tests:
+        fn = nt.get('filename','')
+        if fn.endswith('test_since_date.py') or fn.endswith('tests/test_since_date.py'):
+            found_since = True
+            break
+    if found_since:
+        repro_score += 5.0
+    else:
+        repro_reasons.append("New test for --since-date (tests/test_since_date.py) not found in new_tests; no points for new test evidence.")
+
+    results['scores']['reproducibility'] = {
+        "earned": round(repro_score,2),
+        "max": repro_max,
+        "reasons": repro_reasons
+    }
+
+    # ======================================================================
+    # 3) Performance improvement (15 points)
+    #    - Use average before/after times from candidate.performance
+    #    - >=2x improvement => full points; 1x-2x scale linearly; <1x => 0
+    # ======================================================================
+    perf_score = 0.0
+    perf_max = 15.0
+    perf_reasons = []
+
+    perf = candidate.get('performance', {}) or {}
+    before = perf.get('before_run_times') or []
+    after = perf.get('after_run_times') or []
+
+    # Ensure arrays of numbers
+    def avg_of_list(l):
+        try:
+            l2 = [float(x) for x in l]
+            if not l2:
+                return None
+            return mean(l2)
+        except Exception:
+            return None
+
+    before_avg = avg_of_list(before)
+    after_avg = avg_of_list(after)
+
+    if before_avg is None or after_avg is None or after_avg <= 0:
+        perf_score = 0.0
+        perf_reasons.append("Insufficient or invalid benchmark data (before/after times missing or invalid).")
+    else:
+        ratio = before_avg / after_avg if after_avg > 0 else 0.0
+        if ratio >= 2.0:
+            perf_score = perf_max
+            perf_reasons.append(f"Measured improvement ratio {ratio:.2f}x >= 2x -> full points.")
+        elif ratio > 1.0:
+            perf_score = perf_max * (ratio / 2.0)  # linear up to 2x
+            perf_reasons.append(f"Measured improvement ratio {ratio:.2f}x -> partial points ({perf_score:.2f}/{perf_max}).")
+        else:
+            perf_score = 0.0
+            perf_reasons.append(f"No measurable speedup (ratio {ratio:.2f}x).")
+
+    results['scores']['performance'] = {
+        "earned": round(perf_score,2),
+        "max": perf_max,
+        "before_avg_ms": round(before_avg,2) if before_avg is not None else None,
+        "after_avg_ms": round(after_avg,2) if after_avg is not None else None,
+        "reasons": perf_reasons
+    }
+
+    # ======================================================================
+    # 4) Code quality & clarity (10 points)
+    #    - Heuristic: smaller number of changed files => higher score
+    #    - Expect only code/deduper.py, code/main.py, tests/test_since_date.py (<=3)
+    # ======================================================================
+    cq_score = 0.0
+    cq_max = 10.0
+    changed = collect_changed_files(candidate)
+    num_changed = len(set([fn for fn, _ in changed]))
+    cq_reasons = []
+    if num_changed <= 3:
+        cq_score = cq_max
+    elif num_changed <= 6:
+        cq_score = cq_max * 0.7
+        cq_reasons.append(f"{num_changed} files changed (acceptable but more than minimal).")
+    elif num_changed <= 9:
+        cq_score = cq_max * 0.4
+        cq_reasons.append(f"{num_changed} files changed (many modifications; flagged for manual review).")
+    else:
+        cq_score = 0.0
+        cq_reasons.append(f"{num_changed} files changed (too many; likely not minimal).")
+
+    # Also require that changed files include unified_diff or file content; penalize if missing
+    missing_diffs = []
+    for fn, fc in changed:
+        ud = fc.get('unified_diff')
+        if not ud:
+            missing_diffs.append(fn)
+    if missing_diffs:
+        # small penalty: reduce by 20% of cq_max if any diffs missing
+        penalty = cq_max * 0.2
+        cq_score = max(0.0, cq_score - penalty)
+        cq_reasons.append(f"Missing unified_diff content for {len(missing_diffs)} changed file(s): {missing_diffs}; applied penalty {penalty:.2f}.")
+
+    results['scores']['code_quality'] = {
+        "earned": round(cq_score,2),
+        "max": cq_max,
+        "num_changed_files": num_changed,
+        "reasons": cq_reasons
+    }
+
+    # ======================================================================
+    # 5) Explanation & process (10 points)
+    #    - final_notes present: 5
+    #    - per-task short_summary present for tasks T0..T3 and Finalize: 5
+    # ======================================================================
+    exp_score = 0.0
+    exp_max = 10.0
+    exp_reasons = []
+    final_notes = candidate.get('final_notes','') or ''
+    if isinstance(final_notes, str) and final_notes.strip():
+        exp_score += 5.0
+    else:
+        exp_reasons.append("final_notes missing or empty (5 points withheld).")
+
+    # Check per-task short_summary
+    tasks_required = ['T0','T1','T2','T3','Finalize']
+    present_summaries = 0
+    for tid in tasks_required:
+        t = find_task(candidate, tid)
+        if t and isinstance(t.get('short_summary',''), str) and t.get('short_summary','').strip():
+            present_summaries += 1
+    # award proportionally
+    exp_score += 5.0 * (present_summaries / len(tasks_required))
+    if present_summaries < len(tasks_required):
+        exp_reasons.append(f"{present_summaries}/{len(tasks_required)} task summaries present; partial credit for explanations.")
+
+    results['scores']['explanation'] = {
+        "earned": round(exp_score,2),
+        "max": exp_max,
+        "present_task_summaries": present_summaries,
+        "reasons": exp_reasons
+    }
+
+    # ======================================================================
+    # Tally total
+    # ======================================================================
+    total_earned = (
+        correctness_score +
+        repro_score +
+        perf_score +
+        cq_score +
+        exp_score
+    )
+    results['total_points'] = round(total_earned, 2)
+    results['max_points'] = 100.0
+    pct = (total_earned / 100.0) * 100.0
+    results['overall_score'] = round(pct, 2)
+    results['pass'] = (results['overall_score'] >= 80.0)
+
+    # Compose per-category summary already in results['scores']
+    # Add high-level reasons for failing items
+    all_reasons = []
+    # collect reasons from sub-scores
+    for cat in results['scores'].values():
+        rs = cat.get('reasons')
+        if isinstance(rs, list) and rs:
+            all_reasons.extend(rs)
+    # attach additional high-level notes
+    if not parse_ok:
+        all_reasons.append("parse_date fix appears missing or incomplete.")
+    if not (dedupe_ok or dedupe_partial):
+        all_reasons.append("dedupe_records fix appears missing or incomplete.")
+    if perf_score == 0.0:
+        all_reasons.append("Performance improvement not demonstrated >=1x (no improvement) or missing benchmark data.")
+    results['reasons'] = all_reasons
+
+    return results
+
+# ---------- Main entrypoint ----------
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>", file=sys.stderr)
+        sys.exit(2)
+
+    candidate_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+    try:
+        candidate = load_json(candidate_path)
+    except FileNotFoundError:
+        print(f"Candidate submission file not found: {candidate_path}", file=sys.stderr)
+        sys.exit(2)
+    except Exception as e:
+        print(f"Error loading candidate submission: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        answer_key = load_json(answer_key_path)
+    except FileNotFoundError:
+        print(f"Answer key file not found: {answer_key_path}", file=sys.stderr)
+        sys.exit(2)
+    except Exception as e:
+        print(f"Error loading answer key: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    # Grade
+    try:
+        results = grade(candidate, answer_key)
+    except Exception as e:
+        print(f"Error during grading: {e}", file=sys.stderr)
+        # Attempt to produce minimal results file
+        results = {
+            "error": str(e)
+        }
+
+    # Write results to test_results.json in same dir as script (or cwd)
+    out_path = os.path.join(os.getcwd(), "test_results.json")
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        # Also print brief summary to stdout
+        overall = results.get('overall_score', 0.0)
+        passed = results.get('pass', False)
+        print(f"Grading complete. overall_score={overall:.2f}%. pass={passed}. Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results file: {e}", file=sys.stderr)
+        sys.exit(2)
+
+if __name__ == "__main__":
+    main()

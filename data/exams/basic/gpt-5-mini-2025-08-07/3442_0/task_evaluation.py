@@ -1,0 +1,557 @@
+# task_evaluation.py
+import json
+import sys
+import os
+from math import isclose
+
+# -------------------------
+# Helper utilities
+# -------------------------
+
+def load_json(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+
+def safe_get(dct, *keys, default=None):
+    """Traverse nested dict safely."""
+    cur = dct
+    try:
+        for k in keys:
+            cur = cur[k]
+        return cur
+    except Exception:
+        return default
+
+def normalize_event_type(s):
+    if s is None:
+        return None
+    return str(s).strip().lower()
+
+def floats_equal(a, b, tol=1e-9):
+    try:
+        return isclose(float(a), float(b), rel_tol=tol, abs_tol=tol)
+    except Exception:
+        return False
+
+def numeric_close_or_equal(a, b, tol=1e-9):
+    # Accept ints or floats; return True if close/equal
+    try:
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            return floats_equal(a, b, tol)
+        return float(a) == float(b)
+    except Exception:
+        return False
+
+def ensure_list(x):
+    if x is None:
+        return []
+    if isinstance(x, list):
+        return x
+    return [x]
+
+def add_msg(msgs, s):
+    msgs.append(s)
+    return msgs
+
+# -------------------------
+# Main grading logic
+# -------------------------
+
+def grade(candidate_path, answer_path):
+    results = {
+        "scores": {},
+        "messages": [],
+        "total_points": 0,
+        "max_points": 100,
+        "percentage": 0.0,
+        "overall_score": 0.0
+    }
+
+    # Load JSONs
+    try:
+        candidate = load_json(candidate_path)
+    except Exception as e:
+        results["messages"].append(str(e))
+        # Save immediate failure result
+        write_results(results)
+        return
+
+    try:
+        answer = load_json(answer_path)
+    except Exception as e:
+        results["messages"].append(str(e))
+        write_results(results)
+        return
+
+    msgs = results["messages"]
+
+    # Scoring allocation per evaluator instructions
+    MAX_CORRECTNESS = 60
+    MAX_REPRO = 15
+    MAX_SCHEMA = 10
+    MAX_CODE_QUALITY = 10
+    MAX_JUST = 5
+
+    # -------------------------
+    # Correctness (60 pts)
+    # Based on task2 results (q1,q2,q3,q4)
+    # q1: 15, q2: 15, q3:15 (5 each row), q4:15 (split across plans)
+    # -------------------------
+    correctness_detail = {}
+    correctness_score = 0.0
+
+    # Expected values from answer
+    expected_task2_results = safe_get(answer, "task2", "results", default={})
+    cand_task2_results = safe_get(candidate, "task2", "results", default={})
+
+    # Q1: total events
+    q1_max = 15.0
+    expected_q1 = safe_get(expected_task2_results, "q1_total_events")
+    cand_q1 = safe_get(cand_task2_results, "q1_total_events")
+    if expected_q1 is None:
+        add_msg(msgs, "Answer key missing expected q1_total_events; cannot grade q1.")
+        correctness_detail["q1_total_events"] = {"points": 0, "max_points": q1_max, "note": "no answer key"}
+    else:
+        if cand_q1 is None:
+            add_msg(msgs, "Candidate missing q1_total_events result.")
+            correctness_detail["q1_total_events"] = {"points": 0, "max_points": q1_max, "note": "missing"}
+        else:
+            if numeric_close_or_equal(cand_q1, expected_q1):
+                correctness_score += q1_max
+                correctness_detail["q1_total_events"] = {"points": q1_max, "max_points": q1_max}
+            else:
+                add_msg(msgs, f"q1_total_events mismatch: expected {expected_q1}, got {cand_q1}.")
+                correctness_detail["q1_total_events"] = {"points": 0, "max_points": q1_max,
+                                                        "note": f"expected {expected_q1}, got {cand_q1}"}
+
+    # Q2: unique users
+    q2_max = 15.0
+    expected_q2 = safe_get(expected_task2_results, "q2_unique_users")
+    cand_q2 = safe_get(cand_task2_results, "q2_unique_users")
+    if expected_q2 is None:
+        add_msg(msgs, "Answer key missing expected q2_unique_users; cannot grade q2.")
+        correctness_detail["q2_unique_users"] = {"points": 0, "max_points": q2_max, "note": "no answer key"}
+    else:
+        if cand_q2 is None:
+            add_msg(msgs, "Candidate missing q2_unique_users result.")
+            correctness_detail["q2_unique_users"] = {"points": 0, "max_points": q2_max, "note": "missing"}
+        else:
+            if numeric_close_or_equal(cand_q2, expected_q2):
+                correctness_score += q2_max
+                correctness_detail["q2_unique_users"] = {"points": q2_max, "max_points": q2_max}
+            else:
+                add_msg(msgs, f"q2_unique_users mismatch: expected {expected_q2}, got {cand_q2}.")
+                correctness_detail["q2_unique_users"] = {"points": 0, "max_points": q2_max,
+                                                        "note": f"expected {expected_q2}, got {cand_q2}"}
+
+    # Q3: top3_event_types (list of 3 objects)
+    q3_max = 15.0
+    expected_q3 = safe_get(expected_task2_results, "q3_top3_event_types", default=[])
+    cand_q3 = safe_get(cand_task2_results, "q3_top3_event_types", default=[])
+    # Normalize lists for comparison: lowercased event_type, counts as ints
+    exp_q3_norm = []
+    for item in ensure_list(expected_q3):
+        et = normalize_event_type(safe_get(item, "event_type"))
+        cnt = safe_get(item, "count")
+        exp_q3_norm.append({"event_type": et, "count": cnt})
+    cand_q3_norm = []
+    for item in ensure_list(cand_q3):
+        et = normalize_event_type(safe_get(item, "event_type"))
+        cnt = safe_get(item, "count")
+        cand_q3_norm.append({"event_type": et, "count": cnt})
+
+    q3_points_each = q3_max / 3.0
+    q3_points = 0.0
+    q3_notes = []
+    if len(exp_q3_norm) != 3:
+        add_msg(msgs, "Answer key top3_event_types does not have length 3; grading will be best-effort.")
+    # For matching, try to match by event_type. For each expected row, find candidate row with same event_type and compare count.
+    matched_exp = set()
+    for exp_item in exp_q3_norm:
+        exp_et = exp_item.get("event_type")
+        exp_cnt = exp_item.get("count")
+        found = None
+        for cand_item in cand_q3_norm:
+            if cand_item.get("event_type") == exp_et:
+                found = cand_item
+                break
+        if found is None:
+            q3_notes.append(f"Missing event_type '{exp_et}' in candidate top3.")
+        else:
+            cand_cnt = found.get("count")
+            if numeric_close_or_equal(cand_cnt, exp_cnt):
+                q3_points += q3_points_each
+            else:
+                q3_notes.append(f"Count mismatch for '{exp_et}': expected {exp_cnt}, got {cand_cnt}.")
+    correctness_score += q3_points
+    correctness_detail["q3_top3_event_types"] = {
+        "points": round(q3_points, 6),
+        "max_points": q3_max,
+        "notes": q3_notes
+    }
+
+    # Q4: events_by_plan mapping
+    q4_max = 15.0
+    expected_q4 = safe_get(expected_task2_results, "q4_events_by_plan", default={})
+    cand_q4 = safe_get(cand_task2_results, "q4_events_by_plan", default={})
+    # Plans expected keys
+    exp_plans = list(expected_q4.keys())
+    if not exp_plans:
+        add_msg(msgs, "Answer key q4_events_by_plan empty; cannot grade q4.")
+        correctness_detail["q4_events_by_plan"] = {"points": 0, "max_points": q4_max, "note": "no answer key"}
+    else:
+        per_plan_point = q4_max / len(exp_plans)
+        q4_points = 0.0
+        q4_notes = []
+        for plan in exp_plans:
+            exp_val = expected_q4.get(plan)
+            cand_val = cand_q4.get(plan)
+            if cand_val is None:
+                q4_notes.append(f"Missing plan '{plan}' in candidate q4_events_by_plan.")
+            else:
+                if numeric_close_or_equal(cand_val, exp_val):
+                    q4_points += per_plan_point
+                else:
+                    q4_notes.append(f"Plan '{plan}' count mismatch: expected {exp_val}, got {cand_val}.")
+        correctness_score += q4_points
+        correctness_detail["q4_events_by_plan"] = {"points": round(q4_points, 6), "max_points": q4_max, "notes": q4_notes}
+
+    # Aggregate correctness details
+    results["scores"]["correctness"] = {
+        "points": round(correctness_score, 6),
+        "max_points": MAX_CORRECTNESS,
+        "details": correctness_detail
+    }
+
+    # -------------------------
+    # Reproducibility (15 pts)
+    # Heuristics:
+    # - run_command present/non-empty => 8 pts
+    # - task1.persistent_store_files present/non-empty => 7 pts
+    # (Also check that run_command is not an absolute path and uses relative run - small extra checks)
+    # -------------------------
+    repro_score = 0.0
+    repro_detail = {}
+    run_command = safe_get(candidate, "run_command")
+    persistent_files = safe_get(candidate, "task1", "persistent_store_files", default=[])
+
+    # run_command check
+    rc_points = 8.0
+    if run_command and isinstance(run_command, str) and run_command.strip():
+        # Check for suspicious absolute paths (simple heuristic)
+        rc = run_command.strip()
+        if rc.startswith("/") or (len(rc) >= 2 and rc[1] == ":" and rc[0].isalpha()):
+            add_msg(msgs, "run_command appears to contain an absolute path; reproducibility may be reduced.")
+            repro_detail["run_command"] = {"points": rc_points * 0.5, "max_points": rc_points,
+                                           "note": "absolute path detected; expected relative command"}
+            repro_score += rc_points * 0.5
+        else:
+            repro_detail["run_command"] = {"points": rc_points, "max_points": rc_points}
+            repro_score += rc_points
+    else:
+        add_msg(msgs, "Candidate run_command missing or empty.")
+        repro_detail["run_command"] = {"points": 0, "max_points": rc_points, "note": "missing"}
+
+    # persistent files check
+    pf_points = 7.0
+    if isinstance(persistent_files, list) and len(persistent_files) > 0:
+        # Ensure entries are strings and not absolute paths
+        bad_abs = any(isinstance(p, str) and (p.startswith("/") or (len(p) >=2 and p[1]==":" and p[0].isalpha())) for p in persistent_files)
+        if bad_abs:
+            add_msg(msgs, "One or more persistent_store_files appear to be absolute paths; expected file names relative to working dir.")
+            repro_detail["persistent_store_files"] = {"points": pf_points * 0.5, "max_points": pf_points,
+                                                      "note": "absolute path(s) present"}
+            repro_score += pf_points * 0.5
+        else:
+            repro_detail["persistent_store_files"] = {"points": pf_points, "max_points": pf_points}
+            repro_score += pf_points
+    else:
+        add_msg(msgs, "No persistent_store_files reported in task1.")
+        repro_detail["persistent_store_files"] = {"points": 0, "max_points": pf_points, "note": "missing or empty"}
+
+    results["scores"]["reproducibility"] = {
+        "points": round(repro_score, 6),
+        "max_points": MAX_REPRO,
+        "details": repro_detail
+    }
+
+    # -------------------------
+    # Schema & data handling (10 pts)
+    # - Schema matching columns/types: 6 pts (split proportionally across expected columns)
+    # - Row counts exact match per expected table: 4 pts (per table)
+    # -------------------------
+    schema_score = 0.0
+    schema_detail = {}
+    expected_schema = safe_get(answer, "task1", "schema", default={})
+    cand_schema = safe_get(candidate, "task1", "schema", default={})
+    expected_row_counts = safe_get(answer, "task1", "row_counts", default={})
+    cand_row_counts = safe_get(candidate, "task1", "row_counts", default={})
+
+    # Schema columns/types scoring
+    schema_max = 6.0
+    # Count expected columns total
+    exp_col_list = []
+    for tbl, cols in expected_schema.items():
+        for col, typ in cols.items():
+            exp_col_list.append( (tbl, col, str(typ).lower()) )
+    total_expected_cols = len(exp_col_list)
+    if total_expected_cols == 0:
+        add_msg(msgs, "Answer key task1.schema empty; cannot grade schema matching.")
+        schema_detail["schema_columns"] = {"points": 0, "max_points": schema_max, "note": "no answer key"}
+    else:
+        per_col = schema_max / total_expected_cols
+        schema_col_points = 0.0
+        col_notes = []
+        for tbl, col, typ in exp_col_list:
+            cand_tbl = cand_schema.get(tbl)
+            if not isinstance(cand_tbl, dict):
+                col_notes.append(f"Missing table '{tbl}' in candidate schema.")
+                continue
+            cand_typ = cand_tbl.get(col)
+            if cand_typ is None:
+                col_notes.append(f"Missing column '{col}' in table '{tbl}'.")
+                continue
+            # Compare types case-insensitively, accept common synonyms (e.g., int/integer, text/str)
+            def normalize_type(t):
+                return str(t).strip().lower()
+            cand_typ_norm = normalize_type(cand_typ)
+            exp_typ_norm = normalize_type(typ)
+            # Accept 'integer' vs 'int' vs 'number' and 'text' vs 'str'
+            equivalences = {
+                "int": ["int", "integer", "number"],
+                "text": ["text", "str", "string"],
+                "real": ["real", "float", "double"]
+            }
+            matched = False
+            for key, vals in equivalences.items():
+                if exp_typ_norm in vals:
+                    if cand_typ_norm in vals:
+                        matched = True
+                        break
+            if not matched:
+                # direct equality fallback
+                if cand_typ_norm == exp_typ_norm:
+                    matched = True
+            if matched:
+                schema_col_points += per_col
+            else:
+                col_notes.append(f"Type mismatch for {tbl}.{col}: expected '{typ}', got '{cand_typ}'.")
+        schema_score += schema_col_points
+        schema_detail["schema_columns"] = {"points": round(schema_col_points, 6), "max_points": schema_max, "notes": col_notes}
+
+    # Row counts scoring (4 points)
+    row_max = 4.0
+    expected_tables = list(expected_row_counts.keys())
+    if not expected_tables:
+        add_msg(msgs, "Answer key task1.row_counts empty; cannot grade row counts.")
+        schema_detail["row_counts"] = {"points": 0, "max_points": row_max, "note": "no answer key"}
+    else:
+        per_table = row_max / len(expected_tables)
+        row_points = 0.0
+        row_notes = []
+        for tbl in expected_tables:
+            exp_cnt = expected_row_counts.get(tbl)
+            cand_cnt = cand_row_counts.get(tbl)
+            if cand_cnt is None:
+                row_notes.append(f"Candidate missing row count for table '{tbl}'.")
+                continue
+            if numeric_close_or_equal(cand_cnt, exp_cnt):
+                row_points += per_table
+            else:
+                row_notes.append(f"Row count mismatch for '{tbl}': expected {exp_cnt}, got {cand_cnt}.")
+        schema_score += row_points
+        schema_detail["row_counts"] = {"points": round(row_points, 6), "max_points": row_max, "notes": row_notes}
+
+    results["scores"]["schema_and_data"] = {
+        "points": round(schema_score, 6),
+        "max_points": MAX_SCHEMA,
+        "details": schema_detail
+    }
+
+    # -------------------------
+    # Code quality & safety (10 pts)
+    # Heuristics:
+    # - task2.queries presence and look reasonable => 5 pts
+    # - run_command relative + language specified => 5 pts
+    # -------------------------
+    code_score = 0.0
+    code_detail = {}
+    task2_queries = safe_get(candidate, "task2", "queries", default={})
+    # Check presence of q1..q4 queries
+    queries_good = True
+    missing_queries = []
+    for qk in ["q1_total_events", "q2_unique_users", "q3_top3_event_types", "q4_events_by_plan"]:
+        qstr = task2_queries.get(qk)
+        if not qstr or not isinstance(qstr, str) or not qstr.strip():
+            missing_queries.append(qk)
+            queries_good = False
+    if queries_good:
+        # Simple heuristic: check that at least one contains SELECT and FROM
+        any_reasonable = False
+        for v in task2_queries.values():
+            if isinstance(v, str) and "select" in v.lower() and "from" in v.lower():
+                any_reasonable = True
+                break
+        if any_reasonable:
+            code_score += 5.0
+            code_detail["queries"] = {"points": 5.0, "max_points": 5.0}
+        else:
+            add_msg(msgs, "task2.queries provided but do not appear to be SQL SELECTs; awarding partial code quality points.")
+            code_score += 2.5
+            code_detail["queries"] = {"points": 2.5, "max_points": 5.0, "note": "queries present but not clearly SELECT/FROM SQL"}
+    else:
+        add_msg(msgs, f"Missing task2 queries: {missing_queries}")
+        code_detail["queries"] = {"points": 0.0, "max_points": 5.0, "note": f"missing: {missing_queries}"}
+
+    # run_command relative + language present
+    rc_ok = False
+    lang_present = False
+    if run_command and isinstance(run_command, str) and run_command.strip():
+        rc = run_command.strip()
+        if not (rc.startswith("/") or (len(rc) >= 2 and rc[1] == ":" and rc[0].isalpha())):
+            rc_ok = True
+    language = safe_get(candidate, "language")
+    if language and isinstance(language, str) and language.strip():
+        lang_present = True
+
+    if rc_ok and lang_present:
+        code_score += 5.0
+        code_detail["run_command_and_language"] = {"points": 5.0, "max_points": 5.0}
+    else:
+        notes = []
+        if not rc_ok:
+            notes.append("run_command missing or appears absolute path")
+        if not lang_present:
+            notes.append("language missing or empty")
+        add_msg(msgs, "Code quality checks: " + "; ".join(notes))
+        # Partial credit: if either is present award half
+        if rc_ok or lang_present:
+            code_score += 2.5
+            code_detail["run_command_and_language"] = {"points": 2.5, "max_points": 5.0, "note": "; ".join(notes)}
+        else:
+            code_detail["run_command_and_language"] = {"points": 0.0, "max_points": 5.0, "note": "; ".join(notes)}
+
+    results["scores"]["code_quality"] = {
+        "points": round(code_score, 6),
+        "max_points": MAX_CODE_QUALITY,
+        "details": code_detail
+    }
+
+    # -------------------------
+    # Justifications clarity (5 pts)
+    # Expect exactly two short strings in task4.design_decisions
+    # Award up to 2.5 each if non-empty and reasonable length
+    # -------------------------
+    just_score = 0.0
+    just_detail = {}
+    design_decisions = safe_get(candidate, "task4", "design_decisions", default=[])
+    decisions = ensure_list(design_decisions)
+    if len(decisions) < 2:
+        add_msg(msgs, "task4.design_decisions missing or fewer than 2 entries.")
+    # Evaluate each of the 2 expected decisions
+    for i in range(2):
+        if i < len(decisions):
+            txt = decisions[i]
+            if isinstance(txt, str) and txt.strip() and 3 <= len(txt.strip()) <= 400:
+                # Additional heuristic: should mention 'normalize'/'normalized'/'denormalize'/'drop'/'impute'/'timestamp' etc.
+                lowered = txt.lower()
+                keywords = ["normalize", "normalized", "denormalize", "denormalized", "drop", "impute", "timestamp", "timestamps", "missing", "malformed", "join", "users", "events"]
+                has_kw = any(k in lowered for k in keywords)
+                pts = 2.5
+                if not has_kw:
+                    # still award partial if non-empty but no keywords
+                    pts = 1.5
+                    add_msg(msgs, f"Design decision #{i+1} provided but lacks expected keywords (normalize/drop/impute/timestamp); awarding partial credit.")
+                just_score += pts
+                just_detail[f"decision_{i+1}"] = {"points": pts, "max_points": 2.5}
+            else:
+                just_detail[f"decision_{i+1}"] = {"points": 0.0, "max_points": 2.5, "note": "empty or unreasonable length"}
+                add_msg(msgs, f"Design decision #{i+1} empty or unreasonable.")
+        else:
+            just_detail[f"decision_{i+1}"] = {"points": 0.0, "max_points": 2.5, "note": "missing"}
+    results["scores"]["justifications"] = {"points": round(just_score, 6), "max_points": MAX_JUST, "details": just_detail}
+
+    # -------------------------
+    # Sum up scores
+    # -------------------------
+    total_points = (
+        results["scores"]["correctness"]["points"]
+        + results["scores"]["reproducibility"]["points"]
+        + results["scores"]["schema_and_data"]["points"]
+        + results["scores"]["code_quality"]["points"]
+        + results["scores"]["justifications"]["points"]
+    )
+    results["total_points"] = round(total_points, 6)
+    results["percentage"] = round((total_points / results["max_points"]) * 100 if results["max_points"] else 0.0, 6)
+    results["overall_score"] = results["percentage"]
+
+    # Attach some high-level diagnostics (e.g., mismatches summary) to make evaluator's life easier
+    diagnostics = {
+        "expected_summary": {
+            "q1_total_events": safe_get(expected_task2_results, "q1_total_events"),
+            "q2_unique_users": safe_get(expected_task2_results, "q2_unique_users"),
+            "q3_top3_event_types": safe_get(expected_task2_results, "q3_top3_event_types"),
+            "q4_events_by_plan": safe_get(expected_task2_results, "q4_events_by_plan")
+        },
+        "candidate_summary": {
+            "run_command": run_command,
+            "persistent_store_files": persistent_files,
+            "task1_schema": safe_get(candidate, "task1", "schema"),
+            "task1_row_counts": safe_get(candidate, "task1", "row_counts"),
+            "task2_results": cand_task2_results,
+            "task3_aggregates": safe_get(candidate, "task3", "aggregates"),
+            "task4_report": safe_get(candidate, "task4", "report")
+        }
+    }
+
+    results["diagnostics"] = diagnostics
+
+    # Save results JSON
+    write_results(results)
+    # Print a concise summary to stdout
+    print(f"Scoring complete. Total: {results['total_points']}/{results['max_points']} -> {results['percentage']}%")
+    return
+
+def write_results(results):
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+    except Exception:
+        script_dir = os.getcwd()
+    out_path = os.path.join(script_dir, "test_results.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}")
+
+# -------------------------
+# Entry point
+# -------------------------
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        sys.exit(1)
+    candidate_path = sys.argv[1]
+    answer_path = sys.argv[2]
+    try:
+        grade(candidate_path, answer_path)
+    except Exception as exc:
+        print(f"Fatal grading error: {exc}")
+        # Attempt to write a minimal failure result
+        try:
+            write_results({
+                "scores": {},
+                "messages": [f"Fatal grading error: {exc}"],
+                "total_points": 0,
+                "max_points": 100,
+                "percentage": 0.0,
+                "overall_score": 0.0
+            })
+        except Exception:
+            pass
+        sys.exit(2)

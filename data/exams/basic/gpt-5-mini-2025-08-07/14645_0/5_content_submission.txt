@@ -1,0 +1,71 @@
+```json
+{
+  "submission_metadata": {
+    "candidate_name": "",
+    "candidate_email": "",
+    "time_started": "",
+    "time_finished": "",
+    "time_taken_minutes": null
+  },
+  "assumptions": [],
+  "resources": [
+    {
+      "name": "Alice",
+      "role": "Tester",
+      "availability_percent": null
+    },
+    {
+      "name": "Bob",
+      "role": "Tester",
+      "availability_percent": null
+    },
+    {
+      "name": "Charlie",
+      "role": "Automation Engineer",
+      "availability_percent": null
+    }
+  ],
+  "schedule": [],
+  "test_scope": [],
+  "estimates": [],
+  "risk_prioritisation": [],
+  "contingency_options": [
+    {
+      "option_id": "",
+      "description": "",
+      "expected_quality_impact": "",
+      "rationale": ""
+    },
+    {
+      "option_id": "",
+      "description": "",
+      "expected_quality_impact": "",
+      "rationale": ""
+    }
+  ],
+  "entry_exit_criteria": {
+    "test_design": {
+      "entry": [],
+      "exit": []
+    },
+    "system_testing": {
+      "entry": [],
+      "exit": []
+    },
+    "uat_testing": {
+      "entry": [],
+      "exit": []
+    },
+    "regression": {
+      "entry": [],
+      "exit": []
+    },
+    "release": {
+      "entry": [],
+      "exit": []
+    }
+  },
+  "strategy_summary": "",
+  "optional_attachments": ""
+}
+```

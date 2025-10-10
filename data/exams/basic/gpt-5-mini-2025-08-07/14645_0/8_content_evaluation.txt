@@ -1,0 +1,463 @@
+```json
+{
+  "submission_metadata": {
+    "candidate_name": "MODEL_ANSWER",
+    "candidate_email": "model.answer@example.com",
+    "time_started": "2025-10-21T09:00",
+    "time_finished": "2025-10-21T10:30",
+    "time_taken_minutes": 90
+  },
+  "assumptions": [
+    "Automation effort interpretation: '8 full working days of automation_setup by Charlie' = 64 hours of work. Because Charlie is 50% available (4h/day), delivering the full 64h would require 16 working days; this is infeasible within the test window. Therefore we will perform a targeted partial automation for F2 of 12 hours (3 working days of Charlie at 4h/day) to improve regression for the highest risk area while leaving the remaining automation for post-release.",
+    "Defect turnaround: developers will triage and fix critical/major defects within 1 working day during the test window (emergency fast-track). Minor defects may be deferred per brief.",
+    "Testers can parallelize independent feature test execution across Alice and Bob (two testers) as scheduled. Test environment availability constraints are strict; tasks named 'Test Env A' must lie between 2025-10-21 and 2025-10-30, and 'UAT' tasks between 2025-10-27 and 2025-11-01.",
+    "Test data preparation (2 working days) will be performed by Alice and Bob jointly and must finish before heavy system tests begin.",
+    "Security scan must be executed in Test Environment A and complete before UAT starts (i.e., by 2025-10-26). We schedule it on the last available weekday before UAT.",
+    "Working days exclude weekends and the public holiday 2025-10-23 (non-working)."
+  ],
+  "resources": [
+    {
+      "name": "Alice",
+      "role": "Tester",
+      "availability_percent": 100
+    },
+    {
+      "name": "Bob",
+      "role": "Tester",
+      "availability_percent": 100
+    },
+    {
+      "name": "Charlie",
+      "role": "Automation Engineer",
+      "availability_percent": 50
+    }
+  ],
+  "schedule": [
+    {
+      "id": 1,
+      "name": "Test design (all features)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-24",
+      "duration_days": 3,
+      "dependencies": [],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Test data preparation (shared)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-22",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Security vulnerability scan (Test Environment A)",
+      "start_date": "2025-10-24",
+      "end_date": "2025-10-24",
+      "duration_days": 1,
+      "dependencies": [
+        1,
+        2
+      ],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "System / Integration testing (Test Environment A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-30",
+      "duration_days": 4,
+      "dependencies": [
+        1,
+        2
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "UAT / Acceptance testing (UAT environment)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-31",
+      "duration_days": 5,
+      "dependencies": [
+        3
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Regression & perf smoke (final) (UAT)",
+      "start_date": "2025-10-30",
+      "end_date": "2025-10-31",
+      "duration_days": 2,
+      "dependencies": [
+        5
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Bug fixes triage & re-test",
+      "start_date": "2025-10-31",
+      "end_date": "2025-10-31",
+      "duration_days": 1,
+      "dependencies": [
+        6
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Automation setup (targeted for F2)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-29",
+      "duration_days": 3,
+      "dependencies": [
+        1
+      ],
+      "assigned": [
+        "Charlie"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Release readiness review & sign-off",
+      "start_date": "2025-11-03",
+      "end_date": "2025-11-03",
+      "duration_days": 1,
+      "dependencies": [
+        7
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    }
+  ],
+  "test_scope": [
+    {
+      "feature_id": "F1",
+      "name": "User login & sessions",
+      "complexity": "L",
+      "required_test_types": [
+        "integration",
+        "system",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 2
+    },
+    {
+      "feature_id": "F2",
+      "name": "Payments",
+      "complexity": "H",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 1
+    },
+    {
+      "feature_id": "F3",
+      "name": "Search & filtering",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 3
+    },
+    {
+      "feature_id": "F4",
+      "name": "Reporting dashboard",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 3
+    },
+    {
+      "feature_id": "F5",
+      "name": "Third-party API integration",
+      "complexity": "H",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 1
+    },
+    {
+      "feature_id": "F6",
+      "name": "Performance improvements",
+      "complexity": "M",
+      "required_test_types": [
+        "system",
+        "regression",
+        "perf",
+        "exploratory"
+      ],
+      "priority": 4
+    }
+  ],
+  "estimates": [
+    {
+      "feature_id": "F1",
+      "activity": "test_design",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F1",
+      "activity": "test_execution",
+      "estimated_hours": 6
+    },
+    {
+      "feature_id": "F1",
+      "activity": "regression",
+      "estimated_hours": 2
+    },
+    {
+      "feature_id": "F2",
+      "activity": "test_design",
+      "estimated_hours": 12
+    },
+    {
+      "feature_id": "F2",
+      "activity": "test_execution",
+      "estimated_hours": 28
+    },
+    {
+      "feature_id": "F2",
+      "activity": "regression",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F2",
+      "activity": "automation_setup",
+      "estimated_hours": 12
+    },
+    {
+      "feature_id": "F2",
+      "activity": "exploratory",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F3",
+      "activity": "test_design",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F3",
+      "activity": "test_execution",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F3",
+      "activity": "regression",
+      "estimated_hours": 2
+    },
+    {
+      "feature_id": "F4",
+      "activity": "test_design",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F4",
+      "activity": "test_execution",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F4",
+      "activity": "regression",
+      "estimated_hours": 2
+    },
+    {
+      "feature_id": "F5",
+      "activity": "test_design",
+      "estimated_hours": 12
+    },
+    {
+      "feature_id": "F5",
+      "activity": "test_execution",
+      "estimated_hours": 30
+    },
+    {
+      "feature_id": "F5",
+      "activity": "regression",
+      "estimated_hours": 6
+    },
+    {
+      "feature_id": "F5",
+      "activity": "exploratory",
+      "estimated_hours": 2
+    },
+    {
+      "feature_id": "F6",
+      "activity": "test_design",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F6",
+      "activity": "test_execution",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F6",
+      "activity": "regression",
+      "estimated_hours": 2
+    }
+  ],
+  "risk_prioritisation": [
+    {
+      "feature_id_or_risk": "F2",
+      "priority": 1,
+      "rationale": "Payments are high complexity and critical to revenue; defects have high impact and require end-to-end validation."
+    },
+    {
+      "feature_id_or_risk": "F5",
+      "priority": 1,
+      "rationale": "Third-party API instability is explicitly called out; integration failures near release can block acceptance."
+    },
+    {
+      "feature_id_or_risk": "F1",
+      "priority": 2,
+      "rationale": "Login is foundational; lower complexity but high risk for broad user impact if broken."
+    },
+    {
+      "feature_id_or_risk": "F3",
+      "priority": 3,
+      "rationale": "Search & filtering is medium complexity with moderate user impact; can tolerate limited minor defects."
+    },
+    {
+      "feature_id_or_risk": "F4",
+      "priority": 3,
+      "rationale": "Reporting is medium complexity; defects are often tolerable as minor depending on stakeholders."
+    },
+    {
+      "feature_id_or_risk": "F6",
+      "priority": 4,
+      "rationale": "Performance improvements are nice-to-have for release but lower immediate functional risk; perf smoke test covers regression risk."
+    },
+    {
+      "feature_id_or_risk": "Third-party API instability",
+      "priority": 1,
+      "rationale": "Explicit risk in brief; requires targeted integration tests and contingency."
+    },
+    {
+      "feature_id_or_risk": "Limited test data",
+      "priority": 2,
+      "rationale": "Test data prep may block system tests; scheduled early to mitigate."
+    }
+  ],
+  "contingency_options": [
+    {
+      "option_id": "C1",
+      "description": "Defer full regression and exploratory testing for lower-priority features F3, F4 and F6 until after release; focus testers on F2 and F5 plus critical flows.",
+      "expected_quality_impact": "Increased risk of undetected minor/medium defects in deferred features; core payment and integration flows are covered, reducing release-blocking risk.",
+      "rationale": "Concentrating limited tester hours on highest-risk areas preserves release acceptance (critical/major defects). Lower-priority features can be patched in a subsequent hotfix window."
+    },
+    {
+      "option_id": "C2",
+      "description": "Postpone full automation_setup (do only targeted 12h automation for F2). Delay remaining automation (to reach 40%) until after release.",
+      "expected_quality_impact": "Regression automation coverage will remain below target (approx. 30% instead of 40%); manual regression effort increases but is manageable for this release window.",
+      "rationale": "Full 8 full working days of automation by Charlie is infeasible with Charlie at 50% within this window; targeted automation brings most value to the riskiest feature with minimal schedule impact."
+    }
+  ],
+  "entry_exit_criteria": {
+    "test_design": {
+      "entry": [
+        "Code freeze completed (2025-10-20)",
+        "User stories and acceptance criteria available",
+        "Environment access requests submitted"
+      ],
+      "exit": [
+        "Test cases for priority features completed and peer-reviewed (>=90% for priority 1 features)",
+        "Test data prepared",
+        "Test design sign-off by QA lead (Alice or Bob)"
+      ]
+    },
+    "system_testing": {
+      "entry": [
+        "Test design exit criteria met",
+        "Test Environment A available (2025-10-21 onwards)",
+        "Test data provisioned in Test Env A"
+      ],
+      "exit": [
+        "No open critical defects in system tests",
+        "All priority 1 test cases executed at least once",
+        "Blocking defects triaged with owners and target fix dates"
+      ]
+    },
+    "uat_testing": {
+      "entry": [
+        "Security scan completed successfully in Test Environment A (by 2025-10-24)",
+        "System testing smoke checks complete (critical flows)",
+        "UAT environment available (2025-10-27)"
+      ],
+      "exit": [
+        "No open critical or major defects (all fixed and re-tested)",
+        "Acceptance test cases for stakeholder-agreed flows passed",
+        "Stakeholder/UAT lead sign-off obtained"
+      ]
+    },
+    "regression": {
+      "entry": [
+        "UAT acceptance sign-off or completion for priority flows",
+        "Regression test set and automation (targeted) ready"
+      ],
+      "exit": [
+        "Regression pass rate >= 90% for executed tests",
+        "No open critical defects; major defects fixed and re-tested",
+        "Performance smoke test completed with no blocking degradation"
+      ]
+    },
+    "release": {
+      "entry": [
+        "Regression exit criteria met",
+        "Release build validated in UAT",
+        "Deployment checklist completed"
+      ],
+      "exit": [
+        "Release deployed to production",
+        "No open critical defects in production for 2 hours post-deploy",
+        "Stakeholder acceptance and release notes published"
+      ]
+    }
+  },
+  "strategy_summary": "Summary: With a fixed code freeze (2025-10-20) and tight environment windows, the plan focuses tester effort on the highest-risk features (F2 Payments and F5 Third-party API) while ensuring security scan completes before UAT. Test design and test-data prep run from 2025-10-21 to 10-24 (3 and 2 working days respectively). System testing runs in Test Env A (10-27 to 10-30) and UAT runs 10-27 to 10-31; final regression and perf smoke occur 10-30 to 10-31. A targeted automation effort (12h) for F2 is scheduled for Charlie (10-27 to 10-29 at 50% availability) to maximize return on limited automation capacity. Two contingencies are prepared: (C1) defer lower-priority feature testing (F3/F4/F6) if needed; (C2) postpone remaining automation to post-release. Entry/exit criteria are concrete (e.g., no open critical defects, regression pass >=90%). Communication plan (release day): On 2025-11-03 at 09:00 (release window start) Alice (QA lead) will confirm regression exit criteria and notify the Release Manager, Product Owner and Dev Lead; after deploy, Alice will inform stakeholders and post status at +1 hour and +2 hours. This plan preserves the release date while protecting critical functionality.",
+  "optional_attachments": "EXPLANATION BY FIELD:\n\nsubmission_metadata: Provided a model candidate name and timestamps matching a 90-minute attempt. time_taken_minutes = 90.\n\nassumptions: These document the key interpretative decisions required by the brief: (1) how to interpret the 8 full working days automation requirement given Charlie is 50% available, (2) defect turnaround expectations, (3) parallelization of testers, (4) test data prep, (5) security scan scheduling, (6) working-day conventions (exclude weekends and 2025-10-23). The automation assumption is critical and the evaluator should accept either interpretation if documented; this key chooses to do partial automation to keep schedule feasible.\n\nresources: Names and availability copied exactly from the brief (Alice 100, Bob 100, Charlie 50).\n\nschedule: The schedule was built to strictly respect the constraints in the brief:\n- Code freeze 2025-10-20: no testing depends on pre-freeze code.\n- Test Environment A usage is only scheduled between 2025-10-21 and 2025-10-30 (security scan 10-24; system testing 10-27..10-30).\n- UAT tasks scheduled between 2025-10-27 and 2025-10-31 (UAT environment available 10-27..11-01; we avoid weekend days and 11-01 is a Saturday so we use 10-31 as last working day in the window).\n- Public holiday 2025-10-23 omitted from working-day calculations (design duration 3 days between 10-21 and 10-24 counts Tue/Wed/Fri only).\n- Automation setup (targeted) scheduled for Charlie on 10-27..10-29; because Charlie is 50% (4h/day), 3 working days * 4h/day = 12 hours which matches the automation_setup estimate for F2.\n- Dates and duration_days are checked to be inclusive working days (durations equal number of weekdays in range excluding holiday/weekend).\n\ntest_scope: Each feature (F1..F6) uses exact IDs and complexity codes (L/M/H). Required test types reflect the brief and common sense: F2 and F5 include acceptance and higher priority test types; F6 includes perf test type. Priorities: F2 and F5 set to 1 (highest). F1 2, F3 & F4 3, F6 4.\n\nestimates: The estimates total 160 hours across all activities. Rationale and checks:\n- Test design total ~40h (fits into design window: 3 working days * 2 testers * 8h/day = 48 tester-hours available for design tasks).\n- Execution/regression totals fit into the system/UAT/regression windows where testers have capacity. System (4 days) + UAT (5 days) + regression (2 days) across two testers provide more than enough wall-clock tester hours to execute the estimated 84 test_execution hours when parallelized.\n- Automation_setup for F2 = 12 hours; at Charlie 4h/day -> 3 working days; scheduled 10-27..10-29. This is consistent with the assumption of partial automation.\n- The estimates omit automation_setup for other features since full 64h automation is infeasible within the window; that choice is defended in assumptions and contingency.\n\nrisk_prioritisation: Ranks map to feature complexity, explicit brief risks (Third-party API instability), and likely release impact. Each rationale is 1-2 sentences.\n\ncontingency_options: Two practical options were provided: (C1) reduce scope on lower-priority features, and (C2) postpone remaining automation. Both include expected quality impact and rationale. These are realistic given the tight window and Charlie's limited availability.\n\nentry_exit_criteria: Provided measurable criteria for each phase, including explicit conditions like 'No open critical defects', 'Regression pass rate >= 90%', 'Security scan completed before UAT'. Also included who signs off (QA lead/stakeholder) inside the strategy_summary for release day.\n\nstrategy_summary: Concise (well under 500 words). It ties schedule, risk and priorities and includes a brief communication plan for release day (who is notified when). The communication paragraph names Alice (QA lead), Release Manager, Product Owner and Dev Lead and gives notification timing (09:00 and post-deploy +1h/+2h updates).\n\nVALIDATION / CONSISTENCY NOTES:\n- All schedule assigned resources are one of: Alice, Bob, Charlie.\n- Dates are YYYY-MM-DD and chosen to be weekdays (no weekend dates are used as task start/end except where environment window included weekend but we used last working day instead).\n- The security scan is scheduled in Test Environment A (10-24) and completes before UAT start (10-27).\n- The schedule meets the fixed release date constraint: release sign-off and deployment scheduled 2025-11-03 (on or before the deadline).\n- Working day counting: durations match inclusive working days excluding the public holiday 2025-10-23 and weekends.\n\nPASSING CRITERIA (for evaluator):\nThe exam rubric in the evaluator materials defines a 100-point scoring. For a passing (basic level) solution the candidate should score >= 80 points. Below are concrete pass/fail checks derived from that rubric which an automated or manual grader can apply:\n\n1) Assumptions (>=3 sensible assumptions) — 5 points total\n- Award full 5 points if candidate lists at least 3 clear, relevant assumptions including an explicit statement about the automation 8-day interpretation or defect turnaround. Partial credit 1-4 points for fewer or weaker assumptions.\n\n2) Schedule realism & completeness — 30 points total\n- 20 points: Schedule respects dates, environment windows, public holiday and release date; contains dependencies and assigns resources. (Full 20 if all respected; 0 if blatant violation e.g., UAT scheduled outside window.)\n- 10 points: Logical sequencing and inclusion of milestones (code freeze, security scan, UAT start, release). (Full 10 if milestones present and correctly ordered.)\n\n3) Estimates — 15 points total\n- 10 points: Reasonable effort estimates aligned to complexity and resource capacity (i.e., totals do not exceed available tester hours grossly). Full credit if total estimated hours are consistent with schedule resource capacity given availability_percent.\n- 5 points: Aggregation and internal consistency (e.g., sums roughly match schedule durations). Partial credit for mostly consistent numbers.\n\n4) Risk-based prioritisation — 15 points total\n- 10 points: Clear priority ranking with concise rationale for top 5 items. Award full 10 for logical ranking (F2/F5 high) and good rationales.\n- 5 points: Identification of highest-risk items and tie to release impact.\n\n5) Contingency options — 10 points total\n- 7 points: Two practical options provided. Full credit if both are feasible and address schedule/resource constraints.\n- 3 points: Good rationale and stakeholder consideration provided.\n\n6) Entry/Exit criteria & quality gates — 10 points total\n- 7 points: Clear, phase-appropriate criteria present (e.g., no open critical defects).\n- 3 points: Practical sign-off notes and measurable gates.\n\n7) Strategy summary & communication — 10 points total\n- 6 points: Concise strategy that links schedule, risk and priorities.\n- 4 points: Brief release-day communication plan naming who to notify and when.\n\nAutomatic fail conditions (major deductions / fail):\n- Schedule ignores fixed constraints (code freeze, env windows, holiday) => immediate fail or heavy deduction (0 in schedule category).\n- No resource assignments or clear over-allocation (e.g., assigned Charlie > 50% without assumption) => heavy deduction in schedule/estimates.\n- No contingency plan despite a tight schedule => significant deduction.\n\nPartial credit rules: Apply fractional points within each category when minor issues exist (e.g., one missed milestone, or estimates slightly inconsistent). The candidate must justify any assumption that relaxes constraints (e.g., making Charlie 100% available); such a justification may be accepted if it includes a stakeholder request and is reflected consistently in schedule and estimates.\n\nHOW TO USE THIS ANSWER KEY (evaluator guidance):\n- Validate JSON structure and required keys first.\n- Check assumptions for at least three sensible items, including the automation interpretation.\n- Verify that all schedule tasks' dates are weekdays (not weekends) and that Test Env A and UAT tasks lie within their windows. Verify the public holiday 2025-10-23 is not counted in duration_days.\n- Confirm assigned resources match availability (Charlie assigned only to tasks where his 50% capacity suffices; if automation_setup demands 12 hours, Charlie must be scheduled for 3 working days at 4h/day).\n- Confirm the totals in estimates do not exceed plausible capacity; for basic exam expect candidates to keep total estimated hours <= (Alice capacity + Bob capacity + Charlie available hours during test window) unless the candidate documents a justified adjustment.\n\nThis optional_attachments text intentionally contains both the per-field explanation and the pass/fail criteria so the evaluator has a single authoritative reference when scoring candidate submissions.",
+  "risk_prioritisation_notes": null
+}
+```

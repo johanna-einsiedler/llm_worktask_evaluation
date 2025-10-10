@@ -1,0 +1,98 @@
+<MATERIALS_FOR_CANDIDATE>
+CSV: `events.csv`
+event_id,user_id,timestamp,event_type,value
+E1,U1,2021-07-01T08:30:00Z,Click,"10"
+E2,U2,2021-07-01 09:15:00, view ,5
+E3,U1,2021-07-01T10:00:00Z,PURCHASE,"100"
+E4,U3,2021-07-01T11:05:00Z, Click,20
+E5,U2,,View,15
+E6,U4,2021-07-01T12:00:00Z,click,"0"
+E7,U1,2021-07-01T12:30:00Z,view,"2"
+E8,U5,not_a_timestamp,Click,1
+E9,U3,2021-07-01T13:00:00Z,purchase,"50"
+E10,U2,2021-07-01T14:00:00Z, CLICK ,"3"
+E11,U4,2021-07-01T15:00:00Z,View,4
+E12,U1,2021-07-01T16:00:00Z,click,"7"
+E13,U2,2021-07-01T17:00:00Z,view,"1"
+E3,U1,2021-07-01T10:00:00Z,PURCHASE,"100"
+E14,U5,2021-07-01T18:00:00Z,CLICK,"2"
+
+CSV: `users.csv`
+user_id,signup_date,plan
+U1,2021-01-15,pro
+U2,2021-02-20,free
+U3,2021-03-10,pro
+U4,2021-04-05,enterprise
+U5,,free
+U6,2021-05-01,free
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How the materials were constructed and why
+- Two small CSV files are provided: events.csv (15 data rows including one exact duplicate row) and users.csv (6 users). This size keeps the whole exam doable within 90 minutes while still requiring schema design, cleaning, joins, and aggregation.
+- The events.csv intentionally includes several "dirty" elements to force real ingestion decisions:
+  - One exact duplicate row: the row with event_id E3 appears twice (identical row). Candidate must deduplicate.
+  - One missing timestamp: event_id E5 has an empty timestamp field.
+  - One malformed timestamp: event_id E8 has timestamp value "not_a_timestamp".
+  - Inconsistent event_type casing and extra whitespace: values like "Click", " click ", "CLICK ", "PURCHASE", and "View".
+  - Numeric values are represented as strings in quotes for some rows (e.g., "10", "100") and as plain numbers in others; candidate must cast to numeric type.
+- users.csv includes one user (U6) with no events (to test handling of zero-count users) and one user (U5) missing signup_date. Plans are "free", "pro", "enterprise". All user_ids used by events (U1..U5) exist in users.csv; U6 is present only in users.csv.
+
+Key patterns / relationships for the evaluator to expect
+- After basic cleaning steps a typical deterministic pipeline would:
+  1. Remove exact duplicate rows (dedupe full-row equality) — removes the duplicate E3 row.
+  2. Handle missing/malformed timestamps by either dropping those rows or imputing timestamps (the candidate must choose and state which). The problematic rows are:
+     - E5 (missing timestamp)
+     - E8 (malformed timestamp "not_a_timestamp")
+  3. Normalize event_type by trimming whitespace and lowercasing (e.g., " Click" -> "click", "PURCHASE" -> "purchase").
+  4. Cast value column to numeric (integer).
+  5. Parse timestamps into a consistent ISO-8601 form; if timezone absent (e.g., "2021-07-01 09:15:00"), the candidate may treat it as UTC and convert to "2021-07-01T09:15:00Z".
+  6. Create an index on a frequently queried column such as user_id or timestamp (if using SQLite). The candidate should report whether the index was created.
+
+Deterministic expected numbers (if grader wants a canonical reference)
+- If the candidate chooses the common approach of dropping rows with missing or malformed timestamps and removing duplicate rows:
+  - Original rows in events.csv: 15
+  - Duplicate removed (E3 duplicate): -1
+  - Dropped rows for timestamp issues (E5 and E8): -2
+  - Total events after cleaning: 12
+  - Unique users present in cleaned events: 5 (U1, U2, U3, U4, U5; U6 has no events)
+  - Normalized event_type counts among cleaned events:
+    - "click": 6
+    - "view": 4
+    - "purchase": 2
+  - events_by_plan (sum of events for users in each plan):
+    - pro: users U1 (4 events), U3 (2 events) => 6
+    - free: users U2 (3), U5 (1), U6 (0) => 4
+    - enterprise: user U4 (2) => 2
+  - average_events_per_active_user (active users = users with >=1 event, i.e., U1..U5): total_events 12 / 5 active users = 2.4
+  - average_events_per_user_by_plan (computed over all users in that plan, including zero-event users):
+    - pro: 6 total events / 2 users = 3.0
+    - free: 4 total events / 3 users = 1.3333333333...
+    - enterprise: 2 total events / 1 user = 2.0
+
+Traps, ambiguities, and common errors a candidate might make
+- Not removing the duplicate E3 row — leads to inflated totals and skewed per-user/per-plan aggregates.
+- Failing to treat whitespace and casing in event_type — leads to multiple event_type categories (e.g., "Click" vs "click").
+- Parsing timestamps naively: some timestamps are in "YYYY-MM-DD HH:MM:SS" form (no 'T' or 'Z') and one is clearly malformed. Candidates must decide and implement consistent parsing and handle malformed values explicitly.
+- Ambiguity about averaging per plan: implementer could average only over active users (users with >=1 event) or over all users in the plan (including zero-event users). For objective grading, the evaluator should accept either approach if the candidate documents the choice clearly; the materials explanation above gives the canonical numbers for the approach that includes all users in plan.
+- Forgetting to use parameterized SQL statements (if using SQLite) — the instructions require parameterized queries for safety.
+- Creating non-deterministic ordering for sample rows; the sample_transformed_rows must be stable (e.g., order by event_id) to be reproducible.
+
+How these materials differentiate conceptual vs practical capability
+- Conceptual-only candidates might describe steps but fail to produce the persisted store, deduplicate rows, or implement parsing/casting. The small but realistic dirty dataset forces hands-on coding to read, clean, persist, query, and aggregate.
+- Practical competence is evaluated by:
+  - Producing a persistent store (SQLite file or local CSV/JSON files).
+  - Implementing deduplication and timestamp handling in code (not by hand).
+  - Using parameterized SQL queries or safe filters.
+  - Generating deterministic sample transformed rows and the final JSON report.
+
+Evaluator guidance
+- If you want a single canonical correct result for automated comparison, use the "drop malformed/missing timestamps" approach described above; the canonical numeric outputs are provided.
+- Alternatively, accept the candidate's numeric outputs if they:
+  - Implement and state a consistent timestamp policy (drop or impute) in their design_decisions,
+  - Demonstrate deduplication and normalization,
+  - Compute all reported metrics programmatically from the persisted store.
+- Check that sample_transformed_rows are ordered deterministically (e.g., ORDER BY event_id) and that value is numeric, event_type is normalized, timestamp is ISO-8601, and event_hour is integer 0–23.
+
+This set of materials is intentionally small, deterministic, and self-contained so the candidate can complete the 4-step pipeline (ingest → store → query → report) within the 90-minute limit.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

@@ -1,0 +1,123 @@
+<MATERIALS_FOR_CANDIDATE>
+File: telemetry.csv
+timestamp,host,cpu_percent,mem_mb,disk_io_kb,net_io_kb,event_type
+2024-03-01T00:00:00Z,host-01,10.5,1024,120,30,INFO
+2024-03-01T00:05:00Z,host-02,55.0,2048,500,80,INFO
+2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
+2024-03-01T01:00:00Z,host-02,60.0,2100,600,90,INFO
+2024-03-01T01:10:00Z,host-03,91.0,600,15,7,WARN
+2024-03-01T01:20:00Z,host-03,95.5,610,16,8,WARN
+2024-03-01T01:30:00Z,host-03,93.0,605,14,6,ERROR
+2024-03-01T02:00:00Z,host-01,20.0,1100,130,40,INFO
+2024-03-01T02:10:00Z,host-01,,2200,700,100,INFO
+2024-03-01T03:00:00Z,host-02,88.0,2150,650,95,INFO
+2024-03-01T04:00:00Z,host-01,15.0,1150,140,45,INFO
+2024-03-01T05:00:00Z,host-02,92.0,2300,800,110,WARN
+2024-03-01T06:00:00Z,host-02,93.0,2310,820,120,WARN
+2024-03-01T06:10:00Z,host-02,30.0,2000,300,60,INFO
+2024-03-01T25:00:00Z,host-01,50.0,1200,150,50,INFO
+2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
+
+File: target_host.txt
+host-02
+
+File: insert_record.json
+{
+  "timestamp": "2024-03-01T06:30:00Z",
+  "host": "host-02",
+  "cpu_percent": 100.0,
+  "mem_mb": 2400,
+  "disk_io_kb": 900,
+  "net_io_kb": 130,
+  "event_type": "INFO"
+}
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How these materials were constructed and intended grading assumptions
+
+Overview
+- Provided three deterministic files the candidate will use:
+  - telemetry.csv (16 data lines + header) — realistic telemetry columns and a few controlled edge cases.
+  - target_host.txt — the host name the candidate must use for Task 2 Q3 and Task 3.
+  - insert_record.json — the single telemetry record the candidate must insert in Task 3.
+
+Controlled edge cases and intended handling (deterministic grading assumptions)
+1. Malformed timestamp
+   - Line: 2024-03-01T25:00:00Z,... — this timestamp is invalid and should be considered malformed.
+   - Expected grader rule: skip rows with malformed timestamps (count them in rows_skipped). This is the single malformed row.
+
+2. Duplicate row
+   - The final CSV line is an exact duplicate of the row at timestamp 2024-03-01T00:10:00Z for host-03.
+   - Expected grader rule: treat exact duplicate rows (identical values across all columns) as duplicates and skip inserting the duplicate (count as skipped). This is one duplicate row.
+
+3. Missing numeric (cpu_percent)
+   - The row at 2024-03-01T02:10:00Z for host-01 has an empty cpu_percent field.
+   - Expected grader rule: coerce empty numeric fields to NULL and insert the row (do not skip it). Averages and aggregations that depend on cpu should be computed over non-NULL cpu values.
+
+Summary of expected ingestion counts (deterministic)
+- Total CSV data lines: 16
+- Expected skipped rows: 2 (1 malformed timestamp row + 1 duplicate row)
+- Expected rows_loaded inserted into DB: 14
+
+Important deterministic aggregation rules (used to compute expected numeric results)
+- Average CPU (avg_cpu) is computed excluding NULL cpu_percent values.
+- Hourly buckets use the hour-start truncated to the top of the hour in UTC (e.g., 2024-03-01T00:00:00Z).
+- Only hours that contain at least one record for the target host should be returned (chronological order, up to the most recent 24 hours).
+- Consecutive-sample CPU spikes: samples for a given host are ordered by timestamp; a spike period is any contiguous sequence of at least 3 successive samples for that host where each sample has cpu_percent > 90 (NULLs or cpu <= 90 break a sequence).
+- Duplicate detection for skipping during ingest is exact-row equality.
+
+Precomputed expected values (so evaluator can validate automatic grading)
+- Ingestion:
+  - rows_loaded: 14
+  - rows_skipped: 2
+  - note: "Skipped 1 malformed timestamp and 1 duplicate row; inserted one row with NULL cpu_percent."
+
+- Total rows in DB after ingest (results.total_rows): 14
+
+- Top 3 hosts by average CPU (results.top_hosts_by_avg_cpu), computed over non-NULL cpu values and rounded to two decimals:
+  1. host-03 — average cpu = (12.0 + 91.0 + 95.5 + 93.0) / 4 = 72.875 → 72.88
+  2. host-02 — average cpu = (55.0 + 60.0 + 88.0 + 92.0 + 93.0 + 30.0) / 6 = 69.6666667 → 69.67
+  3. host-01 — average cpu = (10.5 + 20.0 + 15.0) / 3 = 15.1666667 → 15.17
+
+- Hourly aggregates for the target host (target_host.txt contains "host-02")
+  - The most recent timestamp in the loaded dataset for host-02 is 2024-03-01T06:10:00Z, so include up to the last 24 hours (here all buckets).
+  - For host-02 the hour-buckets with data (chronological):
+    1. 2024-03-01T00:00:00Z → avg_cpu 55.00, max_mem_mb 2048
+    2. 2024-03-01T01:00:00Z → avg_cpu 60.00, max_mem_mb 2100
+    3. 2024-03-01T03:00:00Z → avg_cpu 88.00, max_mem_mb 2150
+    4. 2024-03-01T05:00:00Z → avg_cpu 92.00, max_mem_mb 2300
+    5. 2024-03-01T06:00:00Z → avg_cpu (93.0 + 30.0)/2 = 61.5 → 61.50, max_mem_mb = max(2310,2000) = 2310
+
+  - Note: hour 02:00 has no host-02 records after removing the malformed/duplicate rows and so is omitted.
+
+- CPU spike detection (results.cpu_spike_periods)
+  - host-03 has three consecutive samples >90 at:
+    - start_ts: 2024-03-01T01:10:00Z
+    - end_ts:   2024-03-01T01:30:00Z
+  - No other host meets the ">=3 consecutive samples >90" requirement.
+
+- Insert record (insert_record.json)
+  - Provided record inserts for host-02 at 2024-03-01T06:30:00Z with cpu_percent = 100.0
+  - After insertion, updated average for host-02:
+    - previous sum (non-null cpus) = 418.0 over 6 values
+    - after insert sum = 418.0 + 100.0 = 518.0 over 7 values
+    - updated_avg_cpu_for_host = 518.0 / 7 = 74.0 (report as 74.00 or 74.0)
+
+Potential traps and common candidate errors
+- Treating the malformed timestamp as valid rather than skipping it will change rows_loaded and aggregates. The timestamp 2024-03-01T25:00:00Z is intentionally invalid (hour 25).
+- Not deduplicating the exact duplicate row will cause host-03 averages to change; the duplicate is identical to an earlier row and must be skipped per expected grader rule.
+- Averaging with NULL values: candidates might include NULL as zero if they coerce missing cpu_percent to 0 — the grader expects NULLs to be excluded from averages.
+- Hour bucketing off-by-one: ensure hour_start is the top-of-hour truncation in UTC (e.g., 06:10 belongs to 06:00 hour_start).
+- Spike detection requires per-host ordering by timestamp and detecting contiguous sequences of samples >90; counting samples across hosts or unordered data will produce false results.
+
+How these materials differentiate practical skill levels
+- Parsing & validation: the malformed timestamp and missing cpu_percent test practical robustness.
+- Data modeling: a sensible flat table with appropriate types and an index on (host, timestamp) will let candidates perform the required queries quickly.
+- Querying & time windows: hourly aggregation and consecutive-sample detection test SQL/windowing and/or procedural grouping skills.
+- Reproducibility: the insert_record.json was chosen to yield a clean, round updated average (74.0) so graders can easily verify the post-insert calculation.
+
+Evaluator note
+- Use the precomputed expected values above to compare candidate test_submission.json numeric outputs.
+- If a candidate documents a different, consistent ingestion policy (e.g., they chose to keep duplicates or to skip rows with NULL cpu_percent), allow partial credit but flag differences; the automated grader should expect the scores above unless the candidate explicitly documents and follows a different ingestion rule in schema_description and the reported ingestion.rows_loaded/rows_skipped reflect that choice.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

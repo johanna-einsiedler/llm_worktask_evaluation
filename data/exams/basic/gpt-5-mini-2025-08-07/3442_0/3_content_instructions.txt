@@ -1,0 +1,152 @@
+### Exam Title
+Practical Exam — Store, Retrieve, and Manipulate Data for Analysis (Basic level)
+
+### Instructions for Candidate
+You have 90 minutes. Work from an empty directory. Use only the tools in your environment (code execution + text editor). Do not access the network or install third‑party libraries. Your submission must be fully reproducible by running a single command.
+
+Follow these steps exactly:
+
+1. Setup and entry point
+   - Create a single runnable script that performs all work and produces the required JSON output file named test_submission.json.
+   - Recommended script name: run_exam.py (you may use another language; put the exact run command into the submission JSON).
+   - The script must run from an empty directory, create any files it needs (database, CSV, etc.), and produce test_submission.json without additional inputs.
+
+2. Data ingestion & persistence (Task 1)
+   - Parse the provided plain-text datasets and persist them to disk as a structured store. You must choose one of:
+     - a local SQLite database file (recommended), or
+     - one or more local CSV/JSON files you create from the provided data.
+   - The store must be persistent (i.e., a file created in the working directory).
+   - Handle obvious data quality issues in the datasets:
+     - at least detect and handle duplicates (drop or deduplicate),
+     - at least detect and handle missing or malformed timestamps (choose to drop or to impute — you must state your choice in the report and implement it).
+   - Create an index on a frequently queried column (e.g., user_id or timestamp) if using SQLite and report its existence.
+
+   Deliverables (Task 1):
+   - The persistent store file(s) created by your script (e.g., data.db).
+   - In test_submission.json: the schema you created (table names and columns with types) and row counts per table after cleaning.
+
+3. Retrieve & query (Task 2)
+   - Using the persistent store created in Task 1, run the following queries (SQL or equivalent programmatic filters). Include the query text used (or short description) and the result values in test_submission.json:
+     q1_total_events — total number of event rows after cleaning.
+     q2_unique_users — count of distinct users present in events.
+     q3_top3_event_types — top 3 event_type values by event count (return list of pairs: event_type and count, ordered by count desc).
+     q4_events_by_plan — counts of events grouped by user plan (requires joining events to users dataset); return mapping plan -> event_count (plans with zero events may be omitted).
+
+   Requirements:
+   - Use parameterized queries / prepared statements when interacting with SQL databases.
+   - Do not hard-code numeric answers; compute them programmatically from the persisted data.
+
+4. Manipulate & transform (Task 3)
+   - Produce transformed/derived data and aggregated metrics:
+     - Normalize event_type strings (trim whitespace and lowercase).
+     - Parse timestamps to a consistent ISO-8601 format (or UTC if timezone present).
+     - Add a derived column event_hour (0–23) extracted from the timestamp.
+     - Compute events_per_user (number of events per user) and the average_events_per_active_user (average over users with >=1 event).
+     - Join events with users to compute average events per user broken down by plan (mapping plan -> average_events_per_user_for_plan).
+   - Produce sample transformed rows: the first 10 transformed rows (after cleaning and normalization), in stable deterministic order (e.g., ordered by event_id or timestamp).
+   - Include aggregated numeric metrics (average_events_per_active_user, events per plan averages) in test_submission.json.
+
+5. Report & justify (Task 4)
+   - Produce a compact JSON report object containing these metrics:
+     - total_events (numeric)
+     - unique_users (numeric)
+     - average_events_per_active_user (numeric)
+     - top3_event_types (array of {event_type, count})
+     - events_by_plan (mapping plan -> event_count)
+     - average_events_per_user_by_plan (mapping plan -> average_events_per_user)
+   - Provide exactly two short justifications (1–2 sentences each) in the JSON:
+     1) Schema decision: state whether you normalized into separate tables (users table + events table) or kept a single denormalized table, and why (1–2 sentences).
+     2) Missing/malformed timestamp handling: state your choice (drop or impute) and why (1–2 sentences).
+   - Report whether an index was created and on which column.
+
+6. Reproducibility and safety requirements
+   - No external packages or network access. Use only the standard library for your language.
+   - The script must accept no interactive input (no prompts); it must run to completion non‑interactively.
+   - Use relative paths only; do not hard-code absolute file paths.
+   - Include the exact single command that runs your script in the submission JSON (run_command).
+
+7. Optional (recommended)
+   - Include a small README.txt with the exact command required to run your script and the language/runtime used.
+
+Time management guideline (not enforced): Task1 ~20m, Task2 ~25m, Task3 ~25m, Task4 & polish ~20m (total 90m).
+
+### Expected Outcome
+By the end of the test you must produce:
+- A runnable script that, when executed from an empty directory, creates any persistent files needed and outputs the JSON file test_submission.json.
+- The file test_submission.json conforming exactly to the required structure defined below (Submission Format).
+- (Optional) A small README.txt with one-line run instructions.
+
+Your answers must be programmatically derived from the provided datasets — do not hard-code expected numeric values.
+
+### Provided Materials
+You will be provided in the exam prompt with two plain text files (embedded or attached):
+- events.csv — event log. Contains fields such as event_id, user_id, timestamp (string), event_type, value (may contain dirty data: missing timestamps, inconsistent casing, numeric values as strings, and duplicate rows).
+- users.csv — user records. Contains fields such as user_id, signup_date, plan (e.g., free, pro, enterprise), and possibly some missing fields.
+
+These files are the only input data for the script. The exact file names and content will be available in the exam prompt; your script must read them (do not fetch from network).
+
+### Submission Format
+You must submit one file named exactly test_submission.json. This JSON must contain the following top-level keys and shapes (types must match):
+
+- candidate_name: string
+- language: string (e.g., "Python 3.9")
+- time_spent_minutes: integer (approximate)
+- task1: object {
+    schema: object { table_name: object { column_name: string_type, ... }, ... },
+    row_counts: object { table_name: integer, ... },
+    persistent_store_files: array of strings (filenames created, e.g., ["data.db"])
+  }
+
+- task2: object {
+    queries: object {
+      q1_total_events: string (SQL or short description),
+      q2_unique_users: string,
+      q3_top3_event_types: string,
+      q4_events_by_plan: string
+    },
+    results: object {
+      q1_total_events: integer,
+      q2_unique_users: integer,
+      q3_top3_event_types: array of objects [{ "event_type": string, "count": integer }, ...] (length = 3),
+      q4_events_by_plan: object { plan_name: integer, ... }
+    }
+  }
+
+- task3: object {
+    transformations: array of short strings (describe each transformation performed),
+    sample_transformed_rows: array of up to 10 objects (each object is a transformed row with consistent keys, e.g., {event_id, user_id, timestamp, event_type_normalized, event_hour, value, plan}),
+    aggregates: object {
+      average_events_per_active_user: number,
+      average_events_per_user_by_plan: object { plan_name: number, ... }
+    }
+  }
+
+- task4: object {
+    report: object {
+      total_events: integer,
+      unique_users: integer,
+      average_events_per_active_user: number,
+      top3_event_types: array of objects [{ "event_type": string, "count": integer }, ...],
+      events_by_plan: object { plan_name: integer, ... },
+      average_events_per_user_by_plan: object { plan_name: number, ... }
+    },
+    design_decisions: array of two strings [
+      "schema decision (1-2 sentences)",
+      "missing/malformed timestamp handling (1-2 sentences)"
+    ],
+    index_created: object { created: boolean, column: string or null }
+  }
+
+- run_command: string (exact single command to run your script, e.g., "python3 run_exam.py")
+- notes: optional string (any assumptions you made)
+
+Formatting and content requirements:
+- Numeric values must be numbers (integers or floats); do not provide numbers as strings.
+- Arrays and objects must match the shapes above; keys must be spelled exactly as specified.
+- The sample_transformed_rows must be deterministic (your script should produce the same first N rows each run).
+
+Evaluation will be objective:
+- The grader will examine test_submission.json for required keys and numeric correctness derived from provided data.
+- The grader may run your run_command to reproduce the JSON.
+
+Good luck. Work clearly and programmatically — all numeric answers must come from your code operating on the provided files.

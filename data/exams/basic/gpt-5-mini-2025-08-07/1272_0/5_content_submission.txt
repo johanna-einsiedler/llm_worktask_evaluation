@@ -1,0 +1,70 @@
+```json
+{
+  "candidate_name": "",
+  "candidate_email": "",
+  "start_time_utc": "",
+  "end_time_utc": "",
+  "environment": {
+    "os": "",
+    "language": "",
+    "other": ""
+  },
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Setup & Baseline",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T1",
+      "title": "Repair (fix two bugs)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T2",
+      "title": "Expand (implement --since-date and add test)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T3",
+      "title": "Improve Efficiency (optimize HOTSPOT and benchmark)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "Finalize",
+      "title": "Finalize & Submit",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    }
+  ],
+  "new_tests": [],
+  "performance": {
+    "benchmark_command": "",
+    "before_run_times": [],
+    "after_run_times": [],
+    "short_explanation": ""
+  },
+  "how_to_reproduce": "",
+  "final_notes": "",
+  "self_assessed_percent_complete": null
+}
+```

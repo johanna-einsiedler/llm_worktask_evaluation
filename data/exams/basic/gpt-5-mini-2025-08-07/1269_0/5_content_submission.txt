@@ -1,0 +1,58 @@
+```json
+{
+  "candidate_name": "",
+  "language": "",
+  "time_minutes_used": null,
+  "primary_run_command": "",
+  "revision_run_command": "",
+  "files": [
+    {
+      "path": "data.csv",
+      "content": ""
+    },
+    {
+      "path": "summarizer.py",
+      "content": ""
+    },
+    {
+      "path": "Summarizer.java",
+      "content": ""
+    },
+    {
+      "path": "summarizer.c",
+      "content": ""
+    },
+    {
+      "path": "README.md",
+      "content": ""
+    },
+    {
+      "path": "CHANGELOG.md",
+      "content": ""
+    },
+    {
+      "path": "out_initial.json",
+      "content": ""
+    },
+    {
+      "path": "out_groupby.json",
+      "content": ""
+    }
+  ],
+  "captured_outputs": [
+    {
+      "name": "out_initial.json",
+      "path": "out_initial.json",
+      "content": ""
+    },
+    {
+      "name": "out_groupby.json",
+      "path": "out_groupby.json",
+      "content": ""
+    }
+  ],
+  "README": "",
+  "changelog": "",
+  "notes_for_evaluator": ""
+}
+```

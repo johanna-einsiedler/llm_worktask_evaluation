@@ -1,0 +1,47 @@
+{
+  "per_task": {
+    "A-bugfix": {
+      "points_earned": 50.0,
+      "points_max": 50.0,
+      "comments": [
+        "Pre-fix failing output detected (+5.0).",
+        "Post-fix tests show passing (+30.0).",
+        "Files modified are a subset of expected files (+10.0).",
+        "Explanation mentions root cause keywords (+5.0)."
+      ]
+    },
+    "B-adapt_env": {
+      "points_earned": 20.0,
+      "points_max": 20.0,
+      "comments": [
+        "Run output after adaptation matches expected (+12.0).",
+        "Explanation and risks provided (+8.0)."
+      ]
+    },
+    "C-performance": {
+      "points_earned": 20.0,
+      "points_max": 20.0,
+      "comments": [
+        "Benchmark numbers present (+8.0).",
+        "Improvement 98.1% >= 15%: full credit (+8.0).",
+        "Explanation contains optimization details/trade-offs (+4.0)."
+      ]
+    },
+    "Communication": {
+      "points_earned": 10.0,
+      "points_max": 10.0,
+      "comments": [
+        "test_submission.json contains required top-level keys (+3.0).",
+        "Unified diffs found and look like git-format (+4.0).",
+        "Bench command and test logs present (+3.0)."
+      ]
+    }
+  },
+  "deductions": [],
+  "total_points_earned": 100.0,
+  "max_points": 100.0,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "raw_points_before_cap": 100.0,
+  "cap_applied": false
+}

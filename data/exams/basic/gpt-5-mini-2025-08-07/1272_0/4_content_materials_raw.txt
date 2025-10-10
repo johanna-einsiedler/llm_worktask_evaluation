@@ -1,0 +1,249 @@
+<MATERIALS_FOR_CANDIDATE>
+Repository layout (all files below should be placed exactly as named):
+
+README.md
+--------------
+# Transaction Deduplicator CLI - Basic Practical Exam
+
+This small project provides a CLI to read a CSV of transactions, remove duplicate transactions, and print deduplicated CSV to stdout.
+
+Commands (use these exact commands for the exam):
+- Run tests: python3 -m pytest -q
+- Run program (produces CSV on stdout): python3 code/main.py sample_data/transactions.csv > output.csv
+- Run benchmark: python3 bench/benchmark.py
+
+Task note for candidate:
+- Task 1 will require fixing two bugs (tests show failing behaviors).
+- Task 2: Implement a CLI flag `--since-date YYYY-MM-DD` which filters input transactions to only those on or after the given date (inclusive). Add one automated test verifying this behavior.
+- Task 3: Optimize the function marked `# SLOW` in `code/deduper.py` so the benchmark runtime improves significantly (aim for at least 2x faster).
+
+code/main.py
+--------------
+#!/usr/bin/env python3
+import sys
+import csv
+import argparse
+from code.deduper import read_csv, dedupe_records, write_csv  # note: since-date flag not implemented yet
+
+def main(argv):
+    parser = argparse.ArgumentParser(description="Deduplicate transactions CSV")
+    parser.add_argument("input_csv", help="Path to input CSV file")
+    # Candidate: implement --since-date YYYY-MM-DD to filter records on or after this date (inclusive)
+    args = parser.parse_args(argv)
+
+    records = read_csv(args.input_csv)
+    deduped = dedupe_records(records)
+    write_csv(deduped, sys.stdout)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+code/deduper.py
+--------------
+import csv
+from datetime import datetime
+
+def read_csv(path):
+    """
+    Read CSV and return list of dict records.
+    Expected columns: Transaction_ID,Customer_ID,Date,Amount,Region
+    """
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        return [row for row in reader]
+
+def parse_date(date_str):
+    """
+    Parse date string and return a datetime.date.
+    BUG: The parsing format below is incorrect for inputs like '2023-01-05'.
+    Candidate must fix this.
+    """
+    # BUG: wrong format used
+    return datetime.strptime(date_str, "%d-%m-%Y").date()
+
+def dedupe_records(records):
+    """
+    Remove duplicate transactions.
+    Definition: duplicates share the same Transaction_ID (ignoring leading/trailing whitespace).
+    CURRENT IMPLEMENTATION:
+      - Naive O(n^2) nested loop (marked SLOW).
+      - Compares Transaction_IDs without stripping whitespace (bug: fails when IDs have extra spaces).
+      Candidate must both fix correctness (strip IDs) and optimize this SLOW function in Task 3.
+    """
+    unique = []
+    for r in records:
+        is_dup = False
+        for u in unique:
+            # SLOW: naive nested loop with extra work to simulate a hotspot.
+            a = (r['Transaction_ID'] + u['Transaction_ID']).lower()
+            # artificial workload to make this function measurable in benchmark
+            for _ in range(2000):
+                _ = a.endswith(u['Transaction_ID'])
+            if u['Transaction_ID'] == r['Transaction_ID']:
+                is_dup = True
+                break
+        if not is_dup:
+            unique.append(r)
+    return unique
+
+def write_csv(records, out_file):
+    if not records:
+        return
+    fieldnames = ["Transaction_ID","Customer_ID","Date","Amount","Region"]
+    writer = csv.DictWriter(out_file, fieldnames=fieldnames)
+    writer.writeheader()
+    for r in records:
+        writer.writerow(r)
+
+tests/test_deduper.py
+--------------
+import os
+from code.deduper import read_csv, parse_date, dedupe_records
+
+def test_parse_date():
+    # expect parse_date to accept "YYYY-MM-DD" and return a date with the corresponding year/month/day
+    d = parse_date("2023-01-05")
+    assert d.year == 2023 and d.month == 1 and d.day == 5
+
+def test_dedupe_removes_duplicates():
+    records = read_csv("sample_data/transactions.csv")
+    deduped = dedupe_records(records)
+    ids = [r['Transaction_ID'].strip() for r in deduped]
+    # after dedupe all Transaction_IDs should be unique
+    assert len(ids) == len(set(ids))
+
+tests/test_main_smoke.py
+--------------
+import subprocess
+import sys
+
+def test_main_runs():
+    # Smoke: main CLI should run and exit 0 when given the sample CSV
+    res = subprocess.run([sys.executable, "code/main.py", "sample_data/transactions.csv"], capture_output=True, text=True)
+    assert res.returncode == 0
+
+sample_data/transactions.csv
+--------------
+Transaction_ID,Customer_ID,Date,Amount,Region
+T001,C001,2023-01-01,100,North
+T002,C002,2023-01-05,50,East
+T003,C003,2023-01-10,75,South
+T004,C004,2023-01-03,200,West
+T002 ,C002,2023-01-05,50,East
+T005,C005,2023-01-07,60,North
+T006,C006,2023-01-02,80,South
+T007,C007,2023-01-05,90,East
+T005 ,C005,2023-01-07,60,North
+T008,C008,2023-01-08,40,West
+
+bench/benchmark.py
+--------------
+#!/usr/bin/env python3
+import time
+from code.deduper import read_csv, dedupe_records
+
+def benchmark_once():
+    records = read_csv("sample_data/transactions.csv")
+    t0 = time.perf_counter()
+    dedupe_records(records)
+    t1 = time.perf_counter()
+    return (t1 - t0) * 1000.0
+
+def main():
+    runs = 5
+    times = []
+    for _ in range(runs):
+        ms = benchmark_once()
+        print(f"run_ms: {ms:.2f}")
+        times.append(ms)
+    avg = sum(times) / len(times)
+    print(f"avg_ms: {avg:.2f}")
+
+if __name__ == "__main__":
+    main()
+
+.smoketest (optional helper script)
+--------------
+#!/usr/bin/env bash
+# Run tests (use exactly this command if you want a quick smoke)
+python3 -m pytest -q
+
+Notes:
+- The repository intentionally includes two failing behaviors covered by tests:
+  1) parse_date uses an incorrect format string and will raise or produce the wrong result.
+  2) dedupe_records does not strip Transaction_ID whitespace and will fail to detect duplicates in those cases.
+- The dedupe_records function is marked SLOW and contains a naive O(n^2) implementation with an artificial inner workload loop to make the hotspot measurable by the benchmark.
+- You must implement the new CLI flag `--since-date` (inclusive), add one test verifying it, and optimize the SLOW function for Task 3.
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How these materials were constructed and why
+
+Overview
+- Purpose: Provide a compact, deterministic Python codebase that requires the candidate to (A) run tests and benchmark, (B) diagnose and fix two concrete bugs, (C) add a small feature (CLI --since-date) with a test, and (D) optimize a clearly-marked SLOW function and report before/after timings.
+- Files are minimal and self-contained: no external packages or network access required. Tests use Python's standard tooling (pytest).
+
+Key files and relationships
+- code/deduper.py: core library with three responsibilities: read CSV, parse dates, deduplicate records, and write CSV. Two intentional issues:
+  - parse_date: uses "%d-%m-%Y" which does not match the actual CSV/date strings ("YYYY-MM-DD"). This either raises or parses incorrectly. This is one of the bugs the candidate must fix.
+  - dedupe_records: marked SLOW; implemented as naive nested loops which:
+    - compare Transaction_ID without .strip(), so duplicates that include trailing spaces are not recognized (bug to fix).
+    - includes artificial inner workload (loop of 2000 iterations) to make the function measurable in benchmarks and to make optimization observable.
+- code/main.py: simple CLI that reads input CSV and writes deduplicated CSV to stdout; currently does not implement the requested `--since-date` flag (this is the Task 2 feature).
+- sample_data/transactions.csv: deterministic data set (10 rows) with two types of duplicates:
+  - T002 appears twice; one instance has trailing space in Transaction_ID ("T002 ").
+  - T005 same situation.
+  The Date column includes a record with Date "2023-01-05" which is used by tests for inclusive filtering.
+- tests/test_deduper.py:
+  - test_parse_date: verifies parse_date("2023-01-05") returns a date with year=2023 month=1 day=5. This will fail initially because parse_date uses incorrect format.
+  - test_dedupe_removes_duplicates: reads the CSV then asserts that after dedupe, all Transaction_IDs (when stripped) are unique. This will fail initially because dedupe_records compares raw IDs without stripping whitespace.
+- tests/test_main_smoke.py: a smoke test that the CLI runs and exits 0. This passes in the baseline.
+- bench/benchmark.py: runs dedupe_records 5 times and prints run_ms lines and avg_ms. Candidate should run this before and after optimization and include numeric arrays in submission.
+
+Hidden relationships and traps
+- parse_date format mismatch is intentional: it's a syntactic bug that raises a ValueError for typical YYYY-MM-DD input. Some candidates may attempt to adjust code paths rather than the format string; the minimal correct fix is to change the format to "%Y-%m-%d".
+- dedupe_records has two issues linked together: correctness and performance.
+  - Correctness: Transaction_IDs in the CSV sometimes have trailing spaces; correct deduplication requires normalizing Transaction_ID (strip whitespace) before comparisons. A common incorrect fix is to trim only unique list entries or only current record—both will work, but the intent is to normalize before the check.
+  - Performance: The function intentionally uses a nested loop plus an artificial inner workload. A correct and fast approach is to normalize IDs and use a set to track seen IDs (O(n)), eliminating the nested loop and reducing the artificial workload dramatically. Candidate may also choose alternative valid optimizations (e.g., building a dict of first occurrences) — either is acceptable as long as benchmark shows measurable improvement (≥2x).
+- Task sequencing dependency: The Task 2 feature (--since-date) should interpret CSV Date values via parse_date. Therefore, parse_date must be fixed before implementing the since-date filter. This enforces correct sequencing: Fix parsing first (Task 1), then implement CLI and test for since-date (Task 2), and ensure benchmark runs exercise the dedupe path (Task 3).
+- Since-date semantics: README and the instructions require inclusive filtering ("on or after the given date"). A common off-by-one mistake is using a strict greater-than comparison; the test you ask the candidate to add should assert inclusive behavior for a date equal to a record's Date (e.g., "2023-01-05").
+
+What the correct/expected answers depend on
+- Correct fixes:
+  - parse_date must use the "%Y-%m-%d" format to parse dates like "2023-01-05" correctly.
+  - dedupe_records must treat Transaction_ID equivalently even if whitespace differs; normalizing with .strip() (or otherwise) is required. For Task 3, converting to a set-based approach (tracking seen IDs) will both fix correctness and improve performance.
+- New feature:
+  - Add `--since-date YYYY-MM-DD` to code/main.py argument parsing; when provided, read_csv result should be filtered to only include records where parse_date(record["Date"]) >= provided_date.
+  - Add a pytest test (e.g., tests/test_since_date.py) that calls main or the underlying function verifying that providing --since-date 2023-01-05 includes records dated exactly 2023-01-05.
+- Performance:
+  - The benchmark prints run_ms for 5 runs and avg_ms. Candidate should capture these numeric values before and after optimizations and include arrays in their submission. Accept a tolerance of ~10% variation when graders verify numbers.
+
+Common candidate mistakes to watch for
+- Fixing tests by modifying tests rather than fixing code. Tests are part of the exam and must not be changed (except the new test the candidate is asked to add).
+- Making changes that break other functionality (e.g., renaming fields or altering CSV output columns). Changes should be minimal and focused: fix parse_date format string, normalize Transaction_IDs, implement set-based dedupe, add since-date flag and test.
+- Implementing since-date using string comparison instead of date objects — this can cause incorrect behavior (e.g., "2023-1-10" comparisons). The correct approach uses parse_date to produce comparable date objects.
+- Overcomplicating the optimization: keep changes simple and well-explained. Using a set to track seen `Transaction_ID.strip()` is the simplest approach that meets performance goals.
+
+How materials differentiate conceptual vs. practical ability
+- Conceptual checks:
+  - Candidate must recognize date format mismatch and know appropriate datetime.strptime format tokens.
+  - Candidate must reason about duplicate detection correctness (normalization) and algorithmic complexity (O(n^2) vs O(n)).
+- Practical checks:
+  - Candidate must run the test suite, read failing traces, and implement targeted code changes that result in all tests (except newly added ones) passing.
+  - Candidate must add a new automated test for the CLI flag and ensure it integrates with pytest.
+  - Candidate must run the provided benchmark, measure before/after times, and demonstrate a measurable improvement (documenting commands and outputs).
+  - Candidate must produce diffs/modified file contents for evaluation and present reproducible commands.
+
+Grading hints for evaluator
+- Baseline: Running `python3 -m pytest -q` on the supplied materials should show at least two failing tests (parse_date and dedupe).
+- After fixes:
+  - All original tests should pass.
+  - New test (added by candidate) should pass and be included in their submission.
+  - Benchmark avg_ms should be lower after optimization; expect a substantial reduction (commonly ≥2x).
+- Check that candidate's changes are minimal and justified in their submission (patches or full file contents).
+- Confirm that the `--since-date` flag is implemented, inclusive of the boundary date.
+- Allow small timing variance; verify approximate improvement rather than exact equality.
+
+Size and determinism
+- The CSV and codebase are intentionally small (10 rows) and deterministic so graders can run them quickly. The artificial inner workload in dedupe_records ensures that the hotspot is measurable even on small data.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

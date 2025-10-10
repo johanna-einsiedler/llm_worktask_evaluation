@@ -1,0 +1,212 @@
+{
+  "candidate_name": "Official Answer Key",
+  "language": "Python 3.9",
+  "time_spent_minutes": 60,
+  "task1": {
+    "schema": {
+      "users": {
+        "user_id": "TEXT",
+        "signup_date": "TEXT",
+        "plan": "TEXT"
+      },
+      "events": {
+        "event_id": "TEXT",
+        "user_id": "TEXT",
+        "timestamp": "TEXT",
+        "event_type": "TEXT",
+        "value": "INTEGER"
+      }
+    },
+    "row_counts": {
+      "users": 6,
+      "events": 12
+    },
+    "persistent_store_files": [
+      "data.db"
+    ]
+  },
+  "task2": {
+    "queries": {
+      "q1_total_events": "SELECT COUNT(*) FROM events;",
+      "q2_unique_users": "SELECT COUNT(DISTINCT user_id) FROM events;",
+      "q3_top3_event_types": "SELECT event_type, COUNT(*) as cnt FROM events GROUP BY event_type ORDER BY cnt DESC LIMIT 3;",
+      "q4_events_by_plan": "SELECT u.plan, COUNT(e.event_id) as event_count FROM users u LEFT JOIN events e ON u.user_id = e.user_id GROUP BY u.plan;"
+    },
+    "results": {
+      "q1_total_events": 12,
+      "q2_unique_users": 5,
+      "q3_top3_event_types": [
+        {
+          "event_type": "click",
+          "count": 6
+        },
+        {
+          "event_type": "view",
+          "count": 4
+        },
+        {
+          "event_type": "purchase",
+          "count": 2
+        }
+      ],
+      "q4_events_by_plan": {
+        "pro": 6,
+        "free": 4,
+        "enterprise": 2
+      }
+    }
+  },
+  "task3": {
+    "transformations": [
+      "Deduplicated exact-duplicate rows (full-row equality) - removed duplicate row for event_id E3.",
+      "Dropped rows with missing or malformed timestamps (E5 and E8) per chosen policy.",
+      "Trimmed whitespace and lowercased event_type into event_type_normalized.",
+      "Parsed timestamps into ISO-8601 with trailing Z (treated timezone-less timestamps as UTC).",
+      "Casted value field to integer.",
+      "Added derived column event_hour (0-23) extracted from timestamp.",
+      "Joined events with users to include plan for each event.",
+      "Created index on events.user_id to speed joins/filters (reported in task4)."
+    ],
+    "sample_transformed_rows": [
+      {
+        "event_id": "E1",
+        "user_id": "U1",
+        "timestamp": "2021-07-01T08:30:00Z",
+        "event_type_normalized": "click",
+        "event_hour": 8,
+        "value": 10,
+        "plan": "pro"
+      },
+      {
+        "event_id": "E2",
+        "user_id": "U2",
+        "timestamp": "2021-07-01T09:15:00Z",
+        "event_type_normalized": "view",
+        "event_hour": 9,
+        "value": 5,
+        "plan": "free"
+      },
+      {
+        "event_id": "E3",
+        "user_id": "U1",
+        "timestamp": "2021-07-01T10:00:00Z",
+        "event_type_normalized": "purchase",
+        "event_hour": 10,
+        "value": 100,
+        "plan": "pro"
+      },
+      {
+        "event_id": "E4",
+        "user_id": "U3",
+        "timestamp": "2021-07-01T11:05:00Z",
+        "event_type_normalized": "click",
+        "event_hour": 11,
+        "value": 20,
+        "plan": "pro"
+      },
+      {
+        "event_id": "E6",
+        "user_id": "U4",
+        "timestamp": "2021-07-01T12:00:00Z",
+        "event_type_normalized": "click",
+        "event_hour": 12,
+        "value": 0,
+        "plan": "enterprise"
+      },
+      {
+        "event_id": "E7",
+        "user_id": "U1",
+        "timestamp": "2021-07-01T12:30:00Z",
+        "event_type_normalized": "view",
+        "event_hour": 12,
+        "value": 2,
+        "plan": "pro"
+      },
+      {
+        "event_id": "E9",
+        "user_id": "U3",
+        "timestamp": "2021-07-01T13:00:00Z",
+        "event_type_normalized": "purchase",
+        "event_hour": 13,
+        "value": 50,
+        "plan": "pro"
+      },
+      {
+        "event_id": "E10",
+        "user_id": "U2",
+        "timestamp": "2021-07-01T14:00:00Z",
+        "event_type_normalized": "click",
+        "event_hour": 14,
+        "value": 3,
+        "plan": "free"
+      },
+      {
+        "event_id": "E11",
+        "user_id": "U4",
+        "timestamp": "2021-07-01T15:00:00Z",
+        "event_type_normalized": "view",
+        "event_hour": 15,
+        "value": 4,
+        "plan": "enterprise"
+      },
+      {
+        "event_id": "E12",
+        "user_id": "U1",
+        "timestamp": "2021-07-01T16:00:00Z",
+        "event_type_normalized": "click",
+        "event_hour": 16,
+        "value": 7,
+        "plan": "pro"
+      }
+    ],
+    "aggregates": {
+      "average_events_per_active_user": 2.4,
+      "average_events_per_user_by_plan": {
+        "pro": 3.0,
+        "free": 1.3333333333333333,
+        "enterprise": 2.0
+      }
+    }
+  },
+  "task4": {
+    "report": {
+      "total_events": 12,
+      "unique_users": 5,
+      "average_events_per_active_user": 2.4,
+      "top3_event_types": [
+        {
+          "event_type": "click",
+          "count": 6
+        },
+        {
+          "event_type": "view",
+          "count": 4
+        },
+        {
+          "event_type": "purchase",
+          "count": 2
+        }
+      ],
+      "events_by_plan": {
+        "pro": 6,
+        "free": 4,
+        "enterprise": 2
+      },
+      "average_events_per_user_by_plan": {
+        "pro": 3.0,
+        "free": 1.3333333333333333,
+        "enterprise": 2.0
+      }
+    },
+    "design_decisions": [
+      "Schema decision: normalized into two tables (users and events) to avoid duplicating user metadata and to make joins for plan-based aggregates straightforward and efficient.",
+      "Missing/malformed timestamp handling: dropped rows with missing or non-parseable timestamps (E5 and E8) because those events cannot be reliably placed in time for the required time-based transformations; this keeps aggregates deterministic and avoids introducing artificial timestamps."
+    ],
+    "index_created": {
+      "created": true,
+      "column": "user_id"
+    }
+  },
+  "run_command": "python3 run_exam.py",
+  "notes": "Derivation and justification notes:\n\n1) Cleaning and deduplication:\n- The provided events.csv had 15 rows including an exact duplicate of E3. Per instructions, exact-duplicate rows were removed (dedupe on full row equality), removing one E3 duplicate, leaving 14 rows before timestamp handling.\n- Two rows had timestamp issues: E5 had a missing timestamp and E8 had a malformed timestamp 'not_a_timestamp'. The canonical answer key follows the evaluator guidance to DROP rows with missing or malformed timestamps. Dropping these two rows yields 12 events.\n\n2) Type casting and normalization:\n- The value column was cast to integer (e.g., \"10\" -> 10).\n- event_type values had inconsistent casing and whitespace; we trimmed whitespace and lowercased to produce event_type_normalized (e.g., ' Click' -> 'click', 'PURCHASE' -> 'purchase').\n- Timestamps missing 'T' and 'Z' (e.g., '2021-07-01 09:15:00') were treated as UTC and converted to ISO-8601 with trailing 'Z' ('2021-07-01T09:15:00Z'). All remaining timestamps were parsed to ISO-8601 strings.\n\n3) Counts and aggregates (how numbers were computed):\n- total_events = number of rows remaining in events table after dedupe and dropping bad timestamps = 12.\n- unique_users = distinct user_id values present in the cleaned events table = U1,U2,U3,U4,U5 => 5.\n- top3_event_types computed from normalized event_type counts: click=6, view=4, purchase=2.\n- events_by_plan computed by joining users to cleaned events and counting events per plan. Per users dataset: pro users U1 and U3 -> 6 events total; free users U2,U5,U6 -> 4 events total (U6 has 0 events); enterprise user U4 -> 2 events.\n- average_events_per_active_user = total_events / number_of_active_users (users with >=1 event). Active users = U1..U5 => 12 / 5 = 2.4.\n- average_events_per_user_by_plan computed over all users in the plan (including zero-event users) per evaluator guidance: pro 6/2=3.0, free 4/3=1.3333333333333333, enterprise 2/1=2.0.\n\n4) Sample transformed rows:\n- The first 10 deterministic transformed rows were chosen by ordering cleaned events by event_id ascending. Each row includes event_id, user_id, normalized ISO-8601 timestamp, event_type_normalized, event_hour (0-23), integer value, and plan joined from users.\n\n5) Index:\n- An index was created on events.user_id (if using SQLite: CREATE INDEX idx_events_user_id ON events(user_id);). This is reported in index_created as required.\n\nPassing criteria (basic exam rubric & rules):\n- Total points = 100, distributed per exam overview rubric: correctness of numeric/boolean outputs = 60 points; reproducibility (script + run_command produces test_submission.json) = 15 points; schema & data handling = 10 points; code quality & safety (parameterized queries, no absolute paths) = 10 points; justifications clarity = 5 points.\n- Passing threshold: >= 80 points (satisfactory for entry-level). In practice this means:\n  * All numeric outputs (total_events, unique_users, top3_event_types, events_by_plan, averages) must match the canonical numbers above to receive full correctness points (60 pts).\n  * Script must be runnable with the provided run_command and produce identical test_submission.json to receive reproducibility points (15 pts).\n  * Schema must include users and events (or a justified alternative) and row counts must match the stored files (10 pts).\n  * Use of parameterized SQL (or safe programmatic filters), no external libraries, and no hard-coded absolute paths earns code quality points (10 pts).\n  * Two short design decision justifications must be present and clear (5 pts).\n\nPartial credit / conditional scoring notes:\n- If a candidate chooses a different but consistent policy for missing/malformed timestamps (e.g., imputation) that is implemented programmatically and clearly documented, accept their numeric results if their code and run_command produce the reported numbers and transformations; adjust canonical expected numbers accordingly for grading. To receive full correctness points, their chosen policy must be consistent across all reported metrics and justified in design_decisions.\n- If deduplication is omitted, numeric aggregates will be off; graders should deduct correctness points proportionally to the discrepancy and note the missed deduplication as a data-handling error.\n- If the sample_transformed_rows ordering is non-deterministic, deduct reproducibility/quality points; deterministic ordering (e.g., ORDER BY event_id) is required.\n\nThis answer key follows the canonical approach outlined in the evaluator materials: dedupe exact duplicates, drop bad timestamps, normalize event_type, cast value to integer, parse timestamps to ISO-8601 (UTC), and compute aggregates via joins. The numeric values provided above are the deterministic results of that pipeline.\n"
+}

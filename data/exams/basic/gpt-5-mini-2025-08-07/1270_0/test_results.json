@@ -1,0 +1,136 @@
+{
+  "scores": {
+    "core_functionality": {
+      "score": 60,
+      "max": 60,
+      "details": [
+        "add: >=3 successful adds detected -> full credit (8/8).",
+        "list: JSON format present, parseable, and contains added SKUs -> full credit (8/8).",
+        "find: find produced JSON arrays with matches -> full credit (8/8).",
+        "update: update command succeeded and reflected in subsequent list JSON -> full credit (8/8).",
+        "delete: delete succeeded and later list shows SKU absent -> full credit (8/8).",
+        "persistence: items added are present in later list output -> full credit (15/15).",
+        "errors: duplicate SKU and negative qty errors present with stderr and non-zero exit codes -> full credit (5/5)."
+      ],
+      "breakdown": {
+        "add": {
+          "score": 8,
+          "max": 8
+        },
+        "list": {
+          "score": 8,
+          "max": 8
+        },
+        "find": {
+          "score": 8,
+          "max": 8
+        },
+        "update": {
+          "score": 8,
+          "max": 8
+        },
+        "delete": {
+          "score": 8,
+          "max": 8
+        },
+        "persistence": {
+          "score": 15,
+          "max": 15
+        },
+        "errors_exit_codes": {
+          "score": 5,
+          "max": 5
+        }
+      }
+    },
+    "robustness": {
+      "score": 10,
+      "max": 10,
+      "details": [
+        "robustness: both duplicate SKU and negative qty rejections detected -> full (6/6).",
+        "robustness: non-zero exit codes and stderr present for invalid ops -> full (4/4)."
+      ],
+      "breakdown": {
+        "validation_rejection": {
+          "score": 6,
+          "max": 6
+        },
+        "error_messages_exit_codes": {
+          "score": 4,
+          "max": 4
+        }
+      }
+    },
+    "deterministic": {
+      "score": 10,
+      "max": 10,
+      "details": [
+        "deterministic: both list and find produced parseable JSON -> full (6/6).",
+        "deterministic: entry_point provided and many commands use it -> full (4/4)."
+      ],
+      "breakdown": {
+        "json_outputs": {
+          "score": 6,
+          "max": 6
+        },
+        "cli_contract": {
+          "score": 4,
+          "max": 4
+        }
+      }
+    },
+    "code_quality": {
+      "score": 4,
+      "max": 10,
+      "details": [
+        "code_quality: short_description present but >200 words -> partial (4/10)."
+      ],
+      "breakdown": {
+        "readability_and_design": {
+          "score": 4,
+          "max": 10
+        }
+      }
+    },
+    "submission_completeness": {
+      "score": 10,
+      "max": 10,
+      "details": [
+        "submission: >=3 successful adds recorded -> 4/4.",
+        "submission: update command found -> 2/2.",
+        "submission: delete command found -> 2/2.",
+        "submission: find command found -> 1/1.",
+        "submission: persistence demonstration found -> 1/1."
+      ],
+      "breakdown": {
+        "adds_3_items": {
+          "score": 4,
+          "max": 4
+        },
+        "update_present": {
+          "score": 2,
+          "max": 2
+        },
+        "delete_present": {
+          "score": 2,
+          "max": 2
+        },
+        "find_present": {
+          "score": 1,
+          "max": 1
+        },
+        "persistence_demo": {
+          "score": 1,
+          "max": 1
+        }
+      }
+    }
+  },
+  "total_earned": 94,
+  "total_possible": 100,
+  "percentage": 94.0,
+  "overall_score": 94.0,
+  "summary_messages": [],
+  "raw_submission_filename": "/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/gpt-5-mini-2025-08-07/1270_0/answer_key.json",
+  "raw_answer_key_filename": "/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/gpt-5-mini-2025-08-07/1270_0/answer_key.json"
+}

@@ -1,0 +1,177 @@
+<MATERIALS_FOR_CANDIDATE>
+Repository root (files and contents). Save files with the exact relative paths and contents shown.
+
+README.md
+---------
+Exam: Updating and stabilizing automated tests (Basic practical)
+Goal: Update test files only so they match the current system-under-test (SUT) and stabilize a flaky test. Do NOT change any files in src/.
+
+Commands:
+- Run tests: ./run_tests.sh
+- Python required (3.8+). pytest is required.
+- Submit only one file at repo root named: test_submission.json
+- Do not change any src/ files. Only change files under tests/.
+
+Files included in this repository:
+- run_tests.sh
+- requirements.txt
+- src/math_utils.py
+- src/user.py
+- src/inventory.py
+- src/async_ops.py
+- tests/test_math.py
+- tests/test_user.py
+- tests/test_inventory.py
+- tests/test_async.py
+
+run_tests.sh
+------------
+#!/bin/sh
+# Run pytest quietly
+python -m pytest -q
+
+requirements.txt
+----------------
+pytest==7.2.0
+
+src/math_utils.py
+-----------------
+def add(a, b):
+    return a + b
+
+def divide(a, b):
+    return a / b
+
+src/user.py
+-----------
+def get_user():
+    # Note: SUT currently returns 'full_name' not 'name'
+    return {"id": 1, "full_name": "Alice Smith"}
+
+src/inventory.py
+----------------
+def get_inventory_summary(count):
+    # Note: SUT currently returns an integer count (was previously a formatted string)
+    return count
+
+src/async_ops.py
+----------------
+import threading
+
+# Global flag to indicate event triggered
+EVENT_FLAG = {"triggered": False}
+
+def _set_event():
+    EVENT_FLAG["triggered"] = True
+
+def trigger_event_delayed(delay=0.05):
+    """
+    Start a background timer that will set EVENT_FLAG after `delay` seconds.
+    Returns the Timer object.
+    """
+    t = threading.Timer(delay, _set_event)
+    t.start()
+    return t
+
+def is_event_triggered():
+    return EVENT_FLAG["triggered"]
+
+tests/test_math.py
+------------------
+from src.math_utils import add, divide
+
+def test_add_positive():
+    assert add(2, 3) == 5
+
+def test_divide():
+    assert divide(10, 2) == 5
+
+tests/test_user.py
+------------------
+from src.user import get_user
+
+def test_user_has_name():
+    user = get_user()
+    # Old tests expected key 'name' and value "Alice Smith"
+    assert 'name' in user
+    assert user['name'] == 'Alice Smith'
+
+tests/test_inventory.py
+-----------------------
+from src.inventory import get_inventory_summary
+
+def test_inventory_summary_format():
+    summary = get_inventory_summary(3)
+    # Old behavior: summary was a formatted string "3 items"
+    assert isinstance(summary, str)
+    assert summary == "3 items"
+
+tests/test_async.py
+-------------------
+from src.async_ops import trigger_event_delayed, is_event_triggered
+import time
+
+def test_trigger_event_immediate():
+    """
+    This test starts a delayed trigger and immediately checks the flag.
+    It is intentionally fragile / failing in the current repo (no wait).
+    Candidate should stabilize this test by adding a small wait/poll.
+    """
+    # Start background trigger with a small delay
+    trigger_event_delayed(delay=0.02)
+    # Immediately assert event is set (this currently fails)
+    assert is_event_triggered() == True
+
+def test_trigger_event_with_wait():
+    # Start background trigger and wait enough time for it to fire
+    trigger_event_delayed(delay=0.02)
+    time.sleep(0.05)
+    assert is_event_triggered() == True
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+Overview of construction
+- Purpose: small Python + pytest repository that contains 6 tests across 3 test modules. The SUT files (src/) intentionally contain small, realistic contract changes so tests fail. Candidate must change only tests/ files to make tests pass and stabilize one flaky test.
+- Number of tests: 6 total
+  - tests/test_math.py: 2 tests (both should pass initially)
+  - tests/test_user.py: 1 test (failing due to renamed dict key)
+  - tests/test_inventory.py: 1 test (failing due to changed return type)
+  - tests/test_async.py: 2 tests (one intentionally fragile/immediate-check that fails; one with wait that passes)
+- Failures intended: 3 failing tests initially
+  - test_user_has_name: fails because SUT returns 'full_name' key instead of 'name' (rename)
+  - test_inventory_summary_format: fails because SUT returns integer count instead of formatted string "N items" (type/format change)
+  - test_trigger_event_immediate: fails because test asserts event is True immediately; the SUT uses a background Timer so event is only True after a delay (timing/flaky test)
+
+Design rationale and patterns
+- Renamed key pattern: Many real SUT changes rename fields. This tests candidate's ability to map failing assertion to a changed key and update tests accordingly, not to change SUT.
+- Return type/format change pattern: Tests that assert types and exact formatting must be updated when SUT changes to preserve intent. Candidate should decide whether to update expected assertion or coerce as appropriate (prefer update to match SUT contract).
+- Flaky/timing pattern: Asynchronous background side-effect via threading.Timer. The immediate-check test fails predictably in this repository. Candidate must stabilize by adding a short wait or polling loop in the test (not by removing or skipping the test). The other async test with explicit sleep shows the right approach and serves as a reference.
+- Minimal edits: The tests are simple — candidate should only modify the test assertion lines and add at most a tiny helper in tests/ to poll/wait. They must not edit any src/ files.
+
+Traps and common errors
+- Editing src/ files: The README and instructions forbid changing SUT files. Some candidates may be tempted to change src/user.py to put back 'name' — this should be penalized if done.
+- Overly broad fixes: Candidate might disable tests (e.g., xfail or comment out), or increase many global timeouts. The evaluation should ensure changes are minimal, targeted, and the intention is explained in diagnostics.
+- Not resetting global state: src/async_ops.EVENT_FLAG is global. If a candidate modifies tests to rely on it, they should ensure tests remain independent (e.g., reset EVENT_FLAG in test). Acceptable minimal fixes: add a small loop/poll that checks is_event_triggered() for up to X ms, or use time.sleep(0.05). Better solution: poll with timeout and fail if not set. If a candidate forgets to reset EVENT_FLAG between tests they may create hidden order dependencies; evaluator should watch for that.
+- Incorrect fix choices for inventory summary: Candidate can either change test to assert int value and meaningfully express expected result, or coerce SUT value to string in test before asserting. Preferred: change assertions to match SUT (assert isinstance(summary, int) and summary == 3) and add a comment.
+
+Expected correct updates
+- tests/test_user.py: Replace assertions to check 'full_name' key and its value. Minimal change: change 'name' to 'full_name' in two places.
+- tests/test_inventory.py: Update test to expect integer and value 3 (and adjust type check).
+- tests/test_async.py: Stabilize test_trigger_event_immediate by adding a short polling loop (e.g., loop checking is_event_triggered() for up to 0.1s with small sleeps) or add time.sleep(0.05) before assertion. Prefer polling to demonstrate better practice. Ensure event flag is not left true across tests (candidate may reset EVENT_FLAG by importing and setting EVENT_FLAG['triggered'] = False at test start OR ensure polling is robust enough).
+- tests/test_math.py: No change.
+
+How these materials differentiate candidate ability
+- Junior/entry-level expectation: Recognize simple rename and type-change failures, make small edits to tests, and stabilize the timing test by adding a sleep or simple poll. Should complete within 90 minutes.
+- Good candidates will add minimal, maintainable helper (e.g., wait_for_event(timeout=0.1)) in tests/ to avoid repeated sleeps and will document rationale briefly in test_submission.json.
+- Strong candidates will avoid fixing SUT, provide clear diagnostics mapping test names to root causes, and include exact run commands and raw outputs.
+
+Reproducibility
+- Running ./run_tests.sh before edits should show the three failing tests and their pytest failure traces, providing candidates the necessary information to diagnose.
+- After making the intended minimal test-only changes, running ./run_tests.sh should show all tests passing.
+
+Evaluation notes for the grader
+- Confirm that only files under tests/ were modified. If src/ files were modified, apply penalties per exam rules.
+- Verify initial_test_output in candidate's JSON includes the raw failing pytest output and that final_test_output shows tests passing.
+- Check diagnostics array entries are present for each initially failing test with concise root_cause and action_taken.
+- Ensure the flaky test is stabilized in a focused way (poll/wait), not simply removed or marked skip.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

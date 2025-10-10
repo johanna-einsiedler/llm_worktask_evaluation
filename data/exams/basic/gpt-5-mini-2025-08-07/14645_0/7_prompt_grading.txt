@@ -1,0 +1,1267 @@
+You are an expert exam systems engineer. Your task is to write a Python grading script that automatically evaluates a candidate’s submission against the official answer key for a practical exam.
+Inputs
+Below is the contextual information you have access to:
+- Exam overview (for evaluator context):
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can take a realistic short-project brief and produce a practical, realistic test schedule/strategy that aligns scope, resources, risks and delivery date — i.e., that they can plan test activities so the team can realistically meet the release commitment.
+
+This exam verifies real-world capability to:
+- convert project scope and delivery constraints into a concrete, time-boxed test plan and schedule;
+- prioritise tests and scope based on risk and constraints;
+- estimate effort and allocate limited test resources;
+- produce clear entry/exit criteria and contingency decisions to protect delivery quality.
+
+### Core Competencies
+The basic exam tests whether the candidate can:
+1. Interpret project scope, milestones and constraints.
+2. Create a time-based test schedule with milestones and dependencies.
+3. Produce simple, justifiable effort estimates and resource assignments.
+4. Prioritise features/tests using risk-based reasoning.
+5. Define clear entry/exit criteria and contingency (scope-reduction) options when schedule/resource constraints exist.
+6. Produce clear, concise documentation (strategy summary + spreadsheet schedule) suitable for hand-off to the team.
+
+### Recommended Structure
+Total time: 90 minutes.
+
+Number of tasks: 4 short, sequential, hands-on tasks that mirror a real planning workflow. Each task requires output in a clearly defined JSON structure and uses the spreadsheet (for the schedule) and text editor (for free text summaries). Suggested time allocation:
+- Task 1 (10 minutes): Read project brief + state assumptions (deliverable: assumptions list).
+- Task 2 (30 minutes): Create a test schedule in spreadsheet form with milestones, dependencies, resource assignment, and a daily/weekly timeline that meets the delivery date (deliverable: schedule data in JSON form).
+- Task 3 (30 minutes): Risk-based prioritisation + scope reduction options + effort estimates per feature/test area (deliverable: prioritisation list, estimates, and 2 contingency options).
+- Task 4 (20 minutes): Produce a concise test strategy summary including entry/exit criteria, critical open risks and mitigation actions (deliverable: short text summary).
+
+Deliverables (all returned in a single file named test_submission.json):
+- assumptions: array of strings
+- schedule: array of rows (date, task id, task name, start date, end date, duration days, dependencies, assigned resource)
+- resources: list of testers and FTEs / availability
+- test_scope: list of features/modules with priority and test types required
+- estimates: effort hours per test activity or per feature
+- risk_prioritisation: list of risks/features with priority rationale and mitigations
+- contingency_options: two options (what to remove/reduce, impact, justification)
+- entry_exit_criteria: structured object with entry_criteria[], exit_criteria[]
+- strategy_summary: short text (max ~300 words)
+- signed_time_taken: candidate-reported minutes used (for evaluator sanity check)
+
+(Provide evaluators a simple JSON schema — see “Practical Elements” below.)
+
+### Practicality — How to make it hands-on
+- Give a compact, realistic project brief with clear release date, feature list, limited test team (e.g., 2 testers + part-time automation), environments availability windows, and high-level risks. The brief must include explicit constraints (deadline, resource count, blackout dates).
+- Require a schedule with concrete dates, task durations, and dependencies (not just a narrative). The candidate must use spreadsheet thinking (Gantt-like schedule) and convert that into the JSON schedule rows — practical, not theoretical.
+- Require effort estimates per task/feature and explicit assignment to named resources.
+- Force decision-making by giving a schedule that is tight enough to require prioritisation and contingency decisions.
+
+This turns knowledge into applied planning: candidate produces a usable schedule and scoping choices, not just definitions.
+
+### Strategic elements (decision points that separate concept from capability)
+Include these in the brief so candidates must make trade-offs:
+- A fixed release date that leaves very little slack (e.g., 2 weeks for testing) unless scope is reduced.
+- A mandatory production-deployment freeze window (e.g., no testing on a public holiday or environment downtime).
+- Partial automation capability (e.g., 40% of regression can be automated but automation requires 10 days setup).
+- A high-priority but complex feature that could consume significant test effort.
+- A risk of third-party API instability near release.
+
+Decision points candidates must resolve:
+- Whether to delay regression, reduce scope, remove some low-priority test types (e.g., exploratory vs full regression), or request more resources.
+- Whether to invest time in automation setup versus doing manual tests.
+- How to sequence integration and system testing with limited environment availability.
+- What to place as entry/exit criteria for each test phase to decide if a phase starts or release is allowed.
+
+These strategic choices reveal ability to prioritize and balance risk vs schedule.
+
+### Practical Elements to Include (concrete exam content suggestions)
+Provide the candidate a concise project brief (one page) that includes:
+- Release date (fixed) and code freeze date.
+- Feature list: 6-8 features or modules, each with short description and rough complexity (low/medium/high).
+- Available test team: e.g., 2 full-time testers + 1 part-time automation engineer (50%).
+- Environment availability: e.g., Test env A: available Mar 10–Mar 24; UAT: Mar 18–Mar 25.
+- Known constraints: 1 major public holiday in test window; existing automation coverage 20%.
+- Non-functional items: basic performance smoke, security scan required pre-release.
+- Delivery expectation: “Release only if critical/major defects fixed; minor defects may be deferred with stakeholder sign-off.”
+
+Tasks to require:
+1. State assumptions (if anything in brief is unclear).
+2. Produce a schedule that meets delivery date or shows necessary scope reduction; include start/end dates, durations, dependencies and resources.
+3. Provide effort estimates by feature and test type: test design, test execution, automation setup, regression.
+4. Produce risk-based prioritisation: rank features/tests and give short justification (1–2 sentences each).
+5. Provide two contingency options (what to drop or delay, impact on quality).
+6. Define entry/exit criteria for test phases and one very brief test communication plan for the release day (who to notify, when).
+
+All outputs must be represented in test_submission.json following the schema below.
+
+Suggested JSON schema for submission (evaluator will use this to validate):
+- submission_metadata: {candidate_name, email, time_started, time_finished, time_taken_minutes}
+- assumptions: [string]
+- resources: [{name, role, availability_percent}]
+- schedule: [{id, name, start_date(YYYY-MM-DD), end_date(YYYY-MM-DD), duration_days, dependencies:[ids], assigned:[resource_names]}]
+- test_scope: [{feature_id, name, complexity(L/M/H), required_test_types:[unit/integration/system/acceptance/regression/perf/security], priority(1-5)}]
+- estimates: [{feature_id, activity(test_design/test_execution/automation_setup/regression), estimated_hours}]
+- risk_prioritisation: [{feature_id_or_risk, priority(1-5), rationale(short)}]
+- contingency_options: [{option_id, description, expected_quality_impact, rationale}]
+- entry_exit_criteria: {phase_name: {entry: [string], exit: [string]}}
+- strategy_summary: string (max 500 words)
+- optional_attachments: (allows serialized CSV or table strings if candidate exported schedule) — evaluator can ignore if blank.
+
+You should include this schema in the exam brief so candidates know exactly how to format test_submission.json.
+
+### Evaluation Insights (what to look for and scoring)
+Scoring is itemized so a junior candidate who can do the basics should get >=80%:
+
+Total: 100 points. Passing (>80) for basic exam — target for qualified junior/entry-level.
+
+1. Assumptions (5 pts)
+- 5: Clear, relevant assumptions covering at least 3 uncertainties (e.g., environment availability, defect turnaround, stakeholder sign-off).
+- 0–4: Missing or irrelevant assumptions.
+
+2. Schedule realism & completeness (30 pts)
+- 20 pts: Feasible schedule that respects constraints/dates, shows dependencies, and assigns resources.
+- 10 pts: Logical sequencing (test design before execution, environment availability respected) and inclusion of milestones (code freeze, UAT start, release).
+- Deductions: unrealistic durations, missing dependencies, resource over-allocation.
+
+3. Estimates (15 pts)
+- 10 pts: Reasonable effort estimates per feature and activity aligned with assigned resources.
+- 5 pts: Correctly aggregated totals and match schedule durations.
+- Deductions for wildly inconsistent numbers (e.g., 2 testers cannot complete 2000 hours in 5 days).
+
+4. Risk-based prioritisation (15 pts)
+- 10 pts: Clear priority ranking with concise, logical rationale for top 5 items.
+- 5 pts: Correctly identifies highest-risk items and ties prioritisation to release impact.
+- Deductions for missing rationale or wrong risk focus.
+
+5. Contingency options (10 pts)
+- 7 pts: Two clear, practical options (scope reduction or schedule shift) with impact statements.
+- 3 pts: Good rationale and stakeholder considerations.
+- Deductions if options are not practical.
+
+6. Entry/Exit criteria & quality gates (10 pts)
+- 7 pts: Clear, test-phase appropriate criteria (e.g., pass rate, no open critical defects).
+- 3 pts: Practical implementation notes (who signs off).
+- Deductions for vague or missing criteria.
+
+7. Strategy summary & communication (10 pts)
+- 6 pts: Concise strategy that ties schedule, risk, and priorities together.
+- 4 pts: Brief communication plan (who to inform, triggers).
+- Deductions for unclear linkage to schedule or missing communications.
+
+Evaluator checks (qualitative):
+- Does the schedule meet the release date without impossible assumptions?
+- Are dependencies/holidays/environment windows respected?
+- Does prioritisation reflect risk to release rather than personal preference?
+- Are estimates and resource allocations consistent across schedule and estimate tables?
+- Is the strategy document concise and actionable?
+
+Red flags (automatic fail or large deduction):
+- Schedule ignores fixed constraints (release date, env blackout).
+- No resource assignments or clear over-allocation.
+- No contingency plan when schedule is tight.
+- Estimates are orders of magnitude unrealistic.
+
+### Example grader checklist (quick)
+- [ ] Submission file named test_submission.json and JSON valid.
+- [ ] Assumptions present (≥3).
+- [ ] Schedule contains start/end dates, dependencies, assigned resources, and meets/justifiably misses release date.
+- [ ] Estimates exist and match schedule totals.
+- [ ] Risk prioritisation with concise rationale provided.
+- [ ] Two contingency options provided.
+- [ ] Entry/exit criteria for key phases.
+- [ ] Strategy summary clear (≤500 words) and actionable.
+
+### How this distinguishes practical ability vs conceptual knowledge
+- Requiring a concrete, dated schedule forces the candidate to convert abstract knowledge into actionable planning (resource-level scheduling, dependency ordering).
+- Tight timeline + limited resources forces visible trade-offs and decisions — revealing whether candidate can prioritise and justify scope reductions.
+- Matching numerical estimates to schedule shows practical estimation skill rather than theoretical knowledge.
+- The need to produce a succinct strategy and communication plan checks ability to produce operational artifacts for stakeholders.
+
+This design keeps the exam short (90 minutes), uses only spreadsheet and text editor capabilities, is hands-on (produces a schedule and plan), and provides a clear rubric so evaluators can reliably and quickly score candidates.
+</examoverview>
+
+- Full exam content:
+<exam>
+### Exam Title
+Test planning practical — Basic level (90 minutes)
+
+---
+
+### Instructions for Candidate
+
+Goal
+- Produce a realistic, time-boxed test schedule and short strategy that converts the provided project brief into an executable test plan the team can use to meet the fixed release date.
+
+Time limit
+- 90 minutes total. You must record start and finish times in the submission_metadata (time_started / time_finished) and report time_taken_minutes.
+
+Available tools
+- Spreadsheet software (recommended to build a Gantt-like schedule) and a plain text editor. No other resources are available.
+
+Step-by-step tasks and suggested time allocation
+1. Read the project brief (Provided Materials) — 5 minutes.
+2. State assumptions you make about anything unclear in the brief — 10 minutes.
+   - Deliverable: list of assumptions.
+3. Create a time-based test schedule (Gantt-like) showing tasks, start/end dates, durations, dependencies and resource assignments — 30 minutes.
+   - Use spreadsheet thinking: show concrete dates, respect environment windows, public holiday, code-freeze and release date.
+   - Assign tasks to the provided resources only (names given in brief).
+   - Use working days only; 1 working day = 8 hours. Public holiday days are non-working.
+4. Produce risk-based prioritisation and effort estimates — 30 minutes.
+   - For each feature from the brief, list required test types, priority (1–5), and estimated effort (hours) for: test_design, test_execution, automation_setup (if any), and regression.
+   - Provide a short (1–2 sentence) rationale for priority for the top 5 items.
+   - Propose two concrete contingency options (what to reduce or drop if schedule is too tight, expected quality impact, and brief justification).
+5. Produce a concise test strategy summary — 15 minutes.
+   - Include entry and exit criteria for phases (e.g., test design complete, system testing entry, release exit criteria), and identify the key open risks and mitigations.
+6. Finalize and assemble everything into a single JSON file named test_submission.json — remaining time.
+
+Notes while working
+- Be concrete. Dates must be in YYYY-MM-DD format and respect the environment availability and holiday in the brief.
+- Use only the resource names given in the brief. Respect availability_percent for capacity calculations.
+- Priorities: 1 = highest risk / highest priority, 5 = lowest.
+- 1 working day = 8 hours. Use this for converting durations ↔ hours.
+- You may optionally export or attach a CSV of your spreadsheet as a string inside optional_attachments, but the evaluator will primarily use the JSON.
+
+---
+
+### Expected Outcome
+
+By the end you must produce a single valid JSON file test_submission.json that contains:
+
+- submission_metadata with your name, email, start/finish timestamps and minutes used.
+- assumptions array (≥3 recommended).
+- resources list (use provided resource names).
+- schedule array (concrete tasks with start/end dates, durations, dependencies and assigned resources).
+- test_scope array listing each feature (use feature IDs exactly as given in brief), complexity, required test types and a priority (1–5).
+- estimates array with estimated hours per feature-activity (activities limited to the set in the schema).
+- risk_prioritisation array with priority and short rationale.
+- contingency_options array with two options.
+- entry_exit_criteria object mapping phase names to arrays of entry and exit criteria.
+- strategy_summary string (max 500 words).
+- submission must be syntactically valid JSON and follow the schema exactly (see Submission Format below).
+
+Evaluator will check:
+- Schedule is feasible vs code freeze, release, environment windows and public holiday.
+- Resource assignments respect availability.
+- Estimates are consistent with schedule durations and available tester capacity.
+- Prioritisations and contingency options are risk-based and practical.
+- Entry/exit criteria are concrete and measurable (e.g., “no open critical defects”, “≥90% regression pass”).
+- Strategy summary ties schedule, risk and priorities together and contains a short communication plan for release day.
+
+---
+
+### Provided Materials
+
+You will be given the following single-page project brief (use these feature IDs exactly as shown):
+
+Project brief (compact)
+- Fixed code freeze date: 2025-10-20 (no code changes accepted after this date).
+- Fixed release date: 2025-11-03 (release must occur on or before this date).
+- Working days: weekdays only. Public holiday (no testing or environment access): 2025-10-23.
+- Test environments:
+  - Test Environment A: available 2025-10-21 to 2025-10-30
+  - UAT Environment: available 2025-10-27 to 2025-11-01
+- Test team:
+  - Alice (Tester) — 100% availability (full-time)
+  - Bob (Tester) — 100% availability (full-time)
+  - Charlie (Automation Engineer) — 50% availability (part-time)
+- Existing automation coverage: 20% of regression tests currently automated.
+  - To reach 40% regression automation requires 8 full working days of automation_setup by Charlie (during which Charlie is not available for other tasks).
+- Non-functional requirements:
+  - Basic performance smoke test (1 day, during final regression).
+  - Security vulnerability scan (one run in Test Environment A before UAT).
+- High-level constraints and risks:
+  - Third-party payment API (Feature F5) has known instability risk near release.
+  - Limited test data: test data preparation may take 2 days (shared task).
+  - Release acceptance criterion: critical/major defects must be fixed before release; minor defects can be deferred with stakeholder sign-off.
+- Feature list (use these IDs exactly):
+  - F1 — User login & sessions (Low complexity)
+  - F2 — Payments (High complexity)
+  - F3 — Search & filtering (Medium)
+  - F4 — Reporting dashboard (Medium)
+  - F5 — Third-party API integration (High)
+  - F6 — Performance improvements (Medium)
+
+Files you will receive
+- A plain-text copy of the above brief (you may re-copy it into your work).
+- No other data files are provided.
+
+---
+
+### Submission Format
+
+You must submit a single file named test_submission.json containing an object that exactly follows the schema below. Field names and types must match.
+
+Top-level object keys (required)
+- submission_metadata: object
+  - candidate_name: string
+  - candidate_email: string
+  - time_started: string (ISO-like timestamp or YYYY-MM-DDTHH:MM — free-text but must be present)
+  - time_finished: string (same format)
+  - time_taken_minutes: integer (whole minutes)
+- assumptions: array of strings
+- resources: array of resource objects
+  - Each resource object:
+    - name: string (one of: "Alice", "Bob", "Charlie")
+    - role: string (e.g., "Tester" or "Automation Engineer")
+    - availability_percent: integer (e.g., 100 or 50)
+- schedule: array of schedule task objects
+  - Each task object:
+    - id: integer (unique, 1,2,3,...)
+    - name: string (short task name)
+    - start_date: string (YYYY-MM-DD)
+    - end_date: string (YYYY-MM-DD)
+    - duration_days: integer (working days)
+    - dependencies: array of integers (task ids that must finish before this starts; empty array if none)
+    - assigned: array of strings (resource names, choose only Alice/Bob/Charlie)
+  - Requirements:
+    - Dates must be weekdays and respect environment windows and holiday (2025-10-23 is non-working).
+    - duration_days must equal the number of working days between start_date and end_date inclusive.
+- test_scope: array of feature objects (one per feature in brief)
+  - Each feature object:
+    - feature_id: string (must be "F1","F2","F3","F4","F5","F6")
+    - name: string (use brief names)
+    - complexity: string ("L","M","H")
+    - required_test_types: array of strings chosen from: ["unit","integration","system","acceptance","regression","perf","security","exploratory"]
+    - priority: integer 1–5 (1 = highest)
+- estimates: array of estimate objects
+  - Each estimate object:
+    - feature_id: string (as above)
+    - activity: string (one of: "test_design","test_execution","automation_setup","regression","exploratory")
+    - estimated_hours: integer (hours; 1 working day = 8 hours)
+  - Notes:
+    - If an activity does not apply for a feature, omit it.
+    - Totals across estimates should be consistent with schedule durations and resource availability.
+- risk_prioritisation: array of objects
+  - Each object:
+    - feature_id_or_risk: string (feature id like "F2" or short risk name e.g., "Third-party API instability")
+    - priority: integer 1–5 (1 = highest)
+    - rationale: string (one or two short sentences)
+- contingency_options: array of two objects (exactly two)
+  - Each object:
+    - option_id: string (e.g., "C1", "C2")
+    - description: string (what will be removed/delayed)
+    - expected_quality_impact: string (brief)
+    - rationale: string (brief justification)
+- entry_exit_criteria: object mapping phase names to criteria objects
+  - Each phase key value:
+    - entry: array of strings (concrete conditions)
+    - exit: array of strings (concrete conditions, e.g., "No open critical defects", "Regression pass ≥ 90%")
+- strategy_summary: string (max 500 words)
+  - Must include a one-paragraph communication plan for release day: who will be notified and when (name(s) should be roles or resource names).
+- optional_attachments: string (optional). You may paste a CSV export of your spreadsheet here if you wish; evaluator will ignore if empty.
+
+Formatting, validation and objective checks
+- The JSON must parse cleanly. Keys must match exactly.
+- Dates must use YYYY-MM-DD.
+- Priorities and complexities must be within allowed values.
+- Use feature IDs exactly as provided in the brief.
+- Use only provided resource names for assigned fields.
+- The evaluator will verify that schedule dates respect:
+  - Code freeze 2025-10-20,
+  - Test Env A availability 2025-10-21 to 2025-10-30,
+  - UAT availability 2025-10-27 to 2025-11-01,
+  - Public holiday 2025-10-23 is non-working.
+
+Example minimal content (not exhaustive)
+- assumptions: ["Defect fix turnaround 2 working days unless critical"]
+- schedule: [{id:1, name:"Test design F1", start_date:"2025-10-21", end_date:"2025-10-22", duration_days:2, dependencies:[], assigned:["Alice"]}, ...]
+- test_scope: [{feature_id:"F1", name:"User login & sessions", complexity:"L", required_test_types:["integration","system","regression"], priority:1}, ...]
+
+Submission
+- Save your single JSON object to a file named test_submission.json and upload/submit that file.
+- Do not submit multiple files. If you include a CSV of the spreadsheet, paste it into optional_attachments as a string inside the JSON.
+
+Good luck.File: project_brief.txt
+-----------------------
+Project brief (compact) — Use IDs exactly as shown.
+
+- Fixed code freeze date: 2025-10-20 (no code changes accepted after this date).
+- Fixed release date: 2025-11-03 (release must occur on or before this date).
+- Working days: weekdays only. Public holiday (no testing or environment access): 2025-10-23.
+- Test environments:
+  - Test Environment A: available 2025-10-21 to 2025-10-30
+  - UAT Environment: available 2025-10-27 to 2025-11-01
+- Test team:
+  - Alice (Tester) — 100% availability (full-time)
+  - Bob (Tester) — 100% availability (full-time)
+  - Charlie (Automation Engineer) — 50% availability (part-time)
+- Existing automation coverage: 20% of regression tests currently automated.
+  - To reach 40% regression automation requires 8 full working days of automation_setup by Charlie (during which Charlie is not available for other tasks).
+- Non-functional requirements:
+  - Basic performance smoke test (1 day, during final regression).
+  - Security vulnerability scan (one run in Test Environment A before UAT).
+- High-level constraints and risks:
+  - Third-party payment API (Feature F5) has known instability risk near release.
+  - Limited test data: test data preparation may take 2 days (shared task).
+  - Release acceptance criterion: critical/major defects must be fixed before release; minor defects can be deferred with stakeholder sign-off.
+- Feature list (use these IDs exactly):
+  - F1 — User login & sessions (Low complexity)
+  - F2 — Payments (High complexity)
+  - F3 — Search & filtering (Medium)
+  - F4 — Reporting dashboard (Medium)
+  - F5 — Third-party API integration (High)
+  - F6 — Performance improvements (Medium)
+
+File: features.csv
+------------------
+feature_id,name,complexity,short_description
+F1,User login & sessions,L,Authenticate users, session persistence and logout
+F2,Payments,H,End-to-end payments, billing and error handling
+F3,Search & filtering,M,Search results, filters, sorting and pagination
+F4,Reporting dashboard,M,Charts, export and scheduled reports
+F5,Third-party API integration,H,Payment gateway / third-party API calls and callbacks
+F6,Performance improvements,M,Backend improvements aimed at response time reduction
+
+File: resources.csv
+-------------------
+name,role,availability_percent
+Alice,Tester,100
+Bob,Tester,100
+Charlie,Automation Engineer,50
+
+File: env_windows.csv
+---------------------
+env_name,available_from,available_to,notes
+Test Environment A,2025-10-21,2025-10-30,Use for system/integration tests and security scan (must run here before UAT)
+UAT Environment,2025-10-27,2025-11-01,Use for acceptance/regression final pass
+Public holiday,2025-10-23,2025-10-23,No testing or environment access (non-working day)
+
+File: constraints.csv
+---------------------
+constraint_type,date,notes
+Code freeze,2025-10-20,No code changes after this date
+Release deadline,2025-11-03,Release must be on or before this date
+Test data prep window,Start ASAP after code freeze,Estimated 2 working days (shared task)
+
+File: automation_note.txt
+-------------------------
+Existing automation coverage: 20% of regression is automated today.
+To reach 40% automated regression requires 8 full working days of automation_setup by Charlie.
+While Charlie performs automation_setup he is not available for other tasks.
+(You must state your assumption about how Charlie's 50% availability affects the 8-day automation_setup effort.)
+
+End of materials — use only the exact IDs, names and dates above when preparing your submission JSON.```json
+{
+  "submission_metadata": {
+    "candidate_name": "",
+    "candidate_email": "",
+    "time_started": "",
+    "time_finished": "",
+    "time_taken_minutes": null
+  },
+  "assumptions": [],
+  "resources": [
+    {
+      "name": "Alice",
+      "role": "Tester",
+      "availability_percent": null
+    },
+    {
+      "name": "Bob",
+      "role": "Tester",
+      "availability_percent": null
+    },
+    {
+      "name": "Charlie",
+      "role": "Automation Engineer",
+      "availability_percent": null
+    }
+  ],
+  "schedule": [],
+  "test_scope": [],
+  "estimates": [],
+  "risk_prioritisation": [],
+  "contingency_options": [
+    {
+      "option_id": "",
+      "description": "",
+      "expected_quality_impact": "",
+      "rationale": ""
+    },
+    {
+      "option_id": "",
+      "description": "",
+      "expected_quality_impact": "",
+      "rationale": ""
+    }
+  ],
+  "entry_exit_criteria": {
+    "test_design": {
+      "entry": [],
+      "exit": []
+    },
+    "system_testing": {
+      "entry": [],
+      "exit": []
+    },
+    "uat_testing": {
+      "entry": [],
+      "exit": []
+    },
+    "regression": {
+      "entry": [],
+      "exit": []
+    },
+    "release": {
+      "entry": [],
+      "exit": []
+    }
+  },
+  "strategy_summary": "",
+  "optional_attachments": ""
+}
+```
+</exam>
+
+- Additional materials available only to the evaluator:
+<materials_evaluator>
+How materials were constructed and why
+- The materials reproduce the precise compact project brief the candidate needs to plan testing. The brief is deterministic (fixed dates, feature IDs, team availability and environment windows) so candidates must produce concrete schedules and estimates tied to those inputs.
+- I supplied small, clearly-labeled CSV-style tables for features, resources, environment windows and constraints so candidates can quickly copy rows into a spreadsheet. Each file uses consistent identifiers (feature_id: F1..F6, resource names: Alice/Bob/Charlie) to prevent ambiguity.
+- The automation_note.txt highlights an interpretative decision: the brief states "8 full working days of automation_setup by Charlie" while Charlie is 50% available. Candidates must state an assumption (e.g., treat 8 full working days as 16 part-time working days at 50% capacity, or treat Charlie providing 8 working days on their 50% time block and thus blocking Charlie for 8 calendar days). Requiring an explicit assumption tests practical judgment and communication.
+
+Key patterns and relationships embedded
+- Dates form a tight schedule: code freeze 2025-10-20, Test Env A opens 2025-10-21, UAT opens 2025-10-27 and ends 2025-11-01, release 2025-11-03. There is only a small window for system/integration and UAT testing before release — this intentionally forces prioritisation.
+- Public holiday 2025-10-23 falls inside Test Environment A's window; candidates must treat that date as non-working.
+- Security scan must run in Test Environment A and complete before UAT starts (i.e., on or before 2025-10-26). The candidate must schedule this.
+- Test data prep is a shared 2-day task to be scheduled early (after code freeze).
+- Automation trade-off: raising automation coverage from 20% to 40% requires significant dedicated automation_setup time from Charlie, who is only 50% available. This creates a realistic resource trade-off for candidates to reason about.
+- F2 (Payments) and F5 (Third-party API integration) are high complexity and high risk; F5 has an explicit instability risk callout. Candidates should prioritise these in risk-based ordering.
+
+Traps, likely ambiguities and how to evaluate candidate responses
+- Automation interpretation trap: Candidate must explicitly state how they interpret "8 full working days" vs Charlie's 50% availability. Accept either interpretation if the candidate documents it clearly and adjusts schedule and resource calculations consistently. If the candidate assumes 8 calendar days of Charlie time without noting 50% availability, deduct points.
+- Security scan scheduling: Many candidates may mistakenly schedule the security scan in UAT; evaluator should check the candidate scheduled the scan in Test Environment A and completed it before UAT start.
+- Working day counting: Candidates must count working days and ensure duration_days equals inclusive working days between start_date and end_date, excluding 2025-10-23. Common error: including the public holiday or weekend days. Verify durations match dates.
+- Resource over-allocation: Alice and Bob are 100% each; Charlie is 50%. Candidates should not assign Charlie beyond 50% capacity across concurrent tasks unless they document an assumption or schedule automation_setup as an exclusive block (which then makes Charlie unavailable for other tasks). Check that total estimated hours assigned per person per day do not exceed capacity (1 working day = 8 hours; Charlie's capacity per working day = 4 hours).
+- Environment windows: Tasks assigned to Test Environment A must lie between 2025-10-21 and 2025-10-30; UAT tasks must lie between 2025-10-27 and 2025-11-01. Evaluate for any schedule that violates these windows.
+
+What correct/expected answers depend on
+- Clear statement of assumptions (esp. automation days vs Charlie availability and defect turnaround time).
+- Respecting environment windows, public holiday, code freeze, and release date.
+- Logical sequencing: test design -> test execution -> regression -> final regression & perf smoke -> release, with the security scan completed before UAT.
+- Reasonable effort estimates: estimates (hours) should align to schedule durations and resource capacity. Example expectation: one tester (Alice or Bob) can complete ~8 hours/day; two testers can parallelize tasks; high complexity features will require more design and execution hours.
+- Risk prioritisation should elevate F2 and F5 to highest priority due to complexity and explicit instability risk; the rest ranked relative to complexity and release impact.
+
+How these materials differentiate conceptual vs practical capability
+- By providing exact dates, environment windows and resource availability, the candidate can only succeed by converting those constraints into a concrete schedule and numeric estimates — not by writing a theoretical strategy.
+- Interpreting the automation-block vs part-time availability and documenting that assumption separates candidates who think practically and communicate trade-offs from those who guess or ignore resource constraints.
+- Respecting environment windows and the security-scan pre-UAT constraint tests the candidate's ability to sequence and allocate limited environment availability, a common real-world planning challenge.
+
+Evaluator notes
+- Expect viable junior solutions to schedule test-design and test-data prep immediately after code freeze (starting 2025-10-21), then system/integration tests in Test Environment A (respecting the holiday), UAT in UAT window, and final regression & release checks before 2025-11-03.
+- Look for explicit assumptions, consistent math (hours ↔ days), two practical contingency options, and a short release-day communication plan naming who to notify and when.
+</materials_evaluator>
+
+- Evaluation and grading guidelines for the evaluator:
+<evaluation>
+```json
+{
+  "submission_metadata": {
+    "candidate_name": "Answer Key (Examiner)",
+    "candidate_email": "examiner@example.com",
+    "time_started": "2025-10-21T09:00",
+    "time_finished": "2025-10-21T10:30",
+    "time_taken_minutes": 90
+  },
+  "assumptions": [
+    "Charlie (Automation Engineer) at 50% availability = 4 productive hours per working day.",
+    "The '8 full working days' automation_setup to reach 40% automation would require 8 * 8 = 64 hours; at Charlie's 50% availability this would take 16 working days and is not practical in the available window, so only a targeted 16-hour automation_setup is planned (to stabilize critical regression for F2 and F5).",
+    "Defect turnaround time for test-identified defects is assumed to be 2 working days for non-critical fixes; critical defects will be triaged and fixed within 1 working day where possible.",
+    "Security vulnerability scan must be executed in Test Environment A and completed before UAT start (i.e., on or before 2025-10-26).",
+    "Test data preparation requires 2 working days and is a shared activity between Alice and Bob starting immediately after code freeze.",
+    "Weekends (Sat/Sun) and public holiday 2025-10-23 are non-working and excluded from durations and scheduling."
+  ],
+  "resources": [
+    {
+      "name": "Alice",
+      "role": "Tester",
+      "availability_percent": 100
+    },
+    {
+      "name": "Bob",
+      "role": "Tester",
+      "availability_percent": 100
+    },
+    {
+      "name": "Charlie",
+      "role": "Automation Engineer",
+      "availability_percent": 50
+    }
+  ],
+  "schedule": [
+    {
+      "id": 1,
+      "name": "Test design F2 (Payments)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-24",
+      "duration_days": 3,
+      "dependencies": [],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Test design F5 (Third-party API integration)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-24",
+      "duration_days": 3,
+      "dependencies": [],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Test design F3 (Search & filtering)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-22",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Test design F4 (Reporting dashboard)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-22",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Test design F6 (Performance improvements)",
+      "start_date": "2025-10-22",
+      "end_date": "2025-10-24",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Test design F1 (User login & sessions)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-21",
+      "duration_days": 1,
+      "dependencies": [],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Test data preparation (shared)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-22",
+      "duration_days": 2,
+      "dependencies": [],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Automation setup (targeted, 16h)",
+      "start_date": "2025-10-21",
+      "end_date": "2025-10-27",
+      "duration_days": 4,
+      "dependencies": [],
+      "assigned": [
+        "Charlie"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Security vulnerability scan (Test Env A)",
+      "start_date": "2025-10-24",
+      "end_date": "2025-10-24",
+      "duration_days": 1,
+      "dependencies": [],
+      "assigned": [
+        "Charlie",
+        "Alice"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "System testing F2 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-30",
+      "duration_days": 4,
+      "dependencies": [
+        1,
+        7
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "System testing F5 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-30",
+      "duration_days": 4,
+      "dependencies": [
+        2,
+        7
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "System testing F3 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-28",
+      "duration_days": 2,
+      "dependencies": [
+        3,
+        7
+      ],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "System testing F4 (Test Env A)",
+      "start_date": "2025-10-29",
+      "end_date": "2025-10-30",
+      "duration_days": 2,
+      "dependencies": [
+        4,
+        7
+      ],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "System testing F6 (Test Env A)",
+      "start_date": "2025-10-29",
+      "end_date": "2025-10-30",
+      "duration_days": 2,
+      "dependencies": [
+        5,
+        7
+      ],
+      "assigned": [
+        "Alice"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "System testing F1 (Test Env A)",
+      "start_date": "2025-10-27",
+      "end_date": "2025-10-27",
+      "duration_days": 1,
+      "dependencies": [
+        6,
+        7
+      ],
+      "assigned": [
+        "Bob"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "UAT (Acceptance) F2",
+      "start_date": "2025-10-30",
+      "end_date": "2025-10-31",
+      "duration_days": 2,
+      "dependencies": [
+        10,
+        9
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "UAT (Acceptance) F5",
+      "start_date": "2025-10-30",
+      "end_date": "2025-10-31",
+      "duration_days": 2,
+      "dependencies": [
+        11,
+        9
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "UAT (Acceptance) F3/F4/F6 (grouped)",
+      "start_date": "2025-10-30",
+      "end_date": "2025-10-31",
+      "duration_days": 2,
+      "dependencies": [
+        12,
+        13,
+        14,
+        9
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Final regression run (UAT)",
+      "start_date": "2025-10-31",
+      "end_date": "2025-10-31",
+      "duration_days": 1,
+      "dependencies": [
+        16,
+        17,
+        18,
+        8
+      ],
+      "assigned": [
+        "Alice",
+        "Bob",
+        "Charlie"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Performance smoke (final regression)",
+      "start_date": "2025-10-31",
+      "end_date": "2025-10-31",
+      "duration_days": 1,
+      "dependencies": [
+        19
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "Verify fixes (QA verification of dev fixes)",
+      "start_date": "2025-10-31",
+      "end_date": "2025-11-03",
+      "duration_days": 2,
+      "dependencies": [
+        19
+      ],
+      "assigned": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Release readiness & communication",
+      "start_date": "2025-11-03",
+      "end_date": "2025-11-03",
+      "duration_days": 1,
+      "dependencies": [
+        21
+      ],
+      "assigned": [
+        "Alice",
+        "Bob",
+        "Charlie"
+      ]
+    }
+  ],
+  "test_scope": [
+    {
+      "feature_id": "F1",
+      "name": "User login & sessions",
+      "complexity": "L",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 3
+    },
+    {
+      "feature_id": "F2",
+      "name": "Payments",
+      "complexity": "H",
+      "required_test_types": [
+        "unit",
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory",
+        "security"
+      ],
+      "priority": 1
+    },
+    {
+      "feature_id": "F3",
+      "name": "Search & filtering",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 4
+    },
+    {
+      "feature_id": "F4",
+      "name": "Reporting dashboard",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory"
+      ],
+      "priority": 5
+    },
+    {
+      "feature_id": "F5",
+      "name": "Third-party API integration",
+      "complexity": "H",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "exploratory",
+        "security"
+      ],
+      "priority": 2
+    },
+    {
+      "feature_id": "F6",
+      "name": "Performance improvements",
+      "complexity": "M",
+      "required_test_types": [
+        "integration",
+        "system",
+        "acceptance",
+        "regression",
+        "perf",
+        "exploratory"
+      ],
+      "priority": 3
+    }
+  ],
+  "estimates": [
+    {
+      "feature_id": "F2",
+      "activity": "test_design",
+      "estimated_hours": 24
+    },
+    {
+      "feature_id": "F2",
+      "activity": "test_execution",
+      "estimated_hours": 32
+    },
+    {
+      "feature_id": "F2",
+      "activity": "automation_setup",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F2",
+      "activity": "regression",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F2",
+      "activity": "exploratory",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F5",
+      "activity": "test_design",
+      "estimated_hours": 24
+    },
+    {
+      "feature_id": "F5",
+      "activity": "test_execution",
+      "estimated_hours": 32
+    },
+    {
+      "feature_id": "F5",
+      "activity": "automation_setup",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F5",
+      "activity": "regression",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F5",
+      "activity": "exploratory",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F3",
+      "activity": "test_design",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F3",
+      "activity": "test_execution",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F3",
+      "activity": "regression",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F3",
+      "activity": "exploratory",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F4",
+      "activity": "test_design",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F4",
+      "activity": "test_execution",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F4",
+      "activity": "regression",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F4",
+      "activity": "exploratory",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F6",
+      "activity": "test_design",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F6",
+      "activity": "test_execution",
+      "estimated_hours": 16
+    },
+    {
+      "feature_id": "F6",
+      "activity": "regression",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F6",
+      "activity": "exploratory",
+      "estimated_hours": 4
+    },
+    {
+      "feature_id": "F1",
+      "activity": "test_design",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F1",
+      "activity": "test_execution",
+      "estimated_hours": 8
+    },
+    {
+      "feature_id": "F1",
+      "activity": "regression",
+      "estimated_hours": 2
+    },
+    {
+      "feature_id": "F1",
+      "activity": "exploratory",
+      "estimated_hours": 2
+    }
+  ],
+  "risk_prioritisation": [
+    {
+      "feature_id_or_risk": "F2",
+      "priority": 1,
+      "rationale": "Payments are business-critical and complex; failures block revenue and require thorough testing including security and regression."
+    },
+    {
+      "feature_id_or_risk": "F5",
+      "priority": 2,
+      "rationale": "Third-party API instability is explicitly called out and can cause intermittent failures; prioritise integration and resiliency tests."
+    },
+    {
+      "feature_id_or_risk": "F1",
+      "priority": 3,
+      "rationale": "Login is high-impact for user access; lower complexity but critical for all flows, so validate early."
+    },
+    {
+      "feature_id_or_risk": "F6",
+      "priority": 3,
+      "rationale": "Performance improvements affect non-functional SLAs; include perf smoke and regression to ensure no regressions."
+    },
+    {
+      "feature_id_or_risk": "F3",
+      "priority": 4,
+      "rationale": "Search & filtering affects UX but is medium complexity; regressions less likely to block release."
+    },
+    {
+      "feature_id_or_risk": "F4",
+      "priority": 5,
+      "rationale": "Reporting is medium complexity but lower priority for immediate release compared to payments and integration risks."
+    },
+    {
+      "feature_id_or_risk": "Third-party API instability",
+      "priority": 1,
+      "rationale": "Called out in brief; could cause payment failures close to release—requires extensive mocking, contract tests and contingency."
+    }
+  ],
+  "contingency_options": [
+    {
+      "option_id": "C1",
+      "description": "Reduce full regression scope: run critical-path regression only (covering F1, F2, F5 and core checkout flows) and defer low-priority regression for F4 and F3 to a post-release patch.",
+      "expected_quality_impact": "Higher risk of undiscovered non-critical defects in reporting and search, but core payment and login flows remain covered to protect revenue.",
+      "rationale": "Given tight windows and limited tester hours, prioritising critical flows preserves release safety while allowing delivery on date."
+    },
+    {
+      "option_id": "C2",
+      "description": "Defer automation_setup to post-release (do only minimal targeted automation now); reassign Charlie's available time pre-release to security scan and test support.",
+      "expected_quality_impact": "Regression automation coverage remains at ~20% pre-release (no increase to 40%). More manual testing required, slightly increasing execution effort but avoids blocking schedule.",
+      "rationale": "Full 8-day automation_setup is impractical within the window at Charlie's 50% availability; delaying automation maintains testing throughput."
+    }
+  ],
+  "entry_exit_criteria": {
+    "test_design": {
+      "entry": [
+        "Code freeze completed (after 2025-10-20)",
+        "Requirements/specs for feature exist",
+        "Test data preparation task started or planned"
+      ],
+      "exit": [
+        "Test cases for feature written and reviewed",
+        "Traceability to requirements confirmed",
+        "Test data identified and allocated"
+      ]
+    },
+    "system_testing": {
+      "entry": [
+        "Test design for the feature completed and reviewed",
+        "Test data available",
+        "Test Environment A available and stable"
+      ],
+      "exit": [
+        "All critical and major defects from system tests fixed or triaged with timelines",
+        "No open critical defects",
+        "Regression test cases for changed areas produced"
+      ]
+    },
+    "uat_testing": {
+      "entry": [
+        "System testing for relevant features completed",
+        "Security scan in Test Env A completed with no blocking findings",
+        "UAT environment available (from 2025-10-27)"
+      ],
+      "exit": [
+        "Acceptance criteria for priority features met",
+        "No open critical or major defects (or fixed before release)",
+        "Stakeholder (PO) sign-off for deferred minor defects"
+      ]
+    },
+    "regression": {
+      "entry": [
+        "UAT acceptance for core flows completed",
+        "Automation smoke scripts (targeted) available where applicable",
+        "Final regression environment (UAT) available"
+      ],
+      "exit": [
+        "Regression pass rate >= 90% for critical tests OR all remaining failures are minor with sign-off",
+        "No open critical defects",
+        "Performance smoke results acceptable"
+      ]
+    },
+    "release": {
+      "entry": [
+        "Code freeze respected",
+        "All critical/major defects resolved (or explicit mitigation + sign-off)",
+        "Release readiness checklist completed"
+      ],
+      "exit": [
+        "Deployment to production completed",
+        "Post-deploy smoke tests passed",
+        "Key stakeholders notified (QA: Alice/Bob, Dev lead, Product Owner) and acceptance recorded"
+      ]
+    }
+  },
+  "strategy_summary": "Strategy: Execute targeted, risk-based testing to meet the fixed release date 2025-11-03. Prioritise Payments (F2) and Third-party API (F5) system and acceptance tests, perform test design immediately post-code-freeze (2025-10-21) and prepare test data concurrently. Use Test Environment A (2025-10-21—10-30) for system/integration and the security scan (scheduled 2025-10-24). Run UAT in the UAT window (2025-10-30—10-31) with a final regression and performance smoke on 2025-10-31. Automation: do a targeted 16-hour automation setup by Charlie to cover critical regression areas for F2 and F5; defer full 8-day automation_setup required to reach 40% until after release (see contingency C2). Contingency: if schedule becomes tighter, drop non-critical regression (C1) and defer F4/F3 deep regression post-release. Communication plan (release day): QA (Alice, Bob) will confirm final regression and performance smoke results by 10:30 on 2025-11-03; QA notifies Dev Lead and Product Owner immediately if any critical issues are found. Once post-deploy smoke passes, QA will confirm release complete to Product Owner and stakeholders by 12:00 on 2025-11-03.",
+  "optional_attachments": "EXPLANATION OF ANSWER KEY (field-by-field reasoning and derivation):\n\nsubmission_metadata:\n- Candidate/time fields are filled with a deterministic marker. time_taken_minutes=90 matches exam time-limit; this is illustrative for the answer key.\n\nassumptions:\n- Included assumptions that the candidate should make explicitly (Charlie 50% mapping to 4 hours/day, impracticality of full 8-day automation given 50% availability, defect turnaround, security scan constraints, test data prep duration). These are required because the brief is ambiguous about how to interpret '8 full working days' for a 50% resource and turnaround SLAs.\n\nresources:\n- Exactly the three resources from the brief with their availability_percent values (100, 100, 50). This is required by the schema and exam instructions.\n\nschedule (how derived):\n- Primary constraints used: code freeze 2025-10-20, Test Env A available 2025-10-21—10-30, UAT available 2025-10-27—11-01 (practical UAT days are 2025-10-27—10-31 as weekends are excluded), public holiday 2025-10-23 non-working.\n- Test design tasks start immediately after code freeze (2025-10-21). Durations are converted: 1 working day = 8 hours. Where a task spans the public holiday, the holiday is excluded from duration counts (e.g., a 3-day task starting 2025-10-21 ends 2025-10-24 because 10-23 is non-working).\n- Automation setup: chosen as a targeted 16-hour effort for critical regression (8h for F2 and 8h for F5). At Charlie's 50% availability (4h/day), this requires 4 working days; scheduled across 2025-10-21,22,24,27 (start 10-21 end 10-27 duration_days=4). This preserves Charlie's availability accounting.\n- Security scan scheduled on 2025-10-24 in Test Environment A so results are ready before UAT starts on 2025-10-27.\n- System testing placed inside Test Env A window and after test design & test data prep.\n- UAT scheduled 2025-10-30—10-31 (UAT window) with dependencies on system tests and security scan.\n- Final regression and perf smoke scheduled for 2025-10-31; verification of fixes allowed on 2025-10-31 and 2025-11-03 (weekend days excluded); verify_fixes uses two working days (10-31 and 11-03). Release readiness and communication on 2025-11-03.\n- Dependencies are feature-specific: system testing depends on test design and test data; UAT depends on system testing and security scan.\n\ntest_scope:\n- Feature list uses exact IDs and names from the brief. Complexity codes (L/M/H) follow brief. Required test types include the necessary types per feature (security included for F2/F5; perf included for F6). Priorities assigned based on risk and business impact: F2 (Payments)=1, F5 API=2, F1 login and F6 perf=3, F3=4, F4=5.\n\nestimates (how hours were computed):\n- test_design hours = duration_days * 8 hours (e.g., F2 design 3 days -> 24 hours).\n- test_execution hours = system test duration_days * 8 hours (counts total QA effort across testers).\n- automation_setup = targeted 16 hours split 8/8 between F2 and F5 to produce critical regression scripts. At Charlie's 50% availability (4h/day) this requires 4 working days in schedule which matches task id 8 duration_days=4.\n- regression and exploratory estimated modest hours consistent with final regression window (final regression is 1 working day; regression hours reflect focused, risk-based regression rather than exhaustive runs).\n- Note: Security scan is a required activity but the schema restricts estimate activity names; testers should account security scan time inside test_execution estimates (practically the security scan is scheduled as task id 9 on 2025-10-24). The schedule includes it explicitly.\n\nrisk_prioritisation:\n- F2 and F5 are top priorities because of business impact and explicit instability risk. F1 and F6 are next as they affect access and performance. F3 and F4 lower priority. Also an explicit \"Third-party API instability\" risk entry is included with highest priority.\n\ncontingency_options (why these two):\n- C1 (reduce regression scope) is the classic time-boxing option to protect core functionality when time is tight—keeps payments and login covered while deferring lower-priority regression.\n- C2 (defer automation_setup) recognises the impracticality of full automation in-window given Charlie's 50% availability; this frees Charlie to support security scan and test execution pre-release.\n\nentry_exit_criteria:\n- Concrete, measurable conditions were provided (e.g., 'No open critical defects', 'Regression pass >= 90%') as required by the rubric. These map to phases used in the schedule.\n\nstrategy_summary:\n- Concise (within 500 words) summary tying schedule to risk and priorities and including a one-paragraph release-day communication plan specifying QA (Alice/Bob) and stakeholders (Dev Lead, Product Owner). The summary references the automation decision and contingencies.\n\noptional_attachments:\n- This long text block explains how each field was derived (this section contains the examiner's explanation and the passing criteria below). It has been used because the exam instruction required an explanation for each answer and the submission must remain a single JSON file with the original schema.\n\nPASSING CRITERIA (scoring guidance for examiner):\n- Total score = 100. Passing threshold for the basic exam: >= 80 points.\n- Suggested itemized scoring (aligned to exam rubric):\n  1) Assumptions (5 pts): full marks (5) if candidate lists >=3 relevant assumptions including how they interpret Charlie's 50% availability and defect turnaround.\n  2) Schedule realism & completeness (30 pts): 20 pts for feasible schedule respecting code freeze, env windows and holiday; 10 pts for milestones/dependencies. Deduct if dates violate windows or durations don't match working-day counts.\n  3) Estimates (15 pts): 10 pts for reasonable per-feature estimates consistent with schedule durations; 5 pts for totals matching resource capacity (no obvious over-allocation). Large inconsistent numbers should be penalized.\n  4) Risk-based prioritisation (15 pts): 10 pts for clear priorities and concise rationales for top items; 5 pts for correctly identifying highest risks (F2/F5).\n  5) Contingency options (10 pts): 7 pts for two practical options; 3 pts for good rationale/stakeholder considerations.\n  6) Entry/Exit criteria (10 pts): 7 pts for concrete phase criteria; 3 pts for implementation notes (who signs off, measurable thresholds).\n  7) Strategy summary & communication (10 pts): 6 pts for concise, linked strategy; 4 pts for release-day communication plan naming roles/names and triggers.\n\nSPECIAL RULES FOR PARTIAL CREDIT / AUTOMATION INTERPRETATION:\n- If a candidate interprets '8 full working days' automation as 8 calendar working days rather than accounting for Charlie's 50% availability, accept it only if they explicitly state the assumption and adjust schedule/availability accordingly. If they assume 8 full working days of Charlie time without adjusting for 50% availability, deduct schedule/estimates points.\n- If schedule slightly exceeds available windows but a clear contingency and stakeholder communication is provided, award partial credit for reasoning.\n- Automatic major deductions (potential fail) if schedule ignores fixed constraints (code freeze, env windows, or public holiday), or if there is no contingency plan when schedule is tight.\n\nEVALUATOR CHECKLIST (quick):\n- JSON valid, keys match schema exactly.\n- Assumptions present and include automation/Carlie availability and defect turnaround.\n- Schedule respects: code freeze 2025-10-20, Test Env A 2025-10-21—10-30, UAT 2025-10-27—10-31 (working days), public holiday 2025-10-23 excluded.\n- Resource assignments use only Alice/Bob/Charlie and respect Charlie 50% where automation_setup is scheduled as a dedicated block.\n- Estimates consistent with schedule durations (1 day = 8 hours) and not hugely over-allocated across resources.\n- Risk prioritisation and contingency options are present and practical.\n- Entry/exit criteria are concrete and measurable.\n\nEND OF EXPLANATION AND PASSING CRITERIA."
+}
+```
+</evaluation>
+
+## Your Assignment
+
+Based on this information, generate a Python script named task_evaluation.py that implements the automated grading logic.
+The script must:
+
+Accept command-line arguments
+- sys.argv[1]: path to the candidate submission JSON file (e.g., test_submission.json)
+- sys.argv[2]: path to the answer key JSON file (e.g., answer_key.json)
+Perform automated scoring
+- Load both JSON files.
+- Compare the candidate’s answers to the correct answers in the answer key.
+- Apply grading logic, weights, and passing rules as defined in the evaluator’s instructions.
+- Handle partial credit where specified.
+- Be tolerant of formatting differences (e.g., capitalization, whitespace).
+- Record clear reasons for any deductions.
+Produce structured output
+Save results in a new JSON file named test_results.json in the same directory as the script.
+The file must include:
+- A breakdown of scores per question or task.
+- Explanations for deductions or mismatches.
+- The total points, maximum possible points, and percentage score.
+- A variable named overall_score containing the candidate’s percentage score (0–100) as a numeric value.
+
+Script execution example
+The grader should be runnable from the command line as follows:
+python task_evaluation.py test_submission.json answer_key.json
+
+
+Implementation requirements
+- Include robust error handling (invalid JSON, missing keys, etc.).
+- Use only standard Python libraries (e.g., json, os, sys).
+- Be deterministic — the same input must always yield the same score.
+- Include concise comments explaining each major block of logic.
+
+
+
+Example Output Format
+``` python
+# task_evaluation.py
+import json, sys, os
+
+# Load files
+...
+
+# Perform grading
+overall_score = 95.0  # percentage of total points earned (0–100)
+
+# Save detailed results to test_results.json
+...
+
+```

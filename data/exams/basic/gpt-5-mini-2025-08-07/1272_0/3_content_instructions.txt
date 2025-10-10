@@ -1,0 +1,165 @@
+### Exam Title
+Practical Revision, Repair, and Modest Expansion of an Existing Program — Basic (90 minutes)
+
+### Instructions for Candidate
+You have 90 minutes total. Use only the local code execution environment and a text editor. No internet or external libraries are allowed.
+
+Follow these steps exactly. Record outputs and file changes, and bundle everything into one JSON file named test_submission.json (schema below).
+
+Time guidance (suggested):
+- Task 0 — Setup & Baseline: 10–15 minutes
+- Task 1 — Repair (two bugs): 30 minutes
+- Task 2 — Expand (one small feature + test): 20 minutes
+- Task 3 — Improve Efficiency (optimize hotspot + benchmark): 15–20 minutes
+- Finalize & Submit: 5–10 minutes
+
+Step-by-step
+
+1. Inspect the repository
+   - Open README.md (or any top-level help file) and identify the single commands/scripts supplied to:
+     - run the program,
+     - run the test suite / smoke script,
+     - run the benchmark script.
+   - Note those exact commands. You will use them for baseline measurements and include them in your submission.
+
+2. Task 0 — Setup & Baseline
+   - Run the provided smoke/test script and the program once on the provided sample input(s). (Use the commands the repository supplies.)
+   - Capture:
+     - The full stdout/stderr from running the smoke/test script (trim long logs to essential failing/passing lines).
+     - Any failing tests or error messages.
+     - Baseline benchmark timings by running the provided benchmark script once (or as instructed in README).
+   - Deliverable items (to include in JSON):
+     - Commands used to run baseline,
+     - Captured stdout/stderr (essential lines),
+     - Baseline benchmark times.
+
+3. Task 1 — Repair (fix two small bugs)
+   - There are two intentionally defective behaviors in the codebase (these are tied to failing tests or to specific failing items indicated in the smoke/test output).
+   - Identify the root cause(s) and implement code fixes so that the existing tests that relate to those behaviors pass.
+   - You must not alter the tests unless the README explicitly says a test is allowed to be updated. (If you think a test is wrong, explain and justify the change in your submission; keep edits minimal.)
+   - Deliverable items:
+     - All modified file contents or unified diffs for each changed file.
+     - Short explanation (1–3 sentences) per bug: cause and fix.
+     - New test output showing those tests now pass.
+
+4. Task 2 — Expand (implement one small new feature)
+   - Implement one new, small feature described in the project README or the task notes bundled in the repository. (Examples: add a CLI filter flag, accept an extra input format, or export an extra field.)
+   - Add one automated test (unit or integration) that verifies the new feature.
+   - The new test must be runnable with the repository’s test command.
+   - Deliverable items:
+     - Modified/added source files or unified diff(s).
+     - The new test file contents.
+     - Test output demonstrating the new test passes (and overall test suite still passes).
+
+5. Task 3 — Improve Efficiency (optimize a hotspot)
+   - The codebase contains a clearly-marked function or module flagged in comments as "SLOW" or "HOTSPOT". Optimize it to run faster on the supplied deterministic benchmark input.
+   - Before-and-after: run the provided benchmark exactly as in Task 0 to gather timing numbers. Use the same command(s) both times.
+   - Aim to reduce runtime by a measurable amount (the target will be described in the repository; if no absolute target is specified, aim for at least a 2x improvement on the provided input).
+   - Deliverable items:
+     - Modified file(s) or unified diff(s).
+     - Benchmark command(s) used and arrays of measured run times (ms) before and after your changes.
+     - Short explanation (1–3 sentences) of what you changed and why it speeds up the code.
+
+6. Finalize & Submit
+   - Ensure all modified and added files are included (unified diffs or full file content strings).
+   - Prepare a concise reproduction sequence — exact commands a grader can run to reproduce:
+     - baseline smoke/tests,
+     - run full test suite,
+     - run benchmark before and after (as you ran it).
+   - Fill the test_submission.json according to the submission schema below.
+   - Save the file as test_submission.json at the repository root and submit it.
+
+Important constraints
+- Use only the local tools provided: code execution environment and text editor.
+- Do not add external network dependencies or install new packages.
+- Keep changes focused and minimal: fix what is required, add only the one test for the new feature, and implement only the necessary performance change.
+- Do not rename arbitrary files, change project-level metadata, or reorganize the repository unless your fix absolutely requires it — explain any such change.
+- Be objective: your submission will be graded against automated tests and benchmarks; follow the schema precisely.
+
+### Expected Outcome
+By the end of the test you must provide, in test_submission.json:
+- Metadata: your name, email, start and end times, and environment.
+- Task records for Tasks 0–3 with:
+  - status ("done"/"partial"/"skipped"),
+  - minutes_spent,
+  - short_summary,
+  - key_outputs (trimmed stdout/stderr),
+  - files_changed (filename, change_type, unified_diff or full file content).
+- Any new tests added (filename and content).
+- Performance object with:
+  - benchmark_command,
+  - before_run_times (array of ms),
+  - after_run_times (array of ms),
+  - short_explanation.
+- how_to_reproduce: exact commands a grader must run to reproduce baseline, verify fixes, and re-run benchmarks.
+- final_notes and a self_assessed_percent_complete (0–100).
+- All diffs or new file contents needed for an evaluator to apply your changes.
+
+Minimum pass conditions (objective)
+- All previously passing tests remain passing.
+- The two targeted bugs are fixed (corresponding tests pass).
+- The new feature is implemented and verified by a new automated test.
+- The benchmark demonstrates a measurable improvement (at least the target given in the repository, or at minimum ~2x if no target is given).
+- Your JSON follows the exact schema below.
+
+You will be scored against these objective measures; be concise in explanations.
+
+### Provided Materials
+The repository you receive for this exam will include:
+- README.md — instructions and the exact commands to run the program, tests, and benchmark (read this first).
+- A runnable program (CLI or small API) in the code/ directory.
+- tests/ — an automated test suite (pytest, unittest, or similar) and a smoke/sanity script.
+- A deterministic benchmark script in bench/ or a file named benchmark.sh / benchmark.py.
+- sample_data/ — input files the smoke/test script and benchmark use.
+- A single marked "SLOW" or "HOTSPOT" function in the codebase (commented) that you should optimize.
+- Note: The specific file names and commands will be listed in README.md. Use those exact commands when you run things and when you write how_to_reproduce.
+
+If any provided file is missing or unreadable, note that in test_submission.json and explain briefly what happened.
+
+### Submission Format
+You must submit a single file named test_submission.json (UTF-8). Use this exact schema. All fields are strings unless noted otherwise.
+
+Top-level fields
+- candidate_name (string)
+- candidate_email (string)
+- start_time_utc (ISO 8601 string)
+- end_time_utc (ISO 8601 string)
+- environment (object) — e.g., { "os": "Ubuntu 22.04", "language": "Python 3.10", "other": "bash 5.1" }
+
+tasks (array of objects) — include one object per task: T0, T1, T2, T3, Finalize
+Each task object:
+- id (string) — e.g., "T0"
+- title (string)
+- status (string) — one of "done", "partial", or "skipped"
+- minutes_spent (number)
+- short_summary (string) — 1–3 sentences
+- key_outputs (string) — paste of relevant stdout/stderr (trim to essential lines)
+- files_changed (array of objects) — can be empty if none; each object:
+  - filename (string)
+  - change_type (string) — one of "modified", "added", "deleted"
+  - unified_diff (string) — unified diff text or full new file content if diff unavailable
+
+new_tests (array) — each object:
+- filename (string)
+- content (string)
+
+performance (object):
+- benchmark_command (string)
+- before_run_times (array of numbers) — ms
+- after_run_times (array of numbers) — ms
+- short_explanation (string)
+
+how_to_reproduce (string) — exact commands a grader should run to reproduce baseline, tests, and benchmarks (step-by-step).
+
+final_notes (string) — any remaining issues, assumptions, or tradeoffs.
+
+self_assessed_percent_complete (number) — 0–100
+
+Submission checklist (must be followed)
+- File name: test_submission.json at repository root.
+- All changed file contents or unified diffs included in tasks[].files_changed.
+- New tests included in new_tests with exact filename and content.
+- Exact commands included in how_to_reproduce (so grader can reproduce in <10 minutes).
+- Performance numbers and commands included in performance.
+
+Good luck. Work steadily through Tasks 0→1→2→3, keep edits focused and minimal, and ensure your test_submission.json is complete and reproducible.

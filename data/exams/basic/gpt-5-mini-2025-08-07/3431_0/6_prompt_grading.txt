@@ -1,0 +1,762 @@
+You are an expert exam systems engineer. Your task is to write a Python grading script that automatically evaluates a candidate’s submission against the official answer key for a practical exam.
+Inputs
+Below is the contextual information you have access to:
+- Exam overview (for evaluator context):
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can practically modify an existing application to (1) diagnose and correct defects, (2) adapt the code/configuration to a changed runtime environment (a simple "new hardware" or platform constraint), and (3) make a small, measurable performance improvement — all within a real codebase and using normal developer tools (editor + execution environment). This verifies the candidate’s hands-on ability to maintain and evolve software rather than only their conceptual knowledge.
+
+### Core Competencies to be Tested
+- Debugging / root-cause analysis: reproduce a failing behavior, find the source, and apply a minimal, correct fix.
+- Code modification and testing: make edits, run provided tests, produce reproducible test output.
+- Environment adaptation: update code/configuration so the application runs under a changed runtime constraint (for example: different I/O semantics, reduced buffer size, simple API change).
+- Basic performance reasoning and measurement: run a simple benchmark, propose and implement one safe optimization, and demonstrate measurable improvement.
+- Communication and traceability: produce clear, concise explanation of changes, include a patch/diff, and provide run instructions.
+- Minimal code hygiene: readable changes, appropriate variable names, brief inline comments if needed, and a small unit test or a test update when applicable.
+
+### Recommended Structure (Basic exam — single 90-minute session, target completion <= 90 minutes)
+Total time budget: 90 minutes (exam materials should explicitly recommend this split to candidates).
+
+Number of practical tasks: 3 small, sequential hands-on tasks in one repository:
+1. Task A — Bug Fix (40 minutes)
+2. Task B — Environment Adaptation (20 minutes)
+3. Task C — Small Performance Improvement + short explanation (25 minutes)
+
+Reserve 5 minutes buffer for packaging submission.
+
+Expected deliverables (candidate uploads in test_submission.json and as files in the repo if the platform permits):
+- test_submission.json (required): structured answers and metadata (see template below).
+- Patches/diffs or modified source files (either included as a unified diff string field inside test_submission.json or saved in the repo). If diffs are not possible, include full updated source file(s) contents.
+- Test run outputs and/or benchmark outputs captured as plain text strings inside test_submission.json.
+- A brief explanation (1–3 short paragraphs) per task describing approach, root cause, and trade-offs.
+
+High-level flow:
+- Candidate clones repo (provided by exam admin) containing a small Python application (or language chosen by the exam designer), a failing test or reproducible bug, an adaptation requirement, and a benchmark script.
+- Candidate runs provided test runner and benchmark harness, makes code edits, re-runs tests/benchmarks, and records results.
+- Candidate packages results into test_submission.json.
+
+Why these tasks and sequence?
+- Sequential dependency: Task A ensures the candidate can reproduce and fix failures — necessary baseline. Task B tests ability to reason about runtime differences and make configuration/code changes. Task C tests the candidate’s capability to measure and safely optimize code.
+- The sequence mirrors common real-world maintenance tasks.
+
+### Practical Elements to Include (how to make it hands-on)
+- Self-contained repo with:
+  - Small but realistic code base (approx. 150–400 LOC across a few files) implementing a simple utility or microservice functionality (e.g., data processing, simple cache, file-transformer).
+  - A test runner script (e.g., run_tests.py) that prints PASS/FAIL and shows failing traces for Task A. Must run without external packages.
+  - A small benchmarking script (e.g., bench.py) that performs repeated work and prints timings. Provide deterministic input to make improvements measurable.
+  - Clear README with commands for running tests and bench.
+- No internet access for candidates; ensure code has no external dependencies.
+- Provide a failing test case and a reproducible failing run; candidate must correct the code to pass it.
+- For environment adaptation, simulate a hardware/platform change that requires code change (examples below).
+- Make performance improvement modest but measurable (e.g., reduce median runtime by 20–40% on the supplied benchmark through algorithmic or micro-optimization like avoiding repeated computation, caching, or using more efficient data structures).
+- Require submission of:
+  - the modified file(s) or unified diff,
+  - outputs (console logs) of test runner before and after fixes (they can paste the before/after logs),
+  - benchmark numbers before and after the optimization,
+  - a short explanation of the thought process and verification steps,
+  - one-line summary of potential side-effects or risk areas from the change.
+
+Examples of environment-adaptation scenarios (choose one for the exam):
+- New hardware has less available memory: require processing to be streaming-based instead of in-memory for one operation (the basic exam should use a tiny, trivial streaming adaptation like switching from list-based accumulation to incremental write).
+- I/O change: previously the code read from local files; now it must accept data from stdin (or a given file descriptor). Candidate must add an alternate code path.
+- Constrained API: a helper function's parameter signature changes (e.g., callback signature) and candidate must adapt the wrapper code to the new signature.
+
+Practical scoring safeguards
+- Include an automated acceptance test runner that prints explicit results. Evaluators can reproduce candidate’s claims by applying the candidate patch and running the same runner.
+
+### Strategic Elements (steps/decision points that distinguish real ability)
+- Reproducibility step: candidate must run tests and paste failing logs — distinguishes someone who actually ran code vs. someone who only conceptualized fixes.
+- Minimal, targeted changes: evaluate whether candidate modifies only necessary lines vs. sweeping unrelated edits. Good candidates produce minimal diffs.
+- Root-cause explanation: require candidate to describe the bug's cause in one or two sentences. This checks diagnosis ability, not guesswork.
+- Trade-off decision for performance: the candidate must pick a safe optimization and explain trade-offs (memory vs. speed, complexity, maintainability). This shows practical judgment.
+- Evidence-based optimization: candidate must capture before/after benchmark numbers. Candidates who "optimize" without measurement cannot score well.
+- Add/adjust a small unit test if appropriate: if the bug was not covered, writing a short test demonstrates competence.
+- Edge-case handling: ask the candidate to note one edge case that remains untested or a risk that would require further work.
+
+These elements force a candidate to actually run/debug/measure, not just describe.
+
+### Test Submission JSON Schema (test_submission.json)
+Require test_submission.json with these fields. All fields must be plain strings or numbers and small arrays, so it is easy to validate automatically.
+
+{
+  "candidate_name": "<Full name>",
+  "time_taken_minutes": <number>,
+  "task_results": [
+    {
+      "task_id": "A-bugfix",
+      "status": "fixed" | "not_fixed" | "partial",
+      "files_modified": ["src/file1.py", "src/file2.py"],
+      "patch_unified_diff": "<string containing unified diff or 'N/A' if whole file provided>",
+      "pre_fix_test_output": "<exact console output from running run_tests.py before edits>",
+      "post_fix_test_output": "<exact console output from running run_tests.py after edits>",
+      "explanation": "<1–3 short paragraphs: root cause, why fix works, why minimal>",
+      "unit_tests_added_or_modified": ["tests/test_bugcase.py"] or [],
+      "self_assessed_confidence": "<1-5>"
+    },
+    {
+      "task_id": "B-adapt_env",
+      "status": "adapted" | "not_adapted" | "partial",
+      "files_modified": ["src/io_adapter.py"],
+      "patch_unified_diff": "<string>",
+      "run_output_after_adaptation": "<console output showing app running in new mode>",
+      "explanation": "<what changed in environment, what you changed in code, why safe>",
+      "risks_or_limitations": "<short note about residual issues>"
+    },
+    {
+      "task_id": "C-performance",
+      "status": "improved" | "no_change" | "regressed",
+      "files_modified": ["src/processor.py"],
+      "patch_unified_diff": "<string>",
+      "benchmark_before_ms": <number>,
+      "benchmark_after_ms": <number>,
+      "bench_command_run": "<command used to run bench>",
+      "explanation": "<brief explanation of what was optimized and trade-offs>"
+    }
+  ],
+  "other_notes": "<optional: anything else the candidate wants to state>"
+}
+
+Notes for candidate instructions:
+- Paste exact console outputs including any stack traces or timing lines.
+- If multiple files are changed, include all in the files_modified list and include a single unified diff string (git format) or the new file contents labeled with file path headers.
+- Provide exact commands used to run tests and benchmarks.
+
+### Evaluation Insights (observable outputs and scoring guidance)
+Overall scoring: total 100 points. Entry-level threshold: 80+ points to pass the basic exam.
+
+Suggested weighting
+- Task A — Bug Fix (50 points)
+  - Reproduces failure and shows pre-fix failing output (5 points)
+  - Fix correctness: all provided tests pass after fix (30 points)
+  - Minimal and appropriate patch (10 points)
+  - Clear root-cause explanation (5 points)
+
+- Task B — Environment Adaptation (20 points)
+  - Adapts code/config to run in the new environment and demonstrates run output (12 points)
+  - Explains the changes and notes residual risks (8 points)
+
+- Task C — Performance (20 points)
+  - Measures and reports before/after benchmark numbers (8 points)
+  - Demonstrates meaningful improvement (e.g., >=15–20% speedup on benchmark) (8 points)
+  - Explanation of optimization and trade-offs (4 points)
+
+- Communication & Packaging (10 points)
+  - Proper test_submission.json format (3 points)
+  - Patch/diff clarity and ability to reproduce (4 points)
+  - Concise, clear run instructions and logs (3 points)
+
+Grading thresholds and indicators of competence:
+- Must pass Task A tests to be considered competent (fail = automatic major penalty). An entry-level candidate should be able to fully pass Task A for >60% of available points.
+- Task B should be fully correct for at least an 80% pass in the basic exam: a single, simple adaptation is expected.
+- Task C: small improvement is required; if there is no measurable improvement but the candidate shows correct methodology and explains why no safe improvement exists, partial credit applies.
+- Minimal invasive edits: awarding more points if the diff is concise and well-scoped. Large unrelated edits reduce points.
+- Evidence of proper verification: providing pre/post logs and benchmark numbers is mandatory — absence loses most of the associated points.
+
+Sample automatic checks an evaluator can run:
+- Apply the candidate’s patch; run ./run_tests.py and check for PASS markers.
+- Run the benchmark with provided command(s) and compare the reported ms to the claimed numbers in JSON.
+- Verify that the modified files listed actually match the provided diffs or contents.
+
+Examples of “red flags”
+- Candidate gives only abstract descriptions without logs or diffs.
+- Candidate removes failing tests instead of fixing code.
+- Patch introduces new failing tests or regressions.
+- No measurement supplied for performance task or obviously unstable benchmarking (no repeated runs).
+
+### Final notes for exam creators and evaluators
+- Use Python 3 for maximum accessibility; ensure no third-party dependencies.
+- Make the repo small and deterministic. Provide clear reproducible commands.
+- Keep task complexity modest so an entry-level developer can finish in ~70–80 minutes, leaving buffer for packaging.
+- Provide a sample solution and expected outputs for evaluators to speed grading and to set pass thresholds.
+
+This design gives exam creators a reproducible, hands-on basic practical test that reliably separates candidates who can perform real maintenance and adaptation tasks from those who only understand them conceptually.
+</examoverview>
+
+- Full exam content:
+<exam>
+### Exam Title
+Software Developer (Applications) — Practical Maintenance & Adaptation Test (Basic, 90 minutes)
+
+### Instructions for Candidate
+You have 90 minutes total to complete three sequential practical tasks (A → B → C) against the provided repository. Use only the local code execution environment and a text editor. No internet or external libraries are available.
+
+Time recommendation (suggested):
+- Task A — Bug Fix: 40 minutes
+- Task B — Environment Adaptation: 20 minutes
+- Task C — Small Performance Improvement + measurements: 25 minutes
+- Packaging submission: 5 minutes
+
+General rules
+- Work in the provided repo. It contains a small Python 3 codebase, a test runner (run_tests.py), and a benchmark (bench.py). No external dependencies.
+- First run the test runner and the benchmark exactly as provided to capture pre-change outputs (you must include these raw outputs in your submission).
+- Make only the minimum changes needed to accomplish each task. Avoid unrelated edits.
+- If you can use git in the environment, produce a unified diff (git diff). If git is unavailable, include full updated file contents with clear file path headers.
+- Record exact commands you ran to produce outputs.
+- Collect all deliverables in a single file named test_submission.json (schema below). Also keep the modified files in the repo if possible.
+
+Task sequence (must be done in order)
+1. Task A — Bug Fix
+   - Reproduce the failing behavior: run the supplied test runner and capture the full console output.
+   - Locate the root cause in the code and modify the code to correct the defect so that the provided tests pass.
+   - Re-run the test runner and capture the post-fix console output.
+   - Provide a minimal patch/diff or updated file(s).
+   - Add or modify a small unit test only if the original tests did not cover the failing behaviour and adding a test is necessary to demonstrate the fix.
+   - In your JSON submission include a one- to three-paragraph explanation of root cause and why your fix is minimal and correct.
+
+2. Task B — Environment Adaptation
+   - The repo includes a short adaptation requirement (README or task note). Update code/configuration so the application runs in the changed runtime mode (e.g., accept stdin instead of file, or use streaming instead of full memory accumulation, or adapt to a simple helper signature change).
+   - Demonstrate the adapted mode running by capturing the exact console output of the app in the new mode.
+   - Provide the minimal patch/diff or updated file(s).
+   - In your JSON submission include a 1–3 paragraph explanation of what changed, why your change is safe, and any residual risks or limitations.
+
+3. Task C — Small Performance Improvement
+   - Run the supplied benchmark script on the provided deterministic input and capture baseline timing (exact command and full output).
+   - Propose and implement one small, safe optimization (e.g., avoid repeated work, replace an O(n^2) micro-inefficiency, use a more appropriate data structure, stream processing).
+   - Re-run the benchmark and capture the after-change timing.
+   - Provide the patch/diff or updated file(s).
+   - In your JSON submission include the benchmark numbers (in milliseconds), the exact benchmark command, and a brief explanation (1–3 short paragraphs) of what you changed and the trade-offs/risks.
+
+Important notes on outputs and evidence
+- Paste exact console outputs (pre- and post-fix) including stack traces and timing lines. Do not paraphrase or summarize them.
+- If you supply a unified diff, it must be in standard git unified-diff format. If not using git, include full updated file contents with clear headers like:
+  === file: src/example.py ===
+  <file contents>
+- Keep your code changes small and focused. Large unrelated refactors reduce credit.
+- Self-assess your confidence (1 low — 5 high) for Task A in the JSON.
+
+Time & honesty
+- Stop when 90 minutes is reached and package your results. Record your total time_taken_minutes honestly.
+
+### Expected Outcome
+By the end of the test you must produce:
+- A working test suite: run_tests.py should show that the failing test(s) identified in Task A are passing after your fix.
+- A working adaptation: the app runs correctly in the new environment/mode required in Task B and you show the run output.
+- A measured performance improvement: benchmark numbers before and after Task C showing measurable improvement (a modest target is ~15–30% improvement; smaller or no improvement is acceptable for partial credit if methodology and reasoning are sound).
+- One single file test_submission.json containing required metadata, diffs or updated file contents, run outputs and short explanations for each task (schema below).
+- All modified source files included alongside the JSON in the repo (if possible).
+
+Deliverables checklist (must be included in test_submission.json)
+- candidate_name
+- time_taken_minutes
+- task_results — array with three objects for "A-bugfix", "B-adapt_env", "C-performance" containing specified fields (see schema)
+- any other_notes you wish to state
+
+### Provided Materials
+You will find the following in the repository you were given:
+- src/ (source files, small codebase, ~150–400 LOC total)
+- tests/ (unit tests used by the test runner; at least one failing test for Task A)
+- run_tests.py (script that executes the test suite and prints PASS/FAIL and stack traces; must be run first for Task A)
+- bench.py (benchmark script with deterministic input used in Task C; prints timing in ms)
+- README.txt (short usage notes and the environment-adaptation requirement description)
+- (Optional) helper scripts to run the app in alternative modes (see README)
+
+Notes about materials
+- Code is plain Python 3, no external packages. All inputs for benchmark are deterministic and included in the repo.
+- The environment adaptation requirement is described in README.txt — read it before Task B.
+
+### Submission Format
+You must submit a single JSON file named test_submission.json at the repository root. It must be UTF-8 encoded and follow this schema exactly (all string fields must be plain strings; numeric fields must be numbers; arrays must be arrays):
+
+{
+  "candidate_name": "<Full name>",
+  "time_taken_minutes": <number>,
+  "task_results": [
+    {
+      "task_id": "A-bugfix",
+      "status": "fixed" | "not_fixed" | "partial",
+      "files_modified": ["src/file1.py", "src/file2.py"],
+      "patch_unified_diff": "<string containing unified diff OR 'N/A' if full file contents are provided elsewhere in this JSON>",
+      "pre_fix_test_output": "<exact console output from running run_tests.py before edits>",
+      "post_fix_test_output": "<exact console output from running run_tests.py after edits>",
+      "explanation": "<1–3 short paragraphs: root cause, why fix works, why minimal>",
+      "unit_tests_added_or_modified": ["tests/test_bugcase.py"] or [],
+      "self_assessed_confidence": "<1-5>"
+    },
+    {
+      "task_id": "B-adapt_env",
+      "status": "adapted" | "not_adapted" | "partial",
+      "files_modified": ["src/io_adapter.py"],
+      "patch_unified_diff": "<string>",
+      "run_output_after_adaptation": "<console output showing app running in new mode>",
+      "explanation": "<what changed in environment, what you changed in code, why safe>",
+      "risks_or_limitations": "<short note about residual issues>"
+    },
+    {
+      "task_id": "C-performance",
+      "status": "improved" | "no_change" | "regressed",
+      "files_modified": ["src/processor.py"],
+      "patch_unified_diff": "<string>",
+      "benchmark_before_ms": <number>,
+      "benchmark_after_ms": <number>,
+      "bench_command_run": "<command used to run bench>",
+      "explanation": "<brief explanation of what was optimized and trade-offs>"
+    }
+  ],
+  "other_notes": "<optional: anything else you want to state>"
+}
+
+Additional submission guidance
+- For any "patch_unified_diff" field: prefer a git-format unified diff. If you cannot produce a unified diff, set that field to "N/A" and instead include the full updated file contents inline in task_results.explanation or in other_notes using the same explicit file headers described above.
+- All console outputs must be verbatim copies (include newlines exactly).
+- Include the exact shell/commands you used to run tests and benchmarks (for example: python3 run_tests.py ; python3 bench.py --count 1000).
+- If a task fails or you run out of time, set the appropriate status ("not_fixed", "not_adapted", "no_change", etc.) and include partial evidence and explanation.
+
+Grading is objective and reproducible: evaluators will apply your diffs and re-run the same run_tests.py and bench.py commands to verify your claims.
+
+Good luck. Start by running:
+python3 run_tests.py
+and
+python3 bench.py
+and collect your pre-change outputs before editing any files.Repository layout (all files listed below; create these exact files in the repo):
+
+README.txt
+---
+Task list and commands.
+
+Overview:
+This repository contains a small Python 3 utility that parses order lines and reports top products by total amount. You will perform three tasks in order:
+
+- Task A — Bug Fix: run tests, reproduce the failing test, fix the bug so tests pass.
+- Task B — Environment Adaptation: adapt the CLI so it can read input from stdin when requested.
+- Task C — Performance: run the benchmark, implement one small optimization to reduce runtime, and report before/after timings.
+
+Commands to run (run these before modifying any files and capture outputs exactly):
+- python3 run_tests.py
+- python3 bench.py
+- python3 src/app.py data/sample_orders.txt
+
+Task B (environment adaptation) requirement:
+- Modify src/app.py so that when invoked with the filename '-' or with a '--stdin' flag, it reads input from standard input (sys.stdin) instead of from a file path. Example invocation after adaptation:
+  - cat data/sample_orders.txt | python3 src/app.py - 
+  - cat data/sample_orders.txt | python3 src/app.py --stdin
+
+Notes:
+- Use only the provided files and Python 3 standard library.
+- Do not change test expectations in tests/test_processor.py (fix the code, not the tests).
+- Record exact console outputs pre- and post-change in test_submission.json.
+---
+
+data/sample_orders.txt
+---
+1,P01,10.0
+2,P03,30.0
+3,P02,20.0
+4,P03,5.0
+5,P01,2.5
+6,P04,15.0
+---
+
+src/processor.py
+---
+# src/processor.py
+# Small order-processing helper functions.
+
+def parse_orders(text):
+    """
+    Parse order lines from a text string.
+    Each line: order_id,product_code,amount
+    Returns a list of dicts: {'id': str, 'product': str, 'amount': float}
+    """
+    orders = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(',')
+        if len(parts) < 3:
+            continue
+        oid = parts[0].strip()
+        product = parts[1].strip()
+        try:
+            amount = float(parts[2].strip())
+        except ValueError:
+            # ignore malformed amounts
+            continue
+        orders.append({'id': oid, 'product': product, 'amount': amount})
+    return orders
+
+def compute_product_totals(orders):
+    """
+    Compute total amount per product.
+    Implementation intentionally written using repeated scans (inefficient)
+    to leave room for a measurable optimization for Task C.
+    Returns dict: {product: total_amount}
+    """
+    # collect product order in a list (preserve first-seen order)
+    products = [o['product'] for o in orders]
+    unique = []
+    for p in products:
+        if p not in unique:
+            unique.append(p)
+
+    totals = {}
+    # inefficient: for each unique product, sum by scanning orders
+    for p in unique:
+        total = 0.0
+        for o in orders:
+            if o['product'] == p:
+                total += o['amount']
+        totals[p] = total
+    return totals
+
+def top_n_products(orders, n=3):
+    """
+    Return the top N product codes by total amount as a list (product codes only).
+    NOTE: there's an intentional bug in sorting order here for Task A.
+    """
+    totals = compute_product_totals(orders)
+    # BUG: sorts ascending (smallest totals first), expected descending
+    sorted_items = sorted(totals.items(), key=lambda kv: kv[1])
+    top = [prod for prod, amt in sorted_items[:n]]
+    return top
+---
+
+src/app.py
+---
+# src/app.py
+# Command-line interface to print top products.
+
+import sys
+from processor import parse_orders, top_n_products
+
+def read_input_from_file(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+def main(argv):
+    if len(argv) < 2:
+        print("Usage: python3 src/app.py <orders_file> [top_n]")
+        print("Example: python3 src/app.py data/sample_orders.txt 3")
+        return 1
+
+    path = argv[1]
+    top_n = 3
+    if len(argv) >= 3:
+        try:
+            top_n = int(argv[2])
+        except ValueError:
+            pass
+
+    # current behavior: only reads from a file path
+    content = read_input_from_file(path)
+    orders = parse_orders(content)
+    top = top_n_products(orders, top_n)
+    for p in top:
+        print(p)
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+---
+
+tests/test_processor.py
+---
+# tests/test_processor.py
+import unittest
+from src.processor import parse_orders, compute_product_totals, top_n_products
+
+class ProcessorTests(unittest.TestCase):
+    def test_compute_product_totals(self):
+        text = "1,P01,10.0\n2,P03,30.0\n3,P02,20.0\n4,P03,5.0\n5,P01,2.5\n"
+        orders = parse_orders(text)
+        totals = compute_product_totals(orders)
+        expected = {'P01': 12.5, 'P03': 35.0, 'P02': 20.0}
+        self.assertEqual(totals, expected)
+
+    def test_top_n_products(self):
+        text = "1,P01,10.0\n2,P03,30.0\n3,P02,20.0\n4,P03,5.0\n5,P01,2.5\n"
+        orders = parse_orders(text)
+        top = top_n_products(orders, n=3)
+        # expected order: highest totals first
+        self.assertEqual(top, ['P03', 'P02', 'P01'])
+
+if __name__ == '__main__':
+    unittest.main()
+---
+
+run_tests.py
+---
+# run_tests.py
+# Simple test runner script. Run before and after edits to capture outputs.
+
+import unittest
+import sys
+
+loader = unittest.TestLoader()
+suite = loader.discover('tests')
+
+runner = unittest.TextTestRunner(verbosity=2)
+result = runner.run(suite)
+if result.wasSuccessful():
+    print("ALL TESTS PASS")
+    sys.exit(0)
+else:
+    print("SOME TESTS FAILED")
+    sys.exit(1)
+---
+
+bench.py
+---
+# bench.py
+# Deterministic benchmark that measures compute_product_totals runtime (in ms).
+# Uses a larger synthetic dataset to make the inefficient implementation measurable.
+
+import time
+from src.processor import parse_orders, compute_product_totals
+
+def make_benchmark_input(num_records=5000, num_products=500):
+    # deterministic pattern: product codes P0001..P{num_products}
+    lines = []
+    for i in range(num_records):
+        oid = str(i+1)
+        product = f"P{(i % num_products) + 1:04d}"
+        amount = ((i * 13) % 100) + 1  # deterministic numeric pattern
+        lines.append(f"{oid},{product},{amount}")
+    return "\n".join(lines) + "\n"
+
+def time_compute(text, iterations=3):
+    orders = parse_orders(text)
+    # warm-up
+    compute_product_totals(orders)
+    start = time.perf_counter()
+    for _ in range(iterations):
+        compute_product_totals(orders)
+    end = time.perf_counter()
+    total_ms = (end - start) * 1000.0
+    avg_ms = total_ms / iterations
+    return avg_ms
+
+if __name__ == "__main__":
+    text = make_benchmark_input(num_records=5000, num_products=500)
+    avg_ms = time_compute(text, iterations=3)
+    print(f"benchmark_avg_ms: {avg_ms:.3f}")
+---
+
+Notes for candidate:
+- Start by running and capturing the outputs of:
+  - python3 run_tests.py
+  - python3 bench.py
+  - python3 src/app.py data/sample_orders.txt
+- Make minimal changes to fix the failing test, adapt stdin behavior, and optimize compute_product_totals for better benchmark timing.
+- Prepare test_submission.json as specified in the exam instructions and include exact console outputs and unified diffs or updated file contents.```json
+{
+  "candidate_name": "",
+  "time_taken_minutes": null,
+  "task_results": [
+    {
+      "task_id": "A-bugfix",
+      "status": "",
+      "files_modified": [],
+      "patch_unified_diff": "",
+      "pre_fix_test_output": "",
+      "post_fix_test_output": "",
+      "explanation": "",
+      "unit_tests_added_or_modified": [],
+      "self_assessed_confidence": ""
+    },
+    {
+      "task_id": "B-adapt_env",
+      "status": "",
+      "files_modified": [],
+      "patch_unified_diff": "",
+      "run_output_after_adaptation": "",
+      "explanation": "",
+      "risks_or_limitations": ""
+    },
+    {
+      "task_id": "C-performance",
+      "status": "",
+      "files_modified": [],
+      "patch_unified_diff": "",
+      "benchmark_before_ms": null,
+      "benchmark_after_ms": null,
+      "bench_command_run": "",
+      "explanation": ""
+    }
+  ],
+  "other_notes": ""
+}
+```
+</exam>
+
+- Additional materials available only to the evaluator:
+<materials_evaluator>
+How these materials were constructed and why
+
+Overall design goals
+- Small, deterministic Python 3 codebase (~200 LOC across files) with no external dependencies so candidates can run everything locally.
+- Three clear, sequential tasks:
+  - Task A (bug fix) is localized to one small faulty line in src/processor.py -> top_n_products sorting order.
+  - Task B (environment adaptation) requires a minimal CLI change in src/app.py to support reading from stdin (filename '-' or --stdin).
+  - Task C (performance) uses compute_product_totals implemented inefficiently (repeated scans) so a simple single-pass dict accumulation yields a measurable improvement on the benchmark dataset.
+
+Files and key relationships
+- src/processor.py
+  - parse_orders(text): deterministic parser used by tests, app, and benchmark.
+  - compute_product_totals(orders): intentionally inefficient (nested scans) to create room for optimization.
+  - top_n_products(orders, n): uses compute_product_totals and sorts totals. The intentional bug is sorting ascending instead of descending.
+- src/app.py
+  - Simple CLI that reads a file path and prints the top N products. Task B requires adding stdin handling here.
+- tests/test_processor.py
+  - Two unit tests:
+    - test_compute_product_totals asserts exact totals for a small inline dataset (should pass immediately).
+    - test_top_n_products asserts descending ordering of top products (this test fails before Task A is completed).
+- run_tests.py
+  - A simple wrapper that runs tests and prints PASS/FAIL, suitable for capturing pre- and post-fix outputs.
+- bench.py
+  - Generates a deterministic dataset (5,000 records, 500 unique products) such that the current O(n*m) behavior of compute_product_totals performs noticeably slower than a linear single-pass implementation. It prints an average runtime in milliseconds.
+
+Deterministic patterns and hidden relationships
+- Product code formatting is consistent:
+  - Small test dataset uses codes like P01, P02, P03 for clarity.
+  - Benchmark uses zero-padded codes P0001 .. P0500 to create many distinct products.
+- compute_product_totals is shared by both tests and the benchmark:
+  - Tests exercise correctness on small data.
+  - Benchmark exercises performance on larger data; optimizing compute_product_totals improves bench timings without changing test behavior (functional correctness remains the same).
+- The top_n_products bug is isolated to how sorted() is invoked; fixing it does not alter compute_product_totals logic, so unit tests for totals remain valid.
+
+Expected correct fixes
+- Task A expected fix:
+  - Change the sort in top_n_products to descending order (use reverse=True or sort by negative value). Minimal edit: set reverse=True in sorted(..., reverse=True) or change slicing to [-n:] reversed — but reverse=True is preferred for clarity and minimal change.
+- Task B expected adaptation:
+  - Modify src/app.py to detect path == '-' or presence of '--stdin' in argv and read from sys.stdin.read() instead of open(path).read(). Minimal changes: add a conditional before reading file; do not change tests.
+- Task C expected optimization:
+  - Replace the nested-scan accumulation in compute_product_totals with a single-pass dictionary accumulation:
+    totals = {}
+    for o in orders:
+        totals[o['product']] = totals.get(o['product'], 0.0) + o['amount']
+    return totals
+  - This reduces runtime from approximately O(n * unique_products) with multiple scans to O(n) in a single pass. On the provided benchmark (5000 records, 500 unique products), this should yield a significant measurable speedup (commonly >20% on typical machines).
+
+Common traps and candidate errors
+- Changing tests instead of fixing code. Tests should remain unchanged. Look for this during evaluation.
+- Over-broad edits (e.g., rewriting parse_orders or reformatting files) — good candidates will make minimal, well-scoped changes.
+- For Task B, forgetting to preserve existing file-reading behavior when implementing stdin support. The CLI should still accept a normal filename argument.
+- For Task C, introducing floating point inaccuracies (avoid altering numeric semantics) or returning different data shapes — maintain the same dict structure and numeric types.
+- Candidates might optimize in a way that breaks stability (different ordering of equal totals). That is acceptable if they maintain function contract (top_n_products returns any correct top N ordering based on totals) — but do not change test expectations.
+
+How these materials differentiate conceptual vs. practical skills
+- Reproducibility requirement forces the candidate to actually run run_tests.py and bench.py and paste pre-fix outputs; this proves they executed and observed the failure rather than only stating a fix.
+- Task A evaluates debugging and minimal, correct changes: the bug is small but requires the candidate to trace where ordering is determined and to run tests.
+- Task B evaluates environment adaptation skills: adding stdin handling is a common maintenance task requiring minimal but correct code changes and care for CLI behavior.
+- Task C assesses performance reasoning and measurement: candidate must run benchmark, implement a safe optimization that preserves correctness (single-pass accumulation), and report measured improvement with before/after ms numbers.
+- The materials reward minimal diffs and evidence-based changes: evaluators can apply the candidate's patch and re-run the supplied runner and bench to confirm claims.
+
+Scoring/verification notes for evaluators
+- To verify Task A: apply candidate changes, run python3 run_tests.py and confirm all tests pass.
+- To verify Task B: run both
+  - cat data/sample_orders.txt | python3 src/app.py -
+  - cat data/sample_orders.txt | python3 src/app.py --stdin
+  and confirm the printed top products are sensible (same as running with filename).
+- To verify Task C: run python3 bench.py before and after applying candidate's patch and compare the reported benchmark_avg_ms numbers to the values in test_submission.json. Expect a measurable reduction (optimistic target ~20%+).
+- Check patch size: minimal change in top_n_products (one-line change) and small controlled changes to src/app.py and src/processor.py for optimization indicate quality.
+
+Edge cases left intentionally out of scope
+- Very large file streaming or memory-limited streaming solutions are not required for the basic exam; Task B only requires stdin handling, not full streaming rework.
+- No external concurrency, database, or external I/O is involved.
+- Floating point rounding beyond sum semantics is not the focus.
+
+Conclusion
+These deterministic, compact materials provide a realistic, reproducible maintenance workload focused on debugging, adapting to a simple runtime change, and making a small measurable optimization. The three tasks are independent but sequential, allowing straightforward automated verification of candidate submissions and clear signals of practical ability.
+</materials_evaluator>
+
+- Evaluation and grading guidelines for the evaluator:
+<evaluation>
+```json
+{
+  "candidate_name": "Example Candidate",
+  "time_taken_minutes": 68,
+  "task_results": [
+    {
+      "task_id": "A-bugfix",
+      "status": "fixed",
+      "files_modified": [
+        "src/processor.py"
+      ],
+      "patch_unified_diff": "--- a/src/processor.py\n+++ b/src/processor.py\n@@\n-    # BUG: sorts ascending (smallest totals first), expected descending\n-    sorted_items = sorted(totals.items(), key=lambda kv: kv[1])\n+    # sort descending to return highest totals first\n+    sorted_items = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)\n     top = [prod for prod, amt in sorted_items[:n]]\n     return top\n",
+      "pre_fix_test_output": "test_compute_product_totals (tests.test_processor.ProcessorTests) ... ok\ntest_top_n_products (tests.test_processor.ProcessorTests) ... FAIL\n\n======================================================================\nFAIL: test_top_n_products (tests.test_processor.ProcessorTests)\nTraceback (most recent call last):\n  File \"tests/test_processor.py\", line 15, in test_top_n_products\n    self.assertEqual(top, ['P03', 'P02', 'P01'])\nAssertionError: Lists differ: ['P01', 'P02', 'P03'] != ['P03', 'P02', 'P01']\n\nFirst differing element 0:\n'P01'\n'P03'\n\n- ['P01', 'P02', 'P03']\n+ ['P03', 'P02', 'P01']\n\n----------------------------------------------------------------------\nRan 2 tests in 0.001s\n\nSOME TESTS FAILED\n",
+      "post_fix_test_output": "test_compute_product_totals (tests.test_processor.ProcessorTests) ... ok\ntest_top_n_products (tests.test_processor.ProcessorTests) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK\nALL TESTS PASS\n",
+      "explanation": "Root cause: top_n_products sorted product totals in ascending order, returning the smallest totals first. The test expects highest totals first. Fix: change the sorted() call to sort by value in descending order (reverse=True). This is a minimal one-line change that corrects ordering without touching other logic or tests.",
+      "unit_tests_added_or_modified": [],
+      "self_assessed_confidence": "5"
+    },
+    {
+      "task_id": "B-adapt_env",
+      "status": "adapted",
+      "files_modified": [
+        "src/app.py"
+      ],
+      "patch_unified_diff": "--- a/src/app.py\n+++ b/src/app.py\n@@\n-    # current behavior: only reads from a file path\n-    content = read_input_from_file(path)\n+    # support reading from standard input:\n+    # - when filename is '-' or when --stdin flag is present\n+    use_stdin = (path == '-') or ('--stdin' in argv)\n+    if use_stdin:\n+        content = sys.stdin.read()\n+    else:\n+        content = read_input_from_file(path)\n",
+      "run_output_after_adaptation": "P03\nP02\nP01\n",
+      "explanation": "Change made: main() now detects when the user provides '-' as the filename or includes the '--stdin' flag and reads input from sys.stdin.read() in that case. Existing file-reading behavior is preserved for normal filenames. This is a small, localized change to the input-selection logic and keeps the rest of the CLI unchanged.",
+      "risks_or_limitations": "Reading stdin with sys.stdin.read() will buffer the entire stdin into memory; for extremely large inputs a streaming approach would be preferable. The implementation assumes text input encoded as UTF-8 (matching the rest of the repo)."
+    },
+    {
+      "task_id": "C-performance",
+      "status": "improved",
+      "files_modified": [
+        "src/processor.py"
+      ],
+      "patch_unified_diff": "--- a/src/processor.py\n+++ b/src/processor.py\n@@\n-def compute_product_totals(orders):\n-    \"\"\"\n-    Compute total amount per product.\n-    Implementation intentionally written using repeated scans (inefficient)\n-    to leave room for a measurable optimization for Task C.\n-    Returns dict: {product: total_amount}\n-    \"\"\"\n-    # collect product order in a list (preserve first-seen order)\n-    products = [o['product'] for o in orders]\n-    unique = []\n-    for p in products:\n-        if p not in unique:\n-            unique.append(p)\n-\n-    totals = {}\n-    # inefficient: for each unique product, sum by scanning orders\n-    for p in unique:\n-        total = 0.0\n-        for o in orders:\n-            if o['product'] == p:\n-                total += o['amount']\n-        totals[p] = total\n-    return totals\n+def compute_product_totals(orders):\n+    \"\"\"\n+    Compute total amount per product using a single-pass accumulation.\n+    This is O(n) and much faster on large inputs than the previous\n+    repeated-scan implementation.\n+    Returns dict: {product: total_amount}\n+    \"\"\"\n+    totals = {}\n+    for o in orders:\n+        p = o['product']\n+        totals[p] = totals.get(p, 0.0) + o['amount']\n+    return totals\n",
+      "benchmark_before_ms": 300.456,
+      "benchmark_after_ms": 5.678,
+      "bench_command_run": "python3 bench.py",
+      "explanation": "Optimization: replaced the repeated-scan totals accumulation with a single-pass dictionary accumulation (totals[p] = totals.get(p,0.0) + amount). This reduces complexity from O(unique_products * records) to O(records) and yields a large improvement on the provided benchmark. Trade-offs: memory usage is proportional to number of distinct products (the previous implementation also effectively retained the unique list), but the single-pass approach is significantly faster and preserves numeric behavior. Risk: for extremely many distinct products memory usage could grow, so for memory-constrained environments a streaming/aggregation-to-disk approach might be needed."
+    }
+  ],
+  "other_notes": "All changes were minimal and focused. Commands used: python3 run_tests.py; python3 bench.py; cat data/sample_orders.txt | python3 src/app.py -"
+}
+```
+</evaluation>
+
+## Your Assignment
+
+Based on this information, generate a Python script named task_evaluation.py that implements the automated grading logic.
+The script must:
+
+Accept command-line arguments
+- sys.argv[1]: path to the candidate submission JSON file (e.g., test_submission.json)
+- sys.argv[2]: path to the answer key JSON file (e.g., answer_key.json)
+Perform automated scoring
+- Load both JSON files.
+- Compare the candidate’s answers to the correct answers in the answer key.
+- Apply grading logic, weights, and passing rules as defined in the evaluator’s instructions.
+- Handle partial credit where specified.
+- Be tolerant of formatting differences (e.g., capitalization, whitespace).
+- Record clear reasons for any deductions.
+Produce structured output
+Save results in a new JSON file named test_results.json in the same directory as the script.
+The file must include:
+- A breakdown of scores per question or task.
+- Explanations for deductions or mismatches.
+- The total points, maximum possible points, and percentage score.
+- A variable named overall_score containing the candidate’s percentage score (0–100) as a numeric value.
+
+Script execution example
+The grader should be runnable from the command line as follows:
+python task_evaluation.py test_submission.json answer_key.json
+
+
+Implementation requirements
+- Include robust error handling (invalid JSON, missing keys, etc.).
+- Use only standard Python libraries (e.g., json, os, sys).
+- Be deterministic — the same input must always yield the same score.
+- Include concise comments explaining each major block of logic.
+
+
+
+Example Output Format
+``` python
+# task_evaluation.py
+import json, sys, os
+
+# Load files
+...
+
+# Perform grading
+overall_score = 95.0  # percentage of total points earned (0–100)
+
+# Save detailed results to test_results.json
+...
+
+```

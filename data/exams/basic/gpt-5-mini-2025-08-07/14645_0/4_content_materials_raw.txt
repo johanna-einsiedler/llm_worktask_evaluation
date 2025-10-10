@@ -1,0 +1,110 @@
+<MATERIALS_FOR_CANDIDATE>
+File: project_brief.txt
+-----------------------
+Project brief (compact) — Use IDs exactly as shown.
+
+- Fixed code freeze date: 2025-10-20 (no code changes accepted after this date).
+- Fixed release date: 2025-11-03 (release must occur on or before this date).
+- Working days: weekdays only. Public holiday (no testing or environment access): 2025-10-23.
+- Test environments:
+  - Test Environment A: available 2025-10-21 to 2025-10-30
+  - UAT Environment: available 2025-10-27 to 2025-11-01
+- Test team:
+  - Alice (Tester) — 100% availability (full-time)
+  - Bob (Tester) — 100% availability (full-time)
+  - Charlie (Automation Engineer) — 50% availability (part-time)
+- Existing automation coverage: 20% of regression tests currently automated.
+  - To reach 40% regression automation requires 8 full working days of automation_setup by Charlie (during which Charlie is not available for other tasks).
+- Non-functional requirements:
+  - Basic performance smoke test (1 day, during final regression).
+  - Security vulnerability scan (one run in Test Environment A before UAT).
+- High-level constraints and risks:
+  - Third-party payment API (Feature F5) has known instability risk near release.
+  - Limited test data: test data preparation may take 2 days (shared task).
+  - Release acceptance criterion: critical/major defects must be fixed before release; minor defects can be deferred with stakeholder sign-off.
+- Feature list (use these IDs exactly):
+  - F1 — User login & sessions (Low complexity)
+  - F2 — Payments (High complexity)
+  - F3 — Search & filtering (Medium)
+  - F4 — Reporting dashboard (Medium)
+  - F5 — Third-party API integration (High)
+  - F6 — Performance improvements (Medium)
+
+File: features.csv
+------------------
+feature_id,name,complexity,short_description
+F1,User login & sessions,L,Authenticate users, session persistence and logout
+F2,Payments,H,End-to-end payments, billing and error handling
+F3,Search & filtering,M,Search results, filters, sorting and pagination
+F4,Reporting dashboard,M,Charts, export and scheduled reports
+F5,Third-party API integration,H,Payment gateway / third-party API calls and callbacks
+F6,Performance improvements,M,Backend improvements aimed at response time reduction
+
+File: resources.csv
+-------------------
+name,role,availability_percent
+Alice,Tester,100
+Bob,Tester,100
+Charlie,Automation Engineer,50
+
+File: env_windows.csv
+---------------------
+env_name,available_from,available_to,notes
+Test Environment A,2025-10-21,2025-10-30,Use for system/integration tests and security scan (must run here before UAT)
+UAT Environment,2025-10-27,2025-11-01,Use for acceptance/regression final pass
+Public holiday,2025-10-23,2025-10-23,No testing or environment access (non-working day)
+
+File: constraints.csv
+---------------------
+constraint_type,date,notes
+Code freeze,2025-10-20,No code changes after this date
+Release deadline,2025-11-03,Release must be on or before this date
+Test data prep window,Start ASAP after code freeze,Estimated 2 working days (shared task)
+
+File: automation_note.txt
+-------------------------
+Existing automation coverage: 20% of regression is automated today.
+To reach 40% automated regression requires 8 full working days of automation_setup by Charlie.
+While Charlie performs automation_setup he is not available for other tasks.
+(You must state your assumption about how Charlie's 50% availability affects the 8-day automation_setup effort.)
+
+End of materials — use only the exact IDs, names and dates above when preparing your submission JSON.
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How materials were constructed and why
+- The materials reproduce the precise compact project brief the candidate needs to plan testing. The brief is deterministic (fixed dates, feature IDs, team availability and environment windows) so candidates must produce concrete schedules and estimates tied to those inputs.
+- I supplied small, clearly-labeled CSV-style tables for features, resources, environment windows and constraints so candidates can quickly copy rows into a spreadsheet. Each file uses consistent identifiers (feature_id: F1..F6, resource names: Alice/Bob/Charlie) to prevent ambiguity.
+- The automation_note.txt highlights an interpretative decision: the brief states "8 full working days of automation_setup by Charlie" while Charlie is 50% available. Candidates must state an assumption (e.g., treat 8 full working days as 16 part-time working days at 50% capacity, or treat Charlie providing 8 working days on their 50% time block and thus blocking Charlie for 8 calendar days). Requiring an explicit assumption tests practical judgment and communication.
+
+Key patterns and relationships embedded
+- Dates form a tight schedule: code freeze 2025-10-20, Test Env A opens 2025-10-21, UAT opens 2025-10-27 and ends 2025-11-01, release 2025-11-03. There is only a small window for system/integration and UAT testing before release — this intentionally forces prioritisation.
+- Public holiday 2025-10-23 falls inside Test Environment A's window; candidates must treat that date as non-working.
+- Security scan must run in Test Environment A and complete before UAT starts (i.e., on or before 2025-10-26). The candidate must schedule this.
+- Test data prep is a shared 2-day task to be scheduled early (after code freeze).
+- Automation trade-off: raising automation coverage from 20% to 40% requires significant dedicated automation_setup time from Charlie, who is only 50% available. This creates a realistic resource trade-off for candidates to reason about.
+- F2 (Payments) and F5 (Third-party API integration) are high complexity and high risk; F5 has an explicit instability risk callout. Candidates should prioritise these in risk-based ordering.
+
+Traps, likely ambiguities and how to evaluate candidate responses
+- Automation interpretation trap: Candidate must explicitly state how they interpret "8 full working days" vs Charlie's 50% availability. Accept either interpretation if the candidate documents it clearly and adjusts schedule and resource calculations consistently. If the candidate assumes 8 calendar days of Charlie time without noting 50% availability, deduct points.
+- Security scan scheduling: Many candidates may mistakenly schedule the security scan in UAT; evaluator should check the candidate scheduled the scan in Test Environment A and completed it before UAT start.
+- Working day counting: Candidates must count working days and ensure duration_days equals inclusive working days between start_date and end_date, excluding 2025-10-23. Common error: including the public holiday or weekend days. Verify durations match dates.
+- Resource over-allocation: Alice and Bob are 100% each; Charlie is 50%. Candidates should not assign Charlie beyond 50% capacity across concurrent tasks unless they document an assumption or schedule automation_setup as an exclusive block (which then makes Charlie unavailable for other tasks). Check that total estimated hours assigned per person per day do not exceed capacity (1 working day = 8 hours; Charlie's capacity per working day = 4 hours).
+- Environment windows: Tasks assigned to Test Environment A must lie between 2025-10-21 and 2025-10-30; UAT tasks must lie between 2025-10-27 and 2025-11-01. Evaluate for any schedule that violates these windows.
+
+What correct/expected answers depend on
+- Clear statement of assumptions (esp. automation days vs Charlie availability and defect turnaround time).
+- Respecting environment windows, public holiday, code freeze, and release date.
+- Logical sequencing: test design -> test execution -> regression -> final regression & perf smoke -> release, with the security scan completed before UAT.
+- Reasonable effort estimates: estimates (hours) should align to schedule durations and resource capacity. Example expectation: one tester (Alice or Bob) can complete ~8 hours/day; two testers can parallelize tasks; high complexity features will require more design and execution hours.
+- Risk prioritisation should elevate F2 and F5 to highest priority due to complexity and explicit instability risk; the rest ranked relative to complexity and release impact.
+
+How these materials differentiate conceptual vs practical capability
+- By providing exact dates, environment windows and resource availability, the candidate can only succeed by converting those constraints into a concrete schedule and numeric estimates — not by writing a theoretical strategy.
+- Interpreting the automation-block vs part-time availability and documenting that assumption separates candidates who think practically and communicate trade-offs from those who guess or ignore resource constraints.
+- Respecting environment windows and the security-scan pre-UAT constraint tests the candidate's ability to sequence and allocate limited environment availability, a common real-world planning challenge.
+
+Evaluator notes
+- Expect viable junior solutions to schedule test-design and test-data prep immediately after code freeze (starting 2025-10-21), then system/integration tests in Test Environment A (respecting the holiday), UAT in UAT window, and final regression & release checks before 2025-11-03.
+- Look for explicit assumptions, consistent math (hours ↔ days), two practical contingency options, and a short release-day communication plan naming who to notify and when.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

@@ -1,0 +1,720 @@
+You are an expert exam evaluator. Your task is to generate a **complete answer key** for a practical exam based on the provided overview, exam content, evaluator-only materials, and the official candidate submission template.
+
+### Inputs
+
+- Exam overview (for evaluator context):
+<examoverview>
+### Exam Purpose
+Confirm that a candidate can read, run, diagnose, and modify an existing program to fix defects, add a small requirement, and improve efficiency — in other words: perform practical revision, repair, and modest expansion of working code to meet new requirements and improve operating efficiency. The exam verifies hands-on ability (not just theory) to navigate an unfamiliar codebase, produce correct and testable changes, and explain/justify those changes.
+
+### Core Competencies
+- Environment setup and reproducible runs: execute provided program and baseline tests.
+- Debugging and defect repair: identify root causes and implement correct fixes.
+- Small feature implementation: extend code to satisfy a realistic new requirement.
+- Basic performance reasoning and improvement: detect a performance hotspot and implement a measurable optimization.
+- Test-authoring and verification: run and/or add unit or integration tests that validate behavior.
+- Clear change artifacts and explanation: produce diffs/patches, short rationale, and reproduction steps so an evaluator can re-run and verify.
+- Code hygiene appropriate for entry-level: readable edits, modest refactoring, and inline comments where helpful.
+
+### Recommended Structure
+Total time limit: 90 minutes. Deliverables must be submitted in one file named test_submission.json (schema specified below), and any modified files or diffs included in that JSON. Candidate has only the provided codebase, a code execution environment, and a text editor.
+
+Suggested task breakdown (one practical micro-project, 4 tasks):
+- Task 0 — Setup & Baseline (10–15 minutes)
+  - Run the provided program and included test suite / smoke script.
+  - Record baseline outputs and runtimes.
+  - Deliverable: baseline stdout and failing tests summary in JSON.
+- Task 1 — Repair: Fix two small but realistic bugs (30 minutes)
+  - Example: incorrect edge-case handling, wrong date parsing, off-by-one, poor error handling, or incorrect calculation.
+  - Required: All provided tests for these behaviors must pass after fixes.
+  - Deliverable: unified diffs (or file contents) and short explanations for each bug and fix.
+- Task 2 — Expand: Implement a small new feature (20 minutes)
+  - Example: add a filter option to a CLI, accept an extra input format, or export additional field.
+  - Required: Add one unit/integration test that asserts the new feature works.
+  - Deliverable: changed files, new test file, and explanation.
+- Task 3 — Improve Efficiency: Optimize a hotspot (15–20 minutes)
+  - Identify a clearly-marked slow function (provided with naive implementation); reduce runtime by a measurable amount (e.g., 3x or achieve a fixed target).
+  - Required: Run benchmark script before/after and include numbers.
+  - Deliverable: timing outputs, changed files or algorithm description, and justification.
+- Finalize & Submit (5–10 minutes)
+  - Package diffs/changes into test_submission.json, include how to reproduce verification steps and a short self-assessment.
+
+Expected deliverables (all included in test_submission.json):
+- Candidate metadata (name, start/end times, environment).
+- For each task: status, short narrative of actions, and key outputs (test output, timing numbers).
+- Diffs or modified file contents (as unified diff strings or full new file contents).
+- New/modified test files (as text).
+- Exact commands to reproduce results and verification steps.
+
+### Practicality — How to keep it hands-on
+- Provide a small but realistic, self-contained codebase (no external network dependencies) that includes:
+  - A runnable CLI or small API with sample data files.
+  - A small test harness or script that demonstrates failures and contains at least one intentionally failing test tied to each bug/feature.
+  - A simple benchmark script to measure runtime on a supplied input (deterministic inputs).
+- Make the tasks interdependent: baseline must run first; some bug fixes are prerequisites for the feature to work or for the benchmark to be meaningful.
+- Require the candidate to both run the program and supply the changed code and test outputs — not only to describe what they'd do.
+- No internet access ensures candidate cannot copy-paste entire solutions; they must rely on skill and local tooling.
+
+### Strategic Elements (to distinguish practical ability)
+- Multi-step dependency: e.g., the new feature relies on corrected parsing logic from Task 1; the benchmark input exercises the code paths changed in Task 2. This checks sequencing and integration thinking.
+- Decision points: give a performance hotspot with several valid optimization strategies (algorithmic improvement, caching, data structure change). Candidate must choose and justify one with tradeoffs (simplicity vs. best asymptotic).
+- Observable trade-offs: small refactor that increases clarity but may slightly change runtime; candidate should explain tradeoffs.
+- Fault isolation: include at least one non-obvious bug that requires reading code logic (not just surface syntax), e.g., incorrect assumptions about input format or edge-case branching.
+- Testing requirement: require at least one new automated test covering the bug or feature to prove the fix; this distinguishes those who patch vs. those who verify.
+
+### Evaluation Insights — What to look for in submissions
+Score weighting (recommended for basic exam; passing threshold > 80%):
+- Correctness & completeness (50%): all required fixes pass tests; the new feature behaves as specified; no regressions in other tests.
+- Tests & reproducibility (15%): candidate ran baseline and new tests; provided clear reproduction steps; tests are meaningful and pass.
+- Performance improvement (15%): measured and reported before/after timings; improvement meets the target or is reasonably justified.
+- Code quality & clarity (10%): readable changes, small, focused refactors, comments where helpful, no unnecessary complexity.
+- Explanation & process (10%): succinct rationale for fixes, chosen optimization approach, and potential edge-cases remaining.
+
+Observable outputs to verify competence:
+- Test outputs: initial failure logs and final passing logs (captured in JSON).
+- Diffs/modified file contents: allow the evaluator to inspect code and validate good fixes.
+- Benchmark/timing outputs: simple numeric comparison (median/mean of runs) demonstrating improvement.
+- Reproduction script: a short list of commands included in JSON which a grader can run to reproduce results in <10 minutes.
+- New test file content: shows candidate can write basic tests that validate behavior.
+
+Minimum passing behavior:
+- All existing tests that were passing before remain passing.
+- Bugs targeted by the tasks are fixed (tests pass).
+- New feature is implemented and validated by at least one automated test.
+- Performance benchmark shows improved runtime by a pre-defined modest factor (e.g., 2x) or meets an absolute time target provided in the test instructions.
+- Candidate supplies unified diffs or new file contents for every changed file, and a clear "how to run" sequence.
+
+### Suggested JSON schema for test_submission.json
+Provide this exact JSON schema to candidates so submissions are uniform and easy to grade. All fields are strings unless noted.
+
+- candidate_name (string)
+- candidate_email (string)
+- start_time_utc (ISO 8601 string)
+- end_time_utc (ISO 8601 string)
+- environment (object) — e.g., { "os": "...", "language": "Python 3.10", "other": "..." }
+- tasks (array of objects) — each object:
+  - id (string, e.g., "T1")
+  - title (string)
+  - status (string; "done"/"partial"/"skipped")
+  - minutes_spent (number)
+  - short_summary (string) — 1–3 sentences describing what was done
+  - key_outputs (string) — paste of relevant stdout/stderr (trim to essential lines)
+  - files_changed (array of objects) — each with:
+    - filename (string)
+    - change_type (string; "modified"/"added"/"deleted")
+    - unified_diff (string) — unified diff text or entire new file content if diff unavailable
+- new_tests (array) — each object:
+  - filename (string)
+  - content (string)
+- performance (object) — include:
+  - benchmark_command (string)
+  - before_run_times (array of numbers in ms)
+  - after_run_times (array of numbers in ms)
+  - short_explanation (string)
+- how_to_reproduce (string) — exact commands a grader should run to verify baseline, tests, and benchmarks
+- final_notes (string) — any remaining issues, assumptions, or tradeoffs
+- self_assessed_percent_complete (number 0–100)
+
+Evaluator instructions:
+- Reproduce steps in how_to_reproduce exactly in the provided environment; expect to run within 10 minutes.
+- Confirm that tests listed in key_outputs are passing.
+- Apply diffs (or replace files with provided content) and run checks.
+- Verify that reported performance numbers match or are near reported values (allow ~10% variation).
+- Score using the weighting above; require >=80% overall to pass for a junior/entry-level expectation.
+
+### Example micro-projects you might provide for the basic exam
+(These are examples an exam creator can choose from; each should be small, self-contained, and runnable without external network.)
+- CSV deduplicator CLI (Python): Bugs in date parsing and duplicate detection; feature: add --since-date filter; performance: naive O(n^2) duplicate checking on 10k rows — optimize to O(n).
+- Simple JSON REST-ish CLI (Node/Python): Faulty error handling and incorrect ID assignment; feature: add pagination flag; performance: speed up JSON merge logic.
+- Small text-processing pipeline: incorrect tokenization and feature to support an extra format; performance: optimize repeated regex operations.
+
+These examples guide what the exam content should look like: small, focused, and realistic.
+
+--- 
+This design yields a 90-minute, hands-on test that confirms a candidate can practically perform repair, revision, and modest expansion tasks on an existing codebase. It balances reproducibility for graders with realistic, integrative tasks that distinguish doing vs. describing.
+</examoverview>
+
+- Full exam content:
+<exam>
+### Exam Title
+Practical Revision, Repair, and Modest Expansion of an Existing Program — Basic (90 minutes)
+
+### Instructions for Candidate
+You have 90 minutes total. Use only the local code execution environment and a text editor. No internet or external libraries are allowed.
+
+Follow these steps exactly. Record outputs and file changes, and bundle everything into one JSON file named test_submission.json (schema below).
+
+Time guidance (suggested):
+- Task 0 — Setup & Baseline: 10–15 minutes
+- Task 1 — Repair (two bugs): 30 minutes
+- Task 2 — Expand (one small feature + test): 20 minutes
+- Task 3 — Improve Efficiency (optimize hotspot + benchmark): 15–20 minutes
+- Finalize & Submit: 5–10 minutes
+
+Step-by-step
+
+1. Inspect the repository
+   - Open README.md (or any top-level help file) and identify the single commands/scripts supplied to:
+     - run the program,
+     - run the test suite / smoke script,
+     - run the benchmark script.
+   - Note those exact commands. You will use them for baseline measurements and include them in your submission.
+
+2. Task 0 — Setup & Baseline
+   - Run the provided smoke/test script and the program once on the provided sample input(s). (Use the commands the repository supplies.)
+   - Capture:
+     - The full stdout/stderr from running the smoke/test script (trim long logs to essential failing/passing lines).
+     - Any failing tests or error messages.
+     - Baseline benchmark timings by running the provided benchmark script once (or as instructed in README).
+   - Deliverable items (to include in JSON):
+     - Commands used to run baseline,
+     - Captured stdout/stderr (essential lines),
+     - Baseline benchmark times.
+
+3. Task 1 — Repair (fix two small bugs)
+   - There are two intentionally defective behaviors in the codebase (these are tied to failing tests or to specific failing items indicated in the smoke/test output).
+   - Identify the root cause(s) and implement code fixes so that the existing tests that relate to those behaviors pass.
+   - You must not alter the tests unless the README explicitly says a test is allowed to be updated. (If you think a test is wrong, explain and justify the change in your submission; keep edits minimal.)
+   - Deliverable items:
+     - All modified file contents or unified diffs for each changed file.
+     - Short explanation (1–3 sentences) per bug: cause and fix.
+     - New test output showing those tests now pass.
+
+4. Task 2 — Expand (implement one small new feature)
+   - Implement one new, small feature described in the project README or the task notes bundled in the repository. (Examples: add a CLI filter flag, accept an extra input format, or export an extra field.)
+   - Add one automated test (unit or integration) that verifies the new feature.
+   - The new test must be runnable with the repository’s test command.
+   - Deliverable items:
+     - Modified/added source files or unified diff(s).
+     - The new test file contents.
+     - Test output demonstrating the new test passes (and overall test suite still passes).
+
+5. Task 3 — Improve Efficiency (optimize a hotspot)
+   - The codebase contains a clearly-marked function or module flagged in comments as "SLOW" or "HOTSPOT". Optimize it to run faster on the supplied deterministic benchmark input.
+   - Before-and-after: run the provided benchmark exactly as in Task 0 to gather timing numbers. Use the same command(s) both times.
+   - Aim to reduce runtime by a measurable amount (the target will be described in the repository; if no absolute target is specified, aim for at least a 2x improvement on the provided input).
+   - Deliverable items:
+     - Modified file(s) or unified diff(s).
+     - Benchmark command(s) used and arrays of measured run times (ms) before and after your changes.
+     - Short explanation (1–3 sentences) of what you changed and why it speeds up the code.
+
+6. Finalize & Submit
+   - Ensure all modified and added files are included (unified diffs or full file content strings).
+   - Prepare a concise reproduction sequence — exact commands a grader can run to reproduce:
+     - baseline smoke/tests,
+     - run full test suite,
+     - run benchmark before and after (as you ran it).
+   - Fill the test_submission.json according to the submission schema below.
+   - Save the file as test_submission.json at the repository root and submit it.
+
+Important constraints
+- Use only the local tools provided: code execution environment and text editor.
+- Do not add external network dependencies or install new packages.
+- Keep changes focused and minimal: fix what is required, add only the one test for the new feature, and implement only the necessary performance change.
+- Do not rename arbitrary files, change project-level metadata, or reorganize the repository unless your fix absolutely requires it — explain any such change.
+- Be objective: your submission will be graded against automated tests and benchmarks; follow the schema precisely.
+
+### Expected Outcome
+By the end of the test you must provide, in test_submission.json:
+- Metadata: your name, email, start and end times, and environment.
+- Task records for Tasks 0–3 with:
+  - status ("done"/"partial"/"skipped"),
+  - minutes_spent,
+  - short_summary,
+  - key_outputs (trimmed stdout/stderr),
+  - files_changed (filename, change_type, unified_diff or full file content).
+- Any new tests added (filename and content).
+- Performance object with:
+  - benchmark_command,
+  - before_run_times (array of ms),
+  - after_run_times (array of ms),
+  - short_explanation.
+- how_to_reproduce: exact commands a grader must run to reproduce baseline, verify fixes, and re-run benchmarks.
+- final_notes and a self_assessed_percent_complete (0–100).
+- All diffs or new file contents needed for an evaluator to apply your changes.
+
+Minimum pass conditions (objective)
+- All previously passing tests remain passing.
+- The two targeted bugs are fixed (corresponding tests pass).
+- The new feature is implemented and verified by a new automated test.
+- The benchmark demonstrates a measurable improvement (at least the target given in the repository, or at minimum ~2x if no target is given).
+- Your JSON follows the exact schema below.
+
+You will be scored against these objective measures; be concise in explanations.
+
+### Provided Materials
+The repository you receive for this exam will include:
+- README.md — instructions and the exact commands to run the program, tests, and benchmark (read this first).
+- A runnable program (CLI or small API) in the code/ directory.
+- tests/ — an automated test suite (pytest, unittest, or similar) and a smoke/sanity script.
+- A deterministic benchmark script in bench/ or a file named benchmark.sh / benchmark.py.
+- sample_data/ — input files the smoke/test script and benchmark use.
+- A single marked "SLOW" or "HOTSPOT" function in the codebase (commented) that you should optimize.
+- Note: The specific file names and commands will be listed in README.md. Use those exact commands when you run things and when you write how_to_reproduce.
+
+If any provided file is missing or unreadable, note that in test_submission.json and explain briefly what happened.
+
+### Submission Format
+You must submit a single file named test_submission.json (UTF-8). Use this exact schema. All fields are strings unless noted otherwise.
+
+Top-level fields
+- candidate_name (string)
+- candidate_email (string)
+- start_time_utc (ISO 8601 string)
+- end_time_utc (ISO 8601 string)
+- environment (object) — e.g., { "os": "Ubuntu 22.04", "language": "Python 3.10", "other": "bash 5.1" }
+
+tasks (array of objects) — include one object per task: T0, T1, T2, T3, Finalize
+Each task object:
+- id (string) — e.g., "T0"
+- title (string)
+- status (string) — one of "done", "partial", or "skipped"
+- minutes_spent (number)
+- short_summary (string) — 1–3 sentences
+- key_outputs (string) — paste of relevant stdout/stderr (trim to essential lines)
+- files_changed (array of objects) — can be empty if none; each object:
+  - filename (string)
+  - change_type (string) — one of "modified", "added", "deleted"
+  - unified_diff (string) — unified diff text or full new file content if diff unavailable
+
+new_tests (array) — each object:
+- filename (string)
+- content (string)
+
+performance (object):
+- benchmark_command (string)
+- before_run_times (array of numbers) — ms
+- after_run_times (array of numbers) — ms
+- short_explanation (string)
+
+how_to_reproduce (string) — exact commands a grader should run to reproduce baseline, tests, and benchmarks (step-by-step).
+
+final_notes (string) — any remaining issues, assumptions, or tradeoffs.
+
+self_assessed_percent_complete (number) — 0–100
+
+Submission checklist (must be followed)
+- File name: test_submission.json at repository root.
+- All changed file contents or unified diffs included in tasks[].files_changed.
+- New tests included in new_tests with exact filename and content.
+- Exact commands included in how_to_reproduce (so grader can reproduce in <10 minutes).
+- Performance numbers and commands included in performance.
+
+Good luck. Work steadily through Tasks 0→1→2→3, keep edits focused and minimal, and ensure your test_submission.json is complete and reproducible.Repository layout (all files below should be placed exactly as named):
+
+README.md
+--------------
+# Transaction Deduplicator CLI - Basic Practical Exam
+
+This small project provides a CLI to read a CSV of transactions, remove duplicate transactions, and print deduplicated CSV to stdout.
+
+Commands (use these exact commands for the exam):
+- Run tests: python3 -m pytest -q
+- Run program (produces CSV on stdout): python3 code/main.py sample_data/transactions.csv > output.csv
+- Run benchmark: python3 bench/benchmark.py
+
+Task note for candidate:
+- Task 1 will require fixing two bugs (tests show failing behaviors).
+- Task 2: Implement a CLI flag `--since-date YYYY-MM-DD` which filters input transactions to only those on or after the given date (inclusive). Add one automated test verifying this behavior.
+- Task 3: Optimize the function marked `# SLOW` in `code/deduper.py` so the benchmark runtime improves significantly (aim for at least 2x faster).
+
+code/main.py
+--------------
+#!/usr/bin/env python3
+import sys
+import csv
+import argparse
+from code.deduper import read_csv, dedupe_records, write_csv  # note: since-date flag not implemented yet
+
+def main(argv):
+    parser = argparse.ArgumentParser(description="Deduplicate transactions CSV")
+    parser.add_argument("input_csv", help="Path to input CSV file")
+    # Candidate: implement --since-date YYYY-MM-DD to filter records on or after this date (inclusive)
+    args = parser.parse_args(argv)
+
+    records = read_csv(args.input_csv)
+    deduped = dedupe_records(records)
+    write_csv(deduped, sys.stdout)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+code/deduper.py
+--------------
+import csv
+from datetime import datetime
+
+def read_csv(path):
+    """
+    Read CSV and return list of dict records.
+    Expected columns: Transaction_ID,Customer_ID,Date,Amount,Region
+    """
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        return [row for row in reader]
+
+def parse_date(date_str):
+    """
+    Parse date string and return a datetime.date.
+    BUG: The parsing format below is incorrect for inputs like '2023-01-05'.
+    Candidate must fix this.
+    """
+    # BUG: wrong format used
+    return datetime.strptime(date_str, "%d-%m-%Y").date()
+
+def dedupe_records(records):
+    """
+    Remove duplicate transactions.
+    Definition: duplicates share the same Transaction_ID (ignoring leading/trailing whitespace).
+    CURRENT IMPLEMENTATION:
+      - Naive O(n^2) nested loop (marked SLOW).
+      - Compares Transaction_IDs without stripping whitespace (bug: fails when IDs have extra spaces).
+      Candidate must both fix correctness (strip IDs) and optimize this SLOW function in Task 3.
+    """
+    unique = []
+    for r in records:
+        is_dup = False
+        for u in unique:
+            # SLOW: naive nested loop with extra work to simulate a hotspot.
+            a = (r['Transaction_ID'] + u['Transaction_ID']).lower()
+            # artificial workload to make this function measurable in benchmark
+            for _ in range(2000):
+                _ = a.endswith(u['Transaction_ID'])
+            if u['Transaction_ID'] == r['Transaction_ID']:
+                is_dup = True
+                break
+        if not is_dup:
+            unique.append(r)
+    return unique
+
+def write_csv(records, out_file):
+    if not records:
+        return
+    fieldnames = ["Transaction_ID","Customer_ID","Date","Amount","Region"]
+    writer = csv.DictWriter(out_file, fieldnames=fieldnames)
+    writer.writeheader()
+    for r in records:
+        writer.writerow(r)
+
+tests/test_deduper.py
+--------------
+import os
+from code.deduper import read_csv, parse_date, dedupe_records
+
+def test_parse_date():
+    # expect parse_date to accept "YYYY-MM-DD" and return a date with the corresponding year/month/day
+    d = parse_date("2023-01-05")
+    assert d.year == 2023 and d.month == 1 and d.day == 5
+
+def test_dedupe_removes_duplicates():
+    records = read_csv("sample_data/transactions.csv")
+    deduped = dedupe_records(records)
+    ids = [r['Transaction_ID'].strip() for r in deduped]
+    # after dedupe all Transaction_IDs should be unique
+    assert len(ids) == len(set(ids))
+
+tests/test_main_smoke.py
+--------------
+import subprocess
+import sys
+
+def test_main_runs():
+    # Smoke: main CLI should run and exit 0 when given the sample CSV
+    res = subprocess.run([sys.executable, "code/main.py", "sample_data/transactions.csv"], capture_output=True, text=True)
+    assert res.returncode == 0
+
+sample_data/transactions.csv
+--------------
+Transaction_ID,Customer_ID,Date,Amount,Region
+T001,C001,2023-01-01,100,North
+T002,C002,2023-01-05,50,East
+T003,C003,2023-01-10,75,South
+T004,C004,2023-01-03,200,West
+T002 ,C002,2023-01-05,50,East
+T005,C005,2023-01-07,60,North
+T006,C006,2023-01-02,80,South
+T007,C007,2023-01-05,90,East
+T005 ,C005,2023-01-07,60,North
+T008,C008,2023-01-08,40,West
+
+bench/benchmark.py
+--------------
+#!/usr/bin/env python3
+import time
+from code.deduper import read_csv, dedupe_records
+
+def benchmark_once():
+    records = read_csv("sample_data/transactions.csv")
+    t0 = time.perf_counter()
+    dedupe_records(records)
+    t1 = time.perf_counter()
+    return (t1 - t0) * 1000.0
+
+def main():
+    runs = 5
+    times = []
+    for _ in range(runs):
+        ms = benchmark_once()
+        print(f"run_ms: {ms:.2f}")
+        times.append(ms)
+    avg = sum(times) / len(times)
+    print(f"avg_ms: {avg:.2f}")
+
+if __name__ == "__main__":
+    main()
+
+.smoketest (optional helper script)
+--------------
+#!/usr/bin/env bash
+# Run tests (use exactly this command if you want a quick smoke)
+python3 -m pytest -q
+
+Notes:
+- The repository intentionally includes two failing behaviors covered by tests:
+  1) parse_date uses an incorrect format string and will raise or produce the wrong result.
+  2) dedupe_records does not strip Transaction_ID whitespace and will fail to detect duplicates in those cases.
+- The dedupe_records function is marked SLOW and contains a naive O(n^2) implementation with an artificial inner workload loop to make the hotspot measurable by the benchmark.
+- You must implement the new CLI flag `--since-date` (inclusive), add one test verifying it, and optimize the SLOW function for Task 3.```json
+{
+  "candidate_name": "",
+  "candidate_email": "",
+  "start_time_utc": "",
+  "end_time_utc": "",
+  "environment": {
+    "os": "",
+    "language": "",
+    "other": ""
+  },
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Setup & Baseline",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T1",
+      "title": "Repair (fix two bugs)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T2",
+      "title": "Expand (implement --since-date and add test)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T3",
+      "title": "Improve Efficiency (optimize HOTSPOT and benchmark)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "Finalize",
+      "title": "Finalize & Submit",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    }
+  ],
+  "new_tests": [],
+  "performance": {
+    "benchmark_command": "",
+    "before_run_times": [],
+    "after_run_times": [],
+    "short_explanation": ""
+  },
+  "how_to_reproduce": "",
+  "final_notes": "",
+  "self_assessed_percent_complete": null
+}
+```
+</exam>
+
+- Additional materials only visible to the evaluator:
+<materials_evaluator>
+How these materials were constructed and why
+
+Overview
+- Purpose: Provide a compact, deterministic Python codebase that requires the candidate to (A) run tests and benchmark, (B) diagnose and fix two concrete bugs, (C) add a small feature (CLI --since-date) with a test, and (D) optimize a clearly-marked SLOW function and report before/after timings.
+- Files are minimal and self-contained: no external packages or network access required. Tests use Python's standard tooling (pytest).
+
+Key files and relationships
+- code/deduper.py: core library with three responsibilities: read CSV, parse dates, deduplicate records, and write CSV. Two intentional issues:
+  - parse_date: uses "%d-%m-%Y" which does not match the actual CSV/date strings ("YYYY-MM-DD"). This either raises or parses incorrectly. This is one of the bugs the candidate must fix.
+  - dedupe_records: marked SLOW; implemented as naive nested loops which:
+    - compare Transaction_ID without .strip(), so duplicates that include trailing spaces are not recognized (bug to fix).
+    - includes artificial inner workload (loop of 2000 iterations) to make the function measurable in benchmarks and to make optimization observable.
+- code/main.py: simple CLI that reads input CSV and writes deduplicated CSV to stdout; currently does not implement the requested `--since-date` flag (this is the Task 2 feature).
+- sample_data/transactions.csv: deterministic data set (10 rows) with two types of duplicates:
+  - T002 appears twice; one instance has trailing space in Transaction_ID ("T002 ").
+  - T005 same situation.
+  The Date column includes a record with Date "2023-01-05" which is used by tests for inclusive filtering.
+- tests/test_deduper.py:
+  - test_parse_date: verifies parse_date("2023-01-05") returns a date with year=2023 month=1 day=5. This will fail initially because parse_date uses incorrect format.
+  - test_dedupe_removes_duplicates: reads the CSV then asserts that after dedupe, all Transaction_IDs (when stripped) are unique. This will fail initially because dedupe_records compares raw IDs without stripping whitespace.
+- tests/test_main_smoke.py: a smoke test that the CLI runs and exits 0. This passes in the baseline.
+- bench/benchmark.py: runs dedupe_records 5 times and prints run_ms lines and avg_ms. Candidate should run this before and after optimization and include numeric arrays in submission.
+
+Hidden relationships and traps
+- parse_date format mismatch is intentional: it's a syntactic bug that raises a ValueError for typical YYYY-MM-DD input. Some candidates may attempt to adjust code paths rather than the format string; the minimal correct fix is to change the format to "%Y-%m-%d".
+- dedupe_records has two issues linked together: correctness and performance.
+  - Correctness: Transaction_IDs in the CSV sometimes have trailing spaces; correct deduplication requires normalizing Transaction_ID (strip whitespace) before comparisons. A common incorrect fix is to trim only unique list entries or only current record—both will work, but the intent is to normalize before the check.
+  - Performance: The function intentionally uses a nested loop plus an artificial inner workload. A correct and fast approach is to normalize IDs and use a set to track seen IDs (O(n)), eliminating the nested loop and reducing the artificial workload dramatically. Candidate may also choose alternative valid optimizations (e.g., building a dict of first occurrences) — either is acceptable as long as benchmark shows measurable improvement (≥2x).
+- Task sequencing dependency: The Task 2 feature (--since-date) should interpret CSV Date values via parse_date. Therefore, parse_date must be fixed before implementing the since-date filter. This enforces correct sequencing: Fix parsing first (Task 1), then implement CLI and test for since-date (Task 2), and ensure benchmark runs exercise the dedupe path (Task 3).
+- Since-date semantics: README and the instructions require inclusive filtering ("on or after the given date"). A common off-by-one mistake is using a strict greater-than comparison; the test you ask the candidate to add should assert inclusive behavior for a date equal to a record's Date (e.g., "2023-01-05").
+
+What the correct/expected answers depend on
+- Correct fixes:
+  - parse_date must use the "%Y-%m-%d" format to parse dates like "2023-01-05" correctly.
+  - dedupe_records must treat Transaction_ID equivalently even if whitespace differs; normalizing with .strip() (or otherwise) is required. For Task 3, converting to a set-based approach (tracking seen IDs) will both fix correctness and improve performance.
+- New feature:
+  - Add `--since-date YYYY-MM-DD` to code/main.py argument parsing; when provided, read_csv result should be filtered to only include records where parse_date(record["Date"]) >= provided_date.
+  - Add a pytest test (e.g., tests/test_since_date.py) that calls main or the underlying function verifying that providing --since-date 2023-01-05 includes records dated exactly 2023-01-05.
+- Performance:
+  - The benchmark prints run_ms for 5 runs and avg_ms. Candidate should capture these numeric values before and after optimizations and include arrays in their submission. Accept a tolerance of ~10% variation when graders verify numbers.
+
+Common candidate mistakes to watch for
+- Fixing tests by modifying tests rather than fixing code. Tests are part of the exam and must not be changed (except the new test the candidate is asked to add).
+- Making changes that break other functionality (e.g., renaming fields or altering CSV output columns). Changes should be minimal and focused: fix parse_date format string, normalize Transaction_IDs, implement set-based dedupe, add since-date flag and test.
+- Implementing since-date using string comparison instead of date objects — this can cause incorrect behavior (e.g., "2023-1-10" comparisons). The correct approach uses parse_date to produce comparable date objects.
+- Overcomplicating the optimization: keep changes simple and well-explained. Using a set to track seen `Transaction_ID.strip()` is the simplest approach that meets performance goals.
+
+How materials differentiate conceptual vs. practical ability
+- Conceptual checks:
+  - Candidate must recognize date format mismatch and know appropriate datetime.strptime format tokens.
+  - Candidate must reason about duplicate detection correctness (normalization) and algorithmic complexity (O(n^2) vs O(n)).
+- Practical checks:
+  - Candidate must run the test suite, read failing traces, and implement targeted code changes that result in all tests (except newly added ones) passing.
+  - Candidate must add a new automated test for the CLI flag and ensure it integrates with pytest.
+  - Candidate must run the provided benchmark, measure before/after times, and demonstrate a measurable improvement (documenting commands and outputs).
+  - Candidate must produce diffs/modified file contents for evaluation and present reproducible commands.
+
+Grading hints for evaluator
+- Baseline: Running `python3 -m pytest -q` on the supplied materials should show at least two failing tests (parse_date and dedupe).
+- After fixes:
+  - All original tests should pass.
+  - New test (added by candidate) should pass and be included in their submission.
+  - Benchmark avg_ms should be lower after optimization; expect a substantial reduction (commonly ≥2x).
+- Check that candidate's changes are minimal and justified in their submission (patches or full file contents).
+- Confirm that the `--since-date` flag is implemented, inclusive of the boundary date.
+- Allow small timing variance; verify approximate improvement rather than exact equality.
+
+Size and determinism
+- The CSV and codebase are intentionally small (10 rows) and deterministic so graders can run them quickly. The artificial inner workload in dedupe_records ensures that the hotspot is measurable even on small data.
+</materials_evaluator>
+
+- Official candidate submission template (JSON object):
+<submission_template>
+{
+  "candidate_name": "",
+  "candidate_email": "",
+  "start_time_utc": "",
+  "end_time_utc": "",
+  "environment": {
+    "os": "",
+    "language": "",
+    "other": ""
+  },
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Setup & Baseline",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T1",
+      "title": "Repair (fix two bugs)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T2",
+      "title": "Expand (implement --since-date and add test)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "T3",
+      "title": "Improve Efficiency (optimize HOTSPOT and benchmark)",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    },
+    {
+      "id": "Finalize",
+      "title": "Finalize & Submit",
+      "status": "",
+      "minutes_spent": null,
+      "short_summary": "",
+      "key_outputs": "",
+      "files_changed": []
+    }
+  ],
+  "new_tests": [],
+  "performance": {
+    "benchmark_command": "",
+    "before_run_times": [],
+    "after_run_times": [],
+    "short_explanation": ""
+  },
+  "how_to_reproduce": "",
+  "final_notes": "",
+  "self_assessed_percent_complete": null
+}
+</submission_template>
+
+### Your assignment
+
+1. Using the provided **submission template**, generate a **complete answer key** that:
+   - Fills in every field of the template with the **correct answer**.
+   - Preserves the exact structure of the template (nested fields, arrays, etc.).
+   - Includes relevant metadata where applicable (units, decimal places, allowed options, etc.).
+   - Produces a **valid JSON object** suitable for automated checking.
+   - Enclose the JSON output in triple backticks with `json` for clarity:
+     ```json
+     ...
+     ```
+
+2. Provide an **explanation for each answer**:
+   - Explain how the correct answer was derived.
+   - Reference the exam content, candidate instructions, and evaluator-only materials when necessary.
+
+3. Specify **passing criteria**:
+   - Define minimum requirements for passing (number or percentage of correct answers).
+   - Include any special rules for partial credit or conditional scoring.
+
+### Requirements
+
+- Do **not** change the template structure—fill it in, do not add or remove fields.
+- Do **not** include any text outside the required JSON for the answer key.
+- Ensure the answer key is **deterministic**, machine-checkable, and aligned exactly with the exam questions.
+- Use `null` or empty placeholders **only if a question cannot be evaluated**, but otherwise provide concrete answers.
+

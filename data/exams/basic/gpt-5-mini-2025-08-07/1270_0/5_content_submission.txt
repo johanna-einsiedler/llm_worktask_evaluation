@@ -1,0 +1,15 @@
+```json
+{
+  "language": "",
+  "entry_point": "",
+  "persistence_file": "",
+  "commands_run": [],
+  "short_description": "",
+  "self_assessment": {
+    "implemented_required": null,
+    "bonus_features": [],
+    "known_issues": ""
+  },
+  "time_taken_minutes": null
+}
+```
