@@ -1,0 +1,41 @@
+```json
+{
+  "candidate_name": "Answer Key - Ideal Candidate",
+  "start_time": "2025-10-11T09:00:00Z",
+  "end_time": "2025-10-11T09:45:00Z",
+  "environment": "Python 3.9.2",
+  "initial_test_run": "python -m unittest discover\nFE.\n\n======================================================================\nFAIL: test_greet_literal (tests.test_main.MainTests)\nTraceback (most recent call last):\n  File \"/home/user/test_project_greetings/tests/test_main.py\", line 14, in test_greet_literal\n    self.assertEqual(main.greet(\"Alice\"), \"Welcome, Alice!\")\nAssertionError: 'Welcome back, Alice!' != 'Welcome, Alice!'\n- Welcome back, Alice!\n+ Welcome, Alice!\n\n======================================================================\nERROR: test_load_user_schema (tests.test_main.MainTests)\nTraceback (most recent call last):\n  File \"/home/user/test_project_greetings/tests/test_main.py\", line 19, in test_load_user_schema\n    self.assertEqual(user[\"user_name\"], \"Alice\")\nKeyError: 'user_name'\n\n----------------------------------------------------------------------\nRan 3 tests in 0.001s\n\nFAILED (failures=1, errors=1)\n",
+  "diagnosis": "There are two distinct problems indicated by the initial run: (1) test_greet_literal fails because the application now returns 'Welcome back, <name>!' while the test expects the old literal 'Welcome, <name>!'. (2) test_load_user_schema raises a KeyError for 'user_name' because the fixture/application use the key 'username' (no underscore). test_is_active passed, confirming fixtures load and status value are present.",
+  "final_test_run": "python -m unittest discover\n....\n\n----------------------------------------------------------------------\nRan 4 tests in 0.001s\n\nOK\n",
+  "modified_files": [
+    {
+      "path": "tests/test_main.py",
+      "content": "import os\nimport unittest\nfrom app import main\n\nclass MainTests(unittest.TestCase):\n    def _fixture_path(self, name=\"user.json\"):\n        # Path to fixtures relative to this file\n        base = os.path.dirname(__file__)\n        return os.path.abspath(os.path.join(base, \"..\", \"fixtures\", name))\n\n    def test_greet_literal(self):\n        # Updated expected greeting to match current application behavior.\n        self.assertEqual(main.greet(\"Alice\"), \"Welcome back, Alice!\")\n\n    def test_load_user_schema(self):\n        # Updated to assert current fixture key name 'username' (no underscore).\n        user = main.load_user_from_fixture(self._fixture_path())\n        self.assertEqual(user[\"username\"], \"Alice\")\n\n    def test_is_active(self):\n        # This test should continue to pass (status is 'active' in fixtures/user.json)\n        user = main.load_user_from_fixture(self._fixture_path())\n        self.assertTrue(main.is_active(user))\n",
+      "rationale": "Fixed two broken assertions to reflect intentional app changes: (1) updated the expected greeting literal to 'Welcome back, Alice!'; (2) changed the asserted fixture key from 'user_name' to 'username' to match the actual fixture and app behavior. These are minimal, targeted edits that preserve test intent.",
+      "related_task": "task_3_update_tests_and_fixtures"
+    },
+    {
+      "path": "tests/test_additional.py",
+      "content": "import unittest\nfrom app import main\n\nclass AdditionalTests(unittest.TestCase):\n    def test_greet_contains_name(self):\n        # Small additional test to ensure greet includes the provided name (edge case / data-driven variant)\n        self.assertIn(\"Alice\", main.greet(\"Alice\"))\n",
+      "rationale": "Added one concise test that asserts the greet output contains the provided name, improving coverage for a simple acceptance rule without adding flakiness.",
+      "related_task": "task_4_add_new_test"
+    }
+  ],
+  "new_tests_added": [
+    "tests/test_additional.py"
+  ],
+  "open_issues": "",
+  "confidence": "High",
+  "git_patch": "",
+  "time_taken_seconds": 2700,
+  "task_1_setup_and_initial_run": "Command run: 'python -m unittest discover'. The initial test run produced two failing outcomes (one failure for a mismatched literal greeting and one error/KeyError for a missing expected fixture key). I captured the full console output in initial_test_run.",
+  "task_2_diagnose_failures": "Diagnosis: (A) test_greet_literal compared the returned greeting to the old literal 'Welcome, Alice!'; the app now returns 'Welcome back, Alice!' so the assertion must be updated. (B) test_load_user_schema attempted to read user['user_name'] but fixtures/app provide 'username'; this raises KeyError. This is an expected schema/key rename; tests should be updated rather than changing application code.",
+  "task_3_update_tests_and_fixtures": "I made minimal edits only to test files. In tests/test_main.py I updated the expected greeting string to the new literal and changed the tested key from 'user_name' to 'username'. I did not modify app/ files. These changes keep assertions meaningful and targeted to the real behavior.",
+  "task_4_add_new_test": "I added tests/test_additional.py containing one small test (test_greet_contains_name) that asserts the greet output includes the supplied name. This is a concise, deterministic extra case meeting the 'add one small test' requirement.",
+  "task_5_rerun_and_verify": "After edits I re-ran 'python -m unittest discover'. The final test run shows 4 tests ran and all passed (OK). This confirms the edits fixed the earlier failures and that the added test integrates with the suite.",
+  "submission_notes": "Explanation of how answers were derived: I ran the provided test suite to reproduce failures, read the tracebacks/assertion diffs to determine exact causes, and applied minimal updates to the tests to reflect intentional, documented app behavior changes. I added one small deterministic test. No application code was modified.\n\nPassing criteria (basic exam):\n- Required: Final test run must show all tests passing (primary gate). (40% of score)\n- Candidate must have submitted the initial failing run output and the final passing run output (10% of score).\n- Changes must be minimal and confined to tests/ and fixtures/; gratuitous edits reduce score (25% of score for correctness/minimality).\n- Each modified file must include a clear 1-3 sentence rationale (15% of score).\n- Evidence of correct diagnosis (initial logs + explanation) and maintainability choices (use of stable assertions) (10% of score).\n\nMinimum passing threshold: overall score > 80% as defined in exam materials. For automated checks, the hard pass/fail rules are:\n- Pass automatically if: (a) final_test_run contains 'OK' and 'Ran' with a count equal to the number of tests after the candidate's added tests, (b) modified_files contains only paths under tests/ or fixtures/ (no changes under app/), and (c) initial_test_run is non-empty. Partial credit rules: if final_test_run still shows failures, grade proportionally based on tests fixed vs total and quality of rationales; however for the Basic exam gating, all tests passing is expected for >80% score.\n",
+  "submission_notes_addendum": "Evaluator note: this answer key represents the ideal candidate submission: minimal, focused test updates (no changes to app/), one added small test, and all tests passing.",
+  "git_patch": "",
+  "time_taken_seconds": 2700
+}
+```

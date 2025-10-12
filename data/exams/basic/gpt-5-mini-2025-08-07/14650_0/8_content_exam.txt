@@ -96,4 +96,178 @@ Evaluator will verify:
 - That the final output shows the previously failing tests now passing (or documents why full passing was not feasible).
 - That the explanations justify the changes and mention trade-offs or remaining risks.
 
-Good luck. Manage your time — reproduce first, then iterate fixes, then document.
+Good luck. Manage your time — reproduce first, then iterate fixes, then document.Repository structure (all files are provided; place at repo root):
+
+- README.md
+- run_tests.sh
+- config.json
+- CHANGELOG.txt
+- SCENARIO.txt
+- app/index.html
+- data/users_v2.json
+- tests/__init__.py
+- tests/helpers.py
+- tests/test_suite.py
+
+--- README.md ---
+Run the test suite using the single command below from the repository root:
+
+./run_tests.sh
+
+--- run_tests.sh ---
+#!/bin/sh
+python -m pytest -q
+exit $?
+
+--- config.json ---
+{
+  "app_url": "app/index.html"
+}
+
+--- CHANGELOG.txt ---
+Recent app changes:
+- Page title text changed.
+- Login button id renamed from "login-btn" to "btn-login".
+- Users data file was renamed from data/users.json to data/users_v2.json.
+- Config key renamed from "base_url" to "app_url".
+- Test helper old_find_by_id was removed/renamed.
+
+--- SCENARIO.txt ---
+The web app was updated. Tests were not updated and now fail. Update tests/helpers and/or tests to match the current app and config so the pytest suite passes. Keep edits minimal and do not remove entire tests.
+
+--- app/index.html ---
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Demo App</title>
+</head>
+<body>
+  <h1 id="main-title">Demo App</h1>
+  <button id="btn-login">Login</button>
+</body>
+</html>
+
+--- data/users_v2.json ---
+{
+  "users": [
+    { "id": "U001", "name": "Alice" },
+    { "id": "U002", "name": "Bob" }
+  ]
+}
+
+--- tests/__init__.py ---
+# package marker (empty)
+
+--- tests/helpers.py ---
+def get_page_content(path):
+    """Return raw file content for a given path."""
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+def find_by_id(content, elem_id):
+    """Naive find: return the start tag containing id='elem_id' or None."""
+    token = 'id="' + elem_id + '"'
+    start = content.find(token)
+    if start == -1:
+        return None
+    tag_start = content.rfind('<', 0, start)
+    tag_end = content.find('>', start)
+    if tag_start == -1 or tag_end == -1:
+        return None
+    return content[tag_start:tag_end+1]
+
+def load_config():
+    """Load config.json from repo root."""
+    import json
+    with open('config.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+# NOTE: old_find_by_id intentionally NOT defined to simulate a deprecated/removed helper.
+
+--- tests/test_suite.py ---
+import time
+import json
+from tests import helpers
+
+def test_title():
+    # Test expects config to provide 'base_url' (old key)
+    cfg = helpers.load_config()
+    content = helpers.get_page_content(cfg['base_url'])
+    assert '<h1 id="main-title">Sample App</h1>' in content
+
+def test_login_button():
+    # Test expects helper old_find_by_id and id 'login-btn' (both outdated)
+    content = helpers.get_page_content('app/index.html')
+    btn = helpers.old_find_by_id(content, 'login-btn')
+    assert btn == '<button id="login-btn">Login</button>'
+
+def test_users_data_loaded():
+    # Flaky sleep used; also data path is outdated (data/users.json -> data/users_v2.json)
+    time.sleep(2)
+    with open('data/users.json', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    assert 'users' in data and len(data['users']) == 2```json
+{
+  "candidate_name": "",
+  "start_time_utc": "",
+  "end_time_utc": "",
+  "total_minutes": null,
+  "commands_run": [],
+  "initial_test_output": "",
+  "final_test_output": "",
+  "changed_files": [],
+  "summary_of_changes": "",
+  "risk_notes_and_next_steps": "",
+  "optional_bonus": "",
+  "tasks": {
+    "task_1_reproduce": {
+      "task_id": "Task 1 - Reproduce",
+      "instructions": "Run the provided test command once to reproduce failures and capture raw console output. Record the exact command(s) you ran and paste the raw output below (this may duplicate initial_test_output).",
+      "commands_executed": [],
+      "raw_failure_output": ""
+    },
+    "task_2_selector_fix": {
+      "task_id": "Task 2 - Diagnose & quick selector fix",
+      "instructions": "Identify test(s) failing due to selector/id/class/text changes. List which test file(s) you inspected, which file(s) you changed (file paths), and provide a brief rationale for the selector changes.",
+      "inspected_test_files": [],
+      "files_changed_for_task": [],
+      "short_rationale": ""
+    },
+    "task_3_timing_and_stability": {
+      "task_id": "Task 3 - Stabilize timing/flaky test",
+      "instructions": "Replace hard sleeps with explicit waits or make assertions more robust. List which test(s) you modified, include the reason, and provide a short rationale.",
+      "inspected_test_files": [],
+      "files_changed_for_task": [],
+      "short_rationale": ""
+    },
+    "task_4_config_or_api_fix": {
+      "task_id": "Task 4 - Config / API / deprecation fix",
+      "instructions": "Update config keys, data paths, or replace deprecated helper calls used by tests. List changed file(s) and provide a short rationale for each change.",
+      "inspected_files": [],
+      "files_changed_for_task": [],
+      "short_rationale": ""
+    },
+    "task_5_optional_improvement": {
+      "task_id": "Task 5 - Optional small improvement (bonus)",
+      "instructions": "If you added a small improvement (refactor, helper, comment, small new test), describe it here and list any files changed.",
+      "did_bonus_work": "",
+      "files_changed_for_task": [],
+      "short_description": ""
+    }
+  },
+  "schemas_and_guidance": {
+    "commands_run_item_schema": {
+      "command": "",
+      "purpose": ""
+    },
+    "changed_files_item_schema": {
+      "file_path": "",
+      "original_content": "",
+      "updated_content": "",
+      "short_rationale": ""
+    },
+    "notes": "Use the commands_run array to list each exact command you executed (exact text). For changed_files, include one object per file you edited. All raw console outputs must be full copy-paste. Use ISO 8601 for start_time_utc and end_time_utc. total_minutes must be an integer. Leave optional_bonus empty if you did not perform extra work."
+  }
+}
+```

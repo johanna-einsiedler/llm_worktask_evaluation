@@ -1,0 +1,64 @@
+```json
+{
+  "candidate_name": "",
+  "start_time_utc": "",
+  "end_time_utc": "",
+  "total_minutes": null,
+  "commands_run": [],
+  "initial_test_output": "",
+  "final_test_output": "",
+  "changed_files": [],
+  "summary_of_changes": "",
+  "risk_notes_and_next_steps": "",
+  "optional_bonus": "",
+  "tasks": {
+    "task_1_reproduce": {
+      "task_id": "Task 1 - Reproduce",
+      "instructions": "Run the provided test command once to reproduce failures and capture raw console output. Record the exact command(s) you ran and paste the raw output below (this may duplicate initial_test_output).",
+      "commands_executed": [],
+      "raw_failure_output": ""
+    },
+    "task_2_selector_fix": {
+      "task_id": "Task 2 - Diagnose & quick selector fix",
+      "instructions": "Identify test(s) failing due to selector/id/class/text changes. List which test file(s) you inspected, which file(s) you changed (file paths), and provide a brief rationale for the selector changes.",
+      "inspected_test_files": [],
+      "files_changed_for_task": [],
+      "short_rationale": ""
+    },
+    "task_3_timing_and_stability": {
+      "task_id": "Task 3 - Stabilize timing/flaky test",
+      "instructions": "Replace hard sleeps with explicit waits or make assertions more robust. List which test(s) you modified, include the reason, and provide a short rationale.",
+      "inspected_test_files": [],
+      "files_changed_for_task": [],
+      "short_rationale": ""
+    },
+    "task_4_config_or_api_fix": {
+      "task_id": "Task 4 - Config / API / deprecation fix",
+      "instructions": "Update config keys, data paths, or replace deprecated helper calls used by tests. List changed file(s) and provide a short rationale for each change.",
+      "inspected_files": [],
+      "files_changed_for_task": [],
+      "short_rationale": ""
+    },
+    "task_5_optional_improvement": {
+      "task_id": "Task 5 - Optional small improvement (bonus)",
+      "instructions": "If you added a small improvement (refactor, helper, comment, small new test), describe it here and list any files changed.",
+      "did_bonus_work": "",
+      "files_changed_for_task": [],
+      "short_description": ""
+    }
+  },
+  "schemas_and_guidance": {
+    "commands_run_item_schema": {
+      "command": "",
+      "purpose": ""
+    },
+    "changed_files_item_schema": {
+      "file_path": "",
+      "original_content": "",
+      "updated_content": "",
+      "short_rationale": ""
+    },
+    "notes": "Use the commands_run array to list each exact command you executed (exact text). For changed_files, include one object per file you edited. All raw console outputs must be full copy-paste. Use ISO 8601 for start_time_utc and end_time_utc. total_minutes must be an integer. Leave optional_bonus empty if you did not perform extra work."
+  }
+}
+```

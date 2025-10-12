@@ -1,0 +1,483 @@
+# task_evaluation.py
+"""
+Automated grader for the "Update automated test scripts" practical exam (Basic).
+
+Usage:
+    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+
+Produces:
+    test_results.json (saved next to this script)
+
+Notes:
+- Uses only Python standard library.
+- Outputs a JSON with per-task scoring, notes, totals, and an 'overall_score' numeric field (0-100).
+"""
+
+import json
+import os
+import sys
+import traceback
+
+# Constants: rubric weights (points)
+RUBRIC = {
+    "task1_reproduce": 15,
+    "task2_selector_fix": 25,
+    "task3_timing_stability": 20,
+    "task4_config_api": 20,
+    "documentation": 10,
+    "bonus_max": 10  # optional, separate from core 100 points
+}
+
+MAX_CORE_POINTS = (
+    RUBRIC["task1_reproduce"]
+    + RUBRIC["task2_selector_fix"]
+    + RUBRIC["task3_timing_stability"]
+    + RUBRIC["task4_config_api"]
+    + RUBRIC["documentation"]
+)  # expected 100
+
+OUTPUT_FILENAME = "test_results.json"
+
+
+def safe_load_json(path):
+    """Load JSON from path, return (obj, error_message)."""
+    if not os.path.exists(path):
+        return None, f"File not found: {path}"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f), None
+    except Exception as e:
+        return None, f"JSON load error for {path}: {e}"
+
+
+def text_contains_any(text, keywords):
+    """Case-insensitive search for any keyword in text (keywords is iterable)."""
+    if not isinstance(text, str):
+        return False
+    tl = text.lower()
+    for k in keywords:
+        if k.lower() in tl:
+            return True
+    return False
+
+
+def find_changed_file(changed_files, path_match):
+    """Return list of changed_file objects whose file_path equals path_match (or endswith)."""
+    results = []
+    for item in changed_files:
+        try:
+            if "file_path" in item and item["file_path"] and (
+                item["file_path"] == path_match or item["file_path"].endswith(path_match)
+            ):
+                results.append(item)
+        except Exception:
+            continue
+    return results
+
+
+def main():
+    results = {
+        "scores": {},
+        "notes": [],
+        "total_points_earned": 0,
+        "max_core_points": MAX_CORE_POINTS,
+        "bonus_awarded": 0,
+        "overall_score": 0.0,  # percentage 0-100 (excluding bonus)
+    }
+
+    # CLI args
+    if len(sys.argv) < 3:
+        print("Usage: python task_evaluation.py <submission.json> <answer_key.json>")
+        sys.exit(1)
+
+    submission_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+
+    submission, err = safe_load_json(submission_path)
+    if err:
+        results["notes"].append(err)
+        # Save and exit
+        with open(OUTPUT_FILENAME, "w", encoding="utf-8") as fh:
+            json.dump(results, fh, indent=2)
+        print(f"Error: {err}. Results written to {OUTPUT_FILENAME}")
+        sys.exit(1)
+
+    answer_key, err2 = safe_load_json(answer_key_path)
+    if err2:
+        results["notes"].append(err2)
+        # still attempt grading with available submission
+        answer_key = {}
+
+    # Helper: extract common fields defensively
+    def get_field(obj, key, default=None):
+        try:
+            return obj.get(key, default)
+        except Exception:
+            return default
+
+    # TASK 1: Reproduce (15 points)
+    task1_possible = RUBRIC["task1_reproduce"]
+    task1_score = 0
+    task1_notes = []
+
+    initial_output = get_field(submission, "initial_test_output", "")
+    commands_run = get_field(submission, "commands_run", [])
+
+    if not initial_output or not initial_output.strip():
+        task1_notes.append("initial_test_output is empty or missing.")
+        task1_score = 0
+    else:
+        # Look for clear failure indicators
+        error_keywords = ["KeyError", "AttributeError", "FileNotFoundError", "ERROR", "Traceback"]
+        if text_contains_any(initial_output, error_keywords):
+            task1_score = task1_possible
+            task1_notes.append("Initial test output contains clear failure indicators (e.g., KeyError/AttributeError/FileNotFoundError).")
+        else:
+            # Partial credit if output present but lacks clear error keywords
+            task1_score = int(task1_possible * 0.5)
+            task1_notes.append("Initial test output provided but did not include expected error keywords; partial credit awarded.")
+
+    # Additionally verify a run command was included
+    run_cmd_ok = False
+    for cmd_obj in commands_run:
+        if not isinstance(cmd_obj, dict):
+            continue
+        cmd = cmd_obj.get("command", "")
+        if "./run_tests.sh" in cmd or "python -m pytest" in cmd or "pytest" in cmd:
+            run_cmd_ok = True
+            break
+    if not run_cmd_ok:
+        task1_notes.append("None of the commands_run entries appear to be the test runner command (e.g., './run_tests.sh' or 'python -m pytest').")
+
+    results["scores"]["task1_reproduce"] = {
+        "points_awarded": task1_score,
+        "points_possible": task1_possible,
+        "notes": task1_notes,
+    }
+    results["total_points_earned"] += task1_score
+
+    # Prepare changed_files list
+    changed_files = get_field(submission, "changed_files", [])
+    if not isinstance(changed_files, list):
+        changed_files = []
+
+    # TASK 2: Selector fix (25 points)
+    task2_possible = RUBRIC["task2_selector_fix"]
+    task2_score = 0
+    task2_notes = []
+
+    # We expect either tests/test_suite.py or tests/helpers.py to be changed to handle login button id/name or helper removal.
+    # Look for evidence in changed files:
+    selector_fixed = False
+    selector_partial = False
+
+    for cf in changed_files:
+        try:
+            orig = cf.get("original_content", "") or ""
+            upd = cf.get("updated_content", "") or ""
+            path = cf.get("file_path", "")
+
+            orig_low = orig.lower()
+            upd_low = upd.lower()
+
+            # If original expected 'login-btn' or used old_find_by_id
+            orig_has_login_btn = "login-btn" in orig_low or "login-btn" in (orig or "")
+            orig_used_old_helper = "old_find_by_id" in orig_low
+
+            # If updated contains 'btn-login' and uses find_by_id or has old_find_by_id implemented
+            upd_has_btn_login = "btn-login" in upd_low
+            upd_uses_find = "find_by_id" in upd_low or "old_find_by_id" in upd_low
+
+            # if helper file defines old_find_by_id function
+            if path.endswith("tests/helpers.py") and "def old_find_by_id" in upd_low:
+                selector_fixed = True
+                task2_notes.append("Added compatibility wrapper 'old_find_by_id' in tests/helpers.py.")
+                break
+
+            # if test updated to use find_by_id and updated id
+            if path.endswith("tests/test_suite.py") and upd_has_btn_login and upd_uses_find:
+                selector_fixed = True
+                task2_notes.append("tests/test_suite.py updated to use 'btn-login' and current helper (find_by_id).")
+                break
+
+            # Partial: updated id but still uses old helper or vice versa
+            if upd_has_btn_login or upd_uses_find:
+                selector_partial = True
+                task2_notes.append(f"Partial selector-related update found in {path}: updated id or helper usage changed but not fully aligned.")
+        except Exception:
+            continue
+
+    if selector_fixed:
+        task2_score = task2_possible
+    elif selector_partial:
+        task2_score = int(task2_possible * 0.6)  # partial credit
+        task2_notes.append("Partial selector fix: some adjustments made but not full robust fix.")
+    else:
+        task2_score = 0
+        task2_notes.append("No evidence of a targeted selector/helper fix for the login button.")
+
+    results["scores"]["task2_selector_fix"] = {
+        "points_awarded": task2_score,
+        "points_possible": task2_possible,
+        "notes": task2_notes,
+    }
+    results["total_points_earned"] += task2_score
+
+    # TASK 3: Timing / Stability (20 points)
+    task3_possible = RUBRIC["task3_timing_stability"]
+    task3_score = 0
+    task3_notes = []
+
+    # Check for removal of time.sleep from tests that originally had it.
+    timing_fixed = False
+    timing_partial = False
+
+    for cf in changed_files:
+        try:
+            orig = cf.get("original_content", "") or ""
+            upd = cf.get("updated_content", "") or ""
+            path = cf.get("file_path", "")
+
+            if "time.sleep" in orig and "time.sleep" not in upd:
+                timing_fixed = True
+                task3_notes.append(f"Removed hard sleep from {path}.")
+                break
+            if "time.sleep" in orig and "time.sleep" in upd:
+                # check if the numeric value changed to smaller value
+                # attempt to extract numbers (simple)
+                import re
+
+                orig_nums = re.findall(r"time\.sleep\(\s*([0-9]+)", orig)
+                upd_nums = re.findall(r"time\.sleep\(\s*([0-9]+)", upd)
+                try:
+                    if orig_nums and upd_nums and int(upd_nums[0]) < int(orig_nums[0]):
+                        timing_partial = True
+                        task3_notes.append(f"Reduced hard sleep in {path} (but did not remove entirely).")
+                        break
+                except Exception:
+                    timing_partial = True
+                    task3_notes.append(f"Modified time.sleep usage in {path} (could not determine exact numeric change).")
+        except Exception:
+            continue
+
+    if timing_fixed:
+        task3_score = task3_possible
+    elif timing_partial:
+        task3_score = int(task3_possible * 0.5)
+    else:
+        task3_score = 0
+        task3_notes.append("No evidence that hard-coded sleeps were removed or replaced with explicit waits.")
+
+    results["scores"]["task3_timing_stability"] = {
+        "points_awarded": task3_score,
+        "points_possible": task3_possible,
+        "notes": task3_notes,
+    }
+    results["total_points_earned"] += task3_score
+
+    # TASK 4: Config/API/Deprecation fix (20 points)
+    task4_possible = RUBRIC["task4_config_api"]
+    task4_score = 0
+    task4_notes = []
+
+    config_fixed = False
+    config_partial = False
+
+    # Expected fixes:
+    # - tests no longer access cfg['base_url']; they should use cfg['app_url'], OR
+    # - helpers.load_config normalized key names, OR
+    # - config.json changed to include 'base_url' (acceptable).
+    for cf in changed_files:
+        try:
+            path = cf.get("file_path", "")
+            orig = cf.get("original_content", "") or ""
+            upd = cf.get("updated_content", "") or ""
+            orig_low = orig.lower()
+            upd_low = upd.lower()
+
+            # If updated tests now reference 'app_url' (instead of base_url)
+            if ("cfg['app_url']" in upd_low) or ('cfg.get("app_url"' in upd_low) or ("cfg.get('app_url'" in upd_low):
+                config_fixed = True
+                task4_notes.append(f"Updated tests to read 'app_url' from config in {path}.")
+                break
+
+            # If updated helpers now provide compatibility mapping (e.g., returns both keys)
+            if path.endswith("tests/helpers.py") and ("base_url" in orig_low and "app_url" in upd_low) or ("def load_config" in upd_low and ("app_url" in upd_low or "base_url" in upd_low)):
+                config_fixed = True
+                task4_notes.append("Added compatibility or normalization in tests/helpers.py to handle config key change.")
+                break
+
+            # If config.json itself was changed to include base_url
+            if path.endswith("config.json") and "base_url" in upd_low:
+                config_fixed = True
+                task4_notes.append("Modified config.json to include 'base_url' key (acceptable compatibility approach).")
+                break
+
+            # Partial: updated to use app_url somewhere but not clearly replacing base_url usage
+            if "app_url" in upd_low or "base_url" in orig_low:
+                config_partial = True
+                task4_notes.append(f"Some config-related changes detected in {path}, but not a clear full fix.")
+        except Exception:
+            continue
+
+    if config_fixed:
+        task4_score = task4_possible
+    elif config_partial:
+        task4_score = int(task4_possible * 0.5)
+    else:
+        task4_score = 0
+        task4_notes.append("No clear evidence of updating config key usage or providing compatibility for 'base_url' -> 'app_url' change.")
+
+    results["scores"]["task4_config_api"] = {
+        "points_awarded": task4_score,
+        "points_possible": task4_possible,
+        "notes": task4_notes,
+    }
+    results["total_points_earned"] += task4_score
+
+    # DOCUMENTATION & SUBMISSION QUALITY (10 points)
+    doc_possible = RUBRIC["documentation"]
+    doc_score = 0
+    doc_notes = []
+
+    # Required fields to check as per schema:
+    required_fields = [
+        "candidate_name",
+        "start_time_utc",
+        "end_time_utc",
+        "total_minutes",
+        "commands_run",
+        "initial_test_output",
+        "final_test_output",
+        "changed_files",
+        "summary_of_changes",
+        "risk_notes_and_next_steps",
+    ]
+    present = 0
+    missing_fields = []
+    for f in required_fields:
+        v = submission.get(f, None)
+        if v is None:
+            missing_fields.append(f)
+        else:
+            # additional check: non-empty for strings and lists
+            if isinstance(v, str) and not v.strip():
+                missing_fields.append(f)
+            elif isinstance(v, list) and len(v) == 0:
+                missing_fields.append(f)
+            else:
+                present += 1
+
+    if len(missing_fields) == 0:
+        # Also check changed_files entries have required subfields and rationales
+        cf_problems = []
+        for cf in changed_files:
+            if not cf.get("file_path") or not cf.get("original_content") or not cf.get("updated_content") or not cf.get("short_rationale"):
+                cf_problems.append(cf.get("file_path", "<unknown>"))
+        if cf_problems:
+            doc_notes.append(f"changed_files entries incomplete for: {', '.join(cf_problems)}")
+            doc_score = int(doc_possible * 0.6)
+        else:
+            doc_score = doc_possible
+            doc_notes.append("All required submission fields present and changed_files entries include original/updated/short_rationale.")
+    else:
+        # partial credit proportionate to present fields
+        ratio = present / len(required_fields)
+        doc_score = int(doc_possible * ratio)
+        doc_notes.append(f"Missing or empty required fields: {', '.join(missing_fields)}. Awarded {doc_score}/{doc_possible} based on presence ratio.")
+
+    results["scores"]["documentation"] = {
+        "points_awarded": doc_score,
+        "points_possible": doc_possible,
+        "notes": doc_notes,
+    }
+    results["total_points_earned"] += doc_score
+
+    # BONUS evaluation (up to RUBRIC["bonus_max"])
+    bonus_awarded = 0
+    bonus_notes = []
+
+    optional_bonus_field = submission.get("optional_bonus", "")
+    # Also check tasks.task_5_optional_improvement if present
+    tasks_section = submission.get("tasks", {})
+
+    did_bonus = False
+    if isinstance(optional_bonus_field, str) and optional_bonus_field.strip():
+        did_bonus = True
+        bonus_notes.append("optional_bonus field provided.")
+    elif isinstance(tasks_section, dict):
+        t5 = tasks_section.get("task_5_optional_improvement", {})
+        # check for positive flag
+        if isinstance(t5, dict):
+            did_flag = t5.get("did_bonus_work", "")
+            if isinstance(did_flag, str) and did_flag.strip().lower() in ("yes", "y", "true"):
+                did_bonus = True
+                bonus_notes.append("tasks.task_5_optional_improvement indicates bonus work.")
+            # or detect files changed for bonus
+            files_changed_for_task = t5.get("files_changed_for_task", [])
+            if files_changed_for_task:
+                did_bonus = True
+                bonus_notes.append("task_5 lists files changed for bonus improvement.")
+
+    if did_bonus:
+        # Award full bonus for simple detection; graders may override manually
+        bonus_awarded = RUBRIC["bonus_max"]
+    else:
+        bonus_awarded = 0
+        bonus_notes.append("No optional bonus work detected (optional_bonus empty and no task_5 evidence).")
+
+    results["bonus_awarded"] = bonus_awarded
+    results["bonus_notes"] = bonus_notes
+    results["total_points_with_bonus"] = results["total_points_earned"] + bonus_awarded
+
+    # FINAL PASS/FAIL and overall score
+    # overall_score is percentage of core points (0-100)
+    core_points = results["total_points_earned"]
+    overall_percentage = (core_points / results["max_core_points"]) * 100 if results["max_core_points"] > 0 else 0.0
+    results["overall_score"] = round(overall_percentage, 2)
+    results["pass"] = overall_percentage >= 80.0
+
+    # Compose human-readable breakdown notes for each task (already in scores)
+    # Add a summary note
+    results["summary"] = {
+        "core_points_earned": core_points,
+        "core_points_possible": results["max_core_points"],
+        "bonus_awarded": bonus_awarded,
+        "total_with_bonus": results["total_points_with_bonus"],
+        "percentage_core_only": results["overall_score"],
+        "passed_threshold_80_pct": results["pass"],
+    }
+
+    # Add high-level evaluator guidance about final_test_output: check that final run shows tests passed
+    final_output = submission.get("final_test_output", "")
+    final_notes = []
+    if final_output and "passed" in final_output.lower():
+        final_notes.append("Final test output includes 'passed' indicating tests succeeded.")
+        # try to extract number of passed tests if possible
+        # look for pattern like "3 passed" or "3 passed in"
+        import re
+
+        m = re.search(r"(\d+)\s+passed", final_output, flags=re.IGNORECASE)
+        if m:
+            passed_num = int(m.group(1))
+            final_notes.append(f"Detected '{passed_num} passed' in final output.")
+    else:
+        final_notes.append("Final test output does not clearly indicate passing tests (no 'passed' found).")
+
+    results["final_output_notes"] = final_notes
+
+    # Collate scores explanation per task to top-level results["notes"]
+    results["notes"].append("Detailed per-task scoring available under 'scores'.")
+    # Save results to JSON
+    try:
+        with open(OUTPUT_FILENAME, "w", encoding="utf-8") as fh:
+            json.dump(results, fh, indent=2)
+        print(f"Grading complete. Results written to {OUTPUT_FILENAME}")
+    except Exception as e:
+        print(f"Error writing results to {OUTPUT_FILENAME}: {e}")
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

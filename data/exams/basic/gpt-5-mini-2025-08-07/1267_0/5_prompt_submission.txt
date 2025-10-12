@@ -1,0 +1,659 @@
+You are an expert exam designer. Your task is to define the **exact submission template** for a practical exam based on the provided overview, instructions, and candidate materials. 
+
+
+⚠️ Important: The candidate must submit only one JSON file as their entire response.
+All answers, calculations, explanations, and results must be entered directly into this JSON structure.
+No additional files, documents, or attachments will be accepted.
+
+⚠️ You are **not** creating the questions, answers, or providing any example values—only specifying the expected structure the candidate will fill in.
+
+### Inputs
+
+Here is a brief explanation of the exam's purpose and structure for the evaluator:
+<examoverview>
+### Exam Purpose
+Confirm that a candidate can take an existing, runnable program that produces incorrect or failing results, identify the root cause(s), apply appropriate code changes, re-run the program/tests, and deliver clear evidence that the fixes produce the desired results. This validates a core real-world skill: debugging, implementing minimal correct changes, and verifying outcomes — not just theoretical knowledge.
+
+### Core Competencies
+- Basic debugging workflow: reproduce failure, formulate hypothesis, make minimal change, re-run and verify.
+- Reading and understanding unfamiliar code structure and test harnesses.
+- Fixing common bug classes: syntax/typo, off-by-one, incorrect condition/logic, wrong data handling, incorrect use of API/standard library, resource/exception handling.
+- Writing/adjusting small tests or using existing tests to verify fixes.
+- Clear, concise reporting of changes and rationale.
+- Use of local tooling only (editor + runtime) to iterate and validate fixes.
+
+### Recommended Structure
+Time limit: 90 minutes total. Basic exam should have 4 tasks of increasing complexity but all solvable by an entry-level candidate within the time.
+
+High-level organization:
+- Single project repository packaged for the candidate (no internet required).
+- The repo includes: buggy source code, a README with test/run instructions, an automated test script (e.g., run_tests.sh or run_tests.py), and input/output sample files.
+- Candidate completes all tasks in one repository, submits a single JSON file test_submission.json describing changes and test results, plus the modified source files.
+
+Task breakdown (suggested):
+1. Task 1 — Quick fix (15 minutes, 15 points)
+   - Reproduce a trivial failing case: syntax/typo or incorrect constant causes program to crash or produce an obviously wrong result.
+   - Deliverable: Fixed file(s); test runner shows pass for this case.
+2. Task 2 — Logic bug (25 minutes, 30 points)
+   - Off-by-one or wrong conditional that causes incorrect output on a provided test case.
+   - Deliverable: Fixed code; tests show expected output for included inputs.
+3. Task 3 — Data handling / edge case (30 minutes, 35 points)
+   - Program fails for an edge case (e.g., empty input, null values, unexpected format), causing runtime exception or wrong behavior on larger sample.
+   - Deliverable: Robust fix with minimal changes; tests pass including edge cases.
+4. Task 4 — Small integration / regression check (20 minutes, 20 points)
+   - After prior fixes, a regression or performance/formatting spec remains (e.g., output formatting or an additional test) that requires combining knowledge of previous fixes.
+   - Deliverable: All tests pass; final run produces expected outputs/files.
+
+Total points: 100. Passing threshold for basic exam: 80 points.
+
+Expected deliverables from candidate:
+- A single file named test_submission.json in repository root with prescribed fields (see "Submission format" below).
+- All modified source files (committed or simply provided in repo — commit history optional depending on host).
+- Optional short README note if needed to explain how to run tests (should be redundant with provided test runner).
+
+### Practicality — how this is hands-on
+- Candidates must run the provided test harness locally, see failing test output, edit code, re-run tests.
+- No multiple-choice or paper answers — success is measured by tests/program output.
+- All necessary data and tests are included so the candidate does not need external references.
+- The tasks represent typical debugging jobs in production/maintenance code: small, localized fixes that must be validated.
+
+### Strategic Elements to Include (distinguishing real performers)
+- Multi-step dependency: later tasks assume earlier tasks are fixed (simulates an ongoing codebase). Candidate must recognize dependencies and run the whole test suite.
+- Confusing, but deterministic failing output: failures may be caused by a cascade of small issues; candidate must find root cause, not just patch symptoms.
+- Ambiguous requirement/edge-case: require candidate to make a decision (e.g., how to handle malformed input). Good candidates will choose a reasonable behavior and document it in JSON.
+- Minimal-change expectation: evaluate whether the candidate made targeted fixes vs. large rewrites. Prefer minimal, well-justified changes.
+- Include tests that require both correctness and simple formatting (e.g., exact whitespace, JSON structure), forcing the candidate to be precise.
+
+### Practical Elements to Include (for exam creator)
+- Language: choose one common language for which environment is easy to provide (recommend Python 3.9+ or Node.js). For a basic exam prefer Python.
+- Provide an automated test runner script (single command) that returns non-zero exit code on failure and prints concise failure messages.
+- Include clear README with:
+  - exact command(s) to run tests,
+  - brief description of tasks embedded in code comments (not detailed solutions),
+  - time limit reminder and submission instructions (where to place test_submission.json).
+- Provide small unit tests or assert-style checks for each task (e.g., pytest, unittest, or custom script). Tests should be deterministic, small, and quick to run.
+- Include sample input/output and a “golden” reference output file. Test harness should compare actual vs expected output.
+- Ensure no external dependencies required (avoid packages not in standard library) so candidate need not install add-ons.
+
+### Submission format (test_submission.json)
+Require the candidate to submit a single JSON file named test_submission.json with the following schema (all fields required unless noted optional):
+
+- candidate_name (string)
+- task_results (array of 4 objects, ordered tasks 1–4). Each object:
+  - task_id (integer) — 1..4
+  - files_changed (array of strings) — paths of files changed
+  - change_summary (string) — up to ~200 words explaining the change
+  - root_cause (string) — short explanation of what caused the failure
+  - how_tested (string) — commands run and results (include exact test runner output lines that show pass/fail)
+  - time_spent_minutes (integer)
+  - confidence_level (string) — one of: "high", "medium", "low"
+  - notes (string, optional) — any assumptions or trade-offs made
+- final_test_output (string) — full output of the final run of the test runner (paste as-is)
+- total_time_minutes (integer)
+- checksum_of_modified_files (object) — mapping filename -> SHA256 hex digest (optional but recommended)
+- final_score_self_assessment (integer 0..100) — candidate's self assessment of correctness
+
+Example minimal test_submission.json (not code-block formatted here — to be created by candidate):
+{
+  "candidate_name": "Alice Example",
+  "task_results": [
+    {
+      "task_id": 1,
+      "files_changed": ["app/utils.py"],
+      "change_summary": "Fixed typo: used 'len(items) > 0' instead of 'len(items) >= 0'.",
+      "root_cause": "Incorrect conditional always true causing incorrect path.",
+      "how_tested": "ran ./run_tests.py; Task1: PASS",
+      "time_spent_minutes": 12,
+      "confidence_level": "high",
+      "notes": ""
+    },
+    ... tasks 2-4 ...
+  ],
+  "final_test_output": "All tests passed\n",
+  "total_time_minutes": 78,
+  "checksum_of_modified_files": {"app/utils.py": "abc123..."},
+  "final_score_self_assessment": 92
+}
+
+Make it explicit in README that this file name and structure are required; evaluator can parse this file automatically.
+
+### Evaluation Insights — what to look for
+Primary observable outputs:
+- Passing automated tests (all tasks): objective evidence the candidate produced the desired results.
+- test_submission.json content: demonstrates candidate’s reasoning and reproducibility.
+- Changes are minimal and well-targeted (diff review).
+
+Scoring rubric (suggested):
+- Task correctness (automated): 70 points total
+  - Task 1: 15
+  - Task 2: 20
+  - Task 3: 20
+  - Task 4: 15
+  (Automated tests yield full points per task when passing.)
+- Explanation & reproducibility: 20 points
+  - Clear root cause & change_summary for each task (10 points)
+  - test runner output included & steps to reproduce (10 points)
+- Code hygiene & minimality: 10 points
+  - No unnecessary changes, appropriate in-file comments, reasonable naming (10 points)
+
+Partial-credit rules:
+- If tests for a task still fail, award partial points for a correct root cause and a reasonable, partially-working change documented in change_summary (up to 50% of that task’s points).
+- If candidate fixed code but introduced regressions (other tests fail), deduct points from code hygiene/minimality and task points of failing tests.
+- If candidate’s fix is functionally correct but implemented as a large rewrite, award correctness points but deduct up to 50% of the code hygiene points.
+
+Red flags (reduce score or require follow-up):
+- test_submission.json missing or incomplete.
+- No explanation of root cause or how tests were run.
+- Massive unrelated changes (e.g., reformat whole repo without justification).
+- Tests pass but change comments are incorrect / clearly copied (if evaluator suspects plagiarism).
+
+Sample evaluator workflow:
+1. Clone candidate repo (or unzip submission).
+2. Run test runner exactly as README instructs.
+3. Verify test_submission.json exists and parse it.
+4. Cross-check tests claimed to be run vs actual test output.
+5. Inspect diffs/modified files for correctness and minimal changes.
+6. Apply scoring rubric and provide feedback.
+
+### Time allocation guidance (for candidate)
+- Read README + run tests initially: 5–10 minutes
+- Task 1: 15 minutes
+- Task 2: 25 minutes
+- Task 3: 30 minutes
+- Task 4 + final regression run + prepare submission JSON: 10–15 minutes
+Total: 85–95 minutes (aim to keep under 90).
+
+### Sample bug types to include (for exam creator)
+- Wrong operator or off-by-one (easy to spot).
+- Incorrect handling of empty input or missing file (exception).
+- Logic error in loop or conditional causing incorrect aggregation.
+- String formatting/serialization mismatch vs expected golden output.
+- Minor performance pitfall (e.g., O(n^2) vs expected O(n)) — only if it affects test in time-limit.
+
+### Final notes for exam creators and evaluators
+- Keep tasks realistic but self-contained so they test debugging ability, not domain expertise.
+- Make tests deterministic and fast.
+- Ensure no external internet access is required.
+- Use the test_submission.json as the primary artifact for automated and manual scoring.
+
+This design will allow a remote, hands-on verification that a candidate can correct errors, make appropriate changes, and recheck the program to ensure the desired results are produced — the practical competence required for an entry-level Computer Programmer role.
+</examoverview>
+
+Here are the instructions provided to the candidate:
+<instructions>
+### Exam Title
+Debug & Fix: Practical Code Repair for Entry-Level Computer Programmers (Basic)
+
+---
+
+### Instructions for Candidate
+
+You have 90 minutes total. Use only the provided code execution environment and a text editor. Do not use internet resources.
+
+Follow these steps exactly:
+
+1. Read the repository README (provided) and note the exact command to run the test runner (examples you might see: ./run_tests.py, ./run_tests.sh, or python3 -m run_tests). If the README gives a different command, use that one.
+
+2. Start a timer. Record the start time.
+
+3. Run the test runner immediately (before changing any files) and capture the full console output. Save this output — you will paste it into test_submission.json.
+
+4. Reproduce and diagnose failures:
+   - For each failing task, inspect the code and tests. Formulate a hypothesis for the root cause.
+   - Make minimal targeted changes to fix the bug(s). Do not rewrite unrelated modules or reformat entire files.
+   - After each change, re-run the test runner to verify the effect.
+
+5. Work through the tasks in order (1 → 4). Later tasks depend on earlier fixes; run the full test runner frequently to ensure no regressions.
+
+6. When all tasks are complete (or when you must stop), run the test runner one final time and capture the full console output exactly as produced.
+
+7. Prepare the required submission file test_submission.json (details below) and include all modified source files in the repository root (or in their original paths). If you computed checksums include them in the JSON (optional but recommended).
+
+8. Stop the timer and record total time spent (must be ≤ 90 minutes).
+
+Notes:
+- Make minimal changes necessary to fix each problem. The evaluator will review diffs and may deduct points for large, unrelated edits.
+- If you must make a behavioral decision for an ambiguous edge case, choose a reasonable behavior, implement it, and document your decision in the JSON notes field.
+- The test runner is authoritative: automated tests determine task correctness objectively. Your explanations in test_submission.json are used for reproducibility and partial credit.
+
+Time guidance (suggested):
+- Initial read + first run: 5–10 minutes
+- Task 1: 15 minutes
+- Task 2: 25 minutes
+- Task 3: 30 minutes
+- Task 4 + final run + JSON prep: 10–15 minutes
+
+---
+
+### Task Description
+
+You will be given a single project repository containing a runnable program and an automated test runner. The repository contains four debugging tasks of increasing complexity. For each task, do the following:
+
+Task 1 — Quick fix (approx. 15 minutes, 15 points)
+- Reproduce a trivial failing case (syntax/typo or wrong constant).
+- Make the minimal code change to stop the crash or produce the obviously-correct result.
+- Verify the test(s) for Task 1 pass.
+
+Task 2 — Logic bug (approx. 25 minutes, 30 points)
+- Fix a logic error (off-by-one, wrong conditional, incorrect operator) that yields incorrect output for provided inputs.
+- Make a focused change and verify the test(s) for Task 2 pass.
+
+Task 3 — Data handling / edge case (approx. 30 minutes, 35 points)
+- Fix a runtime failure or incorrect behavior for an edge case (empty input, unexpected format, null values).
+- Make the code robust with minimal, well-justified changes. Verify Task 3 tests and related tests pass.
+
+Task 4 — Small integration / regression check (approx. 20 minutes, 20 points)
+- Fix remaining issues (formatting, integration, regression introduced by previous bugs).
+- Ensure the full test suite passes and final output(s) match expected golden files.
+
+All tasks are judged by the provided automated tests; your job is to make the program and tests pass by modifying source code in the repository.
+
+---
+
+### Expected Outcome
+
+By the end of the exam you must provide:
+
+- A modified repository where you have corrected the code so the automated test runner passes as many task tests as possible (target: all tests).
+- A single file named test_submission.json in the repository root containing structured information about each task: files changed, short change summary, root cause, how you tested, time spent per task, confidence, and final test output.
+- All modified source files included in the repository (kept in their original paths). Commit history is optional unless requested by the proctor.
+- Total elapsed time (must be ≤ 90 minutes).
+
+Automated grading is based on the test runner outputs. Passing all supplied tests is objective evidence of correct fixes.
+
+---
+
+### Provided Materials
+
+You will be given a repository that includes:
+- Buggy source code files (Python 3.9+ is recommended).
+- A README with exact command(s) to run the test runner and brief notes about tasks (not solutions).
+- An automated test runner script (e.g., run_tests.py or run_tests.sh). Running this command should perform all task checks and exit non-zero on failures.
+- Small unit tests or assert-style checks for each task (deterministic and fast).
+- Sample input files and expected "golden" output files used by tests.
+- Any helper scripts used by tests (all included; no external downloads required).
+
+You will not have internet access and must not rely on any external libraries beyond the standard library provided in the environment.
+
+---
+
+### Submission Format
+
+Create a file named test_submission.json at the repository root. This file must be a single JSON object with the exact fields below. All listed fields are required unless marked optional.
+
+Top-level fields:
+- candidate_name (string) — Your full name.
+- task_results (array of 4 objects) — Ordered list for tasks 1→4. Each object must include:
+  - task_id (integer) — 1, 2, 3, or 4
+  - files_changed (array of strings) — relative paths of files you modified for this task (empty array if none)
+  - change_summary (string) — up to ~200 words describing what you changed (concise)
+  - root_cause (string) — short explanation of the root cause of the failure
+  - how_tested (string) — commands you ran and exact test runner output lines demonstrating the result for this task (paste exact lines)
+  - time_spent_minutes (integer) — whole minutes spent on this task (sum should not exceed total_time_minutes)
+  - confidence_level (string) — one of: "high", "medium", "low"
+  - notes (string, optional) — any assumptions or trade-offs made (if none, use empty string)
+- final_test_output (string) — full console output (paste-as-is) from the final run of the provided test runner after all your changes
+- total_time_minutes (integer) — total minutes elapsed for the entire exam (must be ≤ 90)
+- checksum_of_modified_files (object, optional) — mapping of filename -> SHA256 hex digest for each modified file (recommended, but optional). If omitted, use an empty object {}.
+- final_score_self_assessment (integer 0..100) — your self-assessed confidence that your submission is fully correct (0 = not correct, 100 = definitely correct)
+
+Additional rules:
+- test_submission.json must be valid JSON (UTF-8 encoded).
+- For files_changed list, use relative paths exactly as in the repository.
+- For how_tested, include the exact command(s) you typed to run tests and the exact lines from the test runner that indicate pass/fail for that task. For the final_test_output field, paste the entire final run output verbatim.
+- If you make any behavioral choices for ambiguous inputs, document them in the task's notes field.
+- Keep changes minimal and local to the files that need fixing.
+
+Example task_results entry (illustrative, not required formatting beyond JSON):
+{
+  "task_id": 1,
+  "files_changed": ["app/utils.py"],
+  "change_summary": "Fixed off-by-one in loop termination (changed <= to <).",
+  "root_cause": "Loop iterated one time too many, causing index error.",
+  "how_tested": "ran: python3 run_tests.py\nTask1: PASS\n",
+  "time_spent_minutes": 12,
+  "confidence_level": "high",
+  "notes": ""
+}
+
+Important: Name the file exactly test_submission.json. The evaluator will parse it automatically.
+
+---
+
+Good luck. Work efficiently, document your reasoning clearly, and make minimal, well-justified fixes.
+</instructions>
+
+Here are the materials provided to the candidate:
+<materials>
+Repository root files and folder structure (all files below are provided as plain text files at the given paths).
+
+README.md
+---------
+Debug & Fix: Practical Code Repair (Basic)
+=========================================
+Run tests with:
+  python3 run_tests.py
+
+You have 90 minutes. Use only the provided files and a text editor. Produce a file named test_submission.json in the repository root as described in the exam instructions.
+
+This repository contains:
+- data/transactions.csv
+- data/transactions_edge.csv
+- expected_outputs/golden_report.json
+- src/parser.py        (contains an intentional bug for Task 1)
+- src/aggregator.py    (contains intentional logic bugs for Task 2 & 3)
+- src/formatter.py     (contains formatting bug for Task 4)
+- src/app.py           (orchestrates pipeline)
+- run_tests.py         (automated test runner that checks Tasks 1–4)
+
+Do not create or require any external dependencies. All tests are deterministic and fast.
+
+data/transactions.csv
+---------------------
+Transaction_ID,Customer_ID,Product_Code,Quantity,Region
+T001,C001,P01,2,North
+T002,C002,P02,1,East
+T003,C001,P01,3,North
+T004,C003,P03,5,South
+T005,C004,P02,2,West
+T006,C005,P03,1,South
+T007,C006,P01,4,East
+
+data/transactions_edge.csv
+--------------------------
+Transaction_ID,Customer_ID,Product_Code,Quantity,Region
+T001,C001,P01,2,North
+T002,C002,P02,1,East
+T003,C001,P01,3,North
+T004,C003,P03,5,South
+T005,C004,P02,2,West
+T006,C005,P03,1,South
+T007,C006,P01,4,East
+T008,C007,P02,,West
+
+expected_outputs/golden_report.json
+----------------------------------
+{
+  "products": {
+    "P01": 9,
+    "P02": 3,
+    "P03": 6
+  },
+  "top_product": "P01"
+}
+
+src/parser.py
+-------------
+# parser.py
+# Responsible for reading CSV files into header + rows
+# Intentional bug present for Task 1 (syntax/typo to fix)
+
+def read_csv(path):
+    with open(path, 'r') as f
+        lines = f.readlines()
+    header = lines[0].strip().split(',')
+    rows = [line.strip().split(',') for line in lines[1:]]
+    return header, rows
+
+src/aggregator.py
+-----------------
+# aggregator.py
+# Responsible for producing totals per product.
+# Contains logic bugs for Task 2 (off-by-one) and Task 3 (no handling of empty quantities).
+
+def compute_totals(rows):
+    """
+    rows: list of lists, each row as [Transaction_ID,Customer_ID,Product_Code,Quantity,Region]
+    Returns: dict product_code -> total_quantity
+    """
+    totals = {}
+    # BUG: off-by-one: starts at index 1, skipping the first data row
+    for i in range(1, len(rows)):
+        row = rows[i]
+        product = row[2]
+        quantity = int(row[3])  # BUG: will raise if empty string
+        totals[product] = totals.get(product, 0) + quantity
+    return totals
+
+def find_top_product(totals):
+    """Return product code with highest total (string)."""
+    if not totals:
+        return None
+    top = max(totals, key=totals.get)
+    return top
+
+src/formatter.py
+----------------
+# formatter.py
+# Writes final report to a JSON file.
+# Contains a minor formatting bug for Task 4 (keys not guaranteed sorted).
+
+import json
+
+def write_report(report, path):
+    with open(path, 'w') as f:
+        # BUG: not using sort_keys, so ordering may differ from golden
+        f.write(json.dumps(report, indent=2))
+
+src/app.py
+----------
+# app.py
+# Simple orchestrator that ties parser -> aggregator -> formatter
+
+def run(input_path, output_path):
+    header, rows = read_csv(input_path)  # expects parser.read_csv to be available when loaded by run_tests
+    totals = compute_totals(rows)        # expects aggregator.compute_totals to be available
+    top = find_top_product(totals)       # expects aggregator.find_top_product to be available
+    report = {"products": totals, "top_product": top}
+    write_report(report, output_path)    # expects formatter.write_report to be available
+
+run_tests.py
+------------
+#!/usr/bin/env python3
+"""
+run_tests.py
+
+Automated test runner for Tasks 1-4.
+Run: python3 run_tests.py
+
+This script loads modules from src/ (by file path) and executes small checks.
+It prints Task1..Task4 PASS/FAIL lines and exits with non-zero if any task failed.
+"""
+
+import sys
+import os
+import json
+import traceback
+import importlib.util
+from pathlib import Path
+
+ROOT = Path(__file__).parent
+SRC = ROOT / 'src'
+DATA = ROOT / 'data'
+OUTPUT = ROOT / 'output'
+EXPECTED = ROOT / 'expected_outputs'
+
+OUTPUT.mkdir(exist_ok=True)
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, str(path))
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+        return mod, None
+    except Exception as e:
+        return None, traceback.format_exc()
+
+results = {}
+
+# Task 1: Parse header check
+parser_mod, parser_err = load_module('parser', SRC / 'parser.py')
+if parser_err:
+    print("Task1: FAIL")
+    print("  parser import error:")
+    print(parser_err.splitlines()[:5])
+    results[1] = False
+else:
+    try:
+        header, rows = parser_mod.read_csv(str(DATA / 'transactions.csv'))
+        expected_header = ['Transaction_ID','Customer_ID','Product_Code','Quantity','Region']
+        if header == expected_header:
+            print("Task1: PASS")
+            results[1] = True
+        else:
+            print("Task1: FAIL")
+            print("  header mismatch:")
+            print("    got:     {}".format(header))
+            print("    expected:{}".format(expected_header))
+            results[1] = False
+    except Exception as e:
+        print("Task1: FAIL")
+        print("  error during read_csv:")
+        traceback.print_exc(limit=2)
+        results[1] = False
+
+# For Tasks 2-4 we require parser to be correct; if Task1 failed, mark dependent tasks as failed/skipped.
+if not results.get(1, False):
+    print("Task2: FAIL")
+    print("  skipped because Task1 failed (parser not available)")
+    print("Task3: FAIL")
+    print("  skipped because Task1 failed (parser not available)")
+    print("Task4: FAIL")
+    print("  skipped because Task1 failed (parser not available)")
+    sys.exit(2)
+
+# Task 2: Aggregation logic check
+aggregator_mod, aggregator_err = load_module('aggregator', SRC / 'aggregator.py')
+if aggregator_err:
+    print("Task2: FAIL")
+    print("  aggregator import error:")
+    print(aggregator_err.splitlines()[:5])
+    results[2] = False
+else:
+    try:
+        totals = aggregator_mod.compute_totals(rows)
+        expected = {"P01": 9, "P02": 3, "P03": 6}
+        if totals == expected:
+            print("Task2: PASS")
+            results[2] = True
+        else:
+            print("Task2: FAIL")
+            print("  totals mismatch:")
+            print("    got:     {}".format(totals))
+            print("    expected:{}".format(expected))
+            results[2] = False
+    except Exception as e:
+        print("Task2: FAIL")
+        print("  error during compute_totals:")
+        traceback.print_exc(limit=2)
+        results[2] = False
+
+# Task 3: Edge case handling (empty quantity field in transactions_edge.csv)
+try:
+    header_e, rows_e = parser_mod.read_csv(str(DATA / 'transactions_edge.csv'))
+except Exception:
+    print("Task3: FAIL")
+    print("  parser read_csv failed on edge file")
+    results[3] = False
+else:
+    if not results.get(2, False):
+        print("Task3: FAIL")
+        print("  skipped because Task2 failed (aggregation may be incorrect)")
+        results[3] = False
+    else:
+        try:
+            totals_e = aggregator_mod.compute_totals(rows_e)
+            # Expect same totals as before since empty quantity should be treated as 0
+            expected = {"P01": 9, "P02": 3, "P03": 6}
+            if totals_e == expected:
+                print("Task3: PASS")
+                results[3] = True
+            else:
+                print("Task3: FAIL")
+                print("  totals on edge file mismatch:")
+                print("    got:     {}".format(totals_e))
+                print("    expected:{}".format(expected))
+                results[3] = False
+        except Exception as e:
+            print("Task3: FAIL")
+            print("  error during compute_totals on edge file:")
+            traceback.print_exc(limit=2)
+            results[3] = False
+
+# Task 4: Full pipeline & formatting: produce output/report.json and compare to expected_outputs/golden_report.json
+formatter_mod, formatter_err = load_module('formatter', SRC / 'formatter.py')
+if formatter_err:
+    print("Task4: FAIL")
+    print("  formatter import error:")
+    print(formatter_err.splitlines()[:5])
+    results[4] = False
+else:
+    try:
+        report = {"products": totals, "top_product": aggregator_mod.find_top_product(totals)}
+        outpath = OUTPUT / 'report.json'
+        formatter_mod.write_report(report, str(outpath))
+        with open(outpath, 'r') as f:
+            produced = json.load(f)
+        with open(EXPECTED / 'golden_report.json', 'r') as f:
+            expected = json.load(f)
+        if produced == expected:
+            print("Task4: PASS")
+            results[4] = True
+        else:
+            print("Task4: FAIL")
+            print("  produced report differs from golden:")
+            print("    produced: {}".format(json.dumps(produced, indent=2)))
+            print("    expected: {}".format(json.dumps(expected, indent=2)))
+            results[4] = False
+    except Exception as e:
+        print("Task4: FAIL")
+        print("  error during pipeline/formatting:")
+        traceback.print_exc(limit=2)
+        results[4] = False
+
+# Summary and exit code
+all_pass = all(results.get(i, False) for i in (1,2,3,4))
+if all_pass:
+    print("\nAll tasks passed.")
+    sys.exit(0)
+else:
+    failed = [str(i) for i in (1,2,3,4) if not results.get(i, False)]
+    print("\nTasks failed: " + ", ".join(failed))
+    sys.exit(3)
+</materials>
+
+### Your assignment
+
+1. Specify a fillable JSON submission template that the candidate will complete and submit.
+  - This JSON file will be the only deliverable for the exam.
+  - Include clear identifiers for each question or task.
+  - Include subquestions and nested objects where appropriate.
+
+2. Use the following conventions for blank fields:
+ - Use null for fields expecting numbers, objects, or lists.
+ - Use "" for text responses.
+ - Use empty arrays [] where lists of items are expected.
+
+3. You may include short comments (in // or descriptive strings) to clarify the expected input type or content, but no example answers or placeholder values.
+
+### Output Requirements
+
+- Produce a single JSON object that fully defines the submission format.
+- This JSON represents the complete submission file the candidate will fill and return.
+- The template should be deterministic, complete, and ready for automated checking.
+- Wrap the JSON in triple backticks ```json ...``` for clarity.
+
+### Example
+
+```json
+{
+  "task_1_result": {
+    "subquestion_1": null,
+    "subquestion_2": null
+  },
+  "task_2_result": {
+    "region_code": "",
+    "sales_numbers": []
+  },
+  "notes": ""
+}

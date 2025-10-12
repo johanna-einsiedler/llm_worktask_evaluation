@@ -1,0 +1,59 @@
+```json
+{
+  "candidate_name": "Official Answer Key",
+  "task_results": [
+    {
+      "task_id": 1,
+      "files_changed": [
+        "src/parser.py"
+      ],
+      "change_summary": "Fixed a syntax error: added the missing colon after the 'with open(...) as f' statement so the file is opened correctly and lines can be read.",
+      "root_cause": "Typo / syntax error: missing ':' after the with-open statement caused parser module import or execution to fail.",
+      "how_tested": "ran: python3 run_tests.py\nOutput lines demonstrating result:\nTask1: PASS",
+      "time_spent_minutes": 10,
+      "confidence_level": "high",
+      "notes": "Derivation: run_tests reported an import/read error for parser. Inspecting src/parser.py showed 'with open(path, 'r') as f' missing the trailing colon. Minimal fix was to add ':' and keep the rest unchanged. No behavioral choices required."
+    },
+    {
+      "task_id": 2,
+      "files_changed": [
+        "src/aggregator.py"
+      ],
+      "change_summary": "Fixed aggregation loop to include all data rows by iterating directly over rows (for row in rows:) instead of skipping the first row with an incorrect range start. Left data structure and return type unchanged.",
+      "root_cause": "Logic bug (off-by-one): existing code used range(1, len(rows)), skipping the first data row and producing incorrect totals.",
+      "how_tested": "ran: python3 run_tests.py\nOutput lines demonstrating result:\nTask2: PASS",
+      "time_spent_minutes": 20,
+      "confidence_level": "high",
+      "notes": "Derivation: After fixing parser, Task2 reported totals mismatch. Inspecting src/aggregator.py showed loop starting at index 1 (skipping first row). Replaced indexed loop with direct iteration over rows to include all rows. This is minimal and clear; other acceptable minimal fixes would be range(0, len(rows))."
+    },
+    {
+      "task_id": 3,
+      "files_changed": [
+        "src/aggregator.py"
+      ],
+      "change_summary": "Made quantity parsing robust: treat empty Quantity fields as 0 before converting to int (quantity = int(qstr) if qstr != '' else 0). This prevents ValueError on empty strings and preserves totals by treating missing quantities as zero.",
+      "root_cause": "Data handling / edge case: compute_totals used int(row[3]) without checking for empty strings, causing exceptions on rows with empty Quantity.",
+      "how_tested": "ran: python3 run_tests.py\nOutput lines demonstrating result:\nTask3: PASS",
+      "time_spent_minutes": 30,
+      "confidence_level": "high",
+      "notes": "Derivation: The edge CSV contains a row with an empty Quantity. Tests require totals remain the same, so empty Quantity must be treated as 0. Implemented minimal defensive parsing (check for empty string before int()). Alternative acceptable approaches: try/except around int() mapping empty/malformed -> 0. Documented decision: treat empty/missing Quantity as 0 to preserve totals and match test expectations."
+    },
+    {
+      "task_id": 4,
+      "files_changed": [
+        "src/formatter.py"
+      ],
+      "change_summary": "Made JSON output deterministic and comparable to golden by enabling sorted keys when serializing (use json.dumps(report, indent=2, sort_keys=True)). Kept indentation and value types intact to ensure structural equality with expected JSON.",
+      "root_cause": "Formatting/determinism: json was being written without sort_keys, so produced JSON object key order could differ from the golden file; comparison expects structural equality (parsed objects must match exactly).",
+      "how_tested": "ran: python3 run_tests.py\nOutput lines demonstrating result:\nTask4: PASS\n\nAll tasks passed.",
+      "time_spent_minutes": 10,
+      "confidence_level": "high",
+      "notes": "Derivation: After fixing parser and aggregator, the pipeline wrote a report.json that parsed to the same mapping but ordering or serialization differences caused a mismatch. The test compares parsed JSON objects, but ensuring deterministic key order and using consistent types (integers for totals) ensures exact match. Passing criteria (exam-level): total score >= 80 required to pass; automated tests grant full points if all four task checks PASS. Partial credit rules: documented in README/run_tests materials — correct diagnoses documented in change_summary/notes can earn partial credit even if a task fails."
+    }
+  ],
+  "final_test_output": "Task1: PASS\nTask2: PASS\nTask3: PASS\nTask4: PASS\n\nAll tasks passed.\n",
+  "total_time_minutes": 70,
+  "checksum_of_modified_files": {},
+  "final_score_self_assessment": 100
+}
+```

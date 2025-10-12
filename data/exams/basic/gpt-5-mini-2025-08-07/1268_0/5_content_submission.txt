@@ -1,0 +1,39 @@
+```json
+{
+  "candidate_name": "",
+  "language_and_version": "",
+  "task_1": {
+    "command_run": "",
+    "stdout": "",
+    "stderr": "",
+    "exit_code": null,
+    "expected_output_match": null,
+    "comment": ""
+  },
+  "task_2": {
+    "harness_filename": "run_tests.py",
+    "harness_source": "",
+    "harness_command_run": "",
+    "harness_stdout": "",
+    "harness_stderr": "",
+    "harness_exit_code": null,
+    "test_results": []
+  },
+  "task_3": {
+    "investigation_commands": [],
+    "diagnosis": "",
+    "fix_strategy": "",
+    "fix_diff_or_wrapper": "",
+    "post_fix_harness_stdout": "",
+    "post_fix_harness_exit_code": null,
+    "post_fix_test_results": []
+  },
+  "task_4": {
+    "summary_report": "",
+    "repro_commands": [],
+    "assumptions_and_limitations": ""
+  },
+  "time_taken_minutes": null,
+  "final_notes": ""
+}
+```

@@ -1,0 +1,108 @@
+{
+  "per_task": {
+    "Task1": {
+      "task_id": 1,
+      "max_points": 15,
+      "awarded_points": 15.0,
+      "notes": [
+        "Task1: PASS detected in candidate's submitted outputs."
+      ]
+    },
+    "Task2": {
+      "task_id": 2,
+      "max_points": 20,
+      "awarded_points": 20.0,
+      "notes": [
+        "Task2: PASS detected in candidate's submitted outputs."
+      ]
+    },
+    "Task3": {
+      "task_id": 3,
+      "max_points": 20,
+      "awarded_points": 20.0,
+      "notes": [
+        "Task3: PASS detected in candidate's submitted outputs."
+      ]
+    },
+    "Task4": {
+      "task_id": 4,
+      "max_points": 15,
+      "awarded_points": 15.0,
+      "notes": [
+        "Task4: PASS detected in candidate's submitted outputs."
+      ]
+    }
+  },
+  "explanation_and_repro": {
+    "awarded_points": 20.0,
+    "max_points": 20,
+    "details": {
+      "per_task": {
+        "Task1": {
+          "explanation_points_awarded": 2.5,
+          "repro_points_awarded": 2.5,
+          "notes": [
+            "Both root_cause and change_summary present and sufficiently detailed.",
+            "how_tested includes run command and Task result lines."
+          ]
+        },
+        "Task2": {
+          "explanation_points_awarded": 2.5,
+          "repro_points_awarded": 2.5,
+          "notes": [
+            "Both root_cause and change_summary present and sufficiently detailed.",
+            "how_tested includes run command and Task result lines."
+          ]
+        },
+        "Task3": {
+          "explanation_points_awarded": 2.5,
+          "repro_points_awarded": 2.5,
+          "notes": [
+            "Both root_cause and change_summary present and sufficiently detailed.",
+            "how_tested includes run command and Task result lines."
+          ]
+        },
+        "Task4": {
+          "explanation_points_awarded": 2.5,
+          "repro_points_awarded": 2.5,
+          "notes": [
+            "Both root_cause and change_summary present and sufficiently detailed.",
+            "how_tested includes run command and Task result lines."
+          ]
+        }
+      },
+      "summary": []
+    }
+  },
+  "hygiene": {
+    "awarded_points": 10.0,
+    "max_points": 10,
+    "notes": [
+      "Files changed are within expected set; awarded full hygiene points."
+    ],
+    "candidate_files_changed": [
+      "src/aggregator.py",
+      "src/formatter.py",
+      "src/parser.py"
+    ],
+    "expected_files": [
+      "src/aggregator.py",
+      "src/formatter.py",
+      "src/parser.py"
+    ]
+  },
+  "total_points": 100.0,
+  "max_points": 100.0,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "messages": [
+    "Automated correctness subtotal: 70.0/70.",
+    "Explanation & reproducibility subtotal: 20.0/20.",
+    "Code hygiene subtotal: 10.0/10.",
+    "Total awarded: 100.0/100 -> 100.0%.",
+    "Candidate meets the passing threshold."
+  ],
+  "automated_subtotal": 70.0,
+  "automated_max": 70,
+  "recommendation": "PASS"
+}

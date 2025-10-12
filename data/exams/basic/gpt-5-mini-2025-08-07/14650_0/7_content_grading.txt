@@ -1,0 +1,468 @@
+# task_evaluation.py
+import json
+import os
+import re
+import sys
+from typing import Dict, List, Tuple, Any
+
+"""
+Automated grader for the "Update automated test scripts to ensure currency — Basic Practical Exam".
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Produces:
+    test_results.json in the same directory as this script.
+
+Notes:
+- Uses only Python standard library.
+- Attempts to be tolerant of whitespace/capitalization differences where reasonable.
+- Includes detailed breakdowns, reasons for deductions, and an overall percentage score.
+"""
+
+# ------- Helper utilities -------
+
+
+def load_json_file(path: str) -> Any:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def safe_get(d: dict, key: str, default=None):
+    return d.get(key, default)
+
+
+def normalize_text(s: str) -> str:
+    # Normalize whitespace for content comparisons
+    return "\n".join(line.rstrip() for line in s.strip().splitlines())
+
+
+def parse_unittest_summary(output: str) -> Tuple[int, int, int, bool]:
+    """
+    Parse unittest output to extract:
+    - ran (int) number of tests run (0 if not found)
+    - failures (int)
+    - errors (int)
+    - ok (bool) True if 'OK' present (all passed)
+    This is robust to typical unittest outputs.
+    """
+    ran = 0
+    failures = 0
+    errors = 0
+    ok = False
+
+    if not output:
+        return ran, failures, errors, ok
+
+    # Ran N tests
+    m = re.search(r"Ran (\d+) tests?", output)
+    if m:
+        try:
+            ran = int(m.group(1))
+        except Exception:
+            ran = 0
+
+    # FAILED (failures=1, errors=1)
+    m_fail = re.search(r"FAILED\s*\(([^)]+)\)", output)
+    if m_fail:
+        inner = m_fail.group(1)
+        f_m = re.search(r"failures=(\d+)", inner)
+        e_m = re.search(r"errors=(\d+)", inner)
+        if f_m:
+            failures = int(f_m.group(1))
+        if e_m:
+            errors = int(e_m.group(1))
+
+    # Sometimes shows 'FAIL:' lines or 'ERROR:'; try to detect counts more heuristically
+    if failures == 0:
+        # count occurrences of 'FAIL:' lines that correspond to failed tests
+        failures = len(re.findall(r"^FAIL:\s", output, flags=re.MULTILINE))
+    if errors == 0:
+        errors = len(re.findall(r"^ERROR:\s", output, flags=re.MULTILINE))
+
+    # OK (means all passed)
+    ok = bool(re.search(r"\nOK\n", output) or output.strip().endswith("\nOK") or output.strip().endswith("OK"))
+
+    return ran, failures, errors, ok
+
+
+def str_contains_any(s: str, substrings: List[str]) -> bool:
+    s_lower = s.lower() if s else ""
+    for sub in substrings:
+        if sub.lower() in s_lower:
+            return True
+    return False
+
+
+# ------- Main grading logic -------
+
+
+def grade(candidate: dict, answer_key: dict) -> dict:
+    """
+    Compute grading using the evaluation guidelines provided in the exam materials.
+    Returns a detailed results dict to be serialized to JSON.
+    """
+
+    results = {
+        "candidate_name": candidate.get("candidate_name", "<missing>"),
+        "max_points": 100.0,
+        "components": {},
+        "deductions": [],
+        "errors": [],
+    }
+
+    # Validate presence of key submission fields
+    required_fields = [
+        "candidate_name",
+        "start_time",
+        "end_time",
+        "environment",
+        "initial_test_run",
+        "final_test_run",
+        "modified_files",
+        "new_tests_added",
+        "confidence",
+    ]
+    missing_fields = [f for f in required_fields if f not in candidate]
+    if missing_fields:
+        results["errors"].append(f"Missing required fields in submission: {missing_fields}")
+
+    # Component 1: Tests pass after update (40 points)
+    comp_tests_max = 40.0
+    answer_final = answer_key.get("final_test_run", "")
+    answer_ran, _, _, _ = parse_unittest_summary(answer_final)
+    # fallback expected tests count: try to infer from answer_key modified_files + answer_key new_tests_added
+    if not answer_ran:
+        # If answer key doesn't provide, attempt to compute expected by counting tests in answer_key modified_files or default to 3
+        answer_ran = 0
+        # Try to see an explicit number in evaluation notes
+        # fallback to default 3 -> but better to use 4 as in provided exam; choose 3 as safe default
+        answer_ran = answer_ran or 3
+
+    candidate_final = candidate.get("final_test_run", "")
+    ran, failures, errors, ok = parse_unittest_summary(candidate_final)
+
+    # Compute passed
+    passed = max(0, ran - failures - errors)
+
+    # Compute fraction relative to expected
+    # If candidate ran 0 tests, fraction 0
+    if answer_ran <= 0:
+        expected = max(1, ran)
+    else:
+        expected = answer_ran
+
+    passed_fraction = min(1.0, passed / expected) if expected > 0 else 0.0
+
+    tests_score = comp_tests_max * passed_fraction
+
+    explanation_tests = []
+    explanation_tests.append(f"Expected tests (answer key): {expected}")
+    explanation_tests.append(f"Candidate ran: {ran}, failures: {failures}, errors: {errors}, passed: {passed}")
+    if ok:
+        explanation_tests.append("Final run contained 'OK' indicating all reported tests passed.")
+    else:
+        explanation_tests.append("Final run did not show 'OK' (some tests failing or errors).")
+
+    # If candidate passed all expected tests, give full points
+    if passed_fraction >= 1.0:
+        tests_score = comp_tests_max
+    results["components"]["tests_pass"] = {
+        "score": round(tests_score, 2),
+        "max": comp_tests_max,
+        "details": " ; ".join(explanation_tests),
+    }
+
+    # Component 2: Correctness and minimality of code changes (25 points)
+    comp_changes_max = 25.0
+    expected_modified = answer_key.get("modified_files", [])
+    expected_paths = [mf.get("path") for mf in expected_modified if mf.get("path")]
+    n_expected = max(1, len(expected_paths))  # avoid division by zero
+
+    file_point = comp_changes_max / n_expected
+
+    candidate_modified = candidate.get("modified_files", [])
+    candidate_paths = [mf.get("path") for mf in candidate_modified if mf.get("path")]
+
+    changes_score = 0.0
+    changes_explanations = []
+
+    # Check for forbidden modifications (app/)
+    modified_app_files = [p for p in candidate_paths if p and p.startswith("app/")]
+    if modified_app_files:
+        # According to exam rules, modifying app/ is disallowed and should heavily penalize.
+        changes_explanations.append(
+            f"Candidate modified application files (forbidden): {modified_app_files}. Heavy deduction applied."
+        )
+        # Zero out changes_score and later we may keep as zero.
+        # But we'll still compute partial match for informational purposes.
+    # Evaluate expected modified files
+    for exp in expected_modified:
+        exp_path = exp.get("path")
+        exp_content = normalize_text(exp.get("content", "")) if exp.get("content") else ""
+        # try to find candidate corresponding file
+        match = None
+        for cm in candidate_modified:
+            if cm.get("path") == exp_path:
+                match = cm
+                break
+        if match:
+            cand_content = normalize_text(match.get("content", "")) if match.get("content") else ""
+            if exp_content and cand_content == exp_content:
+                changes_score += file_point
+                changes_explanations.append(f"Modified file {exp_path}: exact content match. (+{file_point:.2f})")
+            else:
+                # partial credit if content differs but path is under allowed dirs
+                if exp_path.startswith("tests/") or exp_path.startswith("fixtures/"):
+                    partial = file_point * 0.5
+                    changes_score += partial
+                    changes_explanations.append(
+                        f"Modified file {exp_path}: found but content differs. Partial credit (+{partial:.2f})."
+                    )
+                else:
+                    # unexpected path type -> no points
+                    changes_explanations.append(
+                        f"Modified file {exp_path}: found but not in tests/fixtures; no points for this expected change."
+                    )
+        else:
+            changes_explanations.append(f"Expected modified file {exp_path} not found in candidate submission. (0 points)")
+
+    # Penalize for unexpected modified files (beyond expected)
+    unexpected = [p for p in candidate_paths if p not in expected_paths]
+    # ignore metadata or empty
+    unexpected = [p for p in unexpected if p]
+    unexpected_penalty = 0.0
+    if unexpected:
+        # small penalty per unexpected file, except if it's app/ which we already considered
+        non_app_unexpected = [p for p in unexpected if not p.startswith("app/")]
+        unexpected_penalty = min(10.0, 2.0 * len(non_app_unexpected))
+        if non_app_unexpected:
+            changes_explanations.append(f"Unexpected modified files (allowed dirs) detected: {non_app_unexpected}. Deducting {unexpected_penalty:.2f} points.")
+        # app/ files result in heavy penalty: subtract all points (set to zero)
+        if modified_app_files:
+            changes_explanations.append("Modification of app/ files results in zero points for this component.")
+            changes_score = 0.0
+            unexpected_penalty = comp_changes_max  # max out penalty
+
+    changes_score = max(0.0, min(comp_changes_max, changes_score - unexpected_penalty))
+    results["components"]["changes_minimality"] = {
+        "score": round(changes_score, 2),
+        "max": comp_changes_max,
+        "details": " ; ".join(changes_explanations) if changes_explanations else "No changes detected.",
+    }
+
+    # Component 3: Rationale / documentation quality (15 points)
+    comp_rationale_max = 15.0
+    rationale_score = 0.0
+    rationale_explanations = []
+
+    # Evaluate rationales for expected modified files (answer_key)
+    if expected_paths:
+        per_file_rationale = comp_rationale_max / len(expected_paths)
+        for exp_path in expected_paths:
+            # locate candidate matching modified file
+            match = next((cm for cm in candidate_modified if cm.get("path") == exp_path), None)
+            if match:
+                rationale = (match.get("rationale") or "").strip()
+                if not rationale:
+                    rationale_explanations.append(f"{exp_path}: missing rationale. (0)")
+                else:
+                    # check sentence count (<=3) and reasonable length
+                    sentences = [s for s in re.split(r'[.!?]+', rationale) if s.strip()]
+                    if 0 < len(sentences) <= 3 and 10 <= len(rationale) <= 400:
+                        rationale_score += per_file_rationale
+                        rationale_explanations.append(f"{exp_path}: good rationale. (+{per_file_rationale:.2f})")
+                    else:
+                        # partial credit for present rationale that's too long/short
+                        rationale_score += per_file_rationale * 0.5
+                        rationale_explanations.append(f"{exp_path}: rationale present but not ideal (length/sentences). Partial (+{per_file_rationale * 0.5:.2f})")
+            else:
+                rationale_explanations.append(f"{exp_path}: expected modified file not present, no rationale possible. (0)")
+    else:
+        # no expected modified files — give full points (edge-case)
+        rationale_score = comp_rationale_max
+        rationale_explanations.append("No expected modified files in answer key; awarding full rationale points by default.")
+
+    rationale_score = max(0.0, min(comp_rationale_max, rationale_score))
+    results["components"]["rationale"] = {
+        "score": round(rationale_score, 2),
+        "max": comp_rationale_max,
+        "details": " ; ".join(rationale_explanations) if rationale_explanations else "",
+    }
+
+    # Component 4: Evidence of correct diagnosis (10 points)
+    comp_diag_max = 10.0
+    diag_score = 0.0
+    diag_explanations = []
+
+    initial_output = candidate.get("initial_test_run", "") or ""
+    if not initial_output.strip():
+        diag_explanations.append("initial_test_run is empty or missing.")
+        diag_score = 0.0
+    else:
+        # Look for typical indicators: AssertionError/FAIL and KeyError/ERROR
+        has_assertion = bool(re.search(r"AssertionError", initial_output, flags=re.IGNORECASE) or re.search(r"\bFAIL\b", initial_output))
+        has_keyerror = bool(re.search(r"KeyError", initial_output, flags=re.IGNORECASE) or re.search(r"\bERROR\b", initial_output))
+        if has_assertion and has_keyerror:
+            diag_score = comp_diag_max
+            diag_explanations.append("Initial output contains both assertion failures and key errors as expected. Full points.")
+        elif has_assertion or has_keyerror:
+            diag_score = comp_diag_max * 0.5
+            diag_explanations.append("Initial output contains one of the expected failure types (AssertionError or KeyError). Partial points.")
+        else:
+            # If initial run non-empty but doesn't show clear failures, smaller partial credit
+            diag_score = comp_diag_max * 0.3
+            diag_explanations.append("Initial output provided but did not contain clear AssertionError/KeyError markers. Limited credit.")
+    results["components"]["diagnosis"] = {
+        "score": round(diag_score, 2),
+        "max": comp_diag_max,
+        "details": " ; ".join(diag_explanations),
+    }
+
+    # Component 5: Maintainability choices (10 points)
+    comp_maint_max = 10.0
+    maint_score = 0.0
+    maint_explanations = []
+
+    # Expected new tests in answer key (if any)
+    expected_new_tests = answer_key.get("new_tests_added", []) or []
+    candidate_new_tests = candidate.get("new_tests_added", []) or []
+
+    # Check: no app/ modifications
+    if modified_app_files:
+        maint_score = 0.0
+        maint_explanations.append("Candidate modified application code under app/ which is disallowed; maintainability score 0.")
+    else:
+        # If candidate added exactly expected new tests -> full points
+        # Compare sets normalized
+        def norm_list(lst):
+            return sorted([p for p in lst if isinstance(p, str)])
+        if expected_new_tests and norm_list(candidate_new_tests) == norm_list(expected_new_tests):
+            maint_score = comp_maint_max
+            maint_explanations.append("Candidate added expected new tests as in answer key. Full maintainability points.")
+        else:
+            # If candidate added new tests that are under tests/ -> good (small bonus). Otherwise give base points.
+            if candidate_new_tests:
+                all_under_tests = all(p.startswith("tests/") for p in candidate_new_tests)
+                if all_under_tests:
+                    maint_score = comp_maint_max
+                    maint_explanations.append("Candidate added new tests under tests/ directory. Good practice. Full points.")
+                else:
+                    maint_score = comp_maint_max * 0.8
+                    maint_explanations.append("Candidate added new tests but some are not under tests/ directory. Minor deduction.")
+            else:
+                # No new tests added: still acceptable but slightly lower
+                maint_score = comp_maint_max * 0.8
+                maint_explanations.append("No new tests added. Acceptable but small deduction from maintainability score.")
+    results["components"]["maintainability"] = {
+        "score": round(maint_score, 2),
+        "max": comp_maint_max,
+        "details": " ; ".join(maint_explanations),
+    }
+
+    # Summarize scores and compute total
+    total_score = sum(comp["score"] for comp in results["components"].values())
+    total_score = max(0.0, min(results["max_points"], total_score))
+    percent = round((total_score / results["max_points"]) * 100.0, 2)
+
+    # Add pass/fail gating notes per evaluation guidelines
+    gating_explanations = []
+    # Gate: initial_test_run non-empty
+    if not initial_output.strip():
+        gating_explanations.append("Gating rule: initial_test_run is empty; this violates exam requirements.")
+    # Gate: modified_files must be under tests/ or fixtures/ (no app/)
+    illegal_mods = [p for p in candidate_paths if p and p.startswith("app/")]
+    if illegal_mods:
+        gating_explanations.append(f"Gating rule: modified application files are present: {illegal_mods}. This is disallowed.")
+    # Gate: final_test_run must show OK and ran equal to expected
+    if not ok or passed < expected:
+        gating_explanations.append("Gating rule: final_test_run does not show all expected tests passing (either not OK or fewer tests passed than expected).")
+
+    results["gating_notes"] = gating_explanations
+
+    # Compose final result object
+    final = {
+        "overall_score": percent,
+        "total_points": round(total_score, 2),
+        "max_points": results["max_points"],
+        "breakdown": results["components"],
+        "deductions": results["deductions"],
+        "errors": results["errors"],
+        "gating_notes": gating_explanations,
+        "explanations": {
+            "tests_component": results["components"]["tests_pass"]["details"],
+            "changes_component": results["components"]["changes_minimality"]["details"],
+            "rationale_component": results["components"]["rationale"]["details"],
+            "diagnosis_component": results["components"]["diagnosis"]["details"],
+            "maintainability_component": results["components"]["maintainability"]["details"],
+        },
+    }
+
+    return final
+
+
+# ------- CLI handling & file IO -------
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        sys.exit(2)
+
+    candidate_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results.json")
+
+    # Basic error handling while loading JSON
+    try:
+        candidate = load_json_file(candidate_path)
+    except FileNotFoundError:
+        print(f"Candidate submission file not found: {candidate_path}")
+        # produce minimal output with error
+        minimal = {"overall_score": 0.0, "errors": [f"Candidate file not found: {candidate_path}"]}
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(minimal, f, indent=2)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Invalid JSON in candidate submission: {e}")
+        minimal = {"overall_score": 0.0, "errors": [f"Invalid JSON in candidate submission: {str(e)}"]}
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(minimal, f, indent=2)
+        sys.exit(1)
+
+    try:
+        answer_key = load_json_file(answer_key_path)
+    except FileNotFoundError:
+        print(f"Answer key file not found: {answer_key_path}")
+        minimal = {"overall_score": 0.0, "errors": [f"Answer key file not found: {answer_key_path}"]}
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(minimal, f, indent=2)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Invalid JSON in answer key: {e}")
+        minimal = {"overall_score": 0.0, "errors": [f"Invalid JSON in answer key: {str(e)}"]}
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(minimal, f, indent=2)
+        sys.exit(1)
+
+    # Run grading
+    try:
+        results = grade(candidate, answer_key)
+    except Exception as e:
+        # Catch any unexpected errors to produce a diagnostic output rather than crashing
+        exc_info = f"Internal grader error: {str(e)}"
+        print(exc_info)
+        results = {"overall_score": 0.0, "errors": [exc_info]}
+
+    # Save results JSON
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+        print(f"Grading complete. Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results file: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,26 @@
+### Your assignment:
+Provide an overview of the exam’s **purpose**, **core competencies to be tested**, and **optimal structure**.
+
+Your goal is to brief the exam creator and evaluator on:
+1. **Purpose** — What real-world capability this exam should confirm.
+2. **Structure** — How the exam could be organized (number of tasks, logical sequence, expected deliverables).
+3. **Practicality** — How to make it a *hands-on* assessment rather than a knowledge quiz.
+4. **Strategic elements** — Multi-step processes, data dependencies, or decision points that can distinguish candidates who can actually perform the task from those who only understand it conceptually.
+5. **Evaluation insight** — What observable outputs or criteria will best indicate competence.
+
+Respond in a structured markdown format, for example:
+
+### Exam Purpose
+...
+
+### Core Competencies
+...
+
+### Recommended Structure
+...
+
+### Practical Elements to Include
+...
+
+### Evaluation Insights
+...

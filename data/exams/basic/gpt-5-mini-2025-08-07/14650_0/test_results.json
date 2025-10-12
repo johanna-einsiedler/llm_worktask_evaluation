@@ -1,0 +1,47 @@
+{
+  "scores": {
+    "task1_reproduce": {
+      "earned": 15,
+      "possible": 15
+    },
+    "task2_selector": {
+      "earned": 15,
+      "possible": 15
+    },
+    "task2_helper": {
+      "earned": 10,
+      "possible": 10
+    },
+    "task3_timing": {
+      "earned": 20,
+      "possible": 20
+    },
+    "task4_config": {
+      "earned": 20,
+      "possible": 20
+    },
+    "documentation": {
+      "earned": 10,
+      "possible": 10
+    },
+    "bonus": {
+      "earned": 0,
+      "possible": 10
+    }
+  },
+  "deductions": [],
+  "notes": [
+    "Task1: All expected failure signatures present in initial_test_output.",
+    "Documentation: all required high-level fields present."
+  ],
+  "total_points_earned": 90,
+  "total_points_possible": 100,
+  "overall_score": 90.0,
+  "summary": {
+    "max_points": 100,
+    "points_earned": 90,
+    "percentage": 90.0,
+    "pass_threshold_percent": 80.0,
+    "passed": true
+  }
+}

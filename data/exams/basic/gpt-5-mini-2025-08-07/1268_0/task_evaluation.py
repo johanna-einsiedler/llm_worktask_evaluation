@@ -1,0 +1,565 @@
+#!/usr/bin/env python3
+"""
+task_evaluation.py
+
+Automated grader for the basic practical exam.
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Produces:
+    test_results.json (in same directory as this script) with a breakdown of scores,
+    explanations for deductions, total score, percentage and overall_score numeric value.
+
+Notes:
+- Uses only Python standard library.
+- Tolerant of minor whitespace/newline differences when comparing textual outputs.
+- Robust to missing keys and invalid JSON; reports errors and assigns partial credit accordingly.
+"""
+
+import json
+import sys
+import os
+from typing import Any, Dict, List
+
+# ------------------------
+# Utility helpers
+# ------------------------
+
+def load_json(path: str) -> Any:
+    """Load JSON file robustly, raising clear error on failure."""
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+
+def normalize_text(s: Any) -> str:
+    """Normalize textual content for tolerant comparison:
+    - empty -> ''
+    - unify CRLF to LF
+    - strip leading/trailing whitespace overall
+    - strip trailing spaces on each line
+    """
+    if s is None:
+        return ""
+    if not isinstance(s, str):
+        s = str(s)
+    s = s.replace('\r\n', '\n').replace('\r', '\n')
+    # Strip trailing spaces per line
+    lines = [ln.rstrip() for ln in s.split('\n')]
+    # Strip leading/trailing blank lines and overall whitespace
+    # Join with single \n
+    joined = '\n'.join(lines).strip()
+    return joined
+
+def word_count(s: str) -> int:
+    if not s:
+        return 0
+    return len(s.split())
+
+def safe_get(d: Dict, *keys, default=None):
+    """Fetch nested keys with safety. Usage: safe_get(d, 'task_1', 'stdout')"""
+    cur = d
+    try:
+        for k in keys:
+            cur = cur[k]
+        return cur
+    except Exception:
+        return default
+
+def all_tests_passed(test_results: List[Dict]) -> bool:
+    if not isinstance(test_results, list) or not test_results:
+        return False
+    for t in test_results:
+        if not t.get('passed', False):
+            return False
+    return True
+
+# ------------------------
+# Scoring functions
+# ------------------------
+
+def score_task_1(candidate: Dict, answer: Dict) -> Dict:
+    """
+    Task 1 scoring (20 pts)
+    - 10 pts: Repro evidence captured
+    - 10 pts: Correct verification vs expected
+    """
+    max_points = 20
+    awarded = 0
+    comments = []
+
+    cand_t1 = candidate.get('task_1', {})
+    ans_t1 = answer.get('task_1', {})
+
+    # Repro evidence: breakdown (10 points)
+    repro_points = 0
+    # command_run presence
+    cmd = cand_t1.get('command_run')
+    if isinstance(cmd, str) and cmd.strip():
+        repro_points += 4
+    else:
+        comments.append("Task1: Missing or empty 'command_run' (0/4).")
+
+    # stdout presence (non-empty)
+    stdout = cand_t1.get('stdout')
+    if isinstance(stdout, str) and stdout.strip() != "":
+        repro_points += 3
+    else:
+        comments.append("Task1: Missing or empty 'stdout' capture (0/3).")
+
+    # stderr present (can be empty) and exit_code is int
+    if 'stderr' in cand_t1 and 'exit_code' in cand_t1:
+        # further check exit_code type
+        try:
+            int(cand_t1.get('exit_code'))
+            repro_points += 2
+        except Exception:
+            comments.append("Task1: 'exit_code' not an integer (0/2).")
+    else:
+        comments.append("Task1: Missing 'stderr' or 'exit_code' fields (0/2).")
+
+    # expected_output_match boolean present
+    if isinstance(cand_t1.get('expected_output_match'), bool):
+        repro_points += 1
+    else:
+        comments.append("Task1: Missing or invalid 'expected_output_match' boolean (0/1).")
+
+    awarded += repro_points
+    # End repro
+
+    # Verification correctness: 10 points
+    verify_points = 0
+    # Normalize outputs
+    cand_stdout_norm = normalize_text(cand_t1.get('stdout'))
+    ans_stdout_norm = normalize_text(ans_t1.get('stdout'))
+    cand_exit = cand_t1.get('exit_code')
+    ans_exit = ans_t1.get('exit_code')
+
+    cand_match_flag = cand_t1.get('expected_output_match')
+    # Compare normalized stdout and exit codes
+    stdout_matches = False
+    exit_matches = False
+    try:
+        stdout_matches = (cand_stdout_norm == ans_stdout_norm)
+    except Exception:
+        stdout_matches = False
+    try:
+        exit_matches = (int(cand_exit) == int(ans_exit))
+    except Exception:
+        exit_matches = False
+
+    if isinstance(cand_match_flag, bool) and cand_match_flag and stdout_matches and exit_matches:
+        verify_points = 10
+    else:
+        # Partial credit cases
+        if isinstance(cand_match_flag, bool) and cand_match_flag and not stdout_matches:
+            verify_points = 5
+            comments.append("Task1: Candidate reported expected_output_match=true but stdout did not match expected exactly (5/10).")
+        elif stdout_matches and exit_matches and (not isinstance(cand_match_flag, bool) or not cand_match_flag):
+            verify_points = 8
+            comments.append("Task1: Program output matches expected, but expected_output_match flag missing or false (8/10).")
+        else:
+            # small credit if either stdout or exit matches
+            if stdout_matches or exit_matches:
+                verify_points = 3
+                comments.append("Task1: Partial match: either stdout or exit code matched expected (3/10).")
+            else:
+                verify_points = 0
+                comments.append("Task1: Output and exit code do not match expected (0/10).")
+
+    awarded += verify_points
+
+    return {
+        'task': 'task_1',
+        'max_points': max_points,
+        'awarded': awarded,
+        'comments': comments
+    }
+
+def score_task_2(candidate: Dict, answer: Dict) -> Dict:
+    """
+    Task 2 scoring (30 pts)
+    - 10 pts harness runnable
+    - 10 pts harness asserts and exit codes
+    - 10 pts test cases coverage (>=3 cases + edge case)
+    """
+    max_points = 30
+    awarded = 0
+    comments = []
+
+    cand_t2 = candidate.get('task_2', {})
+
+    # Harness runnable (10)
+    runnable_pts = 0
+    # harness_filename == 'run_tests.py'
+    if cand_t2.get('harness_filename') == 'run_tests.py':
+        runnable_pts += 5
+    else:
+        comments.append("Task2: harness_filename is not 'run_tests.py' (0/5 for that part).")
+    # harness_source present and harness_command_run contains 'run_tests.py'
+    src = cand_t2.get('harness_source')
+    cmd = cand_t2.get('harness_command_run', "")
+    if isinstance(src, str) and src.strip():
+        if 'run_tests.py' in (cmd or ""):
+            runnable_pts += 5
+        else:
+            runnable_pts += 3
+            comments.append("Task2: harness_source present but harness_command_run does not reference 'run_tests.py' (3/5).")
+    else:
+        comments.append("Task2: Missing or empty harness_source (0/5 for second part).")
+
+    awarded += runnable_pts
+
+    # Harness asserts & exit code (10)
+    assert_pts = 0
+    harness_stdout = normalize_text(cand_t2.get('harness_stdout', ''))
+    harness_exit = cand_t2.get('harness_exit_code')
+    # check presence of PASS/FAIL lines and summary
+    has_pass = 'PASS' in harness_stdout or 'All tests passed' in harness_stdout
+    has_fail = 'FAIL' in harness_stdout or 'Exiting with failure' in harness_stdout
+    if has_pass:
+        assert_pts += 5
+    else:
+        comments.append("Task2: harness stdout does not indicate PASS lines or 'All tests passed' (0/5 for pass detection).")
+    # check exit code present and is integer
+    try:
+        int(harness_exit)
+        assert_pts += 5
+    except Exception:
+        comments.append("Task2: harness_exit_code missing or not integer (0/5 for exit code).")
+
+    awarded += assert_pts
+
+    # Test cases coverage (10)
+    coverage_pts = 0
+    test_results = cand_t2.get('test_results', [])
+    if isinstance(test_results, list) and len(test_results) >= 3:
+        coverage_pts += 4
+    else:
+        comments.append("Task2: Less than 3 test cases provided in test_results (0/4).")
+    # check existence of per-test fields and at least one edge/failing case
+    good_entries = True
+    has_fail_case = False
+    for t in test_results:
+        if not all(k in t for k in ('input_filename', 'expected_output_filename', 'passed')):
+            good_entries = False
+            break
+        if not t.get('passed', False):
+            has_fail_case = True
+    if good_entries:
+        coverage_pts += 3
+    else:
+        comments.append("Task2: test_results entries missing required fields (0/3).")
+    if has_fail_case:
+        coverage_pts += 3
+    else:
+        # partial credit if at least one has notes indicating a failure
+        found_fail_note = any('fail' in (t.get('notes') or '').lower() or ('stderr' in (t.get('notes') or '').lower()) for t in test_results)
+        if found_fail_note:
+            coverage_pts += 2
+            comments.append("Task2: No test_results had passed=false, but notes indicate failure (2/3).")
+        else:
+            comments.append("Task2: No failing/edge test case present in initial test_results (0/3).")
+
+    awarded += coverage_pts
+
+    return {
+        'task': 'task_2',
+        'max_points': max_points,
+        'awarded': awarded,
+        'comments': comments
+    }
+
+def score_task_3(candidate: Dict, answer: Dict) -> Dict:
+    """
+    Task 3 scoring (30 pts)
+    - 10 pts diagnosis (commands + correct root cause)
+    - 10 pts fix implemented (patch or wrapper and content present)
+    - 10 pts demonstration: post-fix harness shows success (exit 0 and all tests pass)
+    """
+    max_points = 30
+    awarded = 0
+    comments = []
+
+    cand_t3 = candidate.get('task_3', {})
+
+    # Diagnosis (10)
+    diag_pts = 0
+    inv_cmds = cand_t3.get('investigation_commands')
+    diagnosis_text = (cand_t3.get('diagnosis') or "").lower()
+    if isinstance(inv_cmds, list) and len(inv_cmds) >= 1:
+        diag_pts += 6
+    else:
+        comments.append("Task3: investigation_commands missing or empty (0/6).")
+    # Check presence of key diagnostic hints (blank/empty/indexerror)
+    keywords = ['blank', 'empty', 'indexerror', 'skip', 'blank line', 'index error', 'list index']
+    if any(k in diagnosis_text for k in keywords):
+        diag_pts += 4
+    elif diagnosis_text.strip():
+        diag_pts += 2
+        comments.append("Task3: diagnosis present but does not include typical keywords (2/4).")
+    else:
+        comments.append("Task3: diagnosis missing or empty (0/4).")
+
+    awarded += diag_pts
+
+    # Fix implementation (10)
+    fix_pts = 0
+    fix_strategy = cand_t3.get('fix_strategy', '')
+    fix_artifact = cand_t3.get('fix_diff_or_wrapper', '')
+    if fix_strategy in ('patch', 'wrapper', 'other'):
+        # give base points if artifact present
+        if isinstance(fix_artifact, str) and fix_artifact.strip():
+            fix_pts += 6
+        else:
+            comments.append("Task3: fix_strategy set but fix_diff_or_wrapper is empty (0/6).")
+    else:
+        comments.append("Task3: fix_strategy missing or invalid (expected 'patch'/'wrapper'/'other') (0/6).")
+
+    # extra points if strategy corresponds to answer's strategy (if provided)
+    ans_strategy = safe_get(answer, 'task_3', 'fix_strategy', default=None)
+    if ans_strategy and isinstance(ans_strategy, str):
+        if fix_strategy == ans_strategy:
+            fix_pts += 4
+        else:
+            # acceptable alternative strategies still get some credit
+            if fix_strategy in ('patch', 'wrapper', 'other'):
+                fix_pts += 2
+                comments.append("Task3: fix_strategy differs from answer key but is acceptable (2/4).")
+            else:
+                comments.append("Task3: fix_strategy differs and is not acceptable (0/4).")
+    else:
+        # If answer key doesn't specify, award remaining if artifact present
+        if fix_pts >= 6:
+            fix_pts += 4
+
+    awarded += fix_pts
+
+    # Demonstration (10)
+    demo_pts = 0
+    post_stdout = normalize_text(cand_t3.get('post_fix_harness_stdout', ''))
+    post_exit = cand_t3.get('post_fix_harness_exit_code')
+    post_results = cand_t3.get('post_fix_test_results', [])
+    # Check exit==0
+    try:
+        if int(post_exit) == 0:
+            demo_pts += 5
+        else:
+            comments.append("Task3: post-fix harness exit code is non-zero (0/5 for exit).")
+    except Exception:
+        comments.append("Task3: post-fix harness exit code missing or invalid (0/5).")
+
+    # Check all post_fix_test_results passed
+    if isinstance(post_results, list) and post_results:
+        if all(t.get('passed', False) for t in post_results):
+            demo_pts += 5
+        else:
+            # partial credit if some tests pass
+            passed_count = sum(1 for t in post_results if t.get('passed', False))
+            total = len(post_results)
+            # proportional credit up to 4 points
+            demo_pts += int((passed_count / total) * 5)
+            comments.append(f"Task3: Not all post-fix tests passed ({passed_count}/{total}); partial credit awarded.")
+    else:
+        comments.append("Task3: post_fix_test_results missing or empty (0/5).")
+
+    awarded += demo_pts
+
+    return {
+        'task': 'task_3',
+        'max_points': max_points,
+        'awarded': awarded,
+        'comments': comments
+    }
+
+def score_task_4(candidate: Dict, answer: Dict) -> Dict:
+    """
+    Task 4 scoring (20 pts)
+    - 10 pts: reproducible commands and assumptions
+    - 10 pts: concise summary <= 300 words
+    """
+    max_points = 20
+    awarded = 0
+    comments = []
+
+    cand_t4 = candidate.get('task_4', {})
+
+    # Repro & assumptions (10)
+    repro_pts = 0
+    repro_cmds = cand_t4.get('repro_commands')
+    assumptions = cand_t4.get('assumptions_and_limitations', '')
+    if isinstance(repro_cmds, list) and len(repro_cmds) >= 1:
+        # prefer presence of run_tests command
+        has_run_tests = any('run_tests.py' in (c or "") or 'run_tests' in (c or "") for c in repro_cmds)
+        if has_run_tests:
+            repro_pts += 6
+        else:
+            repro_pts += 4
+            comments.append("Task4: repro_commands present but does not include running the harness explicitly (4/6).")
+    else:
+        comments.append("Task4: repro_commands missing or empty (0/6).")
+    if isinstance(assumptions, str) and assumptions.strip():
+        repro_pts += 4
+    else:
+        comments.append("Task4: assumptions_and_limitations missing or empty (0/4).")
+
+    awarded += repro_pts
+
+    # Summary (10)
+    summ_pts = 0
+    summary = cand_t4.get('summary_report', '')
+    if isinstance(summary, str) and summary.strip():
+        wc = word_count(summary)
+        if wc <= 300:
+            summ_pts += 10
+        else:
+            # partial credit if summary present but too long
+            summ_pts += 5
+            comments.append(f"Task4: summary_report exceeds 300 words ({wc} words); partial credit (5/10).")
+    else:
+        comments.append("Task4: summary_report missing or empty (0/10).")
+
+    awarded += summ_pts
+
+    return {
+        'task': 'task_4',
+        'max_points': max_points,
+        'awarded': awarded,
+        'comments': comments
+    }
+
+# ------------------------
+# Main grading flow
+# ------------------------
+
+def grade_submission(candidate_path: str, answer_path: str) -> Dict:
+    # Load files
+    try:
+        candidate = load_json(candidate_path)
+    except Exception as e:
+        # Fatal: cannot load candidate submission
+        return {
+            'error': str(e)
+        }
+    try:
+        answer = load_json(answer_path)
+    except Exception as e:
+        return {
+            'error': str(e)
+        }
+
+    results = {}
+    per_task = []
+    total_awarded = 0
+    total_max = 0
+    global_comments = []
+
+    # Score each task with try/except to avoid total script failure
+    try:
+        t1 = score_task_1(candidate, answer)
+        per_task.append(t1)
+        total_awarded += t1['awarded']
+        total_max += t1['max_points']
+    except Exception as e:
+        per_task.append({'task': 'task_1', 'max_points': 20, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
+        total_max += 20
+        global_comments.append(f"Error scoring task_1: {e}")
+
+    try:
+        t2 = score_task_2(candidate, answer)
+        per_task.append(t2)
+        total_awarded += t2['awarded']
+        total_max += t2['max_points']
+    except Exception as e:
+        per_task.append({'task': 'task_2', 'max_points': 30, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
+        total_max += 30
+        global_comments.append(f"Error scoring task_2: {e}")
+
+    try:
+        t3 = score_task_3(candidate, answer)
+        per_task.append(t3)
+        total_awarded += t3['awarded']
+        total_max += t3['max_points']
+    except Exception as e:
+        per_task.append({'task': 'task_3', 'max_points': 30, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
+        total_max += 30
+        global_comments.append(f"Error scoring task_3: {e}")
+
+    try:
+        t4 = score_task_4(candidate, answer)
+        per_task.append(t4)
+        total_awarded += t4['awarded']
+        total_max += t4['max_points']
+    except Exception as e:
+        per_task.append({'task': 'task_4', 'max_points': 20, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
+        total_max += 20
+        global_comments.append(f"Error scoring task_4: {e}")
+
+    # Safety: ensure totals expected (100)
+    # If total_max not 100, adapt but still compute percentage
+    percentage = (total_awarded / total_max * 100.0) if total_max > 0 else 0.0
+
+    # Assemble detailed messages: flatten comments
+    detailed_comments = []
+    for t in per_task:
+        for c in t.get('comments', []):
+            detailed_comments.append(f"{t['task']}: {c}")
+    detailed_comments.extend(global_comments)
+
+    results['per_task'] = per_task
+    results['total_awarded'] = total_awarded
+    results['total_max'] = total_max
+    results['percentage'] = round(percentage, 2)
+    results['overall_score'] = round(percentage, 2)
+    results['detailed_comments'] = detailed_comments
+
+    # Additional metadata: include candidate name if present for convenience
+    results['candidate_name'] = candidate.get('candidate_name', '(unknown)')
+
+    return results
+
+def save_results(results: Dict, out_path: str) -> None:
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        raise RuntimeError(f"Failed to write results to {out_path}: {e}")
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>", file=sys.stderr)
+        sys.exit(2)
+
+    cand_path = sys.argv[1]
+    ans_path = sys.argv[2]
+
+    # Grade
+    try:
+        results = grade_submission(cand_path, ans_path)
+    except Exception as e:
+        print(f"Fatal error during grading: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    # Save to test_results.json in same directory as this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out_file = os.path.join(script_dir, 'test_results.json')
+    try:
+        save_results(results, out_file)
+    except Exception as e:
+        print(f"Failed to save results: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    # Print summary to stdout
+    print("Grading complete.")
+    if 'error' in results:
+        print("Error:", results['error'])
+        sys.exit(1)
+    else:
+        print(f"Candidate: {results.get('candidate_name', '(unknown)')}")
+        print(f"Score: {results['total_awarded']} / {results['total_max']} ({results['percentage']}%)")
+        print(f"Results written to: {out_file}")
+
+if __name__ == "__main__":
+    main()

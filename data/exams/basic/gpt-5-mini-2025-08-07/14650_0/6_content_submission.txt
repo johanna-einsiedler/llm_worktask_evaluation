@@ -1,0 +1,52 @@
+```json
+{
+  "candidate_info": {
+    "name": "",
+    "email": "",
+    "time_spent_minutes": null
+  },
+  "environment": {
+    "python_version": "",
+    "pytest_version": ""
+  },
+  "commands_run": [],
+  "initial_test_run_output": "",
+  "test_run_output": "",
+  "final_test_status": "",
+  "tasks": {
+    "task_A": {
+      "id": "A",
+      "title": "Fix failing assertion caused by API change",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    },
+    "task_B": {
+      "id": "B",
+      "title": "Stabilize flaky/time-dependent test using deterministic mocking",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    },
+    "task_C": {
+      "id": "C",
+      "title": "Add/complete a new test for a minor feature/edge case",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    }
+  },
+  "modified_files": [],
+  "change_log": [],
+  "notes": ""
+}
+```

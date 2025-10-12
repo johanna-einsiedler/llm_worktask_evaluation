@@ -1,0 +1,138 @@
+### Exam Title
+Basic Practical Exam — Trial Runs, Verification, Diagnosis, and Minimal Fixes
+
+### Instructions for Candidate
+You have 90 minutes total. Use only the provided machine, the code execution environment, and a text editor. No internet or external packages are allowed.
+
+You will perform four practical tasks. For each task you must capture the exact commands you ran, raw stdout, raw stderr, and exit codes. All deliverables must be placed into a single JSON file named test_submission.json (schema below). Use only standard library languages/tools available on the machine (e.g., python, bash). You may minimally modify the program under test or create a wrapper to make a failing test pass — either approach is allowed, but you must document and justify your choice.
+
+Follow these steps:
+
+1) Task 1 — Run & Verify (15 minutes)
+- Run the provided command-line program with the supplied single sample input.
+- Capture: the exact shell command(s) you used, stdout, stderr, and the process exit code.
+- Compare program output to the provided expected output file.
+- In JSON include a boolean expected_output_match (true/false) and a short comment if there is a mismatch.
+- Do not change the expected output file.
+
+2) Task 2 — Create Repeatable Test Harness (25 minutes)
+- Create an executable test harness named run_tests.py (must be this filename).
+- The harness must:
+  - Run the program automatically across the three provided test inputs.
+  - Programmatically compare outputs to the supplied expected outputs (exact match for text; you may choose tolerant numeric comparisons but must document tolerance).
+  - Print a clear per-test summary and exit with zero only if all tests pass; exit nonzero if any test fails.
+- Capture and include in JSON the full harness source, the exact command you ran to invoke the harness, harness stdout/stderr, exit code, and a per-test pass/fail summary with notes.
+
+3) Task 3 — Diagnose & Propose Fix (25 minutes)
+- One test is expected to fail. Diagnose the cause using only local investigation (e.g., reruns, added prints, reading code). Record the exact commands you ran during investigation.
+- Choose one of:
+  - Implement a minimal, well-scoped code fix in the original program; OR
+  - Implement an external wrapper that normalizes the problematic input before invoking the original program.
+- Provide justification for your choice in the JSON.
+- If you patch the program, include original and modified contents or a unified diff (unified diff format preferred).
+- Re-run run_tests.py to demonstrate the previously failing test now passes. Capture post-fix harness stdout/stderr, exit code, and post-fix per-test results.
+
+4) Task 4 — Short Test Report & Repro Steps (25 minutes)
+- Produce a concise summary (max 300 words) describing what you did, the root cause, the fix/wrapper (brief), risk/limitations, and any assumptions (language/version).
+- Provide the minimal exact shell commands needed to reproduce the successful harness run on a clean machine that has the same language runtime. Include cleanup commands if relevant.
+
+Time management hint: 15 + 25 + 25 + 25 = 90 minutes. You may iterate between tasks, but your final JSON must reflect final, complete evidence.
+
+Mandatory behavior of deliverables
+- All commands in JSON must be exact and runnable (include flags).
+- All captured outputs must be raw text strings (stdout/stderr).
+- Harness must exit nonzero when any test fails (so evaluator can automatically detect failure).
+- If any binary artifacts are produced, base64-encode them and include the encoding in the JSON (but exam materials will not require binaries).
+
+### Expected Outcome
+By the end of the test you must produce a single file test_submission.json (exact schema below) that contains:
+- Candidate identification and environment note (e.g., python --version output).
+- For Task 1: the exact run command, stdout, stderr, exit code, expected_output_match boolean, and comment.
+- For Task 2: run_tests.py source, how you ran it, captured outputs, exit code, and per-test pass/fail summary.
+- For Task 3: commands used in diagnosis, concise diagnosis, chosen fix strategy, the patch or wrapper (content or unified diff), and post-fix harness outputs and test results.
+- For Task 4: a concise summary report (<=300 words), exact reproducible commands, and assumptions/limitations.
+- A time_taken_minutes value (your self-reported minutes to finish) and optional final_notes.
+
+Your submission must be self-contained: the evaluator should be able to re-run the harness and reproduce the reported outputs using only the provided files and the test_submission.json evidence.
+
+### Provided Materials
+You will be given a single archive that contains:
+- program.py (single-file application under test) — a small, self-contained script using only standard library features.
+- inputs/
+  - input1.txt
+  - input2.txt
+  - input3.txt
+- expected/
+  - expected1.txt
+  - expected2.txt
+  - expected3.txt  (one of these is designed to fail before your fix)
+- README.txt explaining program usage and whether editing the program is permitted (for this exam the README allows minimal edits or wrapper use).
+Note: All files are plain text.
+
+### Submission Format
+Create a file named test_submission.json at the top level. The JSON must contain the following keys exactly (order does not matter). Use strings/arrays/integers/booleans as indicated.
+
+{
+  "candidate_name": "string",
+  "language_and_version": "string",        // e.g., output of `python --version`
+  "task_1": {
+    "command_run": "string",               // exact shell command(s)
+    "stdout": "string",
+    "stderr": "string",
+    "exit_code": integer,
+    "expected_output_match": boolean,
+    "comment": "string"
+  },
+  "task_2": {
+    "harness_filename": "run_tests.py",
+    "harness_source": "string",            // full file content
+    "harness_command_run": "string",       // exact command run to execute harness
+    "harness_stdout": "string",
+    "harness_stderr": "string",
+    "harness_exit_code": integer,
+    "test_results": [                      // array of objects per test case
+      {
+        "input_filename": "string",
+        "expected_output_filename": "string",
+        "passed": boolean,
+        "notes": "string"
+      }
+    ]
+  },
+  "task_3": {
+    "investigation_commands": ["string"],  // list of commands used during diagnosis
+    "diagnosis": "string",
+    "fix_strategy": "patch" | "wrapper" | "other",
+    "fix_diff_or_wrapper": "string",       // unified diff if patch, or wrapper full source
+    "post_fix_harness_stdout": "string",
+    "post_fix_harness_exit_code": integer,
+    "post_fix_test_results": [ {           // same structure as task_2.test_results
+      "input_filename": "string",
+      "expected_output_filename": "string",
+      "passed": boolean,
+      "notes": "string"
+    } ]
+  },
+  "task_4": {
+    "summary_report": "string",            // <=300 words
+    "repro_commands": ["string"],          // exact minimal commands to reproduce success
+    "assumptions_and_limitations": "string"
+  },
+  "time_taken_minutes": integer,
+  "final_notes": "string"
+}
+
+Additional constraints for the JSON:
+- All keys above must be present. Empty strings or empty arrays are allowed but will reduce score.
+- If you modified program.py, include a unified diff in task_3.fix_diff_or_wrapper. If you created a wrapper, include full wrapper source there.
+- All captured stdout/stderr must be the raw output (do not summarize).
+- For any numeric-tolerance comparisons, document the tolerance value in the relevant notes field.
+- If you produced any binary file (unlikely), base64-encode and include the encoded string in the appropriate notes field and state the encoding.
+
+Submission checklist (what evaluator will expect)
+- test_submission.json present and valid JSON.
+- run_tests.py included in harness_source exactly and runnable as described in harness_command_run.
+- Commands in the JSON are exact and runnable on a system with the same language runtime.
+- The harness must exit nonzero if any test fails (so the evaluator can detect failures automatically).
+
+Good luck. Remember: be concise, reproducible, and show the raw evidence for everything you claim.

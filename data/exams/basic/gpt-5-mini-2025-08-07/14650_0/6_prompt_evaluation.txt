@@ -1,0 +1,586 @@
+You are an expert exam evaluator. Your task is to generate a **complete answer key** for a practical exam based on the provided overview, exam content, evaluator-only materials, and the official candidate submission template.
+
+### Inputs
+
+- Exam overview (for evaluator context):
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can maintain and update existing automated test scripts so they remain correct, reliable and aligned with the current behavior of the system under test. In real-world terms this means: diagnosing failing or flaky automated tests, deciding whether to update the tests or the code under test (for this basic exam we expect updating tests to match an intentional behavior change), implementing minimal, well-reasoned fixes or additions to tests, and delivering runnable, passing test code and evidence of execution.
+
+### Core Competencies
+- Reading and understanding a small existing codebase and its automated tests (pytest + Python).
+- Diagnosing failing or flaky tests and identifying the correct minimal update to the tests to reflect current app behavior.
+- Making small, maintainable changes to test code (assertions, fixtures, mocks/monkeypatch, removing sleeps, parametrization).
+- Running tests locally and producing reproducible test output.
+- Documenting the changes succinctly and defensibly (why each test was changed).
+- Producing a structured submission (JSON) containing updated test content and execution evidence.
+
+Recommended minimum background: familiarity with Python and pytest, basic mocking/monkeypatch, and experience editing tests.
+
+### Recommended Structure
+Duration: 90 minutes maximum.
+
+Number of tasks: 3 small, hands-on tasks in one project. Tasks are ordered from easiest to slightly harder.
+
+High-level sequence:
+1. Setup & verification (5–10 minutes)
+   - Candidate runs tests to see baseline failing/flaky tests.
+2. Task A — Fix failing assertion caused by API change (20 minutes)
+   - Update one test to assert the new, correct behavior.
+3. Task B — Stabilize a flaky/time-dependent test using monkeypatch (30 minutes)
+   - Replace time.sleep or non-deterministic behavior with deterministic mocking.
+4. Task C — Add a new test for a minor new feature/edge case (20 minutes)
+   - Implement a new test that validates an added behavior in the app.
+5. Finalization & submission (5–10 minutes)
+   - Run full test suite, capture output, prepare test_submission.json and submit.
+
+Expected deliverables (all packaged into a single JSON file named test_submission.json):
+- candidate_info: name, email, time spent (minutes)
+- commands_run: ordered list of shell commands used (e.g., python --version, pytest -q)
+- test_run_output: complete stdout/stderr from running the final test run (pytest output)
+- modified_files: array of { filename, content } for every test file changed or created
+- change_log: array of { filename, line_range (optional), short_description, rationale }
+- final_test_status: pass/fail summary (e.g., "7 passed, 0 failed")
+- environment: Python version and pytest version (if available)
+- optional: any known unresolved issues and estimates to finish (if applicable)
+
+File naming constraint: the file must be named test_submission.json.
+
+Note: Candidate will be given (as part of the exam package) a small project skeleton with the app code and tests. The exam deliverable is the JSON only; examiners will reconstruct/verify changes by copying the provided modified file contents into the repository and running the same commands.
+
+### Practical Elements to Include (how to make it hands-on)
+- Provide a tiny local repo in the exam package (zip) containing:
+  - src/myapp.py — small functions (string formatting, time-dependent function, and a new feature stub that returns boolean).
+  - tests/test_greeting.py — failing assertion created intentionally because the app changed the greeting format.
+  - tests/test_timer.py — flaky test that depends on time.sleep or datetime.now (to be made deterministic via monkeypatch).
+  - tests/test_new_feature.py — missing test or skeleton to be completed.
+  - requirements.txt and instructions to run tests using pytest (pytest should already be available in the environment or included).
+- Give an explicit instruction: “You must not change the application src/myapp.py behavior — update the tests to reflect the current behavior of the application (except you may implement only minor helper changes in tests).”
+- Candidate must run the test suite (pytest), make edits in a text editor, re-run tests, iterate until all tests pass, and submit the JSON with updated test contents and run outputs.
+
+Why this is hands-on:
+- Requires editing test source files.
+- Requires running the test runner and interpreting failing traces.
+- Requires using monkeypatch or fixtures to stabilize tests (practical coding).
+- Requires creating a new test file and verifying it runs.
+
+### Strategic Elements (decision points that reveal real skill)
+- Distinguishing whether a failing test indicates a bug in the application vs. a change in spec (for this basic exam, the app has an intentional change and candidate must update tests — but the candidate must document the decision).
+  - Inspect stack traces and source to decide whether to edit tests or code.
+- Choosing the minimal, maintainable fix (e.g., update an assertion text vs. rewriting entire test logic).
+- Making a flaky test deterministic:
+  - Candidate must choose between replacing sleeps with shorter sleeps, or using monkeypatch to override time functions. The expected correct approach is deterministic mocking via monkeypatch to remove flakiness.
+- Implementing a new test in a way that integrates with existing fixtures and style.
+- Writing concise rationale: for each change the candidate should explain why their change is correct and why they didn’t change the application.
+
+These decisions differentiate candidates who can actually perform test maintenance from those who only understand concepts.
+
+### Evaluation Insights (observable outputs and scoring)
+Primary pass/fail indicator:
+- All tests in the final pytest run (as captured in test_run_output) must pass. For the basic exam, this is required to demonstrate practical capability.
+
+Secondary observable outputs and scoring rubric (total 100 points):
+- Correctness: tests pass and modified tests reflect current behavior (50 points)
+  - 30 points: Final test run shows all tests passing.
+  - 20 points: Modified tests are minimal and correct (no unnecessary changes to app code).
+- Quality of fixes: code clarity, maintainability and use of proper testing patterns (25 points)
+  - 10 points: Use of pytest idioms (fixtures/monkeypatch) when appropriate.
+  - 10 points: Clear, concise test code and comments where useful.
+  - 5 points: No obvious bad anti-patterns (e.g., hard-coded sleeps left in).
+- Rationale & documentation: short, correct explanations for each change (15 points)
+  - 10 points: Correct justification for why test was updated vs changing app.
+  - 5 points: Clear commands and environment info in submission.
+- Submission completeness and reproducibility (10 points)
+  - 5 points: JSON follows required schema and includes all modified test contents.
+  - 5 points: Commands and test run output included and consistent with changes.
+
+Pass threshold for the basic exam:
+- A qualified entry-level candidate should be able to score more than 80%.
+- For acceptance: require at least 80/100 points, with the non-negotiable condition that all tests pass in the final output (otherwise automatic disqualification for this practical task).
+
+Grading guidance and red flags:
+- Immediate fail: no runnable evidence (no pytest output) or tests still failing.
+- Major negative: changing application code to “make tests pass” without clear justification.
+- Positive signals: minimal, focused edits; use of monkeypatch/fixtures to make tests deterministic; concise rationale demonstrating understanding.
+
+### Example JSON schema for test_submission.json (to give candidates and graders a single standard)
+{
+  "candidate_info": {
+    "name": "Full Name",
+    "email": "name@example.com",
+    "time_spent_minutes": 85
+  },
+  "environment": {
+    "python_version": "3.11.4",
+    "pytest_version": "7.3.1"
+  },
+  "commands_run": [
+    "python --version",
+    "pytest -q"
+  ],
+  "test_run_output": "Complete stdout from pytest run (all tests passed)",
+  "final_test_status": "7 passed, 0 failed",
+  "modified_files": [
+    {
+      "filename": "tests/test_greeting.py",
+      "content": "updated file content here as a single string"
+    },
+    {
+      "filename": "tests/test_timer.py",
+      "content": "updated file content here"
+    },
+    {
+      "filename": "tests/test_new_feature.py",
+      "content": "new test file content"
+    }
+  ],
+  "change_log": [
+    {
+      "filename": "tests/test_greeting.py",
+      "short_description": "Updated expected greeting format to include exclamation mark.",
+      "rationale": "Application greeting now returns 'Hello, Name!' (note punctuation). Tests updated to match new behavior."
+    },
+    {
+      "filename": "tests/test_timer.py",
+      "short_description": "Replaced time.sleep-based check with monkeypatched time function.",
+      "rationale": "Removed flakiness by making time deterministic; did not change application code."
+    }
+  ],
+  "notes": "Any additional comments, known limitations, or follow-ups."
+}
+
+(Examiner note: graders should reconstruct the candidate's modified files from modified_files entries and run pytest to verify reproducibility. If environment differences matter, the candidate's environment and pytest output will help.)
+
+### Time allocation suggestion
+- 0–10 min: Run initial tests, read project and failing traces.
+- 10–35 min: Task A (failing assertion) — fix, run tests.
+- 35–70 min: Task B (stabilize flaky test) — implement monkeypatch/fixture, run tests iteratively.
+- 70–85 min: Task C (add new test) — write and verify.
+- 85–90 min: Final run and prepare test_submission.json.
+
+### Final remarks
+This basic practical exam focuses on the common, day-to-day activity of test maintenance: making automated tests current and robust. It is intentionally limited in scope so an entry-level engineer with solid fundamentals can complete it successfully within 90 minutes while providing clear, auditable outputs for graders.
+</examoverview>
+
+- Full exam content:
+<exam>
+### Exam Title
+Maintaining and Updating Automated Tests (Basic Practical Exam — pytest + Python)
+
+---
+
+### Instructions for Candidate
+
+Time limit: 90 minutes. You have a code execution environment and a text editor. Do not use any external resources. Do not modify any application code in src/ except when explicitly allowed below. Work only in the provided project.
+
+Follow these steps in order:
+
+1. Setup & initial verification (5–10 minutes)
+   - Open the provided project folder.
+   - Run basic environment/version checks you normally would (for example: python --version and pytest --version).
+   - Run the test suite once (e.g., pytest -q or pytest -vv) and capture the full stdout and stderr from that run. Save the captured output for later inclusion in your submission.
+
+2. Task A — Fix a failing assertion caused by a deliberate app change (approx. 20 minutes)
+   - Inspect tests failing in the initial run and the application code under test (src/myapp.py).
+   - Decide whether the failing test is due to an intentional change in application behavior (for this exam it is). Do not change application code to make tests pass — update the test instead.
+   - Make the minimal, clear change to the failing test so it asserts the current, correct behavior of the application.
+   - Re-run the tests and confirm the changed test now behaves as expected.
+
+3. Task B — Stabilize a flaky/time-dependent test using deterministic technique (approx. 30 minutes)
+   - Locate the flaky/time-dependent test (tests/test_timer.py).
+   - Make the test deterministic by updating the test code only (e.g., use mocking/monkeypatching or fixtures to replace time-dependent functions). Do not add sleeps or change app code.
+   - Ensure the test becomes reliable and reproducible.
+   - Re-run the test suite and iterate until stable.
+
+4. Task C — Add a new test for a minor feature/edge case (approx. 20 minutes)
+   - Implement one small new test (or complete the provided test skeleton) that validates a minor new behavior in the application (tests/test_new_feature.py).
+   - Follow the style of the existing tests and use available fixtures/monkeypatch if helpful.
+   - Re-run the full test suite and make minimal edits until all tests pass.
+
+5. Finalization & packaging (5–10 minutes)
+   - Run the full test suite once and capture the complete stdout/stderr from that final run.
+   - Prepare a single JSON file named test_submission.json with the required structure (see Submission Format below). The JSON must contain:
+     - Candidate info and time spent.
+     - Commands you ran.
+     - Final pytest output (complete stdout/stderr).
+     - Exact contents of every test file you changed or created (full file text).
+     - A short change_log entry for each modified/added file that explains what you changed and why.
+     - Environment info (Python and pytest versions if available).
+   - Submit only the file test_submission.json.
+
+Important constraints and rules
+- Do not change application behavior in src/myapp.py. You may only edit tests and test helper files. (Minor helper code in tests is allowed.)
+- The final pytest run included in your JSON must show all tests passing. If tests are not passing in your final output, this submission will be disqualified for this practical task.
+- Keep changes minimal and well-justified in the change_log.
+- The grader will reconstruct your modified files from the contents you include in modified_files, so include exact, runnable file contents.
+
+Recommended commands you may use (examples):
+- python --version
+- pytest --version
+- pytest -q
+- pytest -vv tests/test_timer.py::test_name
+
+(You may use any shell commands available in your environment to run and capture outputs. Include them in commands_run.)
+
+---
+
+### Expected Outcome
+
+By the end of the exam you must deliver a single file named test_submission.json containing:
+
+- Evidence that you ran the tests and iterated (commands_run).
+- The full stdout/stderr from the final pytest run (test_run_output).
+- Exact, full text content of every test file you changed or added (modified_files).
+- A concise change_log explaining each change and the rationale.
+- Candidate metadata and environment info.
+- final_test_status string summarizing the pytest result (for example "7 passed, 0 failed").
+
+Non-negotiable pass requirement for this practical basic exam:
+- Your final_test_status must show all tests passing in the included test_run_output. If not, the practical exam is failed.
+
+Grading will focus on: correctness (tests pass), minimal/appropriate changes to tests, use of deterministic testing techniques (no flakiness), and clear rationale for each edit.
+
+---
+
+### Provided Materials
+
+You will be given a small project repository (local files). Expect these files at minimum:
+
+- src/myapp.py — small application functions (string formatting, a time-dependent function, and a simple feature).
+- tests/test_greeting.py — a test failing because app greeting format changed.
+- tests/test_timer.py — a flaky/time-dependent test (uses time.sleep or datetime.now).
+- tests/test_new_feature.py — a skeleton or placeholder test to complete.
+- requirements.txt — dependencies if any (pytest should be available in the environment).
+
+You will not be given internet access or additional documentation. Inspect the source and tests in the repository to determine the required changes.
+
+---
+
+### Submission Format
+
+Create and submit a single JSON file named test_submission.json. It must be valid JSON and must include these keys with these expected structures and types:
+
+- candidate_info: object
+  - name: string
+  - email: string
+  - time_spent_minutes: integer (total minutes spent; must be <= 90)
+- environment: object
+  - python_version: string (output from python --version if available)
+  - pytest_version: string (output from pytest --version if available)
+- commands_run: array of strings
+  - Ordered list of the shell commands you ran (e.g., ["python --version", "pytest -q"])
+- test_run_output: string
+  - Complete stdout and stderr from your final pytest run (exact text).
+- final_test_status: string
+  - Short pytest pass/fail summary (e.g., "7 passed, 0 failed").
+- modified_files: array of objects
+  - Each object contains:
+    - filename: string (relative path, e.g., "tests/test_timer.py")
+    - content: string (full, exact file content after your edits)
+- change_log: array of objects
+  - Each object contains:
+    - filename: string
+    - line_range: optional string (e.g., "1-40") — optional; you may omit
+    - short_description: string (1–2 sentence summary of the change)
+    - rationale: string (brief reason why the test was changed and why app code was not changed)
+- notes: optional string
+  - Any additional comments, known issues, or follow-ups.
+
+Example (illustrative; do not submit this example as-is):
+{
+  "candidate_info": { "name": "Full Name", "email": "name@example.com", "time_spent_minutes": 85 },
+  "environment": { "python_version": "3.11.4", "pytest_version": "7.3.1" },
+  "commands_run": ["python --version", "pytest -q"],
+  "test_run_output": "Complete stdout from pytest run (all tests passed)",
+  "final_test_status": "7 passed, 0 failed",
+  "modified_files": [
+    { "filename": "tests/test_greeting.py", "content": "updated file content here" },
+    { "filename": "tests/test_timer.py", "content": "updated file content here" },
+    { "filename": "tests/test_new_feature.py", "content": "new test file content" }
+  ],
+  "change_log": [
+    {
+      "filename": "tests/test_greeting.py",
+      "short_description": "Updated expected greeting format to include exclamation mark.",
+      "rationale": "Application greeting now returns 'Hello, Name!' — updated test to reflect intentional app change."
+    }
+  ],
+  "notes": ""
+}
+
+Submission checklist before you finalize:
+- test_submission.json is valid JSON.
+- All tests pass in the included test_run_output.
+- All modified/added test file contents are provided and exact.
+- You include a short, clear rationale for each change.
+
+Good luck.Repository structure (all files below are provided verbatim; place them in the indicated paths):
+
+File: src/myapp.py
+----------------------------------------
+# small application module for the exam
+
+import time
+
+def greet(name: str) -> str:
+    """
+    Return a greeting for the given name.
+    Current application behavior includes an exclamation mark.
+    """
+    return f"Hello, {name}!"
+
+def wait_and_report(duration: float) -> float:
+    """
+    Sleep for `duration` seconds and return the measured elapsed time
+    rounded to two decimal places.
+    This intentionally uses time.time() and time.sleep() so tests that
+    depend on exact timing must be made deterministic via test code.
+    """
+    start = time.time()
+    time.sleep(duration)
+    end = time.time()
+    return round(end - start, 2)
+
+def has_digit(s: str) -> bool:
+    """
+    Return True if the string contains at least one ASCII digit, otherwise False.
+    """
+    return any(ch.isdigit() for ch in s)
+----------------------------------------
+
+File: tests/test_greeting.py
+----------------------------------------
+from src import myapp
+
+def test_greet_alice():
+    # This test intentionally expects the old greeting format (no punctuation)
+    # The application currently returns an exclamation mark. Candidate must update this test.
+    assert myapp.greet("Alice") == "Hello, Alice"
+----------------------------------------
+
+File: tests/test_timer.py
+----------------------------------------
+import time
+from src import myapp
+
+def test_wait_and_report_exact():
+    # This test asserts an exact elapsed time which is flaky on real systems
+    # Candidate task: make this deterministic by mocking/monkeypatching time functions.
+    elapsed = myapp.wait_and_report(0.5)
+    assert elapsed == 0.5
+----------------------------------------
+
+File: tests/test_new_feature.py
+----------------------------------------
+from src import myapp
+
+def test_has_digit_skeleton():
+    # Skeleton test: implement a test that verifies the behavior of has_digit.
+    # Candidate task: replace or extend this with a real test (no changes to src/myapp.py).
+    assert False
+----------------------------------------
+
+File: requirements.txt
+----------------------------------------
+pytest
+----------------------------------------
+
+Short notes to candidate (duplicate of the exam constraints; included here for clarity):
+- Do not change any code in src/myapp.py. Only edit tests under tests/.
+- Run pytest from the repository root (the folder containing src/ and tests/).
+- Capture commands you run and the final pytest stdout/stderr for submission.
+- Deliver a JSON file named test_submission.json containing the required fields (see exam instructions).```json
+{
+  "candidate_info": {
+    "name": "",
+    "email": "",
+    "time_spent_minutes": null
+  },
+  "environment": {
+    "python_version": "",
+    "pytest_version": ""
+  },
+  "commands_run": [],
+  "initial_test_run_output": "",
+  "test_run_output": "",
+  "final_test_status": "",
+  "tasks": {
+    "task_A": {
+      "id": "A",
+      "title": "Fix failing assertion caused by API change",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    },
+    "task_B": {
+      "id": "B",
+      "title": "Stabilize flaky/time-dependent test using deterministic mocking",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    },
+    "task_C": {
+      "id": "C",
+      "title": "Add/complete a new test for a minor feature/edge case",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    }
+  },
+  "modified_files": [],
+  "change_log": [],
+  "notes": ""
+}
+```
+</exam>
+
+- Additional materials only visible to the evaluator:
+<materials_evaluator>
+How the materials were constructed and why
+
+Purpose and design choices
+- The repository intentionally contains three small functions in src/myapp.py that map directly to the three tasks:
+  - greet(name): a pure string function whose current behavior includes an exclamation mark. tests/test_greeting.py asserts the previous format (no exclamation). This creates a clear, minimal failing test that should be fixed by editing the test assertion only.
+  - wait_and_report(duration): a time-dependent function using time.time() and time.sleep(). tests/test_timer.py currently asserts exact equality on measured elapsed time which is flaky. This forces the candidate to make the test deterministic by monkeypatching time.time and time.sleep (or by using a fixture) rather than changing application code or leaving sleeps in place.
+  - has_digit(s): a simple boolean feature. tests/test_new_feature.py is a skeleton (assert False) requiring the candidate to implement at least one focused test verifying expected behavior, e.g., that strings with digits return True and strings without return False. This tests the candidate’s ability to add a concise, correct test that fits the existing style.
+
+Deterministic and internally coherent relationships
+- The code uses only deterministic operations; any flakiness is intentional and comes from reliance on real clock/sleep calls.
+- wait_and_report returns a value rounded to two decimals. This rounding is included intentionally so exact equality assertions are brittle on a real run unless time is controlled by tests.
+- The names are consistent across files: src.myapp.greet, src.myapp.wait_and_report, src.myapp.has_digit; tests import using "from src import myapp", matching common project layouts.
+
+Expected candidate actions (correct edits)
+- Task A: Update tests/test_greeting.py to expect "Hello, Alice!" — minimal change to match current behavior. Rationale: application intentionally changed format; tests should reflect that.
+- Task B: Edit tests/test_timer.py to avoid flakiness by monkeypatching:
+  - Replace the direct call that uses the real clock with a test that injects a deterministic time.time implementation that returns two increasing values (start and end). Also monkeypatch time.sleep to a no-op so tests run quickly.
+  - Alternatively, use pytest's monkeypatch fixture to set time.time to a generator-based function returning predetermined values.
+  - Assert the returned elapsed equals the expected value (0.5) exactly, since time.time is now deterministic.
+- Task C: Replace the skeleton in tests/test_new_feature.py with a real test, e.g., parameterized checks for has_digit:
+  - assert has_digit("abc") is False
+  - assert has_digit("a1b") is True
+  - assert has_digit("") is False
+  This provides a small, maintainable test validating edge cases.
+
+Common mistakes and traps (what to look for when grading)
+- Changing application code in src/myapp.py to make tests pass. This is a major negative and disallowed for the exam.
+- Leaving time.sleep in the edited test or inserting small sleeps to try to make timing assertions pass; this is discouraged (non-deterministic) and may still be flaky.
+- Using loose assertions that hide the problem (e.g., asserting > 0 instead of asserting exact behavior). For this basic exam we expect candidates to choose a deterministic technique (monkeypatching) rather than weakening assertions.
+- Forgetting to import or use pytest's monkeypatch fixture correctly; look for proper usage and clear, concise test code.
+
+What the correct answers depend on
+- Understanding that the greeting function intentionally returns "Hello, Name!" (with punctuation) and that the failing greeting test should be updated (not the app).
+- Recognizing that wait_and_report relies on time.time() and time.sleep(), and making the test deterministic by monkeypatching both time.time (to return controlled start/end values) and time.sleep (to a no-op) is the appropriate way to stabilize the test.
+- Implementing a concise test for has_digit that covers common inputs and at least one edge case (empty string).
+
+How these materials differentiate candidate skill levels
+- A basic/entry-level candidate should be able to:
+  - Run pytest, read stack traces, spot the greeting mismatch, and update the assertion.
+  - Use pytest monkeypatch (or similar) to stub time functions and avoid sleeps.
+  - Implement a small, correct test for has_digit.
+  - Produce the required JSON with commands run, modified file contents, change rationale, and final pytest output showing all tests passing.
+- A weaker candidate might:
+  - Edit application code instead of tests.
+  - Leave sleeps in tests or make non-deterministic assertions.
+  - Fail to run or capture pytest output correctly.
+- These materials therefore test both conceptual understanding (when to edit tests) and practical ability (monkeypatching, running pytest, writing small tests).
+
+Grading tips
+- Verify initial failing output (for debug) then verify the candidate’s final test run output in the submission shows all tests passing.
+- Reconstruct modified test files exactly from modified_files and run pytest to reproduce results.
+- Ensure change_log entries justify why tests were updated (not application code) and describe the deterministic technique used for the timer test.
+
+Notes for evaluators
+- All filenames and function names are exact and must be used as-is when reconstructing the candidate's modified files.
+- The rounding in wait_and_report (two decimals) is intentional — it makes naive timing assertions brittle and motivates the correct approach (monkeypatch time functions).
+</materials_evaluator>
+
+- Official candidate submission template (JSON object):
+<submission_template>
+{
+  "candidate_info": {
+    "name": "",
+    "email": "",
+    "time_spent_minutes": null
+  },
+  "environment": {
+    "python_version": "",
+    "pytest_version": ""
+  },
+  "commands_run": [],
+  "initial_test_run_output": "",
+  "test_run_output": "",
+  "final_test_status": "",
+  "tasks": {
+    "task_A": {
+      "id": "A",
+      "title": "Fix failing assertion caused by API change",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    },
+    "task_B": {
+      "id": "B",
+      "title": "Stabilize flaky/time-dependent test using deterministic mocking",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    },
+    "task_C": {
+      "id": "C",
+      "title": "Add/complete a new test for a minor feature/edge case",
+      "summary": "",
+      "files_modified": [],
+      "change_description": "",
+      "rationale": "",
+      "commands_ran": [],
+      "evidence_excerpt": ""
+    }
+  },
+  "modified_files": [],
+  "change_log": [],
+  "notes": ""
+}
+</submission_template>
+
+### Your assignment
+
+1. Using the provided **submission template**, generate a **complete answer key** that:
+   - Fills in every field of the template with the **correct answer**.
+   - Preserves the exact structure of the template (nested fields, arrays, etc.).
+   - Includes relevant metadata where applicable (units, decimal places, allowed options, etc.).
+   - Produces a **valid JSON object** suitable for automated checking.
+   - Enclose the JSON output in triple backticks with `json` for clarity:
+     ```json
+     ...
+     ```
+
+2. Provide an **explanation for each answer**:
+   - Explain how the correct answer was derived.
+   - Reference the exam content, candidate instructions, and evaluator-only materials when necessary.
+
+3. Specify **passing criteria**:
+   - Define minimum requirements for passing (number or percentage of correct answers).
+   - Include any special rules for partial credit or conditional scoring.
+
+### Requirements
+
+- Do **not** change the template structure—fill it in, do not add or remove fields.
+- Do **not** include any text outside the required JSON for the answer key.
+- Ensure the answer key is **deterministic**, machine-checkable, and aligned exactly with the exam questions.
+- Use `null` or empty placeholders **only if a question cannot be evaluated**, but otherwise provide concrete answers.
+

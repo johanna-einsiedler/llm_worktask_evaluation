@@ -1,0 +1,407 @@
+# task_evaluation.py
+import json
+import sys
+import os
+import re
+from datetime import datetime
+
+# Helper functions -----------------------------------------------------------
+
+def safe_load_json(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f), None
+    except Exception as e:
+        return None, str(e)
+
+def contains_any(text, keywords):
+    if not isinstance(text, str):
+        return False
+    low = text
+    for k in keywords:
+        if k in low:
+            return True
+    return False
+
+def count_keywords(text, keywords):
+    if not isinstance(text, str):
+        return 0
+    cnt = 0
+    for k in keywords:
+        if k in text:
+            cnt += 1
+    return cnt
+
+def find_changed_file_by_path(changed_files, path):
+    if not isinstance(changed_files, list):
+        return None
+    for entry in changed_files:
+        try:
+            if entry.get('file_path') == path:
+                return entry
+        except Exception:
+            continue
+    return None
+
+def aggregate_updated_contents(changed_files):
+    contents = ""
+    if not isinstance(changed_files, list):
+        return contents
+    for entry in changed_files:
+        try:
+            contents += "\n" + (entry.get('updated_content') or "")
+        except Exception:
+            continue
+    return contents
+
+def aggregate_original_contents(changed_files):
+    contents = ""
+    if not isinstance(changed_files, list):
+        return contents
+    for entry in changed_files:
+        try:
+            contents += "\n" + (entry.get('original_content') or "")
+        except Exception:
+            continue
+    return contents
+
+def parse_passed_count(final_output):
+    if not isinstance(final_output, str):
+        return 0
+    m = re.search(r'(\d+)\s+passed', final_output)
+    if m:
+        try:
+            return int(m.group(1))
+        except:
+            return 0
+    return 0
+
+# Main grading logic ---------------------------------------------------------
+
+def grade_submission(candidate, answer_key):
+    # Scoring rubric weights
+    weights = {
+        'task1': 15,
+        'task2': 25,
+        'task3': 20,
+        'task4': 20,
+        'documentation': 10,
+        'bonus': 10
+    }
+    max_total = sum(weights.values())
+
+    results = {
+        'scores': {},
+        'explanations': [],
+        'total_points_earned': 0,
+        'total_points_possible': max_total,
+        'overall_score': 0.0
+    }
+
+    # Basic sanity checks
+    if not isinstance(candidate, dict):
+        results['explanations'].append("Invalid candidate submission structure.")
+        return results
+
+    changed_files = candidate.get('changed_files', [])
+    initial_output = candidate.get('initial_test_output', "")
+    final_output = candidate.get('final_test_output', "")
+    commands_run = candidate.get('commands_run', [])
+    optional_bonus_text = candidate.get('optional_bonus', "")
+
+    # Determine expected_pass_count from answer_key if available
+    expected_pass_count = 3  # default
+    try:
+        ak_final = answer_key.get('final_test_output', "")
+        m = re.search(r'(\d+)\s+passed', ak_final or "")
+        if m:
+            expected_pass_count = int(m.group(1))
+    except Exception:
+        pass
+
+    # TASK 1: Reproduce (15)
+    task1_score = 0
+    task1_reasons = []
+    # Check commands_run presence and that candidate executed at least one run command
+    ran_test_command = False
+    extracted_commands = []
+    if isinstance(commands_run, list):
+        for c in commands_run:
+            cmd = c.get('command') if isinstance(c, dict) else None
+            if isinstance(cmd, str):
+                extracted_commands.append(cmd)
+                # accept typical commands
+                if ('run_tests.sh' in cmd) or ('pytest' in cmd) or ('python -m pytest' in cmd):
+                    ran_test_command = True
+
+    # Check initial_test_output contains failure indicators
+    expected_error_keywords = ['KeyError', 'AttributeError', 'FileNotFoundError', 'ERROR']
+    found_errors = []
+    if isinstance(initial_output, str) and initial_output.strip() != "":
+        for k in expected_error_keywords:
+            if k in initial_output:
+                found_errors.append(k)
+
+    if ran_test_command and len(found_errors) >= 2:
+        task1_score = weights['task1']
+        task1_reasons.append("Initial test run command found and initial output contains multiple expected error types: {}".format(", ".join(found_errors)))
+    elif ran_test_command and len(found_errors) == 1:
+        task1_score = int(weights['task1'] * 0.5)
+        task1_reasons.append("Initial run found but only one expected error type detected: {}. Partial credit awarded.".format(", ".join(found_errors)))
+    else:
+        task1_score = 0
+        if not ran_test_command:
+            task1_reasons.append("No test-run command found in commands_run (expected e.g., ./run_tests.sh or python -m pytest).")
+        else:
+            task1_reasons.append("Initial test output missing expected failure evidence. Found: {}".format(found_errors))
+
+    results['scores']['task_1_reproduce'] = {
+        'earned': task1_score,
+        'possible': weights['task1'],
+        'notes': task1_reasons
+    }
+
+    # For further checks, aggregate file contents
+    updated_concat = aggregate_updated_contents(changed_files)
+    original_concat = aggregate_original_contents(changed_files)
+
+    # TASK 2: Selector fix (25)
+    # Look for replacement of old helper/ids:
+    # Expect updated contains 'find_by_id' and 'btn-login' and no 'old_find_by_id' usage in updated
+    task2_score = 0
+    task2_reasons = []
+
+    found_find_by_id = 'find_by_id' in updated_concat
+    found_btn_login = 'btn-login' in updated_concat or 'btn-login' in candidate.get('final_test_output', "")
+    # check that original had old strings (not strictly required, but informative)
+    original_had_old_helper = 'old_find_by_id' in original_concat or 'login-btn' in original_concat
+
+    # Ensure updated likely removed old helper
+    still_has_old_helper = 'old_find_by_id' in updated_concat or 'login-btn' in updated_concat
+
+    if found_find_by_id and found_btn_login and not still_has_old_helper:
+        task2_score = weights['task2']
+        task2_reasons.append("Updated tests use 'find_by_id' and expect 'btn-login' and no longer reference 'old_find_by_id' or 'login-btn'. Good selector/API fix.")
+    elif (found_find_by_id or found_btn_login) and not still_has_old_helper:
+        task2_score = int(weights['task2'] * 0.5)
+        task2_reasons.append("Partial selector/API fix: found {} and {} in updated files. Partial credit.".format(
+            "'find_by_id'" if found_find_by_id else "", "'btn-login'" if found_btn_login else "").strip())
+    else:
+        task2_score = 0
+        if still_has_old_helper:
+            task2_reasons.append("Updated files still reference old helper/id (old_find_by_id or login-btn). No selector fix detected.")
+        else:
+            task2_reasons.append("No selector fix detected in changed files (expected updating old helper usage or button id).")
+
+    results['scores']['task_2_selector_fix'] = {
+        'earned': task2_score,
+        'possible': weights['task2'],
+        'notes': task2_reasons
+    }
+
+    # TASK 3: Timing & stability (20)
+    # Expect removal of time.sleep (no 'time.sleep' in updated) and updated data path 'users_v2.json'
+    task3_score = 0
+    task3_reasons = []
+
+    removed_sleep = 'time.sleep' not in updated_concat
+    uses_new_datafile = 'users_v2.json' in updated_concat or 'users_v2.json' in final_output
+
+    if removed_sleep and uses_new_datafile:
+        task3_score = weights['task3']
+        task3_reasons.append("Hard sleep removed and updated data path to data/users_v2.json.")
+    elif removed_sleep or uses_new_datafile:
+        task3_score = int(weights['task3'] * 0.5)
+        task3_reasons.append("Partial timing/data fix: {}".format("sleep removed." if removed_sleep else "") + (" " if removed_sleep and uses_new_datafile else "") + ("data path updated." if uses_new_datafile else ""))
+    else:
+        task3_score = 0
+        task3_reasons.append("No timing or data-path fixes detected. Expected removal of time.sleep and update to users_v2.json.")
+
+    results['scores']['task_3_timing_and_stability'] = {
+        'earned': task3_score,
+        'possible': weights['task3'],
+        'notes': task3_reasons
+    }
+
+    # TASK 4: Config/API/deprecation fix (20)
+    task4_score = 0
+    task4_reasons = []
+
+    # Detect if updated tests use cfg['app_url'] or similar
+    uses_app_url_direct = "cfg['app_url']" in updated_concat or "cfg.get('app_url'" in updated_concat or '["app_url"]' in updated_concat
+    # Alternatively, detect if helpers.py added mapping from app_url -> base_url
+    helpers_changed = find_changed_file_by_path(changed_files, 'tests/helpers.py')
+    helpers_mapped_base_url = False
+    if helpers_changed:
+        hc = helpers_changed.get('updated_content', "") or ""
+        if "base_url" in hc and "app_url" in hc:
+            helpers_mapped_base_url = True
+
+    # Detect if candidate edited config.json to restore base_url
+    config_changed = find_changed_file_by_path(changed_files, 'config.json')
+    config_added_base_url = False
+    if config_changed:
+        cc = config_changed.get('updated_content', "") or ""
+        if 'base_url' in cc:
+            config_added_base_url = True
+
+    if uses_app_url_direct or helpers_mapped_base_url:
+        task4_score = weights['task4']
+        if uses_app_url_direct:
+            task4_reasons.append("Tests now use cfg['app_url'] (directly adapted to updated config key).")
+        else:
+            task4_reasons.append("helpers.py was updated to provide compatibility mapping for 'base_url' from 'app_url'.")
+    elif config_added_base_url:
+        task4_score = int(weights['task4'] * 0.5)
+        task4_reasons.append("Updated config.json to include old key 'base_url' (works but changes production config; partial credit).")
+    else:
+        task4_score = 0
+        task4_reasons.append("No config/API compatibility fix detected. Expected tests to use cfg['app_url'] or helper to map keys, or adjust config.json.")
+
+    results['scores']['task_4_config_or_api_fix'] = {
+        'earned': task4_score,
+        'possible': weights['task4'],
+        'notes': task4_reasons
+    }
+
+    # DOCUMENTATION & SUBMISSION QUALITY (10)
+    doc_score = 0
+    doc_reasons = []
+    checks = {
+        'summary_of_changes': bool(candidate.get('summary_of_changes', "").strip()),
+        'risk_notes_and_next_steps': bool(candidate.get('risk_notes_and_next_steps', "").strip()),
+        'changed_files_present': isinstance(candidate.get('changed_files'), list) and len(candidate.get('changed_files')) > 0,
+        'initial_test_output_present': bool(candidate.get('initial_test_output', "").strip()),
+        'final_test_output_present': bool(candidate.get('final_test_output', "").strip()),
+        'commands_run_present': isinstance(candidate.get('commands_run'), list) and len(candidate.get('commands_run')) > 0,
+        'start_time_present': bool(candidate.get('start_time_utc', "").strip()),
+        'end_time_present': bool(candidate.get('end_time_utc', "").strip()),
+        'total_minutes_present': isinstance(candidate.get('total_minutes'), int)
+    }
+    passed_checks = sum(1 for v in checks.values() if v)
+    # allocate 10 points proportionally
+    doc_score = int(round(weights['documentation'] * (passed_checks / len(checks))))
+    for k, v in checks.items():
+        doc_reasons.append(f"{k}: {'OK' if v else 'MISSING'}")
+    results['scores']['documentation_and_submission'] = {
+        'earned': doc_score,
+        'possible': weights['documentation'],
+        'notes': doc_reasons
+    }
+
+    # BONUS (up to 10)
+    bonus_score = 0
+    bonus_reasons = []
+    if isinstance(optional_bonus_text, str) and optional_bonus_text.strip():
+        # Candidate claims a bonus. We'll give partial/full depending on whether there's evidence in changed files.
+        bonus_score = 8  # partial generous credit for claiming bonus work
+        bonus_reasons.append("optional_bonus text present; awarding partial bonus credit.")
+        # If there is clear helper or refactor evidence (helpers.py changed or multiple files changed), add more
+        if any(cf.get('file_path') == 'tests/helpers.py' for cf in changed_files) or len(changed_files) > 2:
+            bonus_score = 10
+            bonus_reasons.append("Detected helpers.py changes or multiple changed files; awarding full bonus.")
+    else:
+        bonus_score = 0
+        bonus_reasons.append("No optional_bonus claimed.")
+
+    results['scores']['optional_bonus'] = {
+        'earned': bonus_score,
+        'possible': weights['bonus'],
+        'notes': bonus_reasons
+    }
+
+    # SUM scores so far
+    subtotal = task1_score + task2_score + task3_score + task4_score + doc_score + bonus_score
+
+    # Validate final test output indicates passing; if not, reduce task2/3/4 credits by 50% (they should have produced passing tests)
+    final_passed_count = parse_passed_count(final_output)
+    final_shows_pass = final_passed_count >= expected_pass_count
+    pass_check_notes = []
+    if final_shows_pass:
+        pass_check_notes.append(f"Final test output shows {final_passed_count} passed (expected >= {expected_pass_count}). No deduction.")
+    else:
+        # reduce task2/3/4 earned points by 50% (round down)
+        deduction = 0
+        for task_key in ['task_2_selector_fix', 'task_3_timing_and_stability', 'task_4_config_or_api_fix']:
+            earned = results['scores'][task_key]['earned']
+            reduced = int(earned * 0.5)
+            deduction += (earned - reduced)
+            results['scores'][task_key]['notes'].append("Final tests did not pass fully; reducing this task's awarded points by 50%.")
+            results['scores'][task_key]['earned'] = reduced
+        subtotal -= deduction
+        pass_check_notes.append(f"Final test output does not show expected passing tests (found {final_passed_count} passed; expected >= {expected_pass_count}). Reduced task2/3/4 points by 50% (deducted {deduction} points).")
+
+    # Final aggregation
+    results['total_points_earned'] = subtotal
+    results['total_points_possible'] = max_total
+    percent = round((subtotal / max_total) * 100, 2) if max_total > 0 else 0.0
+    results['overall_score'] = percent
+
+    # Attach additional info
+    results['meta'] = {
+        'expected_pass_count': expected_pass_count,
+        'final_passed_count': final_passed_count,
+        'final_pass_check': final_shows_pass,
+        'initial_errors_found': found_errors,
+        'commands_executed_sample': extracted_commands[:5]
+    }
+
+    # Collect explanation notes from each task
+    # Ensure we include previous per-task notes already added
+    results['explanations'].extend(pass_check_notes)
+
+    return results
+
+# Entry point ---------------------------------------------------------------
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        sys.exit(2)
+
+    cand_path = sys.argv[1]
+    key_path = sys.argv[2]
+
+    # Load candidate submission
+    candidate_json, err = safe_load_json(cand_path)
+    if err:
+        out = {
+            'error': f"Failed to load candidate submission JSON from '{cand_path}': {err}"
+        }
+        with open('test_results.json', 'w', encoding='utf-8') as f:
+            json.dump(out, f, indent=2)
+        print(out['error'])
+        sys.exit(1)
+
+    # Load answer key
+    answer_key_json, err2 = safe_load_json(key_path)
+    if err2:
+        out = {
+            'error': f"Failed to load answer key JSON from '{key_path}': {err2}"
+        }
+        with open('test_results.json', 'w', encoding='utf-8') as f:
+            json.dump(out, f, indent=2)
+        print(out['error'])
+        sys.exit(1)
+
+    # Grade
+    try:
+        results = grade_submission(candidate_json, answer_key_json)
+    except Exception as e:
+        results = {
+            'error': f"Grading failed with exception: {str(e)}"
+        }
+
+    # Save results
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        out_path = os.path.join(script_dir, 'test_results.json')
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"Grading complete. Results saved to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results file: {e}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

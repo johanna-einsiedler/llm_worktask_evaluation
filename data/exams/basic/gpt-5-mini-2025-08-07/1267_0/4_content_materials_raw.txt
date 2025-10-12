@@ -1,0 +1,345 @@
+<MATERIALS_FOR_CANDIDATE>
+Repository root files and folder structure (all files below are provided as plain text files at the given paths).
+
+README.md
+---------
+Debug & Fix: Practical Code Repair (Basic)
+=========================================
+Run tests with:
+  python3 run_tests.py
+
+You have 90 minutes. Use only the provided files and a text editor. Produce a file named test_submission.json in the repository root as described in the exam instructions.
+
+This repository contains:
+- data/transactions.csv
+- data/transactions_edge.csv
+- expected_outputs/golden_report.json
+- src/parser.py        (contains an intentional bug for Task 1)
+- src/aggregator.py    (contains intentional logic bugs for Task 2 & 3)
+- src/formatter.py     (contains formatting bug for Task 4)
+- src/app.py           (orchestrates pipeline)
+- run_tests.py         (automated test runner that checks Tasks 1–4)
+
+Do not create or require any external dependencies. All tests are deterministic and fast.
+
+data/transactions.csv
+---------------------
+Transaction_ID,Customer_ID,Product_Code,Quantity,Region
+T001,C001,P01,2,North
+T002,C002,P02,1,East
+T003,C001,P01,3,North
+T004,C003,P03,5,South
+T005,C004,P02,2,West
+T006,C005,P03,1,South
+T007,C006,P01,4,East
+
+data/transactions_edge.csv
+--------------------------
+Transaction_ID,Customer_ID,Product_Code,Quantity,Region
+T001,C001,P01,2,North
+T002,C002,P02,1,East
+T003,C001,P01,3,North
+T004,C003,P03,5,South
+T005,C004,P02,2,West
+T006,C005,P03,1,South
+T007,C006,P01,4,East
+T008,C007,P02,,West
+
+expected_outputs/golden_report.json
+----------------------------------
+{
+  "products": {
+    "P01": 9,
+    "P02": 3,
+    "P03": 6
+  },
+  "top_product": "P01"
+}
+
+src/parser.py
+-------------
+# parser.py
+# Responsible for reading CSV files into header + rows
+# Intentional bug present for Task 1 (syntax/typo to fix)
+
+def read_csv(path):
+    with open(path, 'r') as f
+        lines = f.readlines()
+    header = lines[0].strip().split(',')
+    rows = [line.strip().split(',') for line in lines[1:]]
+    return header, rows
+
+src/aggregator.py
+-----------------
+# aggregator.py
+# Responsible for producing totals per product.
+# Contains logic bugs for Task 2 (off-by-one) and Task 3 (no handling of empty quantities).
+
+def compute_totals(rows):
+    """
+    rows: list of lists, each row as [Transaction_ID,Customer_ID,Product_Code,Quantity,Region]
+    Returns: dict product_code -> total_quantity
+    """
+    totals = {}
+    # BUG: off-by-one: starts at index 1, skipping the first data row
+    for i in range(1, len(rows)):
+        row = rows[i]
+        product = row[2]
+        quantity = int(row[3])  # BUG: will raise if empty string
+        totals[product] = totals.get(product, 0) + quantity
+    return totals
+
+def find_top_product(totals):
+    """Return product code with highest total (string)."""
+    if not totals:
+        return None
+    top = max(totals, key=totals.get)
+    return top
+
+src/formatter.py
+----------------
+# formatter.py
+# Writes final report to a JSON file.
+# Contains a minor formatting bug for Task 4 (keys not guaranteed sorted).
+
+import json
+
+def write_report(report, path):
+    with open(path, 'w') as f:
+        # BUG: not using sort_keys, so ordering may differ from golden
+        f.write(json.dumps(report, indent=2))
+
+src/app.py
+----------
+# app.py
+# Simple orchestrator that ties parser -> aggregator -> formatter
+
+def run(input_path, output_path):
+    header, rows = read_csv(input_path)  # expects parser.read_csv to be available when loaded by run_tests
+    totals = compute_totals(rows)        # expects aggregator.compute_totals to be available
+    top = find_top_product(totals)       # expects aggregator.find_top_product to be available
+    report = {"products": totals, "top_product": top}
+    write_report(report, output_path)    # expects formatter.write_report to be available
+
+run_tests.py
+------------
+#!/usr/bin/env python3
+"""
+run_tests.py
+
+Automated test runner for Tasks 1-4.
+Run: python3 run_tests.py
+
+This script loads modules from src/ (by file path) and executes small checks.
+It prints Task1..Task4 PASS/FAIL lines and exits with non-zero if any task failed.
+"""
+
+import sys
+import os
+import json
+import traceback
+import importlib.util
+from pathlib import Path
+
+ROOT = Path(__file__).parent
+SRC = ROOT / 'src'
+DATA = ROOT / 'data'
+OUTPUT = ROOT / 'output'
+EXPECTED = ROOT / 'expected_outputs'
+
+OUTPUT.mkdir(exist_ok=True)
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, str(path))
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+        return mod, None
+    except Exception as e:
+        return None, traceback.format_exc()
+
+results = {}
+
+# Task 1: Parse header check
+parser_mod, parser_err = load_module('parser', SRC / 'parser.py')
+if parser_err:
+    print("Task1: FAIL")
+    print("  parser import error:")
+    print(parser_err.splitlines()[:5])
+    results[1] = False
+else:
+    try:
+        header, rows = parser_mod.read_csv(str(DATA / 'transactions.csv'))
+        expected_header = ['Transaction_ID','Customer_ID','Product_Code','Quantity','Region']
+        if header == expected_header:
+            print("Task1: PASS")
+            results[1] = True
+        else:
+            print("Task1: FAIL")
+            print("  header mismatch:")
+            print("    got:     {}".format(header))
+            print("    expected:{}".format(expected_header))
+            results[1] = False
+    except Exception as e:
+        print("Task1: FAIL")
+        print("  error during read_csv:")
+        traceback.print_exc(limit=2)
+        results[1] = False
+
+# For Tasks 2-4 we require parser to be correct; if Task1 failed, mark dependent tasks as failed/skipped.
+if not results.get(1, False):
+    print("Task2: FAIL")
+    print("  skipped because Task1 failed (parser not available)")
+    print("Task3: FAIL")
+    print("  skipped because Task1 failed (parser not available)")
+    print("Task4: FAIL")
+    print("  skipped because Task1 failed (parser not available)")
+    sys.exit(2)
+
+# Task 2: Aggregation logic check
+aggregator_mod, aggregator_err = load_module('aggregator', SRC / 'aggregator.py')
+if aggregator_err:
+    print("Task2: FAIL")
+    print("  aggregator import error:")
+    print(aggregator_err.splitlines()[:5])
+    results[2] = False
+else:
+    try:
+        totals = aggregator_mod.compute_totals(rows)
+        expected = {"P01": 9, "P02": 3, "P03": 6}
+        if totals == expected:
+            print("Task2: PASS")
+            results[2] = True
+        else:
+            print("Task2: FAIL")
+            print("  totals mismatch:")
+            print("    got:     {}".format(totals))
+            print("    expected:{}".format(expected))
+            results[2] = False
+    except Exception as e:
+        print("Task2: FAIL")
+        print("  error during compute_totals:")
+        traceback.print_exc(limit=2)
+        results[2] = False
+
+# Task 3: Edge case handling (empty quantity field in transactions_edge.csv)
+try:
+    header_e, rows_e = parser_mod.read_csv(str(DATA / 'transactions_edge.csv'))
+except Exception:
+    print("Task3: FAIL")
+    print("  parser read_csv failed on edge file")
+    results[3] = False
+else:
+    if not results.get(2, False):
+        print("Task3: FAIL")
+        print("  skipped because Task2 failed (aggregation may be incorrect)")
+        results[3] = False
+    else:
+        try:
+            totals_e = aggregator_mod.compute_totals(rows_e)
+            # Expect same totals as before since empty quantity should be treated as 0
+            expected = {"P01": 9, "P02": 3, "P03": 6}
+            if totals_e == expected:
+                print("Task3: PASS")
+                results[3] = True
+            else:
+                print("Task3: FAIL")
+                print("  totals on edge file mismatch:")
+                print("    got:     {}".format(totals_e))
+                print("    expected:{}".format(expected))
+                results[3] = False
+        except Exception as e:
+            print("Task3: FAIL")
+            print("  error during compute_totals on edge file:")
+            traceback.print_exc(limit=2)
+            results[3] = False
+
+# Task 4: Full pipeline & formatting: produce output/report.json and compare to expected_outputs/golden_report.json
+formatter_mod, formatter_err = load_module('formatter', SRC / 'formatter.py')
+if formatter_err:
+    print("Task4: FAIL")
+    print("  formatter import error:")
+    print(formatter_err.splitlines()[:5])
+    results[4] = False
+else:
+    try:
+        report = {"products": totals, "top_product": aggregator_mod.find_top_product(totals)}
+        outpath = OUTPUT / 'report.json'
+        formatter_mod.write_report(report, str(outpath))
+        with open(outpath, 'r') as f:
+            produced = json.load(f)
+        with open(EXPECTED / 'golden_report.json', 'r') as f:
+            expected = json.load(f)
+        if produced == expected:
+            print("Task4: PASS")
+            results[4] = True
+        else:
+            print("Task4: FAIL")
+            print("  produced report differs from golden:")
+            print("    produced: {}".format(json.dumps(produced, indent=2)))
+            print("    expected: {}".format(json.dumps(expected, indent=2)))
+            results[4] = False
+    except Exception as e:
+        print("Task4: FAIL")
+        print("  error during pipeline/formatting:")
+        traceback.print_exc(limit=2)
+        results[4] = False
+
+# Summary and exit code
+all_pass = all(results.get(i, False) for i in (1,2,3,4))
+if all_pass:
+    print("\nAll tasks passed.")
+    sys.exit(0)
+else:
+    failed = [str(i) for i in (1,2,3,4) if not results.get(i, False)]
+    print("\nTasks failed: " + ", ".join(failed))
+    sys.exit(3)
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How and why the materials were created
+- The repository is a small, self-contained Python project that simulates a typical debugging workflow: reading CSV data, aggregating numeric values, and writing a JSON report. It is intentionally minimal so an entry-level candidate can complete it within 90 minutes.
+- Four tasks are embedded across three source modules (parser.py, aggregator.py, formatter.py). Each module contains one or more focused, realistic bugs:
+  - Task 1 (parser.py): syntax/typo that prevents parsing. This forces the candidate to reproduce the immediate failure and fix a trivial but blocking bug (a missing colon). This represents common real-world issues like accidental typo/syntax errors.
+  - Task 2 (aggregator.py): off-by-one logic error that causes incorrect aggregation (skips first data row). This tests understanding of indexing and basic loop logic.
+  - Task 3 (aggregator.py): missing handling of an edge case (empty quantity strings) that causes runtime exceptions when converting to int. This tests defensive coding and minimal, robust fixes (e.g., converting empty to 0 or using safe parsing).
+  - Task 4 (formatter.py): formatting/order issue where JSON output does not match the golden file because keys are not deterministically ordered. This tests awareness of output determinism and exact-match requirements.
+- The run_tests.py script exercises the modules sequentially and prints concise PASS/FAIL lines for each Task. It is intentionally dependent: Task2-4 will be skipped if Task1 fails. This simulates a real codebase dependency where early failures prevent downstream verification.
+
+Data patterns and hidden relationships
+- The CSV data contains three product codes (P01, P02, P03) with explicit quantities such that the correct aggregated totals are:
+  - P01: 9
+  - P02: 3
+  - P03: 6
+  The top product is P01 (highest total).
+- transactions_edge.csv adds a record with an empty Quantity field for product P02. The intended behavior (documented by the tests) is to treat empty Quantity as 0 so totals remain unchanged.
+- The golden JSON file expects the products mapping to contain integer totals and the top_product string exactly as shown. The ordering of keys in the golden file is P01, P02, P03. The final formatting check requires exact structural equality (not just textual equality of pretty-printed JSON), so the produced JSON must match expected types and values; using sort_keys in json.dump ensures deterministic key order.
+
+Traps, ambiguities, and common errors a candidate might make
+- If the candidate fixes Task1 by removing the specific syntax error but adds unrelated changes (reformatting or wholesale rewrites), evaluators should note excessive edits. The exam expects minimal, well-reasoned edits.
+- For Task2, a common quick-but-wrong fix is to change the loop to another incorrect range (e.g., range(0, len(rows)-1)) introducing a different off-by-one. The correct fix is to ensure iteration includes all data rows (e.g., iterate directly over rows or use range(0, len(rows))).
+- For Task3, candidates may choose different but acceptable behaviors for malformed quantities: treating empty strings as 0, ignoring the row, or raising a specific error. The tests assert totals remain unchanged; therefore treating empty quantity as 0 is required by the test harness. The candidate should document this decision in test_submission.json notes.
+- For Task4, candidates might produce a JSON file that looks identical when printed but differs in key ordering or numeric types (e.g., quantities accidentally converted to strings). The test compares parsed JSON objects, so types must match (integers for totals) and keys must match exactly; using json.dump(..., sort_keys=True) and preserving integer types is the intended fix.
+
+What the correct or expected answers depend on
+- Correctness depends on:
+  - Fixing the syntax error in src/parser.py so read_csv returns header and rows exactly as the test expects.
+  - Fixing src/aggregator.py to iterate all rows and to defensively parse Quantity fields (treat empty as 0).
+  - Ensuring src/formatter.py writes deterministic JSON that structurally matches expected_outputs/golden_report.json (keys and value types).
+- The run_tests.py script is authoritative: it prints PASS/FAIL lines and compares produced data to the golden file strictly. The candidate's test_submission.json must include the exact lines printed by run_tests.py to show reproducible verification.
+
+How these materials differentiate conceptual vs practical understanding
+- Conceptual knowledge alone (knowing what off-by-one means) is insufficient; the candidate must:
+  - Reproduce failures by running the provided test runner.
+  - Inspect and edit the actual source files to make minimal, targeted changes.
+  - Re-run tests to demonstrate fixes and avoid regressions.
+  - Document changes and testing evidence in the required JSON file.
+- Strong practical performers will make minimal edits with clear rationales, pass all tests, and include exact run output lines. Candidates who only understand concepts but cannot correctly locate or fix the specific code will leave tests failing or will over-modify files — both are detectable by the evaluator.
+
+Evaluator notes
+- The tasks are intentionally ordered and dependent; fix Task1 first to unlock Tasks 2–4.
+- Look at diffs for minimality: single-line fixes (syntax, loop bounds, try/except around int conversion, sort_keys flag) are expected.
+- For partial credit: if tests for a task still fail but the candidate correctly diagnoses the root cause and documents a reasonable partial fix, award partial points per rubric.
+- Use run_tests.py output lines included in the candidate's test_submission.json to cross-check claimed fixes.
+
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

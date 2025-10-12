@@ -1,0 +1,59 @@
+```json
+{
+  "candidate_name": "Answer Key (Reference)",
+  "task_results": [
+    {
+      "task_id": 1,
+      "files_changed": [
+        "src/parser.py"
+      ],
+      "change_summary": "Fixed a syntax error: added missing colon in the 'with open(...) as f' line so the read_csv function can execute and return header and rows.",
+      "root_cause": "Syntax error (missing colon) in src/parser.py prevented the module from importing and read_csv from running.",
+      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask1: PASS",
+      "time_spent_minutes": 10,
+      "confidence_level": "high",
+      "notes": "Explanation / derivation: Running the provided test runner initially shows Task1 failing to import the parser module. Inspecting src/parser.py shows 'with open(path, 'r') as f' missing the trailing colon. Adding the colon is the minimal fix; no other lines needed. After the fix, re-running the test runner results in 'Task1: PASS'."
+    },
+    {
+      "task_id": 2,
+      "files_changed": [
+        "src/aggregator.py"
+      ],
+      "change_summary": "Rewrote the iteration to loop directly over rows (for row in rows) instead of range(1, len(rows)), ensuring the first data row is included in aggregation.",
+      "root_cause": "Off-by-one logic bug: code used range(1, len(rows)) which skipped the first data row, causing totals to be incorrect.",
+      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask2: PASS",
+      "time_spent_minutes": 25,
+      "confidence_level": "high",
+      "notes": "Explanation / derivation: The test harness expected totals {\"P01\": 9, \"P02\": 3, \"P03\": 6}. The original compute_totals used range(1, len(rows)) which omitted rows[0]. Iterating directly over rows or using range(0, len(rows)) fixes the off-by-one. Kept change minimal and localized to a single loop construct change."
+    },
+    {
+      "task_id": 3,
+      "files_changed": [
+        "src/aggregator.py"
+      ],
+      "change_summary": "Added defensive parsing for Quantity: strip the field and treat empty string as 0 before converting to int (quantity = int(qty_str) if qty_str != '' else 0).",
+      "root_cause": "compute_totals attempted int('') when Quantity field was empty in the edge CSV, raising a ValueError and causing Task3 to fail.",
+      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask3: PASS",
+      "time_spent_minutes": 30,
+      "confidence_level": "high",
+      "notes": "Explanation / derivation: transactions_edge.csv contains a row with an empty Quantity field. The tests specify that empty quantities should be treated as 0 so totals remain unchanged. The minimal, robust fix is to check qty_str and use 0 for empty string; this avoids exceptions and matches test expectations. Decision rationale: treating empty as 0 preserves totals and meets provided test assertions. Change was limited to a few lines in compute_totals."
+    },
+    {
+      "task_id": 4,
+      "files_changed": [
+        "src/formatter.py"
+      ],
+      "change_summary": "Made JSON serialization deterministic by using json.dump(..., sort_keys=True, indent=2) when writing the report so the produced JSON structurally matches the golden file.",
+      "root_cause": "Non-deterministic JSON key ordering (json.dumps without sort_keys) caused the produced report to differ from the golden reference even though data values/types were correct.",
+      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask4: PASS",
+      "time_spent_minutes": 15,
+      "confidence_level": "high",
+      "notes": "Explanation / derivation: The test compares the parsed JSON objects, but deterministic ordering via sort_keys ensures consistent output and avoids subtle mismatches in testing environments that may affect string comparison or produced structure. The minimal fix is to use json.dump with sort_keys=True when writing to file. PASSING CRITERIA (summary): To pass the exam, the candidate must get Task1..Task4 to PASS via the provided test runner; automated tests are authoritative. Partial-credit rules (as applied by evaluator): Task correctness (automated) = 70 points (Task1=15, Task2=20, Task3=20, Task4=15), explanation & reproducibility = 20 points, code hygiene & minimality = 10 points. The passing threshold for the basic exam is 80/100."
+    }
+  ],
+  "final_test_output": "Task1: PASS\nTask2: PASS\nTask3: PASS\nTask4: PASS\n\nAll tasks passed.\n",
+  "total_time_minutes": 80,
+  "checksum_of_modified_files": {},
+  "final_score_self_assessment": 100
+}
+```

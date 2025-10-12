@@ -1,0 +1,82 @@
+{
+  "candidate_name": "Example Candidate",
+  "language_and_version": "Python 3.8.10",
+  "task_1": {
+    "command_run": "python3 program.py inputs/input1.txt",
+    "stdout": "Alpha,15.00,2,7.50\nBeta,5.00,1,5.00\n",
+    "stderr": "",
+    "exit_code": 0,
+    "expected_output_match": true,
+    "comment": "Output matches expected/expected1.txt exactly."
+  },
+  "task_2": {
+    "harness_filename": "run_tests.py",
+    "harness_source": "#!/usr/bin/env python3\n\"\"\"\nSimple test harness for program.py.\nRuns three tests: inputs/input1.txt, inputs/input2.txt, inputs/input3.txt\nCompares program stdout to expected files. Exits 0 iff all tests pass.\n\"\"\"\nimport subprocess\nimport sys\nimport os\n\ntests = [\n    (\"inputs/input1.txt\", \"expected/expected1.txt\"),\n    (\"inputs/input2.txt\", \"expected/expected2.txt\"),\n    (\"inputs/input3.txt\", \"expected/expected3.txt\"),\n]\n\nall_passed = True\nresults = []\nprint(\"Running tests...\")\nfor i, (inp, exp) in enumerate(tests, start=1):\n    print(f\"Test {i}: {inp} -> running program...\")\n    proc = subprocess.run([sys.executable, \"program.py\", inp], capture_output=True, text=True)\n    out = proc.stdout\n    err = proc.stderr\n    rc = proc.returncode\n\n    # Read expected output\n    with open(exp, 'r', encoding='utf-8') as f:\n        expected = f.read()\n\n    # Normalize by splitting into lines and stripping trailing CRLF differences\n    out_lines = [ln.rstrip('\\r') for ln in out.splitlines()]\n    exp_lines = [ln.rstrip('\\r') for ln in expected.splitlines()]\n\n    passed = (rc == 0) and (out_lines == exp_lines)\n    note = \"\"\n    if rc != 0:\n        note = f\"program exited with code {rc}. stderr:\\n{err}\"\n    elif out_lines != exp_lines:\n        note = \"Output does not match expected exactly.\\n--- program stdout ---\\n\" + out + \"--- expected ---\\n\" + expected\n\n    results.append({\n        'input': inp,\n        'expected': exp,\n        'passed': passed,\n        'returncode': rc,\n        'stderr': err,\n        'note': note,\n    })\n\n    if passed:\n        print(f\"Test {i}: {inp} -> PASS\")\n    else:\n        print(f\"Test {i}: {inp} -> FAIL\")\n        if note:\n            print(\"  Reason:\")\n            for line in note.splitlines():\n                print(\"    \" + line)\n        all_passed = False\n\nprint(f\"All tests completed: {sum(1 for r in results if r['passed'])}/{len(results)} passed\")\nif not all_passed:\n    print(\"Exiting with failure (1)\")\n    sys.exit(1)\nprint(\"All tests passed. Exiting with success (0)\")\nsys.exit(0)\n",
+    "harness_command_run": "python3 run_tests.py",
+    "harness_stdout": "Running tests...\nTest 1: inputs/input1.txt -> running program...\nTest 1: inputs/input1.txt -> PASS\nTest 2: inputs/input2.txt -> running program...\nTest 2: inputs/input2.txt -> PASS\nTest 3: inputs/input3.txt -> running program...\nTest 3: inputs/input3.txt -> FAIL\n  Reason:\n    program exited with code 1. stderr:\n    Traceback (most recent call last):\n      File \"program.py\", line 24, in main\n        category = parts[1].strip()\n    IndexError: list index out of range\nAll tests completed: 2/3 passed\nExiting with failure (1)\n",
+    "harness_stderr": "",
+    "harness_exit_code": 1,
+    "test_results": [
+      {
+        "input_filename": "inputs/input1.txt",
+        "expected_output_filename": "expected/expected1.txt",
+        "passed": true,
+        "notes": "Output matches expected exactly."
+      },
+      {
+        "input_filename": "inputs/input2.txt",
+        "expected_output_filename": "expected/expected2.txt",
+        "passed": true,
+        "notes": "Output matches expected exactly (numeric aggregation and formatting correct)."
+      },
+      {
+        "input_filename": "inputs/input3.txt",
+        "expected_output_filename": "expected/expected3.txt",
+        "passed": false,
+        "notes": "program exited with code 1. stderr contains IndexError: list index out of range caused by an empty (blank) line in the input file.\nCaptured stderr:\nTraceback (most recent call last):\n  File \"program.py\", line 24, in main\n    category = parts[1].strip()\nIndexError: list index out of range"
+      }
+    ]
+  },
+  "task_3": {
+    "investigation_commands": [
+      "python3 program.py inputs/input3.txt",
+      "cat -n inputs/input3.txt",
+      "python3 -c \"import sys; print(sys.version)\""
+    ],
+    "diagnosis": "The program does not skip empty/blank lines. When the input contains a blank line, line.split(',') produces [''] and accessing parts[1] raises IndexError: list index out of range. Root cause: missing guard to ignore empty lines before splitting/processing.",
+    "fix_strategy": "patch",
+    "fix_diff_or_wrapper": "--- program.py\t2025-01-01 00:00:00.000000000 +0000\n+++ program.py\t2025-01-01 00:00:00.000000000 +0000\n@@\n-    with open(input_path, 'r', encoding='utf-8') as f:\n-        for line in f:\n-            line = line.strip()\n-            parts = line.split(',')\n-            # NOTE (intentional bug): this code does not skip empty lines.\n-            # If `line` is empty, `parts` will be [''] and accessing parts[1] will fail.\n-            id_field = parts[0].strip()\n-            category = parts[1].strip()\n-            value = float(parts[2].strip())\n+    with open(input_path, 'r', encoding='utf-8') as f:\n+        for line in f:\n+            line = line.strip()\n+            # Skip empty/blank lines to avoid IndexError on malformed blank lines\n+            if not line:\n+                continue\n+            parts = line.split(',')\n+            # After skipping blank lines, proceed to parse fields\n+            id_field = parts[0].strip()\n+            category = parts[1].strip()\n+            value = float(parts[2].strip())\n",
+    "post_fix_harness_stdout": "Running tests...\nTest 1: inputs/input1.txt -> running program...\nTest 1: inputs/input1.txt -> PASS\nTest 2: inputs/input2.txt -> running program...\nTest 2: inputs/input2.txt -> PASS\nTest 3: inputs/input3.txt -> running program...\nTest 3: inputs/input3.txt -> PASS\nAll tests completed: 3/3 passed\nAll tests passed. Exiting with success (0)\n",
+    "post_fix_harness_exit_code": 0,
+    "post_fix_test_results": [
+      {
+        "input_filename": "inputs/input1.txt",
+        "expected_output_filename": "expected/expected1.txt",
+        "passed": true,
+        "notes": "Pass after patch; behaviour unchanged for normal input."
+      },
+      {
+        "input_filename": "inputs/input2.txt",
+        "expected_output_filename": "expected/expected2.txt",
+        "passed": true,
+        "notes": "Pass after patch; numeric aggregation and formatting preserved."
+      },
+      {
+        "input_filename": "inputs/input3.txt",
+        "expected_output_filename": "expected/expected3.txt",
+        "passed": true,
+        "notes": "Previously failing test passes after skipping blank lines; output matches expected exactly."
+      }
+    ]
+  },
+  "task_4": {
+    "summary_report": "I ran the provided program against the three supplied inputs, captured stdout/stderr/exit codes, and automated the checks with run_tests.py. Task 1 confirmed that input1 produces the expected output. Task 2 automated all three runs: input1 and input2 passed; input3 raised an IndexError due to a blank line in the input. For Task 3 I diagnosed the root cause (the program does not skip empty lines) and applied a minimal patch that skips blank lines before parsing. Re-running the harness shows all three tests now pass. Limitations: the patch only skips blank lines and does not add full validation for malformed records or non-numeric values. Assumptions: tests were run with Python 3 (3.8.10 in my environment), no external packages are required. The fix is intentionally minimal and low-risk.",
+    "repro_commands": [
+      "python3 --version",
+      "python3 run_tests.py"
+    ],
+    "assumptions_and_limitations": "Assumes a POSIX shell and Python 3.x (example used: Python 3.8.10). The patch only ignores blank lines; it does not validate field counts or numeric conversion beyond existing behavior. If inputs contain malformed non-numeric values, program may still raise exceptions."
+  },
+  "time_taken_minutes": 75,
+  "final_notes": "Provided a minimal in-place patch (unified diff included). The harness (run_tests.py) exits with nonzero on failure and zero on success, and all required artifacts are present in the JSON."
+}

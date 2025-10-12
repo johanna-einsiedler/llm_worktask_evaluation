@@ -1,0 +1,34 @@
+{
+  "per_task": [
+    {
+      "task": "task_1",
+      "max_points": 20,
+      "awarded": 20,
+      "comments": []
+    },
+    {
+      "task": "task_2",
+      "max_points": 30,
+      "awarded": 30,
+      "comments": []
+    },
+    {
+      "task": "task_3",
+      "max_points": 30,
+      "awarded": 30,
+      "comments": []
+    },
+    {
+      "task": "task_4",
+      "max_points": 20,
+      "awarded": 20,
+      "comments": []
+    }
+  ],
+  "total_awarded": 100,
+  "total_max": 100,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "detailed_comments": [],
+  "candidate_name": "Example Candidate"
+}

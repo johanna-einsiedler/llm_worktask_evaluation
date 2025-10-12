@@ -1,0 +1,494 @@
+# task_evaluation.py
+"""
+Automated grader for the "Update automated test scripts to ensure currency — Basic Practical Exam".
+
+Usage:
+    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+
+This script:
+- Loads the candidate submission and the answer key JSONs.
+- Applies grading logic (weighted rubric) to produce a deterministic score.
+- Writes detailed results to test_results.json next to this script.
+
+Implementation notes:
+- Uses only Python standard library.
+- Tolerant of simple formatting differences (whitespace/capitalization).
+- Attempts to provide helpful explanations for deductions.
+"""
+
+import json
+import os
+import re
+import sys
+from datetime import datetime
+
+# Scoring weights (points)
+WEIGHTS = {
+    "tests_pass": 40,
+    "correctness_minimality": 25,
+    "rationale": 15,
+    "diagnosis": 10,
+    "maintainability": 10,
+}
+MAX_POINTS = sum(WEIGHTS.values())
+
+
+def load_json(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def safe_get(d, key, default=""):
+    return d.get(key, default) if isinstance(d, dict) else default
+
+
+def parse_ran_counts(test_output):
+    """
+    Parse lines like 'Ran 4 tests in 0.001s' and 'FAILED (failures=1, errors=1)'
+    Return tuple (ran, failures, errors). Values may be None if not found.
+    """
+    ran = None
+    failures = 0
+    errors = 0
+    if not test_output:
+        return (None, None, None)
+    # Ran X tests
+    m = re.search(r"Ran\s+(\d+)\s+tests", test_output)
+    if m:
+        ran = int(m.group(1))
+    # FAILED (failures=1, errors=1) or FAILED (failures=1)
+    m2 = re.search(r"FAILED \(([^)]+)\)", test_output)
+    if m2:
+        info = m2.group(1)
+        # find failures
+        mf = re.search(r"failures\s*=\s*(\d+)", info)
+        if not mf:
+            mf = re.search(r"failures\s*=\s*(\d+)", info.replace(" ", ""))
+        if mf:
+            failures = int(mf.group(1))
+        me = re.search(r"errors\s*=\s*(\d+)", info)
+        if me:
+            errors = int(me.group(1))
+    else:
+        # If no FAILED ... look for explicit 'FAIL' or 'ERROR' lines
+        # Count occurrences of 'FAIL:' and 'ERROR:'
+        failures = test_output.count("\nFAIL: ")
+        errors = test_output.count("\nERROR: ")
+    return ran, failures, errors
+
+
+def contains_phrase_case_insensitive(text, phrase):
+    return phrase.lower() in text.lower() if text else False
+
+
+def grade_tests_pass(candidate, answer_key, notes):
+    """
+    Grade whether the final test run shows tests passing.
+    Partial credit when some tests pass.
+    Returns points_earned, details
+    """
+    pts = 0.0
+    max_pts = WEIGHTS["tests_pass"]
+    final_out = safe_get(candidate, "final_test_run", "")
+    if not final_out:
+        notes.append("Final test run output is missing or empty. No points for tests passing.")
+        return pts, notes
+
+    # Consider as passing if 'OK' present and no 'FAILED' keyword
+    ok_present = re.search(r"\bOK\b", final_out) is not None and "FAILED" not in final_out
+    ran, failures, errors = parse_ran_counts(final_out)
+
+    if ok_present:
+        pts = max_pts
+        notes.append(f"Final output contains 'OK' and no 'FAILED'. Awarding full {max_pts} points.")
+        if ran is not None:
+            notes.append(f"Final run reports {ran} tests ran.")
+    else:
+        # Partial credit: if we can parse ran, failures, errors
+        if ran is None:
+            notes.append("Final output does not indicate all-passing and number of tests run could not be parsed. No points awarded for tests passing.")
+            pts = 0.0
+        else:
+            failed = failures + errors
+            passed = max(0, ran - failed)
+            if ran > 0:
+                proportion = passed / ran
+                pts = max_pts * proportion
+                notes.append(
+                    f"Final run: {ran} tests, {failed} failing/erroring, {passed} passed. "
+                    f"Awarding {pts:.2f}/{max_pts} points proportionally."
+                )
+            else:
+                notes.append("Parsed 'Ran 0 tests' in final output. No points for tests passing.")
+                pts = 0.0
+    return round(pts, 2), notes
+
+
+def grade_correctness_minimality(candidate, answer_key, notes):
+    """
+    Check that modified files are only under tests/ or fixtures/ and minimal changes were made.
+    Scoring:
+    - If any modified file under app/: 0 points for this category (major violation).
+    - Else, if modified_files count <= expected -> full points.
+    - Else, deduct 5 points per extra file beyond expected (floor 0).
+    - Additionally, if modified files do not include expected content addressing the known issues (greeting or username), halve the score.
+    """
+    pts = 0.0
+    max_pts = WEIGHTS["correctness_minimality"]
+    cand_mods = safe_get(candidate, "modified_files", [])
+    if not isinstance(cand_mods, list):
+        notes.append("modified_files is missing or not a list in submission. No points for correctness/minimality.")
+        return pts, notes
+
+    # If any modified path under app/ -> heavy penalty
+    app_edits = [m for m in cand_mods if m.get("path", "").lstrip().startswith("app/")]
+    if app_edits:
+        notes.append("Candidate modified application code under app/. This is disallowed; awarding 0 points for correctness/minimality.")
+        return 0.0, notes
+
+    cand_count = len(cand_mods)
+    expected_mods = safe_get(answer_key, "modified_files", [])
+    expected_count = len(expected_mods) if isinstance(expected_mods, list) else 0
+
+    if cand_count == 0:
+        notes.append("No modified files submitted; cannot award points for correctness/minimality.")
+        return 0.0, notes
+
+    # Base points before content verification
+    if cand_count <= expected_count:
+        base_pts = max_pts
+        notes.append(f"Number of modified files ({cand_count}) <= expected ({expected_count}). Awarding full base points.")
+    else:
+        extra = cand_count - expected_count
+        deduction = 5 * extra
+        base_pts = max(0, max_pts - deduction)
+        notes.append(
+            f"Candidate modified {cand_count} files; expected {expected_count}. "
+            f"Deducting {deduction} points (5 per extra file). Base points = {base_pts}."
+        )
+
+    # Check that modifications address expected issues: greeting change or username schema
+    combined_content = "\n".join([m.get("content", "") for m in cand_mods if isinstance(m.get("content", ""), str)])
+    addresses_greeting = contains_phrase_case_insensitive(combined_content, "welcome back") or contains_phrase_case_insensitive(combined_content, "welcome, alice")
+    addresses_username = ("username" in combined_content) or ("user_name" in combined_content)
+
+    if not (addresses_greeting or addresses_username):
+        # Did not touch known failure areas; penalize by halving the points
+        pts = base_pts * 0.5
+        notes.append("Modified files do not appear to address the known issues (greeting text or username fixture). Halving the base points.")
+    else:
+        pts = base_pts
+        reasons = []
+        if addresses_greeting:
+            reasons.append("greeting update detected")
+        if addresses_username:
+            reasons.append("username/schema update detected")
+        notes.append("Detected changes addressing: " + ", ".join(reasons) + ".")
+    return round(pts, 2), notes
+
+
+def grade_rationale(candidate, answer_key, notes):
+    """
+    Grade the quality/coverage of rationales.
+    Score is proportional to number of modified files with a non-empty, reasonably-sized rationale.
+    Full points if all modified files have rationale length >= 15 chars.
+    """
+    pts = 0.0
+    max_pts = WEIGHTS["rationale"]
+    cand_mods = safe_get(candidate, "modified_files", [])
+    if not isinstance(cand_mods, list) or len(cand_mods) == 0:
+        notes.append("No modified files present; cannot award rationale points.")
+        return pts, notes
+
+    total = len(cand_mods)
+    good = 0
+    for m in cand_mods:
+        ration = m.get("rationale", "")
+        if isinstance(ration, str) and len(ration.strip()) >= 15:
+            good += 1
+    proportion = good / total
+    pts = max_pts * proportion
+    notes.append(f"{good}/{total} modified files provided adequate rationales (>=15 chars). Awarding {pts:.2f}/{max_pts} points.")
+    return round(pts, 2), notes
+
+
+def grade_diagnosis(candidate, answer_key, notes):
+    """
+    Grade candidate's diagnosis based on initial_test_run content.
+    Full points if both greeting mismatch and fixture/schema KeyError appear in initial output.
+    Partial if only one is present.
+    Minimal credit if initial_test_run is present but doesn't clearly show either.
+    """
+    pts = 0.0
+    max_pts = WEIGHTS["diagnosis"]
+    init_out = safe_get(candidate, "initial_test_run", "")
+    if not init_out:
+        notes.append("Initial test run output missing; cannot award diagnosis points.")
+        return pts, notes
+
+    # Look for greeting mismatch evidence: either the text 'Welcome back' or the diff lines showing the two greetings.
+    greets = False
+    # Presence of 'Welcome back' (actual) or 'Welcome, Alice!' (expected) in the trace is good.
+    if contains_phrase_case_insensitive(init_out, "welcome back") or contains_phrase_case_insensitive(init_out, "Welcome, Alice"):
+        greets = True
+
+    # Look for KeyError or 'user_name' string to indicate schema mismatch
+    key_err = False
+    if "KeyError" in init_out or "user_name" in init_out or contains_phrase_case_insensitive(init_out, "'user_name'"):
+        key_err = True
+
+    if greets and key_err:
+        pts = max_pts
+        notes.append("Initial output clearly shows both greeting mismatch and schema/key issue. Awarding full diagnosis points.")
+    elif greets or key_err:
+        pts = max_pts * 0.5
+        which = "greeting mismatch" if greets else "schema/key issue"
+        notes.append(f"Initial output shows {which} but not both issues. Awarding half ({pts:.2f}) diagnosis points.")
+    else:
+        # initial output provided but did not clearly contain indicators
+        pts = max_pts * 0.2
+        notes.append("Initial output present but did not clearly show expected failure indicators. Awarding minimal diagnosis points.")
+    return round(pts, 2), notes
+
+
+def grade_maintainability(candidate, answer_key, notes):
+    """
+    Grade maintainability choices:
+    - Check new_tests_added: must include at least one new test (per exam requirement).
+    - Ensure the added test content is meaningful (not trivial) and asserts behavior using main.greet or is_active.
+    Scoring:
+    - Full points if a new test added and content contains assertIn/assertEqual with main.greet or is_active.
+    - Half points if no new test but existing test was made more robust (e.g., uses assertIn for greeting).
+    - 0 otherwise.
+    """
+    pts = 0.0
+    max_pts = WEIGHTS["maintainability"]
+    new_tests_added = safe_get(candidate, "new_tests_added", [])
+    cand_mods = safe_get(candidate, "modified_files", [])
+
+    # Build map path->content for quick lookup
+    path_content = {}
+    for m in cand_mods:
+        p = m.get("path", "")
+        c = m.get("content", "")
+        if isinstance(p, str) and isinstance(c, str):
+            path_content[p] = c
+
+    if isinstance(new_tests_added, list) and len(new_tests_added) > 0:
+        # Expect at least one of the new test paths to be present in modified_files content
+        meaningful_found = False
+        for newp in new_tests_added:
+            content = path_content.get(newp, "")
+            if not content:
+                continue
+            # Check for meaningful assertions referencing main.greet or is_active
+            if ("assertIn" in content or "assertEqual" in content or "assertTrue" in content) and ("main.greet" in content or "is_active" in content or "greet(" in content):
+                meaningful_found = True
+                break
+            # Less strict: check for 'greet(' or 'is_active(' and an assert
+            if re.search(r"greet\(", content) or re.search(r"is_active\(", content):
+                if "assert" in content:
+                    meaningful_found = True
+                    break
+        if meaningful_found:
+            pts = max_pts
+            notes.append("A new meaningful test was added (references greet/is_active with assertions). Awarding full maintainability points.")
+        else:
+            pts = max_pts * 0.5
+            notes.append("New test(s) added but content did not clearly include meaningful assertions referencing greet/is_active. Awarding half maintainability points.")
+    else:
+        # No new test added. Check if existing tests were made more robust: look for assertIn on greeting in modified files
+        combined = "\n".join(path_content.values())
+        if "assertIn(" in combined and "greet(" in combined:
+            pts = max_pts * 0.8
+            notes.append("No new test added, but existing tests were modified to be more robust (e.g., using assertIn with greet). Awarding 80% of maintainability points.")
+        else:
+            pts = 0.0
+            notes.append("No new test added and no clear maintainability-improving changes detected. No maintainability points awarded.")
+    return round(pts, 2), notes
+
+
+def validate_submission_structure(candidate):
+    """
+    Basic validation of submission JSON required fields.
+    Returns list of error strings (empty if ok).
+    """
+    required = [
+        "candidate_name",
+        "start_time",
+        "end_time",
+        "environment",
+        "initial_test_run",
+        "final_test_run",
+        "modified_files",
+        "new_tests_added",
+        "open_issues",
+        "confidence",
+    ]
+    errs = []
+    if not isinstance(candidate, dict):
+        errs.append("Submission is not a JSON object.")
+        return errs
+    for k in required:
+        if k not in candidate:
+            errs.append(f"Missing required field: {k}")
+    # modified_files must be a list
+    if "modified_files" in candidate and not isinstance(candidate["modified_files"], list):
+        errs.append("Field 'modified_files' must be an array.")
+    if "new_tests_added" in candidate and not isinstance(candidate["new_tests_added"], list):
+        errs.append("Field 'new_tests_added' must be an array.")
+    return errs
+
+
+def main():
+    # Basic CLI arg parsing
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
+        sys.exit(2)
+
+    submission_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+
+    # Prepare results structure
+    results = {
+        "scoring": {},
+        "explanations": [],
+        "total_points_earned": 0.0,
+        "max_points": MAX_POINTS,
+        "percentage": 0.0,
+        "overall_score": 0.0,  # numeric percentage for external use
+    }
+
+    try:
+        candidate = load_json(submission_path)
+    except Exception as e:
+        results["explanations"].append(f"Failed to load candidate submission JSON: {e}")
+        # write out results file and exit with error
+        out_path = os.path.join(os.path.dirname(__file__), "test_results.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+        print(f"Error loading submission JSON: {e}. Results written to {out_path}")
+        sys.exit(1)
+
+    try:
+        answer_key = load_json(answer_key_path)
+    except Exception as e:
+        results["explanations"].append(f"Failed to load answer key JSON: {e}")
+        out_path = os.path.join(os.path.dirname(__file__), "test_results.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+        print(f"Error loading answer key JSON: {e}. Results written to {out_path}")
+        sys.exit(1)
+
+    # Validate candidate submission structure
+    struct_errors = validate_submission_structure(candidate)
+    if struct_errors:
+        results["explanations"].append("Submission structure errors: " + "; ".join(struct_errors))
+        # proceed but many scores will be zero; still attempt grading with defaults
+
+    # Run grading components
+    notes_tests = []
+    pts_tests, notes_tests = grade_tests_pass(candidate, answer_key, notes_tests)
+    results["scoring"]["tests_pass"] = {
+        "points_earned": pts_tests,
+        "max_points": WEIGHTS["tests_pass"],
+        "notes": notes_tests,
+    }
+
+    notes_correct = []
+    pts_correct, notes_correct = grade_correctness_minimality(candidate, answer_key, notes_correct)
+    results["scoring"]["correctness_minimality"] = {
+        "points_earned": pts_correct,
+        "max_points": WEIGHTS["correctness_minimality"],
+        "notes": notes_correct,
+    }
+
+    notes_rationale = []
+    pts_rationale, notes_rationale = grade_rationale(candidate, answer_key, notes_rationale)
+    results["scoring"]["rationale"] = {
+        "points_earned": pts_rationale,
+        "max_points": WEIGHTS["rationale"],
+        "notes": notes_rationale,
+    }
+
+    notes_diag = []
+    pts_diag, notes_diag = grade_diagnosis(candidate, answer_key, notes_diag)
+    results["scoring"]["diagnosis"] = {
+        "points_earned": pts_diag,
+        "max_points": WEIGHTS["diagnosis"],
+        "notes": notes_diag,
+    }
+
+    notes_maint = []
+    pts_maint, notes_maint = grade_maintainability(candidate, answer_key, notes_maint)
+    results["scoring"]["maintainability"] = {
+        "points_earned": pts_maint,
+        "max_points": WEIGHTS["maintainability"],
+        "notes": notes_maint,
+    }
+
+    # Sum up
+    total_earned = sum([
+        pts_tests,
+        pts_correct,
+        pts_rationale,
+        pts_diag,
+        pts_maint,
+    ])
+    percentage = (total_earned / MAX_POINTS) * 100 if MAX_POINTS > 0 else 0.0
+
+    # Add high-level explanations: check for forbidden edits (app/)
+    forbidden_edits = []
+    modified_files = safe_get(candidate, "modified_files", [])
+    if isinstance(modified_files, list):
+        for m in modified_files:
+            p = m.get("path", "")
+            if isinstance(p, str) and p.startswith("app/"):
+                forbidden_edits.append(p)
+    if forbidden_edits:
+        results["explanations"].append(
+            "Candidate modified application files (forbidden unless explicitly allowed): " + ", ".join(forbidden_edits)
+        )
+
+    # Check initial_test_run presence
+    if not candidate.get("initial_test_run"):
+        results["explanations"].append("Warning: initial_test_run field is empty; diagnosis grading may be affected.")
+
+    # Populate results
+    results["total_points_earned"] = round(total_earned, 2)
+    results["percentage"] = round(percentage, 2)
+    results["overall_score"] = round(percentage, 2)
+
+    # Timestamp and basic metadata
+    results["graded_at"] = datetime.utcnow().isoformat() + "Z"
+    results["submission_path"] = os.path.abspath(submission_path)
+    results["answer_key_path"] = os.path.abspath(answer_key_path)
+
+    # Add brief per-component explanation summary to top-level explanations
+    for comp, data in results["scoring"].items():
+        notes = data.get("notes", [])
+        if isinstance(notes, list):
+            results["explanations"].append(f"{comp}: " + " ".join(notes))
+        else:
+            results["explanations"].append(f"{comp}: {str(notes)}")
+
+    # Save to test_results.json next to this script
+    out_path = os.path.join(os.path.dirname(__file__), "test_results.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+        print(f"Grading complete. Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}")
+        sys.exit(1)
+
+    # Also print a succinct summary to stdout
+    print(f"Total: {results['total_points_earned']}/{MAX_POINTS} points -> {results['percentage']}%")
+    # Expose overall_score variable for potential external use in interactive runs
+    overall_score = results["overall_score"]
+    # Keep overall_score variable accessible at module level if needed
+    globals()["overall_score"] = overall_score
+
+
+if __name__ == "__main__":
+    main()

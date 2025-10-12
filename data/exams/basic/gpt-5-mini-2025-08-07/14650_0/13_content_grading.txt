@@ -1,0 +1,550 @@
+```python
+# task_evaluation.py
+"""
+Automated grading script for the SQA practical exam (basic).
+Usage:
+    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+
+Produces test_results.json in the same directory as this script.
+
+Scoring summary (implements rubric from exam materials):
+- Task 1 (Reproduce): 15 points
+- Task 2 (Selector fix): 25 points
+- Task 3 (Timing/stability): 20 points
+- Task 4 (Config/API/deprecation fix): 20 points
+- Documentation & submission quality: 10 points
+  Base total = 90 points
+- Bonus: up to 10 points (optional)
+  Max possible = 100 points
+
+The script reads the candidate submission JSON and the answer key JSON (optional expected values).
+It performs heuristic checks for required edits and outputs a scored detailed result JSON.
+"""
+import json
+import os
+import re
+import sys
+from datetime import datetime
+
+# -------------------------
+# Helper utility functions
+# -------------------------
+def safe_load_json(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f), None
+    except Exception as e:
+        return None, str(e)
+
+def contains_any_ci(text, needles):
+    """Case-insensitive check if any needle is in text."""
+    if text is None:
+        return False
+    lower = text.lower()
+    for n in needles:
+        if n.lower() in lower:
+            return True
+    return False
+
+def count_occurrences_ci(text, needles):
+    """Return count of how many distinct needles from list appear in text (case-insensitive)."""
+    if text is None:
+        return 0
+    lower = text.lower()
+    found = 0
+    for n in set(needles):
+        if n.lower() in lower:
+            found += 1
+    return found
+
+def extract_passed_tests(final_output):
+    """
+    Try to extract number of passed tests from pytest-like output.
+    Returns integer number of passed tests if found, otherwise None.
+    """
+    if not final_output:
+        return None
+    # Look for e.g. "3 passed", possibly "3 passed in 0.00s"
+    m = re.search(r'(\d+)\s+passed', final_output, re.IGNORECASE)
+    if m:
+        try:
+            return int(m.group(1))
+        except:
+            return None
+    return None
+
+def normalize_whitespace(s):
+    if s is None:
+        return ""
+    # collapse multiple whitespace to single spaces for easier comparisons
+    return re.sub(r'\s+', ' ', s).strip()
+
+# -------------------------
+# Main grading logic
+# -------------------------
+def main():
+    # Input args
+    if len(sys.argv) < 3:
+        print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
+        sys.exit(2)
+
+    submission_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+
+    # Load files
+    submission, err = safe_load_json(submission_path)
+    if err:
+        print(f"Error loading submission JSON '{submission_path}': {err}")
+        sys.exit(2)
+
+    answer_key, err2 = safe_load_json(answer_key_path)
+    if err2:
+        # answer_key is optional-ish; we proceed with defaults but warn
+        answer_key = {}
+        answer_key_load_error = err2
+    else:
+        answer_key_load_error = None
+
+    # Prepare result structure
+    results = {
+        "scoring": {},
+        "details": [],
+        "total_points_awarded": 0,
+        "max_points_possible": 100,
+        "percentage_score": 0.0,
+        "overall_score": 0.0,  # numeric 0-100
+        "errors": []
+    }
+
+    # Basic validation of required fields in submission
+    required_fields = [
+        "candidate_name",
+        "start_time_utc",
+        "end_time_utc",
+        "total_minutes",
+        "commands_run",
+        "initial_test_output",
+        "final_test_output",
+        "changed_files",
+        "summary_of_changes",
+        "risk_notes_and_next_steps"
+    ]
+    missing = []
+    for f in required_fields:
+        if f not in submission or submission[f] in (None, "", []):
+            missing.append(f)
+    if missing:
+        results["errors"].append(f"Submission missing or empty required fields: {missing}")
+
+    # Load expected values from answer_key or use defaults
+    expected_initial_errors = answer_key.get("expected_initial_errors",
+                                            ["KeyError", "AttributeError", "FileNotFoundError"])
+    expected_num_tests = answer_key.get("expected_num_tests", 3)
+    expected_final_pass_phrase = answer_key.get("expected_final_pass_phrase", f"{expected_num_tests} passed")
+
+    # Scoring buckets
+    # Task 1: Reproduce (15)
+    task1_max = 15
+    task1_score = 0
+    task1_notes = []
+
+    # Check commands_run presence and likely run command
+    commands_run = submission.get("commands_run", [])
+    run_command_found = False
+    run_command_texts = []
+    for c in commands_run:
+        cmd = c.get("command", "") if isinstance(c, dict) else ""
+        run_command_texts.append(cmd)
+        if cmd and (("pytest" in cmd.lower()) or ("run_tests" in cmd.lower()) or ("run_tests.sh" in cmd) or ("-m pytest" in cmd.lower())):
+            run_command_found = True
+    if run_command_found:
+        task1_score += 5
+        task1_notes.append("Found a likely test-run command in commands_run (+5).")
+    else:
+        task1_notes.append("No obvious pytest/run_tests command found in commands_run (-5).")
+
+    # Analyze initial_test_output for expected errors
+    initial_output = submission.get("initial_test_output", "") or ""
+    found_errors_count = count_occurrences_ci(initial_output, expected_initial_errors)
+    expected_errors_total = len(expected_initial_errors)
+    if expected_errors_total > 0:
+        # allocate 10 points proportional to how many expected error types are present
+        error_points = int(round(10.0 * (found_errors_count / expected_errors_total)))
+        task1_score += error_points
+        task1_notes.append(f"Detected {found_errors_count}/{expected_errors_total} expected error types in initial_test_output (+{error_points}).")
+        if found_errors_count < expected_errors_total:
+            missing_errs = [e for e in expected_initial_errors if e.lower() not in initial_output.lower()]
+            task1_notes.append(f"Missing expected errors in initial output: {missing_errs}.")
+    else:
+        # no expected errors configured; be generous if any 'error' or 'fail' words are present
+        if contains_any_ci(initial_output, ["error", "fail", "traceback"]):
+            task1_score += 10
+            task1_notes.append("Initial output shows errors/failures; awarding full error-detection points (+10).")
+        else:
+            task1_notes.append("No expected errors configured and initial output did not contain 'error'/'fail' hints (-10).")
+
+    if task1_score > task1_max:
+        task1_score = task1_max
+
+    results["scoring"]["task_1_reproduce"] = {
+        "score": task1_score,
+        "max_score": task1_max,
+        "notes": task1_notes
+    }
+
+    # Task 2: Selector fix (25)
+    task2_max = 25
+    task2_score = 0
+    task2_notes = []
+
+    changed_files = submission.get("changed_files", [])
+    # Find relevant changed files by path
+    changed_paths = [cf.get("file_path", "") for cf in changed_files if isinstance(cf, dict)]
+    # Helper function to fetch file updated_content by path
+    def get_updated_content(path):
+        for cf in changed_files:
+            if cf.get("file_path", "") == path:
+                return cf.get("updated_content", "")
+        return ""
+
+    def get_original_content(path):
+        for cf in changed_files:
+            if cf.get("file_path", "") == path:
+                return cf.get("original_content", "")
+        return ""
+
+    # Heuristics:
+    # - Candidate should have changed tests/test_suite.py or tests/helpers.py to handle button id change
+    updated_test_suite = get_updated_content("tests/test_suite.py")
+    updated_helpers = get_updated_content("tests/helpers.py")
+
+    # Criteria: presence of 'btn-login' and use of 'find_by_id' or addition of compatibility 'old_find_by_id'
+    has_btn_login_in_tests = "btn-login" in (updated_test_suite or "")
+    has_login_btn_old = "login-btn" in (updated_test_suite or "")
+    uses_find_by_id = "find_by_id" in (updated_test_suite or "") or "find_by_id" in (updated_helpers or "")
+    defines_old_find_by_id_in_helpers = "def old_find_by_id" in (updated_helpers or "")
+
+    # Scoring logic
+    if (has_btn_login_in_tests and uses_find_by_id):
+        task2_score = task2_max
+        task2_notes.append("tests/test_suite.py updated to use 'btn-login' and 'find_by_id' (+25).")
+    else:
+        # partial credit possibilities
+        partial = 0
+        if has_btn_login_in_tests or "btn-login" in (updated_helpers or ""):
+            partial += 12
+            task2_notes.append("Updated contents reference 'btn-login' (+12 partial).")
+        if uses_find_by_id or defines_old_find_by_id_in_helpers:
+            partial += 13 if partial == 0 else 13  # allow combination up to 25
+            task2_notes.append("Updated contents use existing 'find_by_id' or provided compatibility 'old_find_by_id' (+13 partial).")
+        # Cap at max
+        task2_score = min(partial, task2_max)
+        if task2_score == 0:
+            # No meaningful selector fix detected
+            task2_notes.append("No clear selector/helper compatibility fix detected in changed_files (-25).")
+
+    results["scoring"]["task_2_selector_fix"] = {
+        "score": task2_score,
+        "max_score": task2_max,
+        "notes": task2_notes
+    }
+
+    # Task 3: Timing/stability (20)
+    task3_max = 20
+    task3_score = 0
+    task3_notes = []
+
+    # Look at tests/test_suite.py updated content to detect removal of time.sleep and corrected data filename
+    updated_ts = updated_test_suite or ""
+    original_ts = get_original_content("tests/test_suite.py") or ""
+
+    removed_sleep = ("time.sleep" not in updated_ts)
+    uses_users_v2 = ("users_v2.json" in updated_ts) or ("users_v2" in updated_ts)
+    still_has_sleep = ("time.sleep" in updated_ts)
+
+    if removed_sleep and uses_users_v2:
+        task3_score = task3_max
+        task3_notes.append("Removed hard sleep and switched to data/users_v2.json (+20).")
+    else:
+        partial = 0
+        if removed_sleep:
+            partial += 10
+            task3_notes.append("Removed hard sleep from test (+10 partial).")
+        if uses_users_v2:
+            partial += 10
+            task3_notes.append("Updated data path to data/users_v2.json (+10 partial).")
+        if partial == 0:
+            # If candidate removed file read and instead used another approach, still give credit if final output shows passing
+            if "users_v2.json" in (submission.get("final_test_output") or "") or "users" in updated_ts:
+                partial = 5
+                task3_notes.append("No explicit evidence of sleep removal or data path change, but final output suggests some fix (+5).")
+            else:
+                task3_notes.append("No timing/stability fix detected (-20).")
+        task3_score = min(partial, task3_max)
+
+    results["scoring"]["task_3_timing_and_stability"] = {
+        "score": task3_score,
+        "max_score": task3_max,
+        "notes": task3_notes
+    }
+
+    # Task 4: Config/API/deprecation fix (20)
+    task4_max = 20
+    task4_score = 0
+    task4_notes = []
+
+    # Expect test to use cfg['app_url'] instead of cfg['base_url'] OR helpers.load_config to map old key
+    app_url_usage_in_tests = False
+    base_url_usage_in_tests = False
+    if updated_ts:
+        if re.search(r"cfg\[['\"]app_url['\"]\]", updated_ts):
+            app_url_usage_in_tests = True
+        if re.search(r"cfg\[['\"]base_url['\"]\]", updated_ts):
+            base_url_usage_in_tests = True
+
+    # Alternatively, helpers.load_config may have been changed to expose both keys
+    updated_helpers_text = updated_helpers or ""
+    helpers_added_mapping = False
+    if updated_helpers_text:
+        # Heuristic: look for 'base_url' in updated_helpers_text or code that sets cfg['base_url'] = cfg.get('app_url')
+        if "base_url" in updated_helpers_text or "old_find_by_id" in updated_helpers_text:
+            helpers_added_mapping = True
+        if re.search(r"cfg\[['\"]base_url['\"]\]\s*=", updated_helpers_text):
+            helpers_added_mapping = True
+        if re.search(r"def old_find_by_id", updated_helpers_text):
+            helpers_added_mapping = True
+
+    if app_url_usage_in_tests or helpers_added_mapping:
+        task4_score = task4_max
+        note = "Updated tests to use cfg['app_url']" if app_url_usage_in_tests else "Updated helpers to provide compatibility for old config/helper names"
+        task4_notes.append(f"{note} (+20).")
+    else:
+        # partial credit: if test no longer references cfg[...] at all but uses literal app/index.html, accept partial
+        if updated_ts and "app/index.html" in updated_ts:
+            task4_score = 10
+            task4_notes.append("Test updated to reference app/index.html directly instead of config (partial +10).")
+        else:
+            task4_notes.append("No config/API compatibility fix detected (-20).")
+
+    results["scoring"]["task_4_config_api_deprecation"] = {
+        "score": task4_score,
+        "max_score": task4_max,
+        "notes": task4_notes
+    }
+
+    # Documentation & submission quality (10)
+    doc_max = 10
+    doc_score = 0
+    doc_notes = []
+    # Requirements: summary_of_changes, risk_notes_and_next_steps, changed_files entries include original_content and updated_content, initial & final outputs present, start/end times present
+    summary = submission.get("summary_of_changes", "")
+    risks = submission.get("risk_notes_and_next_steps", "")
+    initial_output_present = bool(submission.get("initial_test_output", ""))
+    final_output_present = bool(submission.get("final_test_output", ""))
+    times_present = bool(submission.get("start_time_utc")) and bool(submission.get("end_time_utc")) and isinstance(submission.get("total_minutes", None), int)
+    changed_files_ok = True
+    if not isinstance(changed_files, list) or len(changed_files) == 0:
+        changed_files_ok = False
+    else:
+        # each changed file must include file_path, original_content, updated_content, short_rationale
+        for cf in changed_files:
+            if not all(k in cf and cf[k] not in (None, "") for k in ("file_path", "original_content", "updated_content", "short_rationale")):
+                changed_files_ok = False
+                break
+
+    score_components = 0
+    comp_notes = []
+    if summary and len(summary.strip()) >= 10:
+        score_components += 4
+        comp_notes.append("summary_of_changes present (+4).")
+    else:
+        comp_notes.append("summary_of_changes missing or too short (-4).")
+    if risks and len(risks.strip()) >= 10:
+        score_components += 3
+        comp_notes.append("risk_notes_and_next_steps present (+3).")
+    else:
+        comp_notes.append("risk_notes_and_next_steps missing or too short (-3).")
+    if changed_files_ok:
+        score_components += 2
+        comp_notes.append("changed_files entries include required fields (+2).")
+    else:
+        comp_notes.append("changed_files entries incomplete (-2).")
+    if initial_output_present and final_output_present and times_present:
+        score_components += 1
+        comp_notes.append("initial/final outputs and timing fields present (+1).")
+    else:
+        comp_notes.append("Missing initial/final outputs or timing fields (-1).")
+
+    # Normalize to max 10
+    doc_score = min(doc_max, score_components)
+    doc_notes.extend(comp_notes)
+
+    results["scoring"]["documentation_and_submission_quality"] = {
+        "score": doc_score,
+        "max_score": doc_max,
+        "notes": doc_notes
+    }
+
+    # Bonus (up to 10)
+    bonus_max = 10
+    bonus_score = 0
+    bonus_notes = []
+    optional_bonus = submission.get("optional_bonus", "")
+    tasks_section = submission.get("tasks", {})
+    did_bonus_flag = False
+    # Check tasks.task_5_optional_improvement.did_bonus_work or optional_bonus non-empty
+    try:
+        t5 = tasks_section.get("task_5_optional_improvement", {})
+        did_bonus_flag = str(t5.get("did_bonus_work", "")).strip().lower() in ("yes", "true", "y", "1")
+    except:
+        did_bonus_flag = False
+
+    if optional_bonus and len(optional_bonus.strip()) > 5:
+        # If candidate reported a meaningful bonus, award points heuristically
+        bonus_score = 5
+        bonus_notes.append("optional_bonus field non-empty; awarded partial bonus (+5).")
+    if did_bonus_flag:
+        # If they set did_bonus_work flag, award further points up to full
+        bonus_score = max(bonus_score, 8)
+        bonus_notes.append("task_5 indicated bonus work; awarded further bonus points (+8).")
+
+    # Inspect changed_files to heuristically detect small refactor (e.g., helper added, small comment)
+    # If helpers.py was changed to add compatibility wrapper (good small improvement), award full bonus
+    if "tests/helpers.py" in changed_paths:
+        uc = get_updated_content("tests/helpers.py") or ""
+        if "def old_find_by_id" in uc or "def find_by_id" in uc and "compat" in uc.lower():
+            bonus_score = max(bonus_score, 10)
+            bonus_notes.append("Added compatibility helper or similar small improvement in tests/helpers.py (+10).")
+
+    # Cap bonus
+    bonus_score = min(bonus_score, bonus_max)
+
+    results["scoring"]["bonus_improvement"] = {
+        "score": bonus_score,
+        "max_score": bonus_max,
+        "notes": bonus_notes
+    }
+
+    # Final pass check: ensure final_test_output indicates tests passed (expected_num_tests)
+    final_output = submission.get("final_test_output", "") or ""
+    passed_count = extract_passed_tests(final_output)
+    final_pass_notes = []
+    final_pass_ok = False
+    if passed_count is not None:
+        if passed_count >= expected_num_tests:
+            final_pass_ok = True
+            final_pass_notes.append(f"Final output reports {passed_count} passed tests (>= expected {expected_num_tests}).")
+        else:
+            final_pass_notes.append(f"Final output reports {passed_count} passed tests (< expected {expected_num_tests}).")
+    else:
+        # Look for the word 'passed' even if count not extracted
+        if "passed" in final_output.lower():
+            final_pass_ok = True
+            final_pass_notes.append("Final output contains 'passed' (count not parsed).")
+        else:
+            final_pass_notes.append("Final output does not clearly show passing tests (no 'passed' found).")
+
+    # If final_pass_ok is False, apply sensible deductions: if the candidate otherwise fixed items but didn't run final, penalize some tasks
+    if not final_pass_ok:
+        results["details"].append("Warning: final_test_output does not clearly show that tests passed. This will reduce confidence/points.")
+        # The rubric expects passing final output for full credit on tasks; we will reduce some points if not passing.
+        # We'll incorporate this as part of deductions in explanations later.
+
+    # Sum base points
+    base_tasks = ["task_1_reproduce", "task_2_selector_fix", "task_3_timing_and_stability", "task_4_config_api_deprecation", "documentation_and_submission_quality"]
+    base_score = (
+        results["scoring"]["task_1_reproduce"]["score"]
+        + results["scoring"]["task_2_selector_fix"]["score"]
+        + results["scoring"]["task_3_timing_and_stability"]["score"]
+        + results["scoring"]["task_4_config_api_deprecation"]["score"]
+        + results["scoring"]["documentation_and_submission_quality"]["score"]
+    )
+    # Base maximum is 90
+    # Apply small penalty if final tests did not pass: reduce base_score proportional to missing pass
+    if not final_pass_ok:
+        # Determine penalty severity: if candidate fixed many things but final didn't pass, modest penalty; otherwise larger
+        # We'll check if candidate made changes: changed_files non-empty
+        made_changes = len(changed_files) > 0
+        if made_changes:
+            penalty = 10  # out of base_total 90
+            results["details"].append(f"Final tests not passing: applying penalty of {penalty} points from base score.")
+        else:
+            penalty = 25
+            results["details"].append(f"No effective final pass and no or few changes: applying higher penalty of {penalty} points from base score.")
+        base_score = max(0, base_score - penalty)
+        results["details"].append(f"Penalty applied: -{penalty}.")
+    else:
+        results["details"].append("Final test output indicates passing tests; no final-run penalty applied.")
+
+    # Total score = base_score + bonus_score
+    total_score = base_score + bonus_score
+
+    # Compute percentage (0-100) where max possible is 100
+    percentage = round(float(total_score), 2)
+    if percentage < 0:
+        percentage = 0.0
+    if percentage > 100:
+        percentage = 100.0
+
+    # Record per-task breakdown already in results["scoring"], add some high-level notes
+    results["total_points_awarded"] = total_score
+    results["max_points_possible"] = 100
+    results["percentage_score"] = percentage
+    results["overall_score"] = percentage
+
+    # Add more human-readable explanations/deductions for evaluator
+    # Compose concise deduction reasons
+    deductions = []
+    # If missing required fields
+    if missing:
+        deductions.append(f"Submission missing required fields: {missing}. This reduces documentation/verification confidence.")
+    # If Task1 partial issues
+    if results["scoring"]["task_1_reproduce"]["score"] < task1_max:
+        deductions.append("Task 1 incomplete: did not fully reproduce or capture expected failing output or run command.")
+    if results["scoring"]["task_2_selector_fix"]["score"] < task2_max:
+        deductions.append("Task 2 partial/failed: selector or helper compatibility fix incomplete or missing.")
+    if results["scoring"]["task_3_timing_and_stability"]["score"] < task3_max:
+        deductions.append("Task 3 partial/failed: timing/stability fix (removing sleep/updating data path) incomplete.")
+    if results["scoring"]["task_4_config_api_deprecation"]["score"] < task4_max:
+        deductions.append("Task 4 partial/failed: config/API/deprecation fix incomplete.")
+    if results["scoring"]["documentation_and_submission_quality"]["score"] < doc_max:
+        deductions.append("Documentation/submission quality incomplete or missing required details.")
+    if not final_pass_ok:
+        deductions.append("Final test run did not clearly show expected passing tests; this heavily impacts confidence in fixes.")
+
+    results["deductions_summary"] = deductions
+    # attach final pass notes
+    results["final_run_check"] = {
+        "final_pass_ok": final_pass_ok,
+        "passed_count": passed_count,
+        "notes": final_pass_notes
+    }
+
+    # Include some of the submission fields for quick reference (truncated)
+    results["submission_overview"] = {
+        "candidate_name": submission.get("candidate_name"),
+        "commands_run": [c.get("command", "") if isinstance(c, dict) else "" for c in commands_run],
+        "changed_files_listed": changed_paths,
+        "initial_test_output_present": bool(initial_output.strip()),
+        "final_test_output_present": bool(final_output.strip())
+    }
+
+    # Add answer key load error if any
+    if answer_key_load_error:
+        results["notes"] = f"Warning: answer_key file could not be loaded ({answer_key_load_error}). Grader used default expectations."
+
+    # Save results to test_results.json next to this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out_path = os.path.join(script_dir, "test_results.json")
+    try:
+        with open(out_path, 'w', encoding='utf-8') as outf:
+            json.dump(results, outf, indent=2)
+        print(f"Grading complete. Results written to {out_path}")
+    except Exception as e:
+        print(f"Error writing results to '{out_path}': {e}")
+        sys.exit(3)
+
+
+if __name__ == "__main__":
+    main()
+```
