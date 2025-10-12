@@ -1,437 +1,404 @@
+```python
 # task_evaluation.py
-#!/usr/bin/env python3
 """
-Automated grading script for the "Update automated test scripts" basic practical exam.
+Automated grader for the "Updating Automated Tests" basic practical exam.
 
 Usage:
     python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
 
-Produces:
-    test_results.json in the script's working directory.
+The script compares the candidate submission JSON against the answer key JSON and
+produces a detailed grading result saved as test_results.json in the script's folder.
 
-Notes:
-- Uses only Python standard library.
-- Deterministic scoring following the rubric in the exam materials.
+Requirements: only standard library modules are used.
 """
 
 import json
 import os
+import re
 import sys
-import traceback
-from typing import List, Dict, Any
 
-# ---- Config: scoring weights (must sum to 100) ----
-WEIGHTS = {
-    "task_1_reproduce": 15,    # Reproduce failures and capture initial output
-    "task_2_selector_fix": 25, # Selector fixes / deprecated helper
-    "task_3_timing": 20,       # Timing/stability fix
-    "task_4_config_api": 20,   # Config/API/deprecation fix
-    "documentation": 10,       # Documentation & submission quality
-    "bonus": 10                # Optional bonus (up to)
+# Constants for maximum points per rubric item
+MAX_POINTS = {
+    "baseline_execution": 15,
+    "all_tests_passing": 25,
+    "decision_log": 15,
+    "test_edit_quality": 20,
+    "added_test": 10,
+    "documentation": 15
 }
 
-MAX_POINTS = sum(WEIGHTS.values())
+RESULTS_FILENAME = "test_results.json"
 
-# ---- Helper utilities ----
-def load_json_file(path: str) -> Any:
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
 
-def text_contains_any(text: str, tokens: List[str]) -> bool:
-    if not isinstance(text, str):
+def safe_load_json(path):
+    """Load JSON from path with basic error handling."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f), None
+    except Exception as e:
+        return None, f"Failed to load JSON from {path}: {e}"
+
+
+def contains_pytest_command(commands):
+    """Return True if commands list contains a pytest invocation."""
+    if not isinstance(commands, list):
         return False
-    lower = text.lower()
-    for t in tokens:
-        if t.lower() in lower:
+    for c in commands:
+        if not isinstance(c, str):
+            continue
+        cstr = c.strip().lower()
+        # common pytest invocations
+        if cstr.startswith("pytest") or "pytest" in cstr or cstr.startswith("python -m pytest"):
             return True
     return False
 
-def safe_get(d: Dict, key: str, default=None):
-    return d.get(key, default) if isinstance(d, dict) else default
 
-def is_iso8601_like(s: str) -> bool:
-    # Simple heuristic: contains 'T' and ends with 'Z' or contains timezone indicator.
-    if not isinstance(s, str):
-        return False
-    return 'T' in s and (s.endswith('Z') or '+' in s or '-' in s[ s.rfind('T') : ])
+def find_pass_fail_info(output_text):
+    """Analyze pytest output text to find occurrences of passed/failed counts.
 
-def make_reason(category: str, detail: str) -> Dict[str, str]:
-    return {"category": category, "detail": detail}
+    Returns a dict with keys:
+     - has_passed_phrase (bool): any "passed" occurrence
+     - has_failed_phrase (bool): any "failed" occurrence (including 'FAILED')
+     - passed_count (int|null): number extracted from 'X passed' or None
+     - failed_count (int|null): number extracted from 'X failed' or None
+    """
+    res = {"has_passed_phrase": False, "has_failed_phrase": False, "passed_count": None, "failed_count": None}
+    if not output_text or not isinstance(output_text, str):
+        return res
+    text = output_text.lower()
+    # Detect 'X passed' and 'X failed'
+    m_pass = re.search(r"(\d+)\s+passed", text)
+    if m_pass:
+        res["has_passed_phrase"] = True
+        try:
+            res["passed_count"] = int(m_pass.group(1))
+        except Exception:
+            res["passed_count"] = None
+    m_fail = re.search(r"(\d+)\s+failed", text)
+    if m_fail:
+        res["has_failed_phrase"] = True
+        try:
+            res["failed_count"] = int(m_fail.group(1))
+        except Exception:
+            res["failed_count"] = None
+    # Also consider presence of words 'FAILED' or 'FAILURES' as failing indicator
+    if "failed" in text or "failure" in text:
+        res["has_failed_phrase"] = res["has_failed_phrase"] or ("failed" in text)
+    return res
 
-# ---- Main grading logic ----
-def grade_submission(candidate: Dict[str, Any], answer_key: Dict[str, Any]) -> Dict[str, Any]:
-    results = {
-        "scores": {},
-        "reasons": [],
-        "total_points_earned": 0,
-        "max_points": MAX_POINTS,
-        "overall_score": 0.0
-    }
 
-    points_earned = 0
+def score_baseline_execution(submission):
+    """Score baseline execution (15 points)."""
+    pts = 0.0
+    max_pts = MAX_POINTS["baseline_execution"]
     reasons = []
 
-    # Prepare some expected tokens from answer_key initial output if available
-    expected_error_tokens = []
-    ak_initial = safe_get(answer_key, "initial_test_output", "")
-    if isinstance(ak_initial, str) and ak_initial:
-        # common Python errors we expect from the scenario
-        for token in ["KeyError", "AttributeError", "FileNotFoundError", "ERROR tests/test_suite.py", "ERROR"]:
-            if token.lower() in ak_initial.lower():
-                expected_error_tokens.append(token)
-    # fallback default tokens if answer_key lacks initial output
-    if not expected_error_tokens:
-        expected_error_tokens = ["KeyError", "AttributeError", "FileNotFoundError", "ERROR"]
+    test_output_before = submission.get("test_output_before", "")
+    commands_run = submission.get("commands_run", [])
 
-    # Ensure candidate has some expected top-level fields
-    candidate_name = safe_get(candidate, "candidate_name", "")
-    start_time = safe_get(candidate, "start_time_utc", "")
-    end_time = safe_get(candidate, "end_time_utc", "")
-    total_minutes = safe_get(candidate, "total_minutes", None)
-    commands_run = safe_get(candidate, "commands_run", [])
-    initial_output = safe_get(candidate, "initial_test_output", "")
-    final_output = safe_get(candidate, "final_test_output", "")
-    changed_files = safe_get(candidate, "changed_files", [])
-    summary_of_changes = safe_get(candidate, "summary_of_changes", "")
-    risk_notes = safe_get(candidate, "risk_notes_and_next_steps", "")
-    optional_bonus = safe_get(candidate, "optional_bonus", "")
-
-    # --- Task 1: Reproduce failures (15 points) ---
-    t1_max = WEIGHTS["task_1_reproduce"]
-    t1_score = 0
-    t1_reasons = []
-
-    # Criterion A: candidate provided an initial_test_output (non-empty)
-    if not initial_output or not isinstance(initial_output, str) or initial_output.strip() == "":
-        t1_reasons.append("No initial_test_output provided or it is empty.")
-        t1_score = 0
+    # 1) test_output_before non-empty
+    if test_output_before and isinstance(test_output_before, str) and test_output_before.strip():
+        pts += 5.0
     else:
-        # Criterion B: initial_output contains expected error tokens
-        found_tokens = [tok for tok in expected_error_tokens if tok.lower() in initial_output.lower()]
-        if len(found_tokens) >= 2:
-            t1_score = t1_max
-            t1_reasons.append(f"Initial output contains expected failure tokens: {', '.join(found_tokens)}.")
-        elif len(found_tokens) == 1:
-            t1_score = int(t1_max * 0.7)  # partial credit
-            t1_reasons.append(f"Initial output contains some expected failure tokens: {found_tokens[0]}. Partial credit awarded.")
+        reasons.append("test_output_before is empty or missing (no baseline output captured).")
+
+    # 2) test_output_before should show failing tests (look for 'failed' or 'FAILURES' indicators)
+    info = find_pass_fail_info(test_output_before)
+    if info["has_failed_phrase"]:
+        # reward more when explicit failed count exists
+        if info.get("failed_count") and info["failed_count"] > 0:
+            pts += 6.0
         else:
-            # Perhaps candidate captured something else but provided commands_run including the expected command
-            commands_text = " ".join([safe_get(c, "command", "") for c in commands_run if isinstance(c, dict)])
-            if "./run_tests.sh" in commands_text or "pytest" in commands_text or "python -m pytest" in commands_text:
-                t1_score = int(t1_max * 0.5)
-                t1_reasons.append("Initial output did not contain obvious expected error tokens, but candidate ran the test command. Partial credit given.")
+            # there is indication of failure words
+            pts += 4.0
+    else:
+        reasons.append("Initial test output did not contain clear failure indicators ('failed'/'FAILURES').")
+
+    # 3) commands_run should include pytest invocation
+    if contains_pytest_command(commands_run):
+        pts += 4.0
+    else:
+        reasons.append("commands_run does not include a pytest invocation (e.g., 'pytest -q').")
+
+    return min(pts, max_pts), reasons
+
+
+def score_all_tests_passing(submission):
+    """Score all tests passing after edits (25 points)."""
+    pts = 0.0
+    max_pts = MAX_POINTS["all_tests_passing"]
+    reasons = []
+
+    test_output_after = submission.get("test_output_after", "")
+
+    if not test_output_after or not isinstance(test_output_after, str) or not test_output_after.strip():
+        reasons.append("test_output_after is empty or missing (no final test output captured).")
+        return 0.0, reasons
+
+    info = find_pass_fail_info(test_output_after)
+
+    # Must show passed tests
+    if info["has_passed_phrase"]:
+        # If there is a failed_count explicitly >0, mark partial
+        if info.get("failed_count") is not None:
+            if info["failed_count"] == 0:
+                # best case: explicit "0 failed"
+                pts = max_pts
             else:
-                t1_score = 0
-                t1_reasons.append("Initial output did not contain expected failure tokens and test run command was not shown. No credit.")
-
-    results["scores"]["task_1_reproduce"] = {
-        "points_earned": t1_score,
-        "points_possible": t1_max,
-        "notes": t1_reasons
-    }
-    points_earned += t1_score
-
-    # --- Task 2: Selector / deprecated helper fix (25 points) ---
-    t2_max = WEIGHTS["task_2_selector_fix"]
-    t2_score = 0
-    t2_reasons = []
-
-    # Find changed_files entries
-    changed_paths = [safe_get(f, "file_path", "") for f in changed_files if isinstance(f, dict)]
-    # Helper to find file update contents by path
-    def get_updated_content(path: str):
-        for f in changed_files:
-            if isinstance(f, dict) and f.get("file_path", "") == path:
-                return f.get("updated_content", "")
-        return ""
-
-    # Determine if selector fix present:
-    selector_fixed = False
-    selector_old_left = False
-    selector_new_present = False
-    helper_compat_added = False
-
-    # Check tests/test_suite.py changes
-    ts_updated = get_updated_content("tests/test_suite.py")
-    if ts_updated:
-        lower = ts_updated.lower()
-        if "btn-login" in lower or 'id="btn-login"' in lower:
-            selector_new_present = True
-        if "login-btn" in lower:
-            # If still contains old name, mark that
-            selector_old_left = True
-        if "find_by_id" in lower:
-            selector_fixed = True
-        if "old_find_by_id" in lower:
-            # candidate might have added or retained it; if added intentionally as compatibility it's allowed
-            helper_compat_added = True
-
-    # Check tests/helpers.py changes for compatibility alias
-    helpers_updated = get_updated_content("tests/helpers.py")
-    if helpers_updated:
-        lower = helpers_updated.lower()
-        if "def old_find_by_id" in lower or "old_find_by_id =" in lower:
-            helper_compat_added = True
-        # also if they adjusted find_by_id implementation to match old API, that may also be acceptable
-        if "find_by_id" in lower and "old_find_by_id" not in lower:
-            # presence of find_by_id alone is not necessarily a fix unless tests changed to use it
-            pass
-
-    # Scoring logic:
-    # Full credit if either:
-    # - tests updated to use find_by_id and btn-login, or
-    # - helpers updated to provide old_find_by_id compatibility
-    if (selector_fixed and selector_new_present) or helper_compat_added:
-        t2_score = t2_max
-        t2_reasons.append("Selector/deprecated-helper issue fixed: tests now reference current id/helper or compatibility alias added.")
-    else:
-        # Partial credit: if at least one of the expected corrections applied (either changed id OR switched helper usage)
-        partial = 0
-        if selector_new_present or selector_fixed:
-            partial = 0.6
-            t2_reasons.append("Partial selector fix: test updated to reference the new id or helper but not both.")
-        elif helper_compat_added:
-            partial = 0.7
-            t2_reasons.append("Partial credit: compatibility helper added but not all tests updated to use it consistently.")
+                # has failed > 0
+                pts = 10.0
+                reasons.append(f"test_output_after indicates {info['failed_count']} failed tests; expected 0 failed.")
         else:
-            t2_reasons.append("No selector/deprecated-helper fix detected in changed files.")
-        t2_score = int(t2_max * partial) if partial > 0 else 0
+            # No explicit failed count; check for 'failed' word presence
+            if info["has_failed_phrase"]:
+                # ambiguous: contains 'failed' but no numeric count
+                pts = 12.0
+                reasons.append("test_output_after contains failure keywords; expected zero failed.")
+            else:
+                # passed present and no failure words
+                pts = max_pts
+    else:
+        reasons.append("test_output_after does not show 'passed' results; expected tests to pass.")
+        pts = 0.0
 
-    results["scores"]["task_2_selector_fix"] = {
-        "points_earned": t2_score,
-        "points_possible": t2_max,
-        "notes": t2_reasons
+    return min(pts, max_pts), reasons
+
+
+def score_decision_log(submission):
+    """Score decision_log quality (15 points)."""
+    pts = 0.0
+    max_pts = MAX_POINTS["decision_log"]
+    reasons = []
+
+    decision_log = submission.get("decision_log")
+    if not isinstance(decision_log, list) or len(decision_log) == 0:
+        reasons.append("decision_log missing or empty.")
+        return 0.0, reasons
+
+    # Basic credit for providing entries
+    if len(decision_log) >= 1:
+        pts += 5.0
+    # Encourage >=3 entries
+    if len(decision_log) >= 3:
+        pts += 3.0
+    # Now check for presence of keywords indicating correct diagnosis
+    text_blob = " ".join(
+        [ (entry.get("decision","") + " " + entry.get("alternatives_considered","") + " " + entry.get("step","")) for entry in decision_log if isinstance(entry, dict)]
+    ).lower()
+
+    keywords = ["date", "status", "processed_at", "processed", "legacy", "sleep", "time.sleep", "discount", "pytest", "format", "summary"]
+    # Count unique matched high-value keywords among a subset
+    matched = set()
+    for kw in keywords:
+        if kw in text_blob:
+            matched.add(kw)
+    # We consider up to 4 matches for additional credit
+    matched_count = len(matched)
+    # allocate up to 7 points for matched diagnostics (since we already gave 8)
+    diagnostic_pts = min(matched_count, 4) * (7.0 / 4.0)  # up to 7 pts
+    pts += diagnostic_pts
+
+    # Provide feedback
+    if matched_count == 0:
+        reasons.append("decision_log does not mention expected root-cause keywords (date, status, discount, sleep, processed_at).")
+    else:
+        reasons.append(f"decision_log mentions {matched_count} relevant keywords: {sorted(list(matched))}.")
+
+    return min(pts, max_pts), reasons
+
+
+def score_test_edit_quality(submission, answer_key=None):
+    """Score quality of test edits (20 points).
+
+    Checks:
+    - modified files are test files (in tests/)
+    - no app/ or SUT modifications (penalize)
+    - time.sleep removed (i.e., absence in modified content)
+    - assertions are robust: presence of 'in' checks, use of order.get, or calculate_total checks
+    - presence of numeric total checks (37.5 or 32.5) in test content (ensures not loosened excessively)
+    """
+    pts = 0.0
+    max_pts = MAX_POINTS["test_edit_quality"]
+    reasons = []
+
+    modified_files = submission.get("modified_files", [])
+    if not isinstance(modified_files, list) or len(modified_files) == 0:
+        reasons.append("No modified_files provided.")
+        return 0.0, reasons
+
+    # 1) All modified files should be under tests/
+    all_under_tests = all(isinstance(f, dict) and isinstance(f.get("path",""), str) and f.get("path","").startswith("tests/") for f in modified_files)
+    if all_under_tests:
+        pts += 5.0
+    else:
+        reasons.append("One or more modified files are not under 'tests/'. Modifying SUT code typically reduces score.")
+        # still allow partial credit: award 2 points if some test files were modified
+        if any(isinstance(f, dict) and isinstance(f.get("path",""), str) and f.get("path","").startswith("tests/") for f in modified_files):
+            pts += 2.0
+
+    # 2) Ensure modified content does not contain time.sleep (anti-pattern)
+    removed_sleep = True
+    for f in modified_files:
+        content = f.get("content", "") if isinstance(f, dict) else ""
+        if "time.sleep" in content or "sleep(" in content:
+            removed_sleep = False
+            break
+    if removed_sleep:
+        pts += 5.0
+    else:
+        reasons.append("Found time.sleep in modified test content (should be removed).")
+
+    # 3) Robust assertion patterns: presence of 'in' checks, 'get(' usage, or partial string checks
+    robust_found = False
+    numeric_total_found = False
+    calculate_total_checks = False
+    for f in modified_files:
+        content = f.get("content", "") if isinstance(f, dict) else ""
+        c_lower = content.lower()
+        # check for common robust patterns
+        if re.search(r"assert\s+.*in\s+.*", content):
+            robust_found = True
+        if "order.get(" in content or "order.get \"" in content or "order.get '" in content:
+            robust_found = True
+        if "in summary" in c_lower or "contains" in c_lower:
+            robust_found = True
+        if re.search(r"calculate_total\(.+include_discount\s*=\s*True", content) or "include_discount=True" in content:
+            calculate_total_checks = True
+        # numeric totals: look for 37.5, 32.5, 37.50, 32.50
+        if re.search(r"32\.5|32\.50|37\.5|37\.50", content):
+            numeric_total_found = True
+
+    if robust_found:
+        pts += 5.0
+    else:
+        reasons.append("Modified tests do not appear to use robust assertions (e.g., 'in' checks or order.get).")
+
+    if numeric_total_found:
+        pts += 5.0
+    else:
+        reasons.append("Modified tests do not include explicit numeric total checks (e.g., 37.5 or 32.5). This may indicate overly-loose assertions.")
+
+    # 4) Avoid editing SUT: penalize if modified file path starts with 'app/' or 'testdata/'
+    sut_modified = any(isinstance(f, dict) and isinstance(f.get("path",""), str) and (f.get("path","").startswith("app/") or f.get("path","").startswith("testdata/")) for f in modified_files)
+    if sut_modified:
+        # Deduct: don't award full points; subtract significant amount
+        reasons.append("One or more SUT files (app/ or testdata/) were modified; tests-only edits are preferred and expected.")
+        # Deduct by removing some of earned points (we'll just cap max achievable to 10 here)
+        if pts > 10.0:
+            pts = 10.0
+
+    return min(pts, max_pts), reasons
+
+
+def score_added_test(submission):
+    """Score the added test correctness & style (10 points).
+
+    Look for an added file that asserts calculate_total(order, include_discount=True) == 32.5
+    """
+    pts = 0.0
+    max_pts = MAX_POINTS["added_test"]
+    reasons = []
+
+    added_files = submission.get("added_files", [])
+    if not isinstance(added_files, list) or len(added_files) == 0:
+        reasons.append("No added_files found; required test for discount flag missing.")
+        return 0.0, reasons
+
+    # Search added files for calculate_total with include_discount=True and an assert for 32.5
+    found_good = False
+    found_some = False
+    for f in added_files:
+        content = f.get("content", "") if isinstance(f, dict) else ""
+        if not isinstance(content, str):
+            continue
+        content_lower = content.lower()
+        if "calculate_total" in content_lower:
+            found_some = True
+            # Check for include_discount=True and numeric assert 32.5
+            if "include_discount=True".lower() in content_lower or "include_discount = True".lower() in content_lower:
+                # Check for 32.5 or 32.50
+                if re.search(r"32\.5|32\.50", content_lower):
+                    found_good = True
+                    break
+
+    if found_good:
+        pts = max_pts
+    elif found_some:
+        pts = max_pts * 0.5
+        reasons.append("Added test(s) reference calculate_total but did not clearly assert include_discount=True with expected 32.5.")
+    else:
+        reasons.append("Added test(s) do not reference calculate_total; required discount test appears missing.")
+
+    return pts, reasons
+
+
+def score_documentation_and_repro(submission):
+    """Score documentation & reproducibility (15 points)."""
+    pts = 0.0
+    max_pts = MAX_POINTS["documentation"]
+    reasons = []
+
+    commands_run = submission.get("commands_run", [])
+    reproduce_instructions = submission.get("reproduce_instructions", "")
+    modified_files = submission.get("modified_files", [])
+    added_files = submission.get("added_files", [])
+
+    # 1) commands_run includes pytest and at least 2 commands (before and after)
+    if isinstance(commands_run, list) and contains_pytest_command(commands_run):
+        # encourage at least two entries (baseline run and final run)
+        pts += 3.0
+        if len(commands_run) >= 2:
+            pts += 2.0
+    else:
+        reasons.append("commands_run does not include pytest or is missing.")
+
+    # 2) reproduce_instructions contains pytest -q (or pytest)
+    if isinstance(reproduce_instructions, str) and "pytest" in reproduce_instructions.lower():
+        pts += 5.0
+    else:
+        reasons.append("reproduce_instructions does not mention how to run pytest (e.g., 'pytest -q').")
+
+    # 3) modified_files and added_files content included and non-empty
+    good_files = True
+    if not isinstance(modified_files, list) or len(modified_files) == 0:
+        good_files = False
+        reasons.append("modified_files missing or empty in submission.")
+    else:
+        for f in modified_files:
+            if not isinstance(f, dict) or not f.get("content"):
+                good_files = False
+                reasons.append(f"One modified file missing content or improperly formatted: {f.get('path') if isinstance(f, dict) else str(f)}")
+                break
+    if not isinstance(added_files, list):
+        good_files = False
+        reasons.append("added_files field missing or not an array.")
+    else:
+        # It's acceptable to have empty array; but we expect at least the added test per spec
+        pass
+
+    if good_files:
+        pts += 5.0
+    else:
+        reasons.append("Some modified/added file contents are missing or malformed in submission.")
+
+    return min(pts, max_pts), reasons
+
+
+def aggregate_results(scores_dict, deductions_list):
+    """Aggregate results into a summary dict for JSON output."""
+    total_earned = sum(scores_dict.values())
+    total_max = sum(MAX_POINTS.values())
+    percentage = round((total_earned / total_max) * 100.0, 2) if total_max > 0 else 0.0
+    return {
+        "scores": scores_dict,
+        "max_points": total_max,
+        "total_points_earned": round(total_earned, 2),
+        "percentage_score": percentage,
+        "overall_score": percentage,
+        "deductions": deductions_list
     }
-    points_earned += t2_score
 
-    # --- Task 3: Timing/stability fix (20 points) ---
-    t3_max = WEIGHTS["task_3_timing"]
-    t3_score = 0
-    t3_reasons = []
 
-    # Check that hard sleep removed/replaced and data path updated to users_v2.json
-    sleep_removed = False
-    data_path_updated = False
-
-    # Check updated content across changed files
-    all_updated_concat = "\n".join([safe_get(f, "updated_content", "") for f in changed_files if isinstance(f, dict)])
-    if isinstance(all_updated_concat, str):
-        if "time.sleep" not in all_updated_concat:
-            sleep_removed = True
-        if "users_v2.json" in all_updated_concat or "data/users_v2.json" in all_updated_concat:
-            data_path_updated = True
-
-    if sleep_removed and data_path_updated:
-        t3_score = t3_max
-        t3_reasons.append("Hard sleep removed and data path updated to data/users_v2.json.")
-    elif sleep_removed or data_path_updated:
-        t3_score = int(t3_max * 0.6)
-        note = "Partial: "
-        note += "sleep removed." if sleep_removed else ""
-        if sleep_removed and data_path_updated:
-            note = "Both changes present."
-        elif data_path_updated:
-            note += "data path updated to users_v2.json."
-        t3_reasons.append(note + " Partial credit awarded.")
-    else:
-        # Check if candidate made no changes but final_output perhaps still shows pass; give minimal credit if final_output passes and files not touched
-        if isinstance(final_output, str) and "passed" in final_output.lower():
-            t3_score = int(t3_max * 0.4)
-            t3_reasons.append("No explicit timing/data-path edits detected, but final test run reports passing tests. Partial credit.")
-        else:
-            t3_score = 0
-            t3_reasons.append("No timing/stability or data-path fix detected.")
-
-    results["scores"]["task_3_timing_and_stability"] = {
-        "points_earned": t3_score,
-        "points_possible": t3_max,
-        "notes": t3_reasons
-    }
-    points_earned += t3_score
-
-    # --- Task 4: Config/API/deprecation fix (20 points) ---
-    t4_max = WEIGHTS["task_4_config_api"]
-    t4_score = 0
-    t4_reasons = []
-
-    # Detect whether candidate addressed config key mismatch:
-    # Acceptable fixes:
-    # - tests updated to use cfg['app_url'] (or cfg["app_url"])
-    # - helpers.load_config modified to map base_url <- app_url
-    # - config.json updated to include base_url key (allowed alternative)
-    config_fix_detected = False
-    config_alternative = False
-
-    # Check tests/test_suite.py updated_content for app_url usage
-    if isinstance(ts_updated, str) and ("cfg['app_url']" in ts_updated or 'cfg["app_url"]' in ts_updated or "cfg.get('app_url')" in ts_updated.lower()):
-        config_fix_detected = True
-        t4_reasons.append("Tests updated to use cfg['app_url'].")
-    # Check helpers.py for mapping or alias
-    if isinstance(helpers_updated, str) and "base_url" in helpers_updated and "app_url" in helpers_updated:
-        # e.g., a normalization mapping might be present
-        config_fix_detected = True
-        t4_reasons.append("helpers.load_config updated to normalize 'app_url' and 'base_url'.")
-    # Check if candidate changed config.json to contain base_url
-    cfg_updated = get_updated_content("config.json")
-    if cfg_updated and "base_url" in cfg_updated:
-        config_alternative = True
-        t4_reasons.append("config.json modified to include 'base_url' (alternative acceptable).")
-
-    if config_fix_detected:
-        t4_score = t4_max
-        if config_alternative:
-            t4_reasons.append("Also modified config.json; change acceptable though modifying config was not required.")
-    elif config_alternative:
-        # partial credit if only config.json changed
-        t4_score = int(t4_max * 0.8)
-        t4_reasons.append("Config.json modified to address key mismatch; partial credit since tests/helpers not updated.")
-    else:
-        # if final output passes perhaps they resolved indirectly (give partial)
-        if isinstance(final_output, str) and "passed" in final_output.lower():
-            t4_score = int(t4_max * 0.4)
-            t4_reasons.append("No explicit config/API fix detected, but final run reports passing tests. Partial credit.")
-        else:
-            t4_score = 0
-            t4_reasons.append("No config/API/deprecation fix detected.")
-
-    results["scores"]["task_4_config_api"] = {
-        "points_earned": t4_score,
-        "points_possible": t4_max,
-        "notes": t4_reasons
-    }
-    points_earned += t4_score
-
-    # --- Documentation & submission quality (10 points) ---
-    doc_max = WEIGHTS["documentation"]
-    doc_score = 0
-    doc_reasons = []
-
-    doc_points = 0
-    # candidate_name present
-    if candidate_name and isinstance(candidate_name, str) and candidate_name.strip():
-        doc_points += 2
-    else:
-        doc_reasons.append("candidate_name missing or empty (-2).")
-    # start and end times present and iso-like
-    if start_time and is_iso8601_like(start_time):
-        doc_points += 1
-    else:
-        doc_reasons.append("start_time_utc missing or not ISO-8601-like (-1).")
-    if end_time and is_iso8601_like(end_time):
-        doc_points += 1
-    else:
-        doc_reasons.append("end_time_utc missing or not ISO-8601-like (-1).")
-    # total_minutes integer
-    if isinstance(total_minutes, int):
-        doc_points += 1
-    else:
-        doc_reasons.append("total_minutes missing or not integer (-1).")
-    # commands_run non-empty and structured
-    if isinstance(commands_run, list) and len(commands_run) > 0:
-        valid_cmds = 0
-        for cmd in commands_run:
-            if isinstance(cmd, dict) and cmd.get("command") and cmd.get("purpose"):
-                valid_cmds += 1
-        if valid_cmds == len(commands_run):
-            doc_points += 2
-        elif valid_cmds > 0:
-            doc_points += 1
-            doc_reasons.append("commands_run present but some entries missing 'command' or 'purpose' (-1).")
-        else:
-            doc_reasons.append("commands_run entries invalid or missing (-2).")
-    else:
-        doc_reasons.append("commands_run missing or empty (-2).")
-
-    # changed_files present and each entry has required fields
-    if isinstance(changed_files, list) and len(changed_files) > 0:
-        valid_changed = 0
-        for f in changed_files:
-            if not isinstance(f, dict):
-                continue
-            if f.get("file_path") and isinstance(f.get("original_content", ""), str) and isinstance(f.get("updated_content", ""), str) and f.get("short_rationale"):
-                valid_changed += 1
-        if valid_changed == len(changed_files):
-            doc_points += 2
-        elif valid_changed > 0:
-            doc_points += 1
-            doc_reasons.append("Some changed_files entries missing required fields (-1).")
-        else:
-            doc_reasons.append("changed_files present but entries invalid (-2).")
-    else:
-        doc_reasons.append("changed_files missing or empty (-2).")
-
-    # final_test_output presence and indicates passing
-    if isinstance(final_output, str) and final_output.strip():
-        # prefer evidence of passing
-        if "passed" in final_output.lower():
-            doc_points += 1
-        else:
-            doc_reasons.append("final_test_output provided but does not indicate tests passed (-1).")
-    else:
-        doc_reasons.append("final_test_output missing or empty (-1).")
-
-    # Cap doc_points to doc_max
-    doc_score = min(doc_points, doc_max)
-    results["scores"]["documentation_and_submission_quality"] = {
-        "points_earned": doc_score,
-        "points_possible": doc_max,
-        "notes": doc_reasons
-    }
-    points_earned += doc_score
-
-    # --- Bonus (up to 10) ---
-    bonus_max = WEIGHTS["bonus"]
-    bonus_score = 0
-    bonus_reasons = []
-
-    # Check optional_bonus field or task_5 did_bonus_work
-    bonus_awarded = 0
-    if optional_bonus and isinstance(optional_bonus, str) and optional_bonus.strip():
-        bonus_awarded += 5
-        bonus_reasons.append("optional_bonus described by candidate (+5).")
-    # also check nested tasks if present
-    tasks_section = safe_get(candidate, "tasks", {})
-    task5 = safe_get(tasks_section, "task_5_optional_improvement", {})
-    if isinstance(task5, dict):
-        did_bonus = task5.get("did_bonus_work", "")
-        if isinstance(did_bonus, str) and did_bonus.strip().lower() in ("yes", "true", "y"):
-            bonus_awarded += 5
-            bonus_reasons.append("Declared did_bonus_work in tasks.task_5 (+5).")
-    # Cap at bonus_max
-    if bonus_awarded > 0:
-        bonus_score = min(bonus_awarded, bonus_max)
-
-    results["scores"]["bonus"] = {
-        "points_earned": bonus_score,
-        "points_possible": bonus_max,
-        "notes": bonus_reasons if bonus_reasons else ["No bonus work detected."]
-    }
-    points_earned += bonus_score
-
-    # --- Final aggregation ---
-    results["total_points_earned"] = points_earned
-    results["max_points"] = MAX_POINTS
-    percent = (points_earned / MAX_POINTS) * 100 if MAX_POINTS > 0 else 0.0
-    # Round reasonably
-    overall_score = round(percent, 1)
-    results["overall_score"] = overall_score
-
-    # Compose human-readable deductions / notes list
-    # Summarize key findings
-    summary_notes = []
-
-    # Task summaries
-    for k, v in results["scores"].items():
-        summary_notes.append(f"{k}: {v['points_earned']}/{v['points_possible']}.")
-        if isinstance(v.get("notes"), list):
-            for note in v["notes"]:
-                summary_notes.append(f" - {note}")
-
-    results["notes_summary"] = summary_notes
-
-    return results
-
-# ---- Entry point ----
 def main():
     if len(sys.argv) != 3:
         print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
@@ -439,48 +406,108 @@ def main():
 
     submission_path = sys.argv[1]
     answer_key_path = sys.argv[2]
-    out_path = os.path.join(os.getcwd(), "test_results.json")
 
-    results_container = {
-        "status": "ok",
-        "error": None,
-        "grading": None
-    }
-
-    try:
-        # Load candidate submission
-        if not os.path.isfile(submission_path):
-            raise FileNotFoundError(f"Candidate submission file not found: {submission_path}")
-        if not os.path.isfile(answer_key_path):
-            raise FileNotFoundError(f"Answer key file not found: {answer_key_path}")
-
-        candidate = load_json_file(submission_path)
-        answer_key = load_json_file(answer_key_path)
-
-        if not isinstance(candidate, dict):
-            raise ValueError("Candidate submission JSON top-level must be an object/dict.")
-        if not isinstance(answer_key, dict):
-            raise ValueError("Answer key JSON top-level must be an object/dict.")
-
-        grading_results = grade_submission(candidate, answer_key)
-        results_container["grading"] = grading_results
-
-    except Exception as e:
-        results_container["status"] = "error"
-        tb = traceback.format_exc()
-        results_container["error"] = {
-            "message": str(e),
-            "traceback": tb
+    submission, err = safe_load_json(submission_path)
+    if err:
+        print(err)
+        # produce minimal results file with error
+        out = {
+            "error": err,
+            "overall_score": 0.0
         }
+        with open(RESULTS_FILENAME, "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=2)
+        sys.exit(1)
 
-    # Write output JSON
+    answer_key, err2 = safe_load_json(answer_key_path)
+    if err2:
+        print(err2)
+        out = {
+            "error": err2,
+            "overall_score": 0.0
+        }
+        with open(RESULTS_FILENAME, "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=2)
+        sys.exit(1)
+
+    # Basic validation of required fields in submission
+    required_fields = ["candidate_name", "time_spent_minutes", "commands_run", "test_output_before",
+                       "test_output_after", "modified_files", "added_files", "decision_log", "reproduce_instructions"]
+    missing = [f for f in required_fields if f not in submission]
+    deductions = []
+    if missing:
+        deductions.append(f"Submission missing required fields: {missing}")
+
+    # Optional: check time_spent_minutes within limit
+    t_spent = submission.get("time_spent_minutes")
     try:
-        with open(out_path, 'w', encoding='utf-8') as out_f:
-            json.dump(results_container, out_f, indent=2)
-        print(f"Grading complete. Results saved to {out_path}")
+        t_spent_val = int(t_spent) if t_spent is not None else None
+        if t_spent_val is not None and t_spent_val > 90:
+            deductions.append(f"time_spent_minutes is {t_spent_val} which exceeds the 90 minute limit.")
+    except Exception:
+        deductions.append("time_spent_minutes is not an integer or missing.")
+
+    # Run scoring functions
+    scores = {}
+    reasons_all = []
+
+    b_pts, b_reasons = score_baseline_execution(submission)
+    scores["baseline_execution"] = round(b_pts, 2)
+    reasons_all.extend([("baseline_execution", r) for r in b_reasons])
+
+    p_pts, p_reasons = score_all_tests_passing(submission)
+    scores["all_tests_passing"] = round(p_pts, 2)
+    reasons_all.extend([("all_tests_passing", r) for r in p_reasons])
+
+    d_pts, d_reasons = score_decision_log(submission)
+    scores["decision_log"] = round(d_pts, 2)
+    reasons_all.extend([("decision_log", r) for r in d_reasons])
+
+    q_pts, q_reasons = score_test_edit_quality(submission, answer_key)
+    scores["test_edit_quality"] = round(q_pts, 2)
+    reasons_all.extend([("test_edit_quality", r) for r in q_reasons])
+
+    a_pts, a_reasons = score_added_test(submission)
+    scores["added_test"] = round(a_pts, 2)
+    reasons_all.extend([("added_test", r) for r in a_reasons])
+
+    doc_pts, doc_reasons = score_documentation_and_repro(submission)
+    scores["documentation"] = round(doc_pts, 2)
+    reasons_all.extend([("documentation", r) for r in doc_reasons])
+
+    # Include any earlier missing fields penalty info into deductions list
+    if missing:
+        reasons_all.append(("submission_validation", f"Missing required fields: {missing}"))
+
+    # Compose deductions list (flattened strings)
+    deductions_msgs = []
+    for (section, msg) in reasons_all:
+        if msg:
+            deductions_msgs.append({"section": section, "issue": msg})
+
+    # Add any global deductions noted earlier
+    for d in deductions:
+        deductions_msgs.append({"section": "general", "issue": d})
+
+    aggregated = aggregate_results(scores, deductions_msgs)
+
+    # Add some metadata from submission and answer key for reviewer convenience
+    aggregated["candidate_name"] = submission.get("candidate_name")
+    aggregated["time_spent_minutes"] = submission.get("time_spent_minutes")
+    aggregated["commands_run"] = submission.get("commands_run")
+    aggregated["test_output_before_exists"] = bool(submission.get("test_output_before"))
+    aggregated["test_output_after_exists"] = bool(submission.get("test_output_after"))
+
+    # Save results JSON
+    try:
+        with open(RESULTS_FILENAME, "w", encoding="utf-8") as f:
+            json.dump(aggregated, f, indent=2)
+        print(f"Grading complete. Results written to {RESULTS_FILENAME}")
     except Exception as e:
-        print("Failed to write results file:", e)
-        sys.exit(3)
+        print(f"Failed to write results to {RESULTS_FILENAME}: {e}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
+```

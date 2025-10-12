@@ -2,536 +2,465 @@
 """
 task_evaluation.py
 
-Automated grader for the basic practical exam (Software Developer - Applications).
+Automated grader for the Practical Maintenance & Optimization — Basic exam.
+
 Usage:
-    python3 task_evaluation.py <candidate_submission.json> <answer_key.json>
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
 
-Produces:
-    test_results.json - detailed grading report in the same directory as this script.
+This script:
+- Loads the candidate's test_submission.json and the official answer key (answer_key.json).
+- Applies the grading rubric described in the exam materials.
+- Produces a detailed JSON report named test_results.json saved next to this script.
 
-Only uses Python standard library.
+Implementation notes:
+- Uses only Python standard library.
+- Robust to missing/malformed fields (will report problems in the output).
+- Deterministic scoring based on evidence fields, commands run, and textual explanations.
 """
 
 import json
-import sys
 import os
-import math
+import sys
+from typing import Any, Dict, List, Optional
 
-# ---- Helper functions ----
+# ---------- Helper utilities ----------
 
-def safe_load_json(path):
+def load_json(path: str) -> Any:
     try:
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f), None
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
     except Exception as e:
-        return None, str(e)
+        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
 
-def contains_failure_text(text):
-    if not text:
-        return False
-    low = text.lower()
-    # heuristics for failure presence
-    return ("some tests failed" in low) or ("fail" in low and "ok" not in low) \
-           or ("traceback" in low) or ("assertionerror" in low)
+def find_task(tasks: List[Dict[str, Any]], task_id: str) -> Optional[Dict[str, Any]]:
+    for t in tasks:
+        if str(t.get("id", "")).strip().lower() == task_id.lower():
+            return t
+    return None
 
-def contains_all_pass_text(text):
-    if not text:
-        return False
-    low = text.lower()
-    # Either explicit all tests pass or unittest OK at end
-    return ("all tests pass" in low) or ("\nok\n" in low) or ("\nok\n" in low) or ("ok\nall tests pass" in low) \
-           or (low.strip().endswith("ok")) or ("ok\n" in low and "fail" not in low) or ("ok" in low and "fail" not in low and "error" not in low)
+def safe_get(d: Dict[str, Any], *keys, default=None):
+    cur = d
+    for k in keys:
+        if not isinstance(cur, dict) or k not in cur:
+            return default
+        cur = cur[k]
+    return cur
 
-def numeric_improvement(before, after):
-    # returns improvement fraction (positive means faster)
+def to_float(value) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
     try:
-        if before <= 0:
+        s = str(value).strip()
+        if s == "":
             return None
-        return (before - after) / before
+        return float(s)
     except Exception:
         return None
 
-def text_has_keywords(text, keywords):
-    if not text:
+def contains_keyword(text: str, keywords: List[str]) -> bool:
+    if not isinstance(text, str):
         return False
     low = text.lower()
     return any(k.lower() in low for k in keywords)
 
-def approx_equal(a, b, rel_tol=1e-6):
-    try:
-        return abs(a - b) <= rel_tol * max(1.0, abs(a), abs(b))
-    except Exception:
+def cmd_contains(cmd_text: str, substr: str) -> bool:
+    if not isinstance(cmd_text, str):
         return False
+    return substr.lower() in cmd_text.lower()
 
-# ---- Grading configuration (weights) ----
-MAX_TOTAL = 100.0
-WEIGHTS = {
-    'A': 50.0,
-    'B': 20.0,
-    'C': 20.0,
-    'COMM': 10.0
-}
+# ---------- Grading logic for each task ----------
 
-# Sub-component weights for Task A (sum to WEIGHTS['A'])
-A_SUB = {
-    'pre_repro': 5.0,
-    'fix_correct': 30.0,
-    'minimal_patch': 10.0,
-    'explanation': 5.0
-}
+def grade_task_a(candidate_task: Dict[str, Any], answer_task: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Task A (Bug Fix) scoring:
+    - Correctness (unit tests pass): 25
+    - Quality of fix (files_changed includes src/processor.py): 5
+    - Explanation (sufficient content): 5
+    Total: 35
+    """
+    max_points = 35
+    breakdown = {
+        "tests_passed": {"score": 0, "max": 25, "reason": ""},
+        "quality_of_fix": {"score": 0, "max": 5, "reason": ""},
+        "explanation": {"score": 0, "max": 5, "reason": ""},
+    }
+    reasons = []
 
-# Task B sub-weights (sum to WEIGHTS['B'])
-B_SUB = {
-    'run_demo': 12.0,
-    'explain_risks': 8.0
-}
+    # Evidence tests_passed
+    tests_passed = safe_get(candidate_task, "evidence", "tests_passed")
+    # allow string "true"/"false"
+    tp_bool = None
+    if isinstance(tests_passed, bool):
+        tp_bool = tests_passed
+    elif isinstance(tests_passed, str):
+        tp_bool = tests_passed.strip().lower() == "true"
+    else:
+        tp_bool = False
 
-# Task C sub-weights (sum to WEIGHTS['C'])
-C_SUB = {
-    'measure_report': 8.0,
-    'meaningful_improve': 8.0,
-    'explanation': 4.0
-}
+    if tp_bool:
+        breakdown["tests_passed"]["score"] = 25
+        breakdown["tests_passed"]["reason"] = "Candidate reports tests passed."
+    else:
+        # partial credit if they modified expected file
+        files = candidate_task.get("files_changed", []) or []
+        if any(f.strip() == "src/processor.py" for f in files):
+            breakdown["tests_passed"]["score"] = 10
+            breakdown["tests_passed"]["reason"] = "Tests not reported passing, but src/processor.py was changed -> partial credit."
+        else:
+            breakdown["tests_passed"]["score"] = 0
+            breakdown["tests_passed"]["reason"] = "Tests not passed and no relevant file changed."
 
-# Communication & Packaging subweights (sum to WEIGHTS['COMM'])
-COMM_SUB = {
-    'json_format': 3.0,
-    'patch_clarity': 4.0,
-    'run_instructions': 3.0
-}
+    # Quality of fix: heuristic check for src/processor.py in files_changed
+    files = candidate_task.get("files_changed", []) or []
+    if any(f.strip() == "src/processor.py" for f in files):
+        breakdown["quality_of_fix"]["score"] = 5
+        breakdown["quality_of_fix"]["reason"] = "src/processor.py modified (expected for this fix)."
+    else:
+        breakdown["quality_of_fix"]["score"] = 0
+        breakdown["quality_of_fix"]["reason"] = "src/processor.py not listed in files_changed."
 
-def grade(candidate, answer_key):
-    results = {
-        'per_task': {},
-        'deductions': [],
-        'total_points_earned': 0.0,
-        'max_points': MAX_TOTAL,
+    # Explanation: require non-empty and mention the bug domain (strip/whitespace/parse)
+    explanation = candidate_task.get("explanation", "") or ""
+    if len(explanation.strip()) >= 20 or contains_keyword(explanation, ["strip", "whitespace", "parse", "parse_line"]):
+        breakdown["explanation"]["score"] = 5
+        breakdown["explanation"]["reason"] = "Sufficient explanation present."
+    elif len(explanation.strip()) >= 5:
+        breakdown["explanation"]["score"] = 2
+        breakdown["explanation"]["reason"] = "Brief explanation provided; partial credit."
+    else:
+        breakdown["explanation"]["score"] = 0
+        breakdown["explanation"]["reason"] = "No explanation or too short."
+
+    total = sum(breakdown[k]["score"] for k in breakdown)
+    # Collect deduction reasons
+    for k, v in breakdown.items():
+        if v["score"] < v["max"]:
+            reasons.append(f"{k}: {v['reason']} (awarded {v['score']}/{v['max']})")
+
+    return {
+        "id": "A-bugfix",
+        "points_awarded": total,
+        "points_max": max_points,
+        "breakdown": breakdown,
+        "deductions": reasons
     }
 
-    earned_total = 0.0
-    max_total = MAX_TOTAL
+def grade_task_b(candidate_task: Dict[str, Any], answer_task: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Task B (Low-memory adaptation) scoring:
+    - Adaptation correctness: 15
+    - Evidence: 10
+    - Explanation: 5
+    Total: 30
+    """
+    max_points = 30
+    breakdown = {
+        "adaptation_correctness": {"score": 0, "max": 15, "reason": ""},
+        "evidence": {"score": 0, "max": 10, "reason": ""},
+        "explanation": {"score": 0, "max": 5, "reason": ""},
+    }
+    reasons = []
 
-    # Basic validation of candidate JSON structure
-    if not isinstance(candidate, dict):
-        results['error'] = 'Candidate submission is not a JSON object.'
-        return results
-
-    # Ensure task_results exists and has three tasks
-    task_list = candidate.get('task_results')
-    if not isinstance(task_list, list) or len(task_list) < 3:
-        results['error'] = 'task_results missing or not an array of length >= 3.'
-        return results
-
-    # Create a mapping by task_id for convenience
-    tasks_by_id = {}
-    for t in task_list:
-        tid = t.get('task_id')
-        if tid:
-            tasks_by_id[tid] = t
-
-    # ---- Task A grading ----
-    a_max = WEIGHTS['A']
-    a_earned = 0.0
-    a_comments = []
-
-    a_task = tasks_by_id.get('A-bugfix')
-    if not a_task:
-        a_comments.append('Task A entry missing.')
-        results['per_task']['A-bugfix'] = {
-            'points_earned': 0.0,
-            'points_max': a_max,
-            'comments': a_comments
-        }
+    # Check evidence.low_mem_mode_ran
+    low_mem_ran = safe_get(candidate_task, "evidence", "low_mem_mode_ran")
+    lm_bool = None
+    if isinstance(low_mem_ran, bool):
+        lm_bool = low_mem_ran
+    elif isinstance(low_mem_ran, str):
+        lm_bool = low_mem_ran.strip().lower() == "true"
     else:
-        # 1) Pre-fix reproduction (5)
-        pre_out = a_task.get('pre_fix_test_output', '')
-        pre_ok = contains_failure_text(pre_out)
-        if pre_ok:
-            a_earned += A_SUB['pre_repro']
-            a_comments.append(f"Pre-fix failing output detected (+{A_SUB['pre_repro']:.1f}).")
-        else:
-            a_comments.append("Pre-fix failing output not convincingly present (0/5).")
+        lm_bool = False
 
-        # 2) Fix correctness (30)
-        post_out = a_task.get('post_fix_test_output', '')
-        post_ok = contains_all_pass_text(post_out)
-        if post_ok:
-            a_earned += A_SUB['fix_correct']
-            a_comments.append(f"Post-fix tests show passing (+{A_SUB['fix_correct']:.1f}).")
-        else:
-            a_comments.append("Post-fix tests do not show successful pass (0/30).")
-
-        # 3) Minimal and appropriate patch (10)
-        files_modified = a_task.get('files_modified', []) or []
-        patch = a_task.get('patch_unified_diff', '') or ''
-        # If answer key lists expected files for Task A, prefer that check; else use sensible heuristics
-        expected_a_files = None
-        try:
-            expected_a_files = answer_key.get('task_results', [])
-            # attempt to find the A-bugfix entry
-            for e in expected_a_files:
-                if e.get('task_id') == 'A-bugfix':
-                    expected_a_files = e.get('files_modified', [])
-                    break
-        except Exception:
-            expected_a_files = None
-
-        minimal_score = 0.0
-        # Check files_modified against expected
-        if expected_a_files and isinstance(expected_a_files, list):
-            # award full if candidate modified only expected files (subset)
-            if set(files_modified).issubset(set(expected_a_files)):
-                minimal_score = A_SUB['minimal_patch']
-                a_comments.append(f"Files modified are a subset of expected files (+{minimal_score:.1f}).")
-            else:
-                # partial credit if includes at least one expected file and not many other files
-                if any(f in (expected_a_files or []) for f in files_modified):
-                    # small diff heuristic
-                    if len(files_modified) <= 2:
-                        minimal_score = round(A_SUB['minimal_patch'] * 0.7, 2)
-                        a_comments.append(f"Modified expected file(s) but also others; partial for patch (+{minimal_score:.1f}).")
-                    else:
-                        minimal_score = round(A_SUB['minimal_patch'] * 0.4, 2)
-                        a_comments.append(f"Modified extra files; small partial credit (+{minimal_score:.1f}).")
-                else:
-                    minimal_score = 0.0
-                    a_comments.append("Files modified do not match expected; no points for minimal patch (0/10).")
-        else:
-            # No expected list: heuristics
-            if files_modified and len(files_modified) <= 2 and any('processor' in f.lower() for f in files_modified):
-                minimal_score = A_SUB['minimal_patch']
-                a_comments.append(f"Small patch touching processor file(s) considered minimal (+{minimal_score:.1f}).")
-            elif patch and ('--- a/' in patch or '+++ b/' in patch or patch.strip().startswith('=== file:')):
-                minimal_score = round(A_SUB['minimal_patch'] * 0.8, 2)
-                a_comments.append(f"Unified diff present; awarding most of patch score (+{minimal_score:.1f}).")
-            elif patch == 'N/A' and files_modified:
-                minimal_score = round(A_SUB['minimal_patch'] * 0.5, 2)
-                a_comments.append("No unified diff provided but files_modified present; partial credit (+{:.1f}).".format(minimal_score))
-            else:
-                minimal_score = 0.0
-                a_comments.append("No patch info provided; no points for minimal patch (0/10).")
-
-        a_earned += minimal_score
-
-        # 4) Explanation (5)
-        explanation = (a_task.get('explanation') or '').strip()
-        if explanation:
-            # check for root cause keywords
-            if text_has_keywords(explanation, ['sort', 'descending', 'reverse', 'ascending', 'order']):
-                a_earned += A_SUB['explanation']
-                a_comments.append(f"Explanation mentions root cause keywords (+{A_SUB['explanation']:.1f}).")
-            else:
-                a_earned += round(A_SUB['explanation'] * 0.6, 2)
-                a_comments.append(f"Explanation present but missing clear root-cause keywords; partial (+{round(A_SUB['explanation'] * 0.6, 2):.1f}).")
-        else:
-            a_comments.append("No explanation provided (0/5).")
-
-        # Store task A results
-        results['per_task']['A-bugfix'] = {
-            'points_earned': round(a_earned, 2),
-            'points_max': a_max,
-            'comments': a_comments
-        }
-
-    earned_total += a_earned
-
-    # If Task A fix is not correct, apply major penalty: cap final possible score to 40% of max
-    # (This enforces the guidance that Task A must be fixed to be competent.)
-    post_ok_final = False
-    a_task = tasks_by_id.get('A-bugfix')
-    if a_task:
-        post_ok_final = contains_all_pass_text(a_task.get('post_fix_test_output', ''))
-    cap_applied = False
-    cap_value_points = None
-    if not post_ok_final:
-        cap_points = round(MAX_TOTAL * 0.4, 2)  # 40% cap
-        cap_applied = True
-        cap_value_points = cap_points
-        # We'll still compute raw earned_total, but at the end we'll cap the final awarded points.
-        results['deductions'].append("Task A post-fix tests did not show passing. Per policy, final awarded points will be capped to {:.1f}% of max ({} points).".format(40.0, cap_points))
-
-    # ---- Task B grading ----
-    b_max = WEIGHTS['B']
-    b_earned = 0.0
-    b_comments = []
-    b_task = tasks_by_id.get('B-adapt_env')
-    if not b_task:
-        b_comments.append('Task B entry missing.')
-        results['per_task']['B-adapt_env'] = {
-            'points_earned': 0.0,
-            'points_max': b_max,
-            'comments': b_comments
-        }
+    if lm_bool:
+        breakdown["adaptation_correctness"]["score"] = 15
+        breakdown["adaptation_correctness"]["reason"] = "Candidate reports low-memory mode ran successfully."
     else:
-        # 1) run_demo (12)
-        run_output = b_task.get('run_output_after_adaptation', '') or ''
-        # Attempt to compare to answer_key expected output for B if present
-        expected_run = None
-        try:
-            # locate in answer key task's expected output if provided
-            ak_tr = answer_key.get('task_results', [])
-            for e in ak_tr:
-                if e.get('task_id') == 'B-adapt_env':
-                    expected_run = e.get('run_output_after_adaptation')
-                    break
-        except Exception:
-            expected_run = None
-
-        if expected_run:
-            # Normalize whitespace and compare whether candidate output contains all expected non-empty lines
-            expected_lines = [l.strip() for l in expected_run.strip().splitlines() if l.strip()]
-            got_lines = [l.strip() for l in run_output.strip().splitlines() if l.strip()]
-            # Simple matching: all expected lines must appear in candidate output in same order
-            match_all = True
-            idx = 0
-            for el in expected_lines:
-                found = False
-                while idx < len(got_lines):
-                    if got_lines[idx] == el:
-                        found = True
-                        idx += 1
-                        break
-                    idx += 1
-                if not found:
-                    match_all = False
-                    break
-            if match_all:
-                b_earned += B_SUB['run_demo']
-                b_comments.append(f"Run output after adaptation matches expected (+{B_SUB['run_demo']:.1f}).")
-            else:
-                # partial: some expected lines present?
-                hits = sum(1 for el in expected_lines if el in run_output)
-                if hits > 0:
-                    frac = hits / max(1, len(expected_lines))
-                    add = round(B_SUB['run_demo'] * frac, 2)
-                    b_earned += add
-                    b_comments.append(f"Run output contains {hits}/{len(expected_lines)} expected lines; partial credit (+{add:.2f}).")
-                else:
-                    b_comments.append("Run output does not match expected (0/12).")
+        # partial if file changed
+        files = candidate_task.get("files_changed", []) or []
+        if any(f.strip() == "src/processor.py" for f in files):
+            breakdown["adaptation_correctness"]["score"] = 7
+            breakdown["adaptation_correctness"]["reason"] = "Low-memory mode not reported running, but src/processor.py modified -> partial credit."
         else:
-            # No expected in answer key: heuristics: non-empty output that prints product codes is acceptable
-            if run_output and any(c.isalpha() for c in run_output):
-                b_earned += B_SUB['run_demo']
-                b_comments.append(f"Non-empty run output detected (+{B_SUB['run_demo']:.1f}).")
-            else:
-                b_comments.append("No run output captured (0/12).")
+            breakdown["adaptation_correctness"]["score"] = 0
+            breakdown["adaptation_correctness"]["reason"] = "No low-memory evidence and no relevant file change."
 
-        # 2) explanation + risks (8)
-        expl = (b_task.get('explanation') or '').strip()
-        risks = (b_task.get('risks_or_limitations') or '').strip()
-        if expl and risks:
-            b_earned += B_SUB['explain_risks']
-            b_comments.append(f"Explanation and risks provided (+{B_SUB['explain_risks']:.1f}).")
-        elif expl or risks:
-            b_earned += round(B_SUB['explain_risks'] * 0.6, 2)
-            b_comments.append("Partial explanation or partial risks provided; partial credit.")
-        else:
-            b_comments.append("No explanation or risks provided (0/8).")
-
-        results['per_task']['B-adapt_env'] = {
-            'points_earned': round(b_earned, 2),
-            'points_max': b_max,
-            'comments': b_comments
-        }
-
-    earned_total += b_earned
-
-    # ---- Task C grading ----
-    c_max = WEIGHTS['C']
-    c_earned = 0.0
-    c_comments = []
-    c_task = tasks_by_id.get('C-performance')
-    if not c_task:
-        c_comments.append('Task C entry missing.')
-        results['per_task']['C-performance'] = {
-            'points_earned': 0.0,
-            'points_max': c_max,
-            'comments': c_comments
-        }
+    # Evidence via commands_run: look for a command containing '--low-mem' or 'low-mem' with exit_code 0 and stdout indicating success.
+    cmd_entries = candidate_task.get("commands_run", []) or []
+    evidence_ok = False
+    evidence_partial = False
+    evid_notes = []
+    for cmd_obj in cmd_entries:
+        cmd = str(cmd_obj.get("cmd", "") or "")
+        stdout = str(cmd_obj.get("stdout", "") or "")
+        exit_code = cmd_obj.get("exit_code", None)
+        if "--low-mem" in cmd or "low-mem" in cmd.lower():
+            # prefer exit_code == 0 and success markers
+            if exit_code == 0 and ("LOW-MEM MODE OK: True".lower() in stdout.lower() or "low-mem mode ok: true" in stdout.lower() or "LOW-MEM MODE OK: true".lower() in stdout.lower()):
+                evidence_ok = True
+                evid_notes.append(f"Found successful low-mem command: {cmd}")
+                break
+            # maybe returned result but OK False
+            if "LOW-MEM MODE RESULT" in stdout or "LOW-MEM MODE OK" in stdout:
+                evidence_partial = True
+                evid_notes.append(f"Found low-mem command but not clearly successful: {cmd}")
+    if evidence_ok:
+        breakdown["evidence"]["score"] = 10
+        breakdown["evidence"]["reason"] = "Clear low-memory run found with success indicator in stdout and exit_code 0."
+    elif evidence_partial:
+        breakdown["evidence"]["score"] = 5
+        breakdown["evidence"]["reason"] = "Low-memory command present but stdout did not clearly indicate OK or exit code != 0."
     else:
-        # 1) measure and report (8)
-        before = c_task.get('benchmark_before_ms')
-        after = c_task.get('benchmark_after_ms')
-        if isinstance(before, (int, float)) and isinstance(after, (int, float)):
-            # Accept positive numeric values
-            if before > 0 and after >= 0:
-                c_earned += C_SUB['measure_report']
-                c_comments.append(f"Benchmark numbers present (+{C_SUB['measure_report']:.1f}).")
-            else:
-                c_comments.append("Benchmark values present but non-positive (0/8 for measure/report).")
-        else:
-            c_comments.append("Benchmark before/after numbers missing or not numeric (0/8).")
+        breakdown["evidence"]["score"] = 0
+        breakdown["evidence"]["reason"] = "No low-memory command evidence found in commands_run."
 
-        # 2) meaningful improvement (8)
-        if isinstance(before, (int, float)) and isinstance(after, (int, float)) and before > 0:
-            improv = numeric_improvement(before, after)
-            if improv is None:
-                c_comments.append("Could not compute improvement (0/8).")
-            else:
-                pct = improv * 100.0
-                if after < before:
-                    # positive improvement
-                    if pct >= 15.0:
-                        c_earned += C_SUB['meaningful_improve']
-                        c_comments.append(f"Improvement {pct:.1f}% >= 15%: full credit (+{C_SUB['meaningful_improve']:.1f}).")
-                    elif pct >= 5.0:
-                        add = round(C_SUB['meaningful_improve'] * 0.5, 2)
-                        c_earned += add
-                        c_comments.append(f"Improvement {pct:.1f}% is modest (>=5%); partial credit (+{add:.2f}).")
-                    else:
-                        c_comments.append(f"Improvement {pct:.1f}% under threshold; no points (0/8).")
-                elif approx_equal(after, before):
-                    c_comments.append("No measurable improvement (0/8).")
-                else:
-                    c_comments.append(f"Regression observed ({pct:.1f}% worse); no points (0/8).")
-        else:
-            c_comments.append("Insufficient numeric benchmark data for improvement calculation (0/8).")
-
-        # 3) explanation (4)
-        c_expl = (c_task.get('explanation') or '').strip()
-        if c_expl:
-            if text_has_keywords(c_expl, ['single-pass', 'dict', 'accumul', 'optimi', 'complexit', 'one-pass', 'linear', 'o(n)']):
-                c_earned += C_SUB['explanation']
-                c_comments.append(f"Explanation contains optimization details/trade-offs (+{C_SUB['explanation']:.1f}).")
-            else:
-                c_earned += round(C_SUB['explanation'] * 0.6, 2)
-                c_comments.append("Explanation present but lacking clear optimization detail; partial credit.")
-        else:
-            c_comments.append("No explanation provided for optimization (0/4).")
-
-        results['per_task']['C-performance'] = {
-            'points_earned': round(c_earned, 2),
-            'points_max': c_max,
-            'comments': c_comments
-        }
-
-    earned_total += c_earned
-
-    # ---- Communication & Packaging grading (10) ----
-    comm_max = WEIGHTS['COMM']
-    comm_earned = 0.0
-    comm_comments = []
-
-    # 1) JSON format (3) - check for required top-level keys
-    required_top = ['candidate_name', 'time_taken_minutes', 'task_results']
-    missing_keys = [k for k in required_top if k not in candidate]
-    if not missing_keys and isinstance(candidate.get('task_results'), list) and len(candidate.get('task_results')) >= 3:
-        comm_earned += COMM_SUB['json_format']
-        comm_comments.append(f"test_submission.json contains required top-level keys (+{COMM_SUB['json_format']:.1f}).")
+    # Explanation: similar heuristic to Task A
+    explanation = candidate_task.get("explanation", "") or ""
+    if len(explanation.strip()) >= 20 or contains_keyword(explanation, ["stream", "streaming", "low-mem", "memory", "stream=True", "fallback"]):
+        breakdown["explanation"]["score"] = 5
+        breakdown["explanation"]["reason"] = "Sufficient explanation about streaming/low-memory adaptation."
+    elif len(explanation.strip()) >= 5:
+        breakdown["explanation"]["score"] = 2
+        breakdown["explanation"]["reason"] = "Brief explanation; partial credit."
     else:
-        comm_comments.append(f"Missing or malformed top-level keys: {missing_keys} (0/{COMM_SUB['json_format']}).")
+        breakdown["explanation"]["score"] = 0
+        breakdown["explanation"]["reason"] = "No explanation provided."
 
-    # 2) Patch/diff clarity (4)
-    any_diff_good = False
-    any_files_modified = False
-    for t in task_list:
-        files_mod = t.get('files_modified', []) or []
-        any_files_modified = any_files_modified or bool(files_mod)
-        patch = (t.get('patch_unified_diff') or '').strip()
-        if patch and ('--- a/' in patch or '+++ b/' in patch or patch.startswith('*** ') or patch.startswith('=== file:')):
-            any_diff_good = True
-            break
-    if any_diff_good:
-        comm_earned += COMM_SUB['patch_clarity']
-        comm_comments.append(f"Unified diffs found and look like git-format (+{COMM_SUB['patch_clarity']:.1f}).")
-    elif any_files_modified:
-        # candidate provided modified file list but no unified diff
-        comm_earned += round(COMM_SUB['patch_clarity'] * 0.6, 2)
-        comm_comments.append("Files_modified present but unified diff not found; partial credit for patch clarity.")
-    else:
-        comm_comments.append("No patch/diff or files_modified information provided (0/4).")
+    total = sum(breakdown[k]["score"] for k in breakdown)
+    for k, v in breakdown.items():
+        if v["score"] < v["max"]:
+            reasons.append(f"{k}: {v['reason']} (awarded {v['score']}/{v['max']})")
+    if evid_notes:
+        reasons.append("evidence_notes: " + " | ".join(evid_notes))
 
-    # 3) run instructions & logs (3)
-    has_run_instructions = False
-    # bench command field or pre/post outputs presence
-    bench_cmds = []
-    for t in task_list:
-        if 'bench_command_run' in t and t.get('bench_command_run'):
-            bench_cmds.append(t.get('bench_command_run'))
-    if bench_cmds and any(isinstance(x, str) and x.strip() for x in bench_cmds):
-        has_run_instructions = True
-    # also require tests outputs present
-    has_test_logs = any(t.get('pre_fix_test_output') or t.get('post_fix_test_output') for t in task_list)
-    if has_run_instructions and has_test_logs:
-        comm_earned += COMM_SUB['run_instructions']
-        comm_comments.append(f"Bench command and test logs present (+{COMM_SUB['run_instructions']:.1f}).")
-    elif has_test_logs:
-        comm_earned += round(COMM_SUB['run_instructions'] * 0.6, 2)
-        comm_comments.append("Test logs present but bench command missing; partial credit.")
-    else:
-        comm_comments.append("No run instructions or logs present (0/3).")
-
-    results['per_task']['Communication'] = {
-        'points_earned': round(comm_earned, 2),
-        'points_max': comm_max,
-        'comments': comm_comments
+    return {
+        "id": "B-lowmem",
+        "points_awarded": total,
+        "points_max": max_points,
+        "breakdown": breakdown,
+        "deductions": reasons
     }
 
-    earned_total += comm_earned
+def grade_task_c(candidate_task: Dict[str, Any], answer_task: Dict[str, Any], candidate_task_a: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Task C (Performance) scoring:
+    - Performance improvement: 20 (full if improvement_factor >= 2.0)
+      - partial credit linearly for 1.0 < factor < 2.0
+    - Regression-free (tests still pass): 10 (requires Task A tests_passed true)
+    - Explanation: 5
+    Total: 35
+    """
+    max_points = 35
+    breakdown = {
+        "performance_improvement": {"score": 0, "max": 20, "reason": ""},
+        "regression_free": {"score": 0, "max": 10, "reason": ""},
+        "explanation": {"score": 0, "max": 5, "reason": ""},
+    }
+    reasons = []
 
-    # ---- Final aggregation and cap if necessary ----
-    raw_points = earned_total
-    final_points = raw_points
-    if cap_applied:
-        cap_points = cap_value_points
-        if final_points > cap_points:
-            results['deductions'].append("Applied Task A failure cap: raw points {:.2f} reduced to cap {:.2f}.".format(final_points, cap_points))
-            final_points = cap_points
+    evidence = candidate_task.get("evidence", {}) or {}
+    baseline = to_float(evidence.get("baseline_time_s"))
+    optimized = to_float(evidence.get("optimized_time_s"))
+    reported_factor = to_float(evidence.get("improvement_factor"))
 
-    # Round and compute percentage
-    final_points = round(final_points, 2)
-    percent = round((final_points / max_total) * 100.0, 2) if max_total > 0 else 0.0
+    calc_factor = None
+    if baseline is not None and optimized is not None and optimized > 0:
+        calc_factor = baseline / optimized if optimized > 0 else None
 
-    results['total_points_earned'] = final_points
-    results['max_points'] = max_total
-    results['percentage'] = percent
-    results['overall_score'] = percent  # numeric variable as requested
+    # Determine the improvement factor to use (prefer calculated if possible)
+    use_factor = None
+    factor_source = ""
+    if calc_factor is not None:
+        use_factor = calc_factor
+        factor_source = "calculated"
+    elif reported_factor is not None:
+        use_factor = reported_factor
+        factor_source = "reported"
+    else:
+        use_factor = None
 
-    # Include raw breakdown and any helpful info
-    results['raw_points_before_cap'] = round(raw_points, 2)
-    results['cap_applied'] = cap_applied
-    if cap_applied:
-        results['cap_points'] = cap_value_points
+    if use_factor is None:
+        breakdown["performance_improvement"]["score"] = 0
+        breakdown["performance_improvement"]["reason"] = "No valid baseline/optimized times provided to compute improvement."
+        reasons.append("performance_improvement: missing baseline/optimized times.")
+    else:
+        # Cap unrealistic factors and handle edge cases
+        if use_factor <= 1.0:
+            breakdown["performance_improvement"]["score"] = 0
+            breakdown["performance_improvement"]["reason"] = f"No improvement (factor={use_factor:.3f}, source={factor_source})."
+            reasons.append(breakdown["performance_improvement"]["reason"])
+        else:
+            # Full credit when factor >= 2.0
+            if use_factor >= 2.0:
+                breakdown["performance_improvement"]["score"] = 20
+                breakdown["performance_improvement"]["reason"] = f"Improvement factor {use_factor:.3f} (>=2.0) => full credit."
+            else:
+                # linear scaling between 1.0 -> 0 pts and 2.0 -> full pts
+                # factor in (1,2) gives 0..20 linearly
+                scaled = 20.0 * (use_factor - 1.0) / 1.0
+                # round to 2 decimals points
+                scaled = round(scaled, 2)
+                breakdown["performance_improvement"]["score"] = float(scaled)
+                breakdown["performance_improvement"]["reason"] = f"Improvement factor {use_factor:.3f} => partial credit ({scaled}/{20})."
+                reasons.append(breakdown["performance_improvement"]["reason"])
 
-    return results
+    # Regression-free: require Task A tests_passed true
+    tests_passed_A = False
+    if candidate_task_a:
+        tests_passed_A = bool(safe_get(candidate_task_a, "evidence", "tests_passed") is True)
+    if tests_passed_A:
+        breakdown["regression_free"]["score"] = 10
+        breakdown["regression_free"]["reason"] = "Tests pass after changes (Task A evidence)."
+    else:
+        # Also try to detect in candidate_task commands that tests passed
+        cmd_entries = candidate_task.get("commands_run", []) or []
+        tests_ok_found = False
+        for c in cmd_entries:
+            stdout = str(c.get("stdout", "") or "")
+            if "ALL TESTS PASSED" in stdout or "ALL TESTS PASSED".lower() in stdout.lower():
+                tests_ok_found = True
+                break
+        if tests_ok_found:
+            breakdown["regression_free"]["score"] = 10
+            breakdown["regression_free"]["reason"] = "Found 'ALL TESTS PASSED' in Task C commands_run stdout."
+        else:
+            breakdown["regression_free"]["score"] = 0
+            breakdown["regression_free"]["reason"] = "Tests not shown as passing after optimization."
+
+    # Explanation: simple heuristics
+    explanation = candidate_task.get("explanation", "") or ""
+    if len(explanation.strip()) >= 20 or contains_keyword(explanation, ["optimiz", "complex", "dict", "set", "k*(k-1)", "combin"]):
+        breakdown["explanation"]["score"] = 5
+        breakdown["explanation"]["reason"] = "Sufficient explanation about optimization/algorithmic change."
+    elif len(explanation.strip()) >= 5:
+        breakdown["explanation"]["score"] = 2
+        breakdown["explanation"]["reason"] = "Brief explanation; partial credit."
+    else:
+        breakdown["explanation"]["score"] = 0
+        breakdown["explanation"]["reason"] = "No explanation provided."
+
+    total = sum(float(breakdown[k]["score"]) for k in breakdown)
+    # Format reasons from components with incomplete/full credit info
+    for k, v in breakdown.items():
+        if float(v["score"]) < float(v["max"]):
+            reasons.append(f"{k}: {v['reason']} (awarded {v['score']}/{v['max']})")
+
+    # Additional note: if reported_factor is present but differs significantly from calc_factor, note it
+    if reported_factor is not None and calc_factor is not None:
+        if abs(reported_factor - calc_factor) / calc_factor > 0.05:  # >5% mismatch
+            reasons.append(f"Reported improvement_factor ({reported_factor}) differs from calculated ({calc_factor:.6f}) by >5%.")
+
+    return {
+        "id": "C-performance",
+        "points_awarded": total,
+        "points_max": max_points,
+        "breakdown": breakdown,
+        "deductions": reasons,
+        "computed_improvement_factor": (calc_factor if calc_factor is not None else reported_factor)
+    }
+
+# ---------- Main orchestration ----------
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python3 task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
         sys.exit(2)
 
     cand_path = sys.argv[1]
-    key_path = sys.argv[2]
+    ans_path = sys.argv[2]
 
-    cand_json, err = safe_load_json(cand_path)
-    if err:
-        out = {
-            'error': f"Failed to load candidate submission JSON: {err}"
-        }
-        with open('test_results.json', 'w', encoding='utf-8') as f:
-            json.dump(out, f, indent=2)
-        print("Error loading candidate JSON. Wrote test_results.json with error info.")
+    # Load files with robust error handling
+    try:
+        candidate = load_json(cand_path)
+    except Exception as e:
+        print(f"Error loading candidate submission: {e}")
+        sys.exit(1)
+    try:
+        answer = load_json(ans_path)
+    except Exception as e:
+        print(f"Error loading answer key: {e}")
         sys.exit(1)
 
-    key_json, err = safe_load_json(key_path)
-    if err:
-        out = {
-            'error': f"Failed to load answer key JSON: {err}"
-        }
-        with open('test_results.json', 'w', encoding='utf-8') as f:
-            json.dump(out, f, indent=2)
-        print("Error loading answer key JSON. Wrote test_results.json with error info.")
+    results = {
+        "candidate_file": os.path.abspath(cand_path),
+        "answer_key_file": os.path.abspath(ans_path),
+        "tasks": [],
+        "total_points_awarded": 0.0,
+        "total_points_max": 100.0,
+        "percentage_score": 0.0,
+        "overall_score": 0.0,
+        "notes": []
+    }
+
+    # Validate basic structure
+    cand_tasks = candidate.get("tasks", [])
+    ans_tasks = answer.get("tasks", [])
+
+    if not isinstance(cand_tasks, list):
+        results["notes"].append("Candidate JSON 'tasks' field missing or not an array.")
+        cand_tasks = []
+    if not isinstance(ans_tasks, list):
+        results["notes"].append("Answer key 'tasks' field missing or not an array.")
+        ans_tasks = []
+
+    # Find tasks by id
+    cand_task_A = find_task(cand_tasks, "A-bugfix")
+    cand_task_B = find_task(cand_tasks, "B-lowmem")
+    cand_task_C = find_task(cand_tasks, "C-performance")
+
+    ans_task_A = find_task(ans_tasks, "A-bugfix")
+    ans_task_B = find_task(ans_tasks, "B-lowmem")
+    ans_task_C = find_task(ans_tasks, "C-performance")
+
+    # Basic presence checks
+    if cand_task_A is None:
+        results["notes"].append("Candidate submission missing task A-bugfix.")
+        cand_task_A = {}
+    if cand_task_B is None:
+        results["notes"].append("Candidate submission missing task B-lowmem.")
+        cand_task_B = {}
+    if cand_task_C is None:
+        results["notes"].append("Candidate submission missing task C-performance.")
+        cand_task_C = {}
+
+    # Grade each task
+    graded_A = grade_task_a(cand_task_A, ans_task_A or {})
+    graded_B = grade_task_b(cand_task_B, ans_task_B or {})
+    graded_C = grade_task_c(cand_task_C, ans_task_C or {}, cand_task_A)
+
+    # Collect and sum
+    results["tasks"].append(graded_A)
+    results["tasks"].append(graded_B)
+    results["tasks"].append(graded_C)
+
+    total_awarded = float(graded_A["points_awarded"]) + float(graded_B["points_awarded"]) + float(graded_C["points_awarded"])
+    results["total_points_awarded"] = round(total_awarded, 2)
+    results["total_points_max"] = 100.0
+    percent = (total_awarded / 100.0) * 100.0
+    results["percentage_score"] = round(percent, 2)
+    # also set the required variable overall_score (numeric)
+    results["overall_score"] = round(percent, 2)
+
+    # Add human-readable summary notes
+    if results["overall_score"] >= 80.0:
+        results["notes"].append("PASS threshold (>=80%) met.")
+    else:
+        results["notes"].append("PASS threshold not met (>=80%).")
+
+    # Save test_results.json in same directory as this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out_path = os.path.join(script_dir, "test_results.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"Grading complete. Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}")
         sys.exit(1)
 
-    # Perform grading
-    results = grade(cand_json, key_json)
-
-    # Write results file
-    with open('test_results.json', 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=2)
-
-    print("Grading complete. Results written to test_results.json")
-    print("Overall score: {}%".format(results.get('overall_score', 0.0)))
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
+
+# Expose overall_score variable as required by the spec (value assigned at runtime in results).
+overall_score = None

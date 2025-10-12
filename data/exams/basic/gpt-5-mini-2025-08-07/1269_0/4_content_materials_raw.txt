@@ -1,102 +1,96 @@
 <MATERIALS_FOR_CANDIDATE>
-CSV file: data.csv
+File: sample_sales.csv
+Contents (exact, 6 data lines plus header):
+date,product_id,quantity,unit_price
+2025-01-01,ABC123,2,10.00
+2025-01-02,XYZ999,1,20.50
+2025-01-03,ABC123,3,10.00
+2025-01-04,LMN456,5,5.25
+2025-01-05,XYZ999,2,20.00
 
-Content (20 rows including header). Save exactly as shown, comma-separated, with a blank cell represented by nothing between commas.
+Expected stdout when running without filtering:
+ABC123,50.00
+LMN456,26.25
+XYZ999,61.00
 
-id,group,value1,value2
-1,A,10,100
-2,A,20,200
-3,A,,150
-4,A,5,
-5,A,15,120
-6,A,0,0
-7,A,20,180
-8,B,7,70
-9,B,,80
-10,B,13,130
-11,B,13,110
-12,B,9,
-13,B,9,90
-14,B,1,50
-15,C,,20
-16,C,3,30
-17,C,3,
-18,C,3,40
-19,C,3,25
-20,C,4,35
+File: malformed_sales.csv
+Contents (exact, includes header, malformed lines, and an empty line):
+date,product_id,quantity,unit_price
+2025-01-01,ABC123,2,10.00
+BADLINEWITHOUTCOMMAs
+2025-01-02,XYZ999,,20.50
+2025-01-03,ABC123,3,notanumber
+2025-01-04,LMN456,5,5.25
+2025-01-05,XYZ999,2,20.00
+2025-01-06,BAD,4     <-- malformed due to missing fields after trimming
+
+2025-01-07,NEG001,-1,15.00
+
+Expected stdout when running without filtering:
+ABC123,20.00
+LMN456,26.25
+NEG001,-15.00
+XYZ999,61.00
+
+Additional deterministic test to exercise the filter:
+Command to run: sales_agg sample_sales.csv --min-revenue 50.00
+Expected stdout for this command (exact):
+ABC123,50.00
+XYZ999,61.00
+
+Notes for the candidate (use only these files):
+- Use exactly the filenames above: sample_sales.csv and malformed_sales.csv.
+- Your program must reproduce the exact expected stdout strings above (no extra blank lines or trailing spaces) when run with no --min-revenue flag on each file.
+- Also include the filter test using the sample_sales.csv file and threshold 50.00; the expected stdout for that command is provided above.
+- These are the only input files you may use for the exam tasks.
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
-How these materials were constructed
-- Purpose: a concise, deterministic CSV with header id,group,value1,value2 to test reading, numeric parsing, handling of blank cells, aggregation, formatting, stable ordering, and group-by functionality.
-- File contains 20 data rows distributed across three groups:
-  - Group "A": ids 1–7 (7 rows)
-  - Group "B": ids 8–14 (7 rows)
-  - Group "C": ids 15–20 (6 rows)
-- Numeric columns are value1 and value2. Some cells are intentionally blank (empty between commas) to require ignoring blanks in aggregates. There are no non-numeric strings in numeric columns in this provided file (so normal successful runs are expected), but the candidate must implement detection for non-parseable numeric values as required by the spec.
+Rationale for materials
+- I created two compact CSV files that exercise the required parsing, aggregation, rounding, sorting, and error-handling behaviors for the sales_agg task.
+- sample_sales.csv provides normal, well-formed data that yields clear aggregated totals per product_id.
+- malformed_sales.csv intentionally contains a variety of edge cases that the candidate must handle gracefully:
+  - A completely malformed line without commas ("BADLINEWITHOUTCOMMAs") — must be ignored.
+  - A line with a missing quantity (empty between commas) — treat missing numeric field as zero for that line.
+  - A line with a non-numeric unit_price ("notanumber") — treat as zero for that line.
+  - A line with fewer fields plus an inline comment ("2025-01-06,BAD,4     <-- malformed...") — should be treated as malformed and ignored.
+  - An empty line — should be ignored.
+  - A negative quantity entry (NEG001 with -1) — allowed and must affect revenue (negative revenue).
+- The additional filter test (--min-revenue 50.00) is deterministic and demonstrates the follow-up revision feature expected in the exam.
 
-Data patterns and relationships (useful for checking correctness)
-- Zero vs blank: There is an explicit zero value (value1=0 for id 6 and value2=0 for id 6). This tests that candidates treat 0 as a valid numeric value (counted) and blank as missing (not counted).
-- Blanks present per group:
-  - Group A: value1 blank at id 3; value2 blank at id 4
-  - Group B: value1 blank at id 9; value2 blank at id 12
-  - Group C: value1 blank at id 15; value2 blank at id 17
-- There are no rows with entirely empty numeric columns for an entire group; but the program must support count=0 behavior (setting sum/mean/min/max to null) if that occurred.
-- Group keys expected: "A", "B", "C" sorted lexicographically ascending.
-- Numeric column keys expected sorted alphabetically: "value1", "value2".
+Patterns and relationships
+- Aggregation key: product_id (string). Sorting must be lexical ascending by product_id.
+- Per-line revenue: quantity * unit_price. If quantity or unit_price is missing or not parseable to a number, treat that field as zero for that line (but ignore lines that do not have the expected number of fields at all).
+- Aggregation: sum per product_id across all valid lines, then round final per-product totals to exactly two decimal places.
+- Negative quantities are valid and reduce total revenue accordingly (this appears in malformed_sales.csv as NEG001,-1,15.00 -> revenue -15.00).
+- Rounding must be applied after aggregation to avoid subtle precision differences. Evaluators should accept only exact string matches to the expected outputs provided above.
 
-Expected correct outputs (for quick automated verification)
-- Task A (overall summary: out_initial.json)
-{
-  "summary": {
-    "value1": { "count": 17, "sum": 138.00, "mean": 8.12, "min": 0.00, "max": 20.00 },
-    "value2": { "count": 17, "sum": 1430.00, "mean": 84.12, "min": 0.00, "max": 200.00 }
-  }
-}
+Common traps and likely candidate errors
+- Parsing: splitting on commas without trimming may leave trailing comment text in a field — the line with the inline comment has too few fields and should be ignored.
+- Numeric conversion: candidates may crash on empty strings or non-numeric tokens; correct behavior is to treat missing/non-numeric quantity or unit_price as zero for that line (except for completely malformed lines).
+- Line counting: failing to skip the header row will shift results; candidate must detect and skip it.
+- Rounding: rounding per line before aggregating versus after aggregation will produce different totals; the required behavior is rounding the final per-product total to two decimal places.
+- Sorting: sorting numerically vs lexically could change ordering; evaluator expects lexical ascending sorting by product_id.
+- Output formatting: extra blank lines or trailing spaces will cause automated exact-match checks to fail.
 
-- Task B (group-by "group": out_groupby.json)
-{
-  "groups": {
-    "A": {
-      "value1": { "count": 6, "sum": 70.00, "mean": 11.67, "min": 0.00, "max": 20.00 },
-      "value2": { "count": 6, "sum": 750.00, "mean": 125.00, "min": 0.00, "max": 200.00 }
-    },
-    "B": {
-      "value1": { "count": 6, "sum": 52.00, "mean": 8.67, "min": 1.00, "max": 13.00 },
-      "value2": { "count": 6, "sum": 530.00, "mean": 88.33, "min": 50.00, "max": 130.00 }
-    },
-    "C": {
-      "value1": { "count": 5, "sum": 16.00, "mean": 3.20, "min": 3.00, "max": 4.00 },
-      "value2": { "count": 5, "sum": 150.00, "mean": 30.00, "min": 20.00, "max": 40.00 }
-    }
-  }
-}
+What correct answers depend on
+- Proper detection of malformed lines vs lines with missing numeric values.
+- Treating missing/non-numeric numeric fields as zero (for that single field) rather than discarding the whole line (unless the line has fewer than 4 comma-separated fields).
+- Summing per product_id correctly, then rounding once at the end.
+- Filtering with --min-revenue must apply after aggregation and rounding or at least use the final numeric totals for comparison (use consistent rule and document it in README); for automated checking we supply expected output for threshold 50.00 to be exact.
 
-Notes on how these numbers were computed (verifiable steps)
-- For each numeric column, ignore blank cells entirely.
-- count = number of non-blank, successfully parsed numeric cells.
-- sum = arithmetic sum of those numeric values.
-- mean = sum / count, rounded to two decimal places in final JSON.
-- min and max computed among the included numeric values, expressed with two decimals.
-- All numeric fields are JSON numbers formatted with two digits after the decimal point (not strings).
-- If count = 0 then sum, mean, min, max must be JSON null.
-
-Potential traps and common errors candidates may make
-- Treating blank as zero (this would change counts and sums).
-- Formatting numbers with more or fewer than two decimal places.
-- Emitting numeric aggregates as JSON strings instead of numbers.
-- Not preserving the required key ordering: summary keys must be alphabetically sorted; group keys lexicographically sorted.
-- Off-by-one row numbering in error messages (the rubric expects a clear indication of row and column when encountering non-parseable numbers; many candidates count rows starting at 1 instead of counting header as row 1—either approach is acceptable as long as the error message is clear and consistent, but the evaluator should check that the reported row corresponds logically to the CSV line).
-- Failing to exit non-zero and produce no JSON when detecting an invalid numeric cell.
-- Not implementing the --output flag behavior (writing file vs stdout) or not implementing --group-by behavior or checking for missing group-by column.
-
-How these materials differentiate conceptual vs practical skill
-- Minimal yet realistic: the dataset forces implementation of parsing, ignoring blanks, numeric formatting, and stable ordering—tasks that require writing runnable code and verifying results, not just describing algorithms.
-- Revision test (group-by) requires refactoring code to add grouping logic and updating comments/README—showing whether candidate can evolve working code and document changes.
-- The zero value and multiple blanks ensure that simple incorrect assumptions (e.g., blank=0) are detectable by comparing produced outputs to the expected values above.
+How materials distinguish skills
+- Conceptual-only candidates might describe correct behavior but fail to produce an executable program that:
+  - Does not crash on malformed input.
+  - Produces the exact expected stdout strings for both CSV files and for the filter test.
+  - Implements the --min-revenue flag correctly and documents assumptions (e.g., when rounding is done).
+- Practical candidates will implement parsing, aggregation, rounding, sorting, implement the optional filter flag, provide test commands, capture outputs, and include README and changelog explaining decisions.
 
 Evaluator hints
-- Use the provided expected outputs above to validate candidate output quickly.
-- For error-message validation, if a candidate demonstrates a clear error including the CSV line content and column name, accept minor differences in row-number base (but prefer row numbering that points clearly to the offending data line).
-- Check JSON numeric formatting strictly: two decimals for numbers; JSON null where required.
+- Check that candidate reproduces the exact provided expected outputs (byte-for-byte, no trailing spaces/newlines).
+- Verify candidate's handling of the malformed line with inline comment is to ignore it (not to attempt to parse comment text).
+- Confirm negative quantity handling yields negative revenue for NEG001 in malformed_sales.csv.
+- Verify the filter test uses the provided threshold 50.00 and matches the provided expected output.
+
+These materials are compact (two small CSVs and one deterministic filter test) and fully deterministic so the candidate can complete the exam within the 90-minute time limit.
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

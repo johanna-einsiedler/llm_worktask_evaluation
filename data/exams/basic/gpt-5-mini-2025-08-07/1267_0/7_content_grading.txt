@@ -1,364 +1,534 @@
-# task_evaluation.py
-import json
-import sys
-import os
-import re
-from pathlib import Path
+Below is the requested Python grading script task_evaluation.py. It loads the candidate submission JSON and an answer-key JSON, applies the scoring rules described in the evaluator instructions, and writes a detailed grading result JSON file test_results.json. The script is self-contained and uses only standard Python libraries.
 
+Save this content into a file named task_evaluation.py.
+
+```python
+#!/usr/bin/env python3
 """
-Automated grading script for the Debug & Fix practical exam (basic).
+task_evaluation.py
 
 Usage:
     python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
 
-Outputs:
-    Creates test_results.json in the same directory as this script with a detailed
-    breakdown of scores, explanations for deductions, and overall_score (0-100).
+Produces:
+    test_results.json in the same directory as this script.
+
+What it does (high level):
+- Loads candidate submission JSON and answer key JSON.
+- Applies automated grading rules:
+  - Functional correctness (tests passed) — 60 points
+  - Explanation quality — 20 points
+  - Code hygiene / minimal changes — 10 points
+  - Completeness & reproducibility — 10 points
+- Creates a detailed breakdown with explanations for deductions and an overall_score numeric percentage (0–100).
+
+Design notes:
+- Uses heuristic text similarity (word overlap) to compare explanations.
+- Is tolerant of capitalization and whitespace.
+- Attempts graceful error handling and produces a test_results.json even on malformed inputs.
 """
 
-# Configuration / grading weights
-TASK_POINTS = {1: 15, 2: 20, 3: 20, 4: 15}  # total 70
-EXPLAIN_POINTS_TOTAL = 20  # 10 for root/change summaries, 10 for how_tested output
-ROOT_CHANGE_POINTS = 10
-HOW_TESTED_POINTS = 10
-HYGIENE_POINTS = 10
-MAX_POINTS = sum(TASK_POINTS.values()) + EXPLAIN_POINTS_TOTAL + HYGIENE_POINTS  # 100
+import json
+import sys
+import os
+import traceback
+import datetime
+import string
 
-# Helper: safe lower/strip
-def norm(s):
-    if s is None:
-        return ""
-    return str(s).strip()
+# =============================================================================
+# Utility helpers
+# =============================================================================
 
-# Helper: search for "TaskN: PASS" or "TaskN: FAIL" in text (case-insensitive)
-def find_task_status_in_text(text, task_id):
-    if not text:
-        return None
-    # normalize line endings and split
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    pattern_pass = re.compile(rf"Task\s*{task_id}\s*:\s*PASS", re.IGNORECASE)
-    pattern_fail = re.compile(rf"Task\s*{task_id}\s*:\s*FAIL", re.IGNORECASE)
-    for ln in lines:
-        if pattern_pass.search(ln):
-            return "PASS"
-        if pattern_fail.search(ln):
-            return "FAIL"
-    return None
-
-# Helper: basic fuzzy match for root cause
-def root_cause_matches(expected, candidate):
-    """
-    Very simple heuristic:
-    - Tokenize expected into words longer than 3 chars.
-    - Count how many of those tokens appear in candidate (case-insensitive).
-    - If >= 40% of expected tokens are present, consider it a match.
-    """
-    exp = norm(expected).lower()
-    cand = norm(candidate).lower()
-    if not exp or not cand:
-        return False
-    tokens = re.findall(r"[a-z0-9]{4,}", exp)
-    if not tokens:
-        # fallback: check substring presence
-        return exp in cand
-    matched = 0
-    for t in tokens:
-        if t in cand:
-            matched += 1
-    return (matched / len(tokens)) >= 0.4
-
-# Main grading logic
-def grade(candidate_path, answer_key_path):
-    results = {
-        "per_task": {},
-        "explanations": [],
-        "hygiene": {},
-        "summary": {},
-    }
-    deductions_log = []
-    # Load JSON files
+def safe_load_json(path):
     try:
-        with open(candidate_path, 'r', encoding='utf-8') as f:
-            candidate = json.load(f)
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f), None
     except Exception as e:
-        print(f"ERROR: Could not load candidate submission JSON: {e}")
-        sys.exit(1)
-    try:
-        with open(answer_key_path, 'r', encoding='utf-8') as f:
-            answer = json.load(f)
-    except Exception as e:
-        print(f"ERROR: Could not load answer key JSON: {e}")
-        sys.exit(1)
+        return None, str(e)
 
-    # Validate top-level structure
-    cand_tasks = candidate.get("task_results")
-    ans_tasks = answer.get("task_results")
-    if not isinstance(cand_tasks, list) or not isinstance(ans_tasks, list):
-        print("ERROR: Missing 'task_results' arrays in candidate or answer key.")
-        sys.exit(1)
+def normalize_words(text):
+    """Return a set of normalized words from text: lowercase, punctuation removed."""
+    if not isinstance(text, str):
+        return set()
+    # replace punctuation with spaces
+    trans = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
+    s = text.translate(trans).lower()
+    # split and filter out short tokens
+    tokens = [t for t in s.split() if len(t) > 1]
+    return set(tokens)
 
-    # Collect expected files changed union
+def jaccard_overlap(a_set, b_set):
+    if not a_set or not b_set:
+        return 0.0
+    inter = a_set.intersection(b_set)
+    union = a_set.union(b_set)
+    return len(inter) / len(union) if union else 0.0
+
+def safe_get(dct, *keys, default=None):
+    cur = dct
+    for k in keys:
+        if not isinstance(cur, dict) or k not in cur:
+            return default
+        cur = cur[k]
+    return cur
+
+# =============================================================================
+# Grading logic
+# =============================================================================
+
+def grade_submission(candidate, answer):
+    """
+    Returns a grading result dict including per-category scores and messages.
+    """
+
+    messages = []
+    per_task_results = []
+
+    # Validate basic structures
+    # Candidate fields
+    cand_name = candidate.get('candidate_name', '<unknown>')
+    cand_tasks = candidate.get('tasks', [])
+    cand_final = candidate.get('final_test_summary', {})
+    # Answer key fields
+    ak_tasks = answer.get('tasks', [])
+    ak_final = answer.get('final_test_summary', {})
+
+    # Basic numbers
+    ak_total_tests = ak_final.get('total_tests')
+    ak_passed = ak_final.get('passed')
+    ak_failed = ak_final.get('failed')
+
+    cand_total_tests = cand_final.get('total_tests')
+    cand_passed = cand_final.get('passed')
+    cand_failed = cand_final.get('failed')
+
+    # Default fallback if values missing in answer key
+    if ak_total_tests is None:
+        # try to infer from tasks in answer key by counting tests mentioned? fallback to 0
+        ak_total_tests = 0
+    if ak_passed is None:
+        ak_passed = 0
+    if ak_failed is None:
+        ak_failed = 0
+
+    # === Functional correctness (60 points) ===
+    functional_max = 60
+    func_score = 0.0
+    func_reasons = []
+
+    if not isinstance(cand_passed, int):
+        func_reasons.append("Candidate final_test_summary.passed missing or not an integer.")
+    if ak_total_tests <= 0:
+        # cannot evaluate proportionally; if candidate reports all tests passed, give full points if present
+        if isinstance(cand_passed, int) and cand_passed > 0:
+            func_score = float(functional_max)
+            func_reasons.append("Answer key total_tests not available; awarded full functional points as candidate reported passed tests.")
+        else:
+            func_score = 0.0
+            func_reasons.append("Answer key total_tests is zero or missing; cannot award functional points.")
+    else:
+        # Score proportionally to how many tests candidate passed (relative to expected total).
+        # Cap at 100% of expected total.
+        if isinstance(cand_passed, int) and cand_passed >= 0:
+            ratio = min(cand_passed / float(ak_total_tests), 1.0)
+            func_score = functional_max * ratio
+            if cand_passed < ak_passed:
+                func_reasons.append("Candidate passed fewer tests (%d) than expected (%d)." % (cand_passed, ak_passed))
+            elif cand_passed > ak_passed:
+                func_reasons.append("Candidate passed more tests (%d) than the answer-key expected (%d) — capped at full points." % (cand_passed, ak_passed))
+            else:
+                func_reasons.append("Candidate passed the expected number of tests (%d)." % cand_passed)
+        else:
+            func_score = 0.0
+            func_reasons.append("Candidate final_test_summary.passed missing or invalid; 0 functional points awarded.")
+
+    # === Explanation quality (20 points) ===
+    explain_max = 20
+    explain_score = 0.0
+    explain_reasons = []
+    # We'll compare candidate explanations to answer key explanations using word overlap per task.
+    # Each task has max_explain_points = explain_max / number_of_tasks
+    ak_task_map = { t.get('id'): t for t in ak_tasks if isinstance(t, dict) and 'id' in t }
+    cand_task_map = { t.get('id'): t for t in cand_tasks if isinstance(t, dict) and 'id' in t }
+    task_ids = sorted(set(ak_task_map.keys()) | set(cand_task_map.keys()))
+    if not task_ids:
+        # fallback: no task-level data. Try to evaluate presence and length of a general explanation fields
+        # award partial points if any explanations exist
+        total_explain_weight = explain_max
+        any_expl = False
+        for t in cand_tasks:
+            expl = t.get('explanation', '')
+            if isinstance(expl, str) and len(expl.strip()) > 20:
+                any_expl = True
+                break
+        explain_score = explain_max if any_expl else 0.0
+        explain_reasons.append("No per-task answer key found; awarded explanation points based on presence and length of candidate explanations.")
+    else:
+        per_task_explain_points = explain_max / len(task_ids)
+        total_expl_awarded = 0.0
+        for tid in task_ids:
+            ak_task = ak_task_map.get(tid)
+            cand_task = cand_task_map.get(tid)
+            ak_expl_text = ""
+            cand_expl_text = ""
+            if ak_task and isinstance(ak_task, dict):
+                ak_expl_text = ak_task.get('explanation', '') or ""
+            if cand_task and isinstance(cand_task, dict):
+                cand_expl_text = cand_task.get('explanation', '') or ""
+
+            ak_words = normalize_words(ak_expl_text)
+            cand_words = normalize_words(cand_expl_text)
+
+            if not cand_expl_text.strip():
+                # no explanation given
+                score_for_task = 0.0
+                reason = "No explanation provided for task %s." % tid
+            elif ak_words:
+                # compute overlap ratio: overlap_count / ak_word_count
+                # This gives higher credit when candidate covers the key terms from AK explanation.
+                overlap = len(ak_words.intersection(cand_words))
+                denom = max(1, len(ak_words))
+                coverage = overlap / denom
+                # Also compute Jaccard to penalize wildly different texts
+                jac = jaccard_overlap(ak_words, cand_words)
+                # Combine heuristics: weight coverage more
+                score_for_task = per_task_explain_points * (0.7 * coverage + 0.3 * jac)
+                reason = ("Task %s: overlap=%d/%d coverage=%.2f jaccard=%.2f" % (tid, overlap, denom, coverage, jac))
+            else:
+                # No AK explanation present; give points for having a reasonably long explanation (heuristic)
+                # If candidate explanation >= 2 sentences, give full, else partial
+                sentences = [s for s in cand_expl_text.replace('?', '.').split('.') if s.strip()]
+                if len(sentences) >= 2 or len(cand_expl_text.strip()) >= 80:
+                    score_for_task = per_task_explain_points
+                else:
+                    score_for_task = per_task_explain_points * 0.5
+                reason = ("Task %s: no answer-key explanation; heuristically assigned %.2f points." % (tid, score_for_task))
+            total_expl_awarded += score_for_task
+            explain_reasons.append(reason)
+            per_task_results.append({
+                'id': tid,
+                'explanation_awarded': round(score_for_task, 3),
+                'explanation_max': round(per_task_explain_points, 3),
+                'reason': reason
+            })
+        explain_score = total_expl_awarded
+
+    # === Code hygiene / minimal changes (10 points) ===
+    hygiene_max = 10
+    hygiene_score = 0.0
+    hygiene_reasons = []
+
+    # Collect expected modified files from answer key
     expected_files = set()
-    for t in ans_tasks:
-        files = t.get("files_changed") or []
-        expected_files.update(files)
+    expected_file_contents = {}
+    for t in ak_tasks:
+        if not isinstance(t, dict):
+            continue
+        for mf in t.get('modified_files', []) or []:
+            fname = mf.get('filename')
+            content = mf.get('content', '')
+            if fname:
+                expected_files.add(fname)
+                expected_file_contents[fname] = content
 
+    # Collect candidate modified files
     candidate_files = set()
+    candidate_file_contents = {}
     for t in cand_tasks:
-        files = t.get("files_changed") or []
-        candidate_files.update(files)
-
-    # Score per task: automated + possible partials
-    task_total_awarded = 0.0
-    task_details = {}
-
-    # Pre-check final_test_output presence (candidate)
-    candidate_final_output = norm(candidate.get("final_test_output", ""))
-    # Also allow looking into each task's how_tested field
-    for ans_task in ans_tasks:
-        try:
-            task_id = int(ans_task.get("task_id"))
-        except Exception:
+        if not isinstance(t, dict):
             continue
-        # Find corresponding candidate task entry
-        cand_entry = None
-        for ct in cand_tasks:
-            if ct.get("task_id") == task_id:
-                cand_entry = ct
-                break
-        if cand_entry is None:
-            # create empty placeholder
-            cand_entry = {
-                "task_id": task_id,
-                "files_changed": [],
-                "change_summary": "",
-                "root_cause": "",
-                "how_tested": ""
-            }
+        for mf in t.get('modified_files', []) or []:
+            fname = mf.get('filename')
+            content = mf.get('content', '')
+            if fname:
+                candidate_files.add(fname)
+                candidate_file_contents[fname] = content
 
-        # Determine automated PASS/FAIL by scanning how_tested and final_test_output
-        how_tested_text = norm(cand_entry.get("how_tested", ""))
-        status = find_task_status_in_text(how_tested_text, task_id)
-        if status is None:
-            # fallback to final_test_output
-            status = find_task_status_in_text(candidate_final_output, task_id)
-
-        automated_pass = (status == "PASS")
-        automated_fail = (status == "FAIL")
-        task_max = TASK_POINTS.get(task_id, 0)
-        awarded = 0.0
-        partial_awarded = False
-        partial_reason = ""
-
-        if automated_pass:
-            awarded = float(task_max)
-            note = f"Task{task_id}: automated PASS detected."
+    if not expected_files:
+        # No expected modified files in answer key: award partial hygiene points if candidate changed files in app/
+        app_changes = [f for f in candidate_files if f.startswith('app/')]
+        if app_changes:
+            hygiene_score = hygiene_max * 0.8
+            hygiene_reasons.append("No expected modified files in answer key; candidate modified files under app/ assumed reasonable.")
         else:
-            # Automated fail or unknown: see if candidate correctly diagnosed root cause -> partial credit up to 50%
-            expected_root = ans_task.get("root_cause", "")
-            candidate_root = cand_entry.get("root_cause", "")
-            root_match = root_cause_matches(expected_root, candidate_root)
-            if root_match:
-                awarded = 0.5 * task_max
-                partial_awarded = True
-                partial_reason = "Root cause described matches expected => granted 50% partial credit for this task."
-            else:
-                awarded = 0.0
-                partial_reason = "No automated PASS and root cause did not match expected; no task points awarded."
-            note = f"Task{task_id}: automated status={status}; {partial_reason}"
+            hygiene_score = hygiene_max * 0.2
+            hygiene_reasons.append("No expected modified files in answer key and candidate did not modify app/ files.")
+    else:
+        # Compute coverage: fraction of expected files candidate modified
+        intersect = expected_files.intersection(candidate_files)
+        coverage = len(intersect) / len(expected_files)
+        # For matched contents, award extra: fraction of expected files where content matches exactly
+        exact_matches = 0
+        for fname in intersect:
+            ak_content = expected_file_contents.get(fname, None)
+            cand_content = candidate_file_contents.get(fname, None)
+            if ak_content is not None and cand_content is not None and ak_content.strip() == cand_content.strip():
+                exact_matches += 1
+        match_fraction = exact_matches / len(expected_files)
+        # Combine coverage and match_fraction equally
+        hygiene_score = hygiene_max * (0.5 * coverage + 0.5 * match_fraction)
+        hygiene_reasons.append("Expected files: %d, candidate modified matching files: %d, exact content matches: %d" % (
+            len(expected_files), len(intersect), exact_matches))
 
-        # Record task detail
-        task_details[task_id] = {
-            "task_id": task_id,
-            "max_points": task_max,
-            "earned_points_automated": round(awarded, 2),
-            "automated_pass": automated_pass,
-            "automated_status_string": status,
-            "partial_awarded": partial_awarded,
-            "partial_reason": partial_reason,
-            "expected_root_cause": ans_task.get("root_cause", ""),
-            "candidate_root_cause": cand_entry.get("root_cause", ""),
-            "candidate_change_summary": cand_entry.get("change_summary", ""),
-            "candidate_files_changed": cand_entry.get("files_changed", []),
+    # Penalize if candidate modified prohibited files (tests/ or run_tests.sh)
+    forbidden_modified = [f for f in candidate_files if f.startswith('tests/') or os.path.basename(f) in ('run_tests.sh',)]
+    if forbidden_modified:
+        hygiene_score *= 0.5
+        hygiene_reasons.append("Candidate modified forbidden files: %s. Applied 50%% penalty to hygiene score." % (", ".join(forbidden_modified),))
+
+    # Also penalize if candidate modified files outside app/ and not in expected list
+    unexpected_non_app = [f for f in candidate_files if not f.startswith('app/') and f not in expected_files]
+    if unexpected_non_app:
+        # small penalty
+        hygiene_score *= 0.85
+        hygiene_reasons.append("Candidate modified files outside app/ and not expected: %s. Applied 15%% reduction." % (", ".join(unexpected_non_app),))
+
+    hygiene_score = float(hygiene_score)
+
+    # === Completeness & reproducibility (10 points) ===
+    complete_max = 10
+    complete_score = 0.0
+    complete_reasons = []
+
+    candidate_runtime_output = cand_final.get('runtime_output', '') if isinstance(cand_final, dict) else ''
+    candidate_commands_all = []
+    for t in cand_tasks:
+        if not isinstance(t, dict):
+            continue
+        cmds = t.get('commands_run', []) or []
+        for c in cmds:
+            if isinstance(c, str):
+                candidate_commands_all.append(c)
+
+    # Check that candidate included some test run evidence
+    evidence_present = False
+    evidence_msg = ""
+    for cmd in candidate_commands_all:
+        # check for pytest or run_tests
+        if 'pytest' in cmd.lower() or 'run_tests' in cmd.lower():
+            evidence_present = True
+            break
+    if candidate_runtime_output and ("passed" in candidate_runtime_output.lower() or "fail" in candidate_runtime_output.lower()):
+        evidence_present = True
+
+    if not evidence_present:
+        complete_reasons.append("No test-run evidence found in commands_run or runtime_output.")
+        complete_score = 0.0
+    else:
+        # If final passed count equals expected passed and runtime_output non-empty, award full points
+        if isinstance(cand_passed, int) and cand_passed == ak_passed and candidate_runtime_output:
+            complete_score = complete_max
+            complete_reasons.append("Candidate provided runtime output and passed tests count matches answer key.")
+        else:
+            # partial based on candidate_passed / expected_total
+            if ak_total_tests > 0 and isinstance(cand_passed, int) and cand_passed >= 0:
+                ratio = min(cand_passed / float(ak_total_tests), 1.0)
+                complete_score = complete_max * ratio
+                complete_reasons.append("Partial completeness: candidate passed %d/%d expected tests." % (cand_passed, ak_total_tests))
+            else:
+                # No numeric data; give small credit if candidate provided runtime output and commands
+                if candidate_runtime_output:
+                    complete_score = complete_max * 0.4
+                    complete_reasons.append("Runtime output present but no valid numeric passed count to compare; awarded partial points.")
+                else:
+                    complete_score = 0.0
+                    complete_reasons.append("Insufficient evidence to award completeness points.")
+
+        # Small penalty if candidate did not include any run command in commands_run
+        has_run_cmd = any(('pytest' in c.lower() or 'run_tests' in c.lower() or './run_tests' in c.lower()) for c in candidate_commands_all)
+        if not has_run_cmd:
+            complete_score *= 0.8
+            complete_reasons.append("No explicit run command (pytest or run_tests) found in commands_run entries; 20% reduction in completeness score.")
+
+    # === Summarize per-task differences for feedback ===
+    # For each expected AK task, check candidate provided status_before/status_after and modified_files entries
+    per_task_feedback = []
+    for ak_t in ak_tasks:
+        if not isinstance(ak_t, dict):
+            continue
+        tid = ak_t.get('id', '<unknown>')
+        cand_t = cand_task_map.get(tid, {})
+        feedback = {'id': tid}
+        # status_before: check that candidate captured a non-empty status_before
+        ak_status_before = ak_t.get('status_before', '')
+        cand_status_before = cand_t.get('status_before', '')
+        if ak_status_before and isinstance(cand_status_before, str) and cand_status_before.strip():
+            feedback['status_before_ok'] = True
+        else:
+            feedback['status_before_ok'] = False
+        # status_after
+        ak_status_after = ak_t.get('status_after', '')
+        cand_status_after = cand_t.get('status_after', '')
+        feedback['status_after_ok'] = bool(cand_status_after and isinstance(cand_status_after, str) and cand_status_after.strip())
+        # modified files check (per task)
+        ak_mfiles = set()
+        for mf in ak_t.get('modified_files', []) or []:
+            fname = mf.get('filename')
+            if fname:
+                ak_mfiles.add(fname)
+        cand_mfiles = set()
+        for mf in cand_t.get('modified_files', []) or []:
+            fname = mf.get('filename')
+            if fname:
+                cand_mfiles.add(fname)
+        feedback['expected_modified_files'] = sorted(list(ak_mfiles))
+        feedback['candidate_modified_files'] = sorted(list(cand_mfiles))
+        # content matches
+        matches = []
+        for fname in ak_mfiles:
+            ak_content = None
+            for mf in ak_t.get('modified_files', []) or []:
+                if mf.get('filename') == fname:
+                    ak_content = mf.get('content', '')
+                    break
+            cand_content = None
+            for mf in cand_t.get('modified_files', []) or []:
+                if mf.get('filename') == fname:
+                    cand_content = mf.get('content', '')
+                    break
+            matches.append({'filename': fname, 'content_matches': (ak_content is not None and cand_content is not None and ak_content.strip() == cand_content.strip())})
+        feedback['expected_content_matches'] = matches
+        per_task_feedback.append(feedback)
+
+    # === Total score computation ===
+    total_awarded = func_score + explain_score + hygiene_score + complete_score
+    total_possible = functional_max + explain_max + hygiene_max + complete_max
+    # Cap total
+    if total_awarded < 0:
+        total_awarded = 0.0
+    if total_awarded > total_possible:
+        total_awarded = total_possible
+
+    percentage = (total_awarded / total_possible) * 100.0 if total_possible > 0 else 0.0
+    overall_score = round(percentage, 2)
+
+    # Compose human-readable reasons collection
+    all_reasons = {
+        'functional': func_reasons,
+        'explanation': explain_reasons,
+        'hygiene': hygiene_reasons,
+        'completeness': complete_reasons
+    }
+
+    # Detailed scoring per main category for output
+    scores_breakdown = {
+        'functional_correctness': {
+            'points_awarded': round(func_score, 3),
+            'points_possible': functional_max,
+            'notes': func_reasons
+        },
+        'explanation_quality': {
+            'points_awarded': round(explain_score, 3),
+            'points_possible': explain_max,
+            'notes': explain_reasons
+        },
+        'code_hygiene': {
+            'points_awarded': round(hygiene_score, 3),
+            'points_possible': hygiene_max,
+            'notes': hygiene_reasons
+        },
+        'completeness_reproducibility': {
+            'points_awarded': round(complete_score, 3),
+            'points_possible': complete_max,
+            'notes': complete_reasons
         }
-        results["per_task"][str(task_id)] = task_details[task_id]
-        task_total_awarded += awarded
+    }
 
-    # Explanation & reproducibility scoring (20 points)
-    # 10 points for root_cause+change_summary clarity (split equally per task)
-    # 10 points for inclusion of how_tested/test runner lines (split equally per task)
-    root_change_score = 0.0
-    how_tested_score = 0.0
-    per_task_root_share = ROOT_CHANGE_POINTS / 4.0  # 2.5
-    per_task_how_share = HOW_TESTED_POINTS / 4.0    # 2.5
-
-    for ct in cand_tasks:
-        tid = ct.get("task_id")
-        if tid not in (1, 2, 3, 4):
-            continue
-        root = norm(ct.get("root_cause", ""))
-        change = norm(ct.get("change_summary", ""))
-        # Criteria for awarding root/change share:
-        # - root length >= 10 chars considered present
-        # - change length >= 20 chars considered present
-        # award full per-task share if both present, half if one present
-        rc_present = len(root) >= 10
-        ch_present = len(change) >= 20
-        if rc_present and ch_present:
-            root_change_score += per_task_root_share
-        elif rc_present or ch_present:
-            root_change_score += (per_task_root_share / 2.0)
-        # how_tested: check how_tested field includes TaskN PASS/FAIL lines or final_test_output includes it
-        howtxt = norm(ct.get("how_tested", ""))
-        status = find_task_status_in_text(howtxt, tid)
-        if status is None:
-            status = find_task_status_in_text(candidate_final_output, tid)
-        if status is not None:
-            how_tested_score += per_task_how_share
-        else:
-            # partial credit if how_tested contains something non-empty (commands run) even if not PASS/FAIL
-            if howtxt:
-                how_tested_score += (per_task_how_share / 2.0)
-
-    # Cap explanation scores
-    root_change_score = min(root_change_score, ROOT_CHANGE_POINTS)
-    how_tested_score = min(how_tested_score, HOW_TESTED_POINTS)
-
-    explanation_total_awarded = round(root_change_score + how_tested_score, 2)
-
-    # Hygiene & minimality scoring (10 points)
-    # Heuristics:
-    # - If candidate modified exactly expected files -> full points
-    # - Missing expected files => deduct 3 points per missing
-    # - Extra modified files => deduct 2 points per extra
-    # - Short change_summary (<10 chars) for any task deduct 1 point each (up to max)
-    hygiene_awarded = HYGIENE_POINTS
-    missing_files = expected_files - candidate_files
-    extra_files = candidate_files - expected_files
-    hygiene_deductions = 0
-    hygiene_msgs = []
-    if missing_files:
-        ded = 3 * len(missing_files)
-        hygiene_deductions += ded
-        hygiene_msgs.append(f"Missing expected modified files: {sorted(list(missing_files))} (-{ded})")
-    if extra_files:
-        ded = 2 * len(extra_files)
-        hygiene_deductions += ded
-        hygiene_msgs.append(f"Extra modified files: {sorted(list(extra_files))} (-{ded})")
-    # short summaries penalty
-    short_summaries = 0
-    for ct in cand_tasks:
-        chs = norm(ct.get("change_summary", ""))
-        if chs and len(chs) < 10:
-            short_summaries += 1
-    if short_summaries:
-        ded = 1 * short_summaries
-        hygiene_deductions += ded
-        hygiene_msgs.append(f"Very short change summaries found for {short_summaries} task(s) (-{ded})")
-
-    hygiene_awarded = max(0, hygiene_awarded - hygiene_deductions)
-
-    # Compile detailed deductions
-    if hygiene_msgs:
-        deductions_log.extend(hygiene_msgs)
-
-    # Final aggregation
-    total_awarded = round(task_total_awarded + explanation_total_awarded + hygiene_awarded, 2)
-    percentage = round((total_awarded / MAX_POINTS) * 100.0, 2)
-
-    # Build detailed per-task explanations and flags (augment existing)
-    for tid_str, info in results["per_task"].items():
-        tid = int(tid_str)
-        # Add verdict and messages
-        automated = info["automated_pass"]
-        earned_auto = info["earned_points_automated"]
-        expected_task_files = []
-        for at in ans_tasks:
-            if at.get("task_id") == tid:
-                expected_task_files = at.get("files_changed", [])
-                break
-        candidate_files_for_task = set(info.get("candidate_files_changed", []) or [])
-        expected_files_for_task = set(expected_task_files or [])
-        files_match = candidate_files_for_task == expected_files_for_task
-
-        # Root cause match
-        root_ok = root_cause_matches(info.get("expected_root_cause", ""), info.get("candidate_root_cause", ""))
-
-        # how_tested present?
-        ht_present = bool(norm(info.get("candidate_change_summary", ""))) or bool(norm(info.get("candidate_files_changed", "")))
-
-        info.update({
-            "files_match_expected_for_task": files_match,
-            "root_cause_match_expected": root_ok,
-            "how_tested_present": ht_present,
-        })
-
-        # Human readable note
-        notes = []
-        if automated:
-            notes.append("Automated PASS recorded; full automated points awarded for this task.")
-        else:
-            if info["partial_awarded"]:
-                notes.append(info["partial_reason"])
-            else:
-                notes.append("No automated PASS and no sufficient root-cause match; 0 task points.")
-        if not files_match:
-            notes.append(f"Files changed for task differ from expected (expected: {sorted(list(expected_files_for_task))}, got: {sorted(list(candidate_files_for_task))}).")
-        info["grading_notes"] = " ".join(notes)
-
-    # Prepare final results JSON
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    output = {
-        "candidate_submission_path": os.path.abspath(candidate_path),
-        "answer_key_path": os.path.abspath(answer_key_path),
-        "max_points": MAX_POINTS,
-        "points_awarded": total_awarded,
-        "percentage": percentage,
-        "overall_score": percentage,
-        "breakdown": {
-            "tasks_automated_points_awarded": round(task_total_awarded, 2),
-            "explanation_points_awarded": explanation_total_awarded,
-            "hygiene_points_awarded": hygiene_awarded,
-        },
-        "task_details": results["per_task"],
-        "explanation_scoring": {
-            "root_change_points_awarded": round(root_change_score, 2),
-            "how_tested_points_awarded": round(how_tested_score, 2)
-        },
-        "hygiene": {
-            "expected_files_changed": sorted(list(expected_files)),
-            "candidate_files_changed": sorted(list(candidate_files)),
-            "hygiene_points_awarded": hygiene_awarded,
-            "hygiene_deductions_notes": hygiene_msgs
-        },
-        "deductions_log": deductions_log,
-        "final_comments": [
-            "Automated task points are primarily determined by presence of 'TaskN: PASS' lines in the candidate's how_tested fields or final_test_output.",
-            "Partial credit (50% of task points) can be awarded for correct root-cause diagnosis even if the test still failed.",
-            "Explanation points require non-trivial root_cause and change_summary fields; how_tested text or final_test_output must include task pass/fail lines to get full reproducibility points.",
-            "Hygiene is judged heuristically by matching files changed to expected files and by brevity of change summaries."
+    result = {
+        'candidate_name': cand_name,
+        'score_summary': scores_breakdown,
+        'per_task_feedback': per_task_feedback,
+        'total_points_awarded': round(total_awarded, 3),
+        'total_points_possible': total_possible,
+        'percentage': overall_score,
+        'overall_score': overall_score,  # explicit required variable
+        'messages': all_reasons,
+        'final_test_summary_candidate': cand_final,
+        'final_test_summary_answer_key': ak_final,
+        'generated_at': datetime.datetime.utcnow().isoformat() + "Z",
+        'grading_notes': [
+            "Functional correctness scored proportionally to tests passed (60 pts).",
+            "Explanation quality used word-overlap heuristics against answer-key explanations (20 pts).",
+            "Code hygiene checks expected modified files and penalizes forbidden/test modifications (10 pts).",
+            "Completeness checks for runtime output and run commands (10 pts)."
         ]
     }
 
-    # Save test_results.json in same directory as script
-    outpath = os.path.join(script_dir, "test_results.json")
-    try:
-        with open(outpath, 'w', encoding='utf-8') as f:
-            json.dump(output, f, indent=2)
-        print(f"Grading complete. Results written to {outpath}")
-    except Exception as e:
-        print(f"ERROR: Could not write results file: {e}")
-        sys.exit(1)
+    return result
 
-    return output
+# =============================================================================
+# Main program
+# =============================================================================
 
 def main():
     if len(sys.argv) != 3:
         print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
-        sys.exit(1)
-    cand = sys.argv[1]
-    key = sys.argv[2]
-    grade(cand, key)
+        sys.exit(2)
 
-if __name__ == "__main__":
+    cand_path = sys.argv[1]
+    ak_path = sys.argv[2]
+
+    # Load candidate submission
+    candidate_json, err = safe_load_json(cand_path)
+    if err:
+        # produce a minimal results JSON with error info
+        err_result = {
+            'error': 'Failed to load candidate submission JSON: %s' % err,
+            'candidate_path': cand_path,
+            'overall_score': 0.0,
+            'generated_at': datetime.datetime.utcnow().isoformat() + "Z"
+        }
+        with open('test_results.json', 'w', encoding='utf-8') as fo:
+            json.dump(err_result, fo, indent=2)
+        print("Error loading candidate submission:", err)
+        sys.exit(1)
+
+    # Load answer key
+    answer_json, err2 = safe_load_json(ak_path)
+    if err2:
+        err_result = {
+            'error': 'Failed to load answer key JSON: %s' % err2,
+            'answer_key_path': ak_path,
+            'overall_score': 0.0,
+            'generated_at': datetime.datetime.utcnow().isoformat() + "Z"
+        }
+        with open('test_results.json', 'w', encoding='utf-8') as fo:
+            json.dump(err_result, fo, indent=2)
+        print("Error loading answer key:", err2)
+        sys.exit(1)
+
+    try:
+        grading_result = grade_submission(candidate_json, answer_json)
+    except Exception as e:
+        tb = traceback.format_exc()
+        err_result = {
+            'error': 'Exception during grading: %s' % str(e),
+            'traceback': tb,
+            'overall_score': 0.0,
+            'generated_at': datetime.datetime.utcnow().isoformat() + "Z"
+        }
+        with open('test_results.json', 'w', encoding='utf-8') as fo:
+            json.dump(err_result, fo, indent=2)
+        print("Exception during grading:", e)
+        sys.exit(1)
+
+    # Write results to test_results.json
+    with open('test_results.json', 'w', encoding='utf-8') as fo:
+        json.dump(grading_result, fo, indent=2)
+
+    # Print summary to stdout
+    print("Grading complete. Overall score: %.2f%%" % grading_result.get('overall_score', 0.0))
+    print("Detailed results written to test_results.json")
+
+if __name__ == '__main__':
     main()
+```
+
+Notes and guidance for evaluators:
+
+- The script is intentionally deterministic and uses only the provided JSON files.
+- It attempts to be permissive and produce useful feedback even when inputs are incomplete or malformed.
+- The explanation-quality measure is heuristic (word-overlap). In a high-stakes environment you may want to replace it with manual review or a more advanced NLP metric.
+- The resulting test_results.json includes the numeric overall_score field as required and a detailed category breakdown and messages that explain deductions.
+
+If you want any adjustments to the scoring weights, more granular feedback per task, or stricter checks (for example, exact content matching required to award hygiene points), tell me what you prefer and I will update the script accordingly.

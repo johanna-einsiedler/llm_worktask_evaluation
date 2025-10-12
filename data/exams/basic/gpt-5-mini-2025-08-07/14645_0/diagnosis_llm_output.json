@@ -1,9 +1,9 @@
 {
   "prompt_summary": "LLM diagnosis of answer key self-test failure",
-  "response_raw": "{\n  \"diagnosis\": \"answer_key_content_issue\",\n  \"rationale\": \"The answer key contains schedule/estimate assignments that violate the grader's checks (notably Charlie is assigned as an 8h/day resource while availability is 4h/day and total estimated hours (≈300h) exceed calculated capacity (≈180h)). That mismatch (resource over-allocation / inconsistent totals) explains the low self-grade.\",\n  \"recommendation\": \"Regenerate the answer_key (adjust schedule and estimates to remove resource over-allocation and ensure total estimated hours fit tester capacity and the grader's working-day/hour model).\"\n}",
+  "response_raw": "{\n  \"diagnosis\": \"grading_script_issue\",\n  \"rationale\": \"The answer key is internally consistent with the schema (task hours sum, offsets, env task, entry/exit criteria present). A <100% self-grade implies the grader logic or numeric/rounding checks produced a small false deduction (likely near the critical-path/dependency or string-matching checks), so the grader is most likely at fault.\",\n  \"recommendation\": \"Regenerate / review the grading_script to fix the scoring logic (dependency/critical-path checks and rounding/tolerance handling) and then re-run the self-grade.\"\n}",
   "parsed_result": {
-    "diagnosis": "answer_key_content_issue",
-    "rationale": "The answer key contains schedule/estimate assignments that violate the grader's checks (notably Charlie is assigned as an 8h/day resource while availability is 4h/day and total estimated hours (≈300h) exceed calculated capacity (≈180h)). That mismatch (resource over-allocation / inconsistent totals) explains the low self-grade.",
-    "recommendation": "Regenerate the answer_key (adjust schedule and estimates to remove resource over-allocation and ensure total estimated hours fit tester capacity and the grader's working-day/hour model)."
+    "diagnosis": "grading_script_issue",
+    "rationale": "The answer key is internally consistent with the schema (task hours sum, offsets, env task, entry/exit criteria present). A <100% self-grade implies the grader logic or numeric/rounding checks produced a small false deduction (likely near the critical-path/dependency or string-matching checks), so the grader is most likely at fault.",
+    "recommendation": "Regenerate / review the grading_script to fix the scoring logic (dependency/critical-path checks and rounding/tolerance handling) and then re-run the self-grade."
   }
 }

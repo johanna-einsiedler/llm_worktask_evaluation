@@ -1,0 +1,863 @@
+You are an expert exam designer. Your task is to create synthetic but realistic digital materials for a **remote practical exam**.
+
+Here is the exam overview for the evaluator:
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can, in a realistic systems-software context, perform the end-to-end work of (1) ingesting operational system data, (2) storing it in a local data store suitable for analysis, (3) retrieving and manipulating it to produce metrics that support system capability and requirements analysis, and (4) produce reproducible outputs and brief recommendations. The exam verifies practical ability, not just conceptual knowledge.
+
+Intended real-world capability demonstrated:
+- Turning raw system telemetry / inventory / logs into a usable analytic dataset.
+- Designing a minimal data model and implementing it.
+- Writing reproducible ingestion and query code.
+- Producing metrics and a short analysis that can be used to inform design/requirements decisions.
+
+### Core Competencies
+The basic exam tests whether the candidate can reliably do the following at an entry level:
+- Parse and validate typical system data (CSV/JSON/text logs).
+- Create and populate a lightweight local data store (SQLite) using a practical schema.
+- Write correct SQL queries to retrieve aggregates and filtered results for analysis.
+- Compute aggregate metrics (counts, averages, percentiles, time-window summaries).
+- Handle common data issues (missing values, inconsistent timestamps, duplicates).
+- Produce reproducible scripts and a small, clear results artifact (JSON summary + brief recommendations).
+- Provide brief, clear documentation of how to reproduce their work.
+
+### Recommended Structure
+Total time: 90 minutes maximum.
+
+Overview: 3 sequential hands-on tasks (ingest → query → analyze) plus packaging/README. Candidate submits a single JSON file "test_submission.json" (format specified below) containing code, outputs, and brief explanations. The exam creator will provide sample input files (small, representative dataset, see Practical Elements).
+
+Task 1 — Data ingestion and storage (30 minutes, 35%):
+- Provided: two small files:
+  - systems.csv — inventory of hosts (hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at)
+  - metrics.log — timestamped telemetry lines (hostname, timestamp, cpu_percent, mem_percent, io_wait_ms)
+- Candidate must:
+  - Design a reasonable SQLite schema to store both inventory and time-series telemetry.
+  - Write a short ingestion script (Python 3 recommended) that parses the provided files and populates an SQLite DB file named systems_metrics.db.
+- Deliverable: ingestion script source included in test_submission.json and evidence that the DB contains expected tables (a schema dump or PRAGMA output).
+
+Task 2 — Retrieval and basic analysis queries (30 minutes, 40%):
+- Candidate must write and run a small set of specified SQL queries against the created DB and include their results:
+  1. List top 5 hosts by average CPU usage over the last 24 hours.
+  2. Compute per-host average and peak memory usage for the last 7 days.
+  3. Identify hosts where current inventory memory_gb < recommended_minimum (simple provided constant, e.g., 8 GB).
+  4. Count telemetry samples per host and flag hosts with < 95% of expected samples (expected sampling rate provided).
+- Deliverable: SQL text for each query and the exact row results as arrays in test_submission.json.
+
+Task 3 — Simple manipulations to inform requirements (20 minutes, 20%):
+- Using query results or in code, compute:
+  - A short list of hosts that are capacity-constrained (e.g., average CPU > 75% OR memory usage > 80% with small memory_gb).
+  - One suggested concrete requirement change (e.g., raise minimum memory to X GB, or increase sampling cadence, or plan for N additional cores) justified by metrics.
+- Deliverable: JSON object with computed metric values and a one-paragraph recommendation per suggested change.
+
+Packaging and reproducibility (10 minutes, 5%):
+- Include a README field that lists the exact command(s) to run ingestion and queries locally to reproduce the DB and results (e.g., python ingest.py && python queries.py).
+
+Total scoring weight: 100% (breakdown above). Passing cutoff for basic exam: ≥ 80%.
+
+Notes about language/tools:
+- Allowed: Python 3 (recommended), SQLite (sqlite3). Candidate may use standard library only (no external packages). The exam environment will provide Python and sqlite3.
+- All work should be reproducible locally without network access.
+
+### Practical Elements to Include
+To ensure the exam is hands-on and realistic, include these elements:
+
+Datasets provided by the examiner (small, e.g., 100–1000 telemetry rows total):
+- systems.csv (inventory). Example columns: hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at.
+- metrics.log (line-delimited JSON or CSV with timestamps). Example columns: hostname, timestamp (ISO 8601), cpu_percent (0–100), mem_percent (0–100), io_wait_ms.
+
+Parsing & data quality issues to require hands-on decisions:
+- Some telemetry rows missing mem_percent or cpu_percent.
+- Inconsistent timestamp formats for a small fraction (e.g., different timezone or missing seconds).
+- Duplicate telemetry records for the same timestamp+host.
+- A few hosts present in telemetry but not in inventory (and vice versa).
+
+Schema design decisions:
+- Candidate must choose to store telemetry in a normalized table with appropriate types, and create indexes for typical queries (e.g., host + timestamp index).
+- Candidate must decide how to treat missing values (skip, default, or insert NULL), and how to deduplicate.
+
+Reproducibility requirement:
+- Candidate provides scripts and a README with the exact commands to recreate DB and run queries.
+- Candidate includes the SQL used for result extraction (to make evaluation simple and auditable).
+
+Submission format (test_submission.json)
+- To simplify evaluation, candidate should submit one JSON file exactly named test_submission.json with the following fields:
+
+{
+  "candidate": {
+    "name": "<full name>",
+    "email": "<email>"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "<sqlite3 version used>"
+  },
+  "ingestion_script": "<string with full source code of ingestion script>",
+  "schema_dump": ["<line1>", "<line2>", ...],         // e.g., output of .schema or PRAGMA table_info
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "<SELECT ...>",
+      "result_rows": [
+        ["host1", 72.3],
+        ["host2", 68.1],
+        ...
+      ]
+    },
+    ...
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {"hostname": "host1", "avg_cpu": 82.1, "avg_mem_percent": 65.4, "memory_gb": 4}
+    ],
+    "counts": {
+      "total_hosts": 42,
+      "hosts_with_low_samples": 2
+    }
+  },
+  "recommendations": [
+    {"id": "R1", "text": "Raise minimum memory to 8 GB for new hosts because N hosts have avg_mem_percent>80 and memory_gb<8."}
+  ],
+  "README": "exact commands to run to reproduce (single string)"
+}
+
+Important: all scripts should be included as string values (not as attachments) so the single JSON is self-contained. All query results must be exact numeric values/strings; timestamp formatting used in results must be consistent ISO-8601.
+
+Why JSON? It makes automated scoring and manual review straightforward.
+
+### Strategic Elements (to distinguish real ability)
+Multi-step dependencies and decision points that separate doers from knowers:
+- Schema design affects query simplicity and performance. A candidate who can map analytics needs to a schema will produce simpler, correct SQL; someone who only knows theory may create a poor schema and struggle with queries.
+- Handling missing/duplicate data: candidates must choose how to treat these and document their approach. Real practitioners will pick reasonable strategies and explain tradeoffs.
+- Index choices: minimal but correct use (e.g., index on hostname+timestamp) indicates practical performance awareness.
+- Reproducibility and packaging: someone who can perform the task will provide clear commands and include the exact SQL; someone who knows only conceptually may not make it trivially reproducible.
+- Trade-off judgement: when asked to recommend a requirement change (e.g., raise minimum memory), the candidate should justify with specific metrics and a small cost/benefit rationale.
+
+Edge cases to include (small but present so they can be resolved quickly):
+- A few telemetry timestamps outside the expected window (should be ignored or flagged).
+- Hosts present in telemetry but missing from inventory — candidate must decide to ignore, insert a placeholder inventory row, or flag as unknown.
+- Slight timestamp format variance — requires parsing with tolerant code.
+
+These elements force the candidate to make real decisions and implement them.
+
+### Evaluation Insights (observable outputs and criteria)
+Primary observable outputs:
+- ingestion_script (source) — should be readable, documented with brief comments, and runnable without internet.
+- systems_metrics.db (not required as file; the schema_dump and query results suffice) — schema consistency and use of types and indexes.
+- queries (SQL) and result_rows — must correctly answer the specified questions with accurate values.
+- metrics object and recommendations — concise, specific, justified by computed metrics.
+- README — clear reproducible commands (one or two shell lines).
+
+Scoring rubric (basic exam, total 100 points)
+- Data ingestion and schema (35 points)
+  - Correct schema design and types: 15
+  - Correct parsing and insertion into DB (handles missing values and duplicates reasonably): 10
+  - Indexes or pragmatic performance choices: 5
+  - Readability and documentation of ingestion script: 5
+- Retrieval queries and correctness (40 points)
+  - Each of 4 required queries: 7 points each (28)
+  - Correctness and formatting of returned result_rows: 8
+  - Reasonable SQL style and use of appropriate functions (window/aggregates): 4
+- Analysis & recommendations (20 points)
+  - Correct identification of capacity-constrained hosts: 10
+  - Recommendation is concrete and justified by metrics: 7
+  - Simple risk/assumption note or next-step suggested: 3
+- Reproducibility & packaging (5 points)
+  - README with exact commands + including scripts in JSON: 5
+
+Pass threshold: ≥ 80/100.
+
+Qualitative evaluation notes:
+- Full credit requires both correct outputs and code that a reviewer can run locally to reproduce.
+- Partial credit if scripts run but some results are off due to minor parsing errors or timezone mistakes; major mistakes in core logic lose heavy points.
+- Style matters but is secondary to correctness: clear variable names and short comments expected.
+
+### How to keep it practical and fast
+- Provide small but representative datasets so ingestion and queries run in seconds.
+- Require only Python standard library and SQLite to avoid dependency installation.
+- Keep number of tasks limited (3) and focused so an entry-level candidate can complete them within 90 minutes.
+- Use JSON submission to make automated and manual review straightforward.
+
+### Example examiner checklist for quick grading
+- test_submission.json present and parsable.
+- ingestion_script runs and creates tables consistent with schema_dump.
+- Q1–Q4 SQL provided and result_rows match expected values produced by running against DB.
+- metrics lists capacity issues and includes numeric thresholds and values.
+- recommendations are specific and reference the computed metrics.
+- README contains exact command lines to reproduce.
+
+This design ensures the exam is hands-on, time-boxed, and discriminating between candidates who can perform real ingestion/analysis tasks and those who only conceptually understand them.
+</examoverview>
+
+Here are the instructions the candidate will see:
+<instructions>
+### Exam Title
+Systems Telemetry: Ingest, Store, Query, and Analyze (Basic Practical)
+
+### Instructions for Candidate
+
+Overview and time limit
+- Total time: 90 minutes maximum.
+- You must work only with the local tools available (Python 3, sqlite3, a text editor and code execution). No network access or external Python packages are allowed.
+- Deliverables must be submitted in a single JSON file named exactly test_submission.json (structure required below).
+
+Task summary (3 hands-on tasks + packaging)
+- Task 1 — Data ingestion & storage (≈30 minutes)
+  - Write a Python 3 script named ingest.py that:
+    - Parses the supplied files systems.csv and metrics.log.
+    - Creates (or replaces) a SQLite database file named systems_metrics.db.
+    - Creates a reasonable schema that stores:
+      - Inventory rows (systems.csv).
+      - Time-series telemetry (metrics.log).
+    - Populates the database with parsed data.
+    - Handles data quality issues in a reasonable way (you must document your chosen handling in-code comments and in README):
+      - Missing cpu_percent or mem_percent (acceptable choices: insert NULL, impute, or skip — you must choose and justify).
+      - Inconsistent timestamp formats (your parser must tolerate the small variations in the provided data).
+      - Duplicate telemetry records (same hostname + timestamp) — deduplicate by your chosen rule (keep first/last); document it.
+      - Telemetry rows for hosts not in inventory — choose whether to insert a placeholder inventory row or leave telemetry with NULL foreign key; document your approach.
+    - Create at least one index appropriate for querying typical telemetry by host and time (e.g., host + timestamp).
+  - The script must use only Python standard library modules (e.g., csv, json, datetime, sqlite3, re, etc.).
+  - The script must produce a SQLite DB file named systems_metrics.db in the current directory.
+
+- Task 2 — Retrieval & analysis queries (≈30 minutes)
+  - Write a script named queries.py (Python 3) that opens systems_metrics.db and runs the following SQL queries. Include the SQL text and exact results in your JSON submission.
+    - Q1: Top 5 hosts by average cpu_percent over the last 24 hours.
+    - Q2: Per-host average and peak (maximum) mem_percent for the last 7 days.
+    - Q3: Inventory hosts where memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB (constant below).
+    - Q4: Count telemetry samples per host and flag hosts with < EXPECTED_COMPLETENESS_THRESHOLD% of expected samples in the last 24 hours (expected cadence below).
+  - Details used for queries (fixed constants — use these exact values):
+    - RECOMMENDED_MINIMUM_MEMORY_GB = 8
+    - EXPECTED_SAMPLING_INTERVAL_MINUTES = 5 (i.e., one telemetry sample every 5 minutes per host)
+    - EXPECTED_COMPLETENESS_THRESHOLD = 95 (percent)
+  - Time windows: define "last 24 hours" and "last 7 days" relative to the maximum timestamp present in metrics.log (i.e., treat the dataset's max timestamp as "now"). Use ISO-8601 timestamps for any displayed timestamps in results.
+
+- Task 3 — Simple manipulations to inform requirements (≈20 minutes)
+  - Using SQL or simple Python post-processing of query results, compute:
+    - A short list (hostname + measured values) of hosts that are "capacity-constrained", defined for this exam as:
+      - average cpu_percent over last 24 hours > 75, OR
+      - average mem_percent over last 7 days > 80 AND memory_gb < 8
+    - Counts:
+      - total number of distinct hosts in inventory.
+      - number of hosts flagged with low telemetry completeness in Q4.
+    - Produce one concrete recommended requirement change (one-line recommendation plus one short justification paragraph) based on observed metrics. Example acceptable recommendations: raise minimum memory to X GB, increase sampling cadence to Y seconds/minutes, provision N extra CPU cores for a group of hosts, or require monitoring changes. Your recommendation must reference the computed numeric metrics.
+
+- Packaging & Reproducibility (≈10 minutes)
+  - Provide a README string explaining exact commands to reproduce the DB and run the queries.
+  - All code must be runnable locally without modification using only Python 3 and sqlite3.
+
+Additional instructions (must follow)
+- Script filenames required: ingest.py and queries.py. Your ingest.py must create systems_metrics.db in the working directory. queries.py must open systems_metrics.db and produce outputs used in the submission JSON.
+- Document any non-trivial choices (missing data handling, deduplication rule, hosts mismatch) in:
+  - brief comments in your scripts, and
+  - the README field in the submission JSON.
+- Use ISO-8601 for any timestamps in your outputs and in the JSON fields.
+- Do not include binary files; you must embed script sources and results inside test_submission.json as strings and arrays (structured JSON). The grader will not accept separate script attachments.
+
+### Expected Outcome
+
+By the end of the exam you must produce:
+- A working ingestion script ingest.py that creates systems_metrics.db from the provided datasets.
+- A query script queries.py that runs the 4 required queries and computes the simple analysis for Task 3.
+- A single JSON file named test_submission.json (structure required below) that includes:
+  - Candidate contact info and environment info.
+  - The full source code of ingest.py and queries.py as string fields.
+  - A schema dump (PRAGMA table_info or .schema output) describing the created tables and indexes (array of strings).
+  - The exact SQL text for each required query and the exact result rows produced by running those queries against systems_metrics.db (results must be exact numeric values/strings).
+  - The computed metrics and capacity-constrained host list.
+  - One concrete recommendation with a short justification referencing the numeric metrics.
+  - README string with exact commands to run ingest.py and queries.py to reproduce all outputs.
+- All outputs must be reproducible by running the commands in the README on a machine with Python 3 and sqlite3, using only the supplied data files.
+
+### Provided Materials
+
+You will be given two files (placed in the working directory):
+1. systems.csv — inventory of hosts (columns: hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at)
+2. metrics.log — line-delimited telemetry (each line is JSON or CSV; contains fields hostname, timestamp (ISO-8601 with a few small format variations), cpu_percent, mem_percent, io_wait_ms)
+
+Data quality characteristics intentionally present in the provided files (you must handle them):
+- A small fraction of telemetry rows are missing cpu_percent or mem_percent.
+- Some timestamps use slightly different ISO-8601 variants (e.g., timezone offsets or missing seconds).
+- A few duplicate telemetry rows exist (same hostname + timestamp).
+- Some hosts appear in telemetry but not in inventory, and some inventory hosts have no telemetry.
+
+Provided constants you must use in queries and analysis (do not change):
+- RECOMMENDED_MINIMUM_MEMORY_GB = 8
+- EXPECTED_SAMPLING_INTERVAL_MINUTES = 5
+- EXPECTED_COMPLETENESS_THRESHOLD = 95 (percent)
+- Time windows are relative to the maximum timestamp found in metrics.log.
+
+### Submission Format
+
+You must submit exactly one file named test_submission.json. It must be valid JSON and must contain the following fields and types (field names and structure are mandatory):
+
+{
+  "candidate": {
+    "name": "<full name string>",
+    "email": "<email string>"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "<sqlite3 version string you used>"
+  },
+  "ingestion_script": "<string with full source code of ingest.py>",
+  "query_script": "<string with full source code of queries.py>",
+  "schema_dump": ["<line1>", "<line2>", ...],         // output of PRAGMA table_info or .schema
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "<exact SQL text used for Q1>",
+      "result_rows": [
+        ["hostname1", 72.3],
+        ["hostname2", 68.1],
+        ...
+      ]
+    },
+    {
+      "id": "Q2",
+      "sql": "<exact SQL text used for Q2>",
+      "result_rows": [
+        ["hostname1", 64.2, 91.0],
+        ["hostname2", 50.0, 67.4],
+        ...
+      ]
+    },
+    {
+      "id": "Q3",
+      "sql": "<exact SQL text used for Q3>",
+      "result_rows": [
+        ["hostnameA", 4],
+        ["hostnameB", 2],
+        ...
+      ]
+    },
+    {
+      "id": "Q4",
+      "sql": "<exact SQL text used for Q4>",
+      "result_rows": [
+        ["hostnameX", 240, 80.0],  // example: hostname, sample_count_in_24h, completeness_pct
+        ...
+      ]
+    }
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {"hostname": "host1", "avg_cpu_24h": 82.1, "avg_mem_7d": 65.4, "memory_gb": 4}
+    ],
+    "counts": {
+      "total_hosts_inventory": 42,
+      "hosts_with_low_samples": 2
+    }
+  },
+  "recommendations": [
+    {"id": "R1", "text": "Raise minimum memory to 8 GB for new hosts because 5 hosts have avg_mem_7d>80 and memory_gb<8."}
+  ],
+  "README": "exact commands to run to reproduce (single string). Example: python3 ingest.py && python3 queries.py",
+  "notes": "brief notes about handling of missing/duplicate data and any assumptions (string)"
+}
+
+Important submission rules (must follow)
+- The fields and names above are required and must be present. Use the same field names and structure.
+- Include ingest.py and queries.py source code as strings (fields ingestion_script and query_script).
+- result_rows must contain exact values (numbers as numbers, strings as strings). Use ISO-8601 for any timestamps you include in results.
+- The schema_dump should be the exact textual lines that show table and index creations or PRAGMA table_info outputs.
+- The README must contain the exact shell commands (one or two lines) that a grader can copy/paste to reproduce your DB and query outputs.
+- Include a short "notes" string documenting your data handling choices (missing values, deduplication, hosts-not-in-inventory policy).
+
+Grading / objectivity reminders
+- The grader will run your ingest.py and queries.py locally; outputs must match the SQL and result_rows you included.
+- Use only Python standard library. If your scripts import external packages, the grader cannot run them and the submission will be rejected.
+- Do not submit any additional files. All required code and outputs must be embedded inside test_submission.json.
+
+Good luck. Work cleanly and keep focus on reproducible ingestion, correct SQL queries, and a concise evidence-backed recommendation.
+</instructions>
+
+---
+
+## 🎯 Your objectives
+
+1. Determine whether **any materials are required** for the candidate to complete the exam.  
+   - If *no* materials are needed, respond **exactly** with: `No material required` (and nothing else).  
+   - Otherwise, proceed with Steps 2–3.
+
+2. Create **synthetic materials for the candidate** that are:
+   - Small enough to be completed within 90 minutes.
+   - Fully deterministic — no randomness, placeholders, or vague “sample” references.
+   - Internally coherent and cross-referenced (e.g., matching IDs, categories, or filenames).
+   - Labeled with consistent structures that prevent arbitrary interpretation.
+   - Provided as complete content (not summaries or templates).
+
+3. Provide an **evaluator explanation** describing how materials were constructed and what patterns or relationships exist.
+
+---
+
+## 🧱 Output Format (MUST follow exactly)
+
+<MATERIALS_FOR_CANDIDATE>
+[Provide here the exact material content to be given to the candidate.  
+Examples: small CSV table, short text passage, JSON dataset, or multi-part folder structure.  
+Use clear identifiers (e.g., `Customer_ID`, `Transaction_Code_A1`) and avoid arbitrary naming.  
+Ensure the candidate can complete the exam with only these materials.]
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+[Explain to the evaluator:
+- How and why you created these materials
+- What data patterns or hidden relationships exist
+- What traps, ambiguities, or common errors a candidate might make
+- What the correct or expected answers depend on
+- How these materials help differentiate between conceptual and practical understanding]
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+---
+
+## ⚙️ Design Rules
+
+- **Deterministic**: Never include the words “random”, “example only”, “placeholder”, or “sample data”.  
+- **Complete**: Both XML tag pairs must exist and contain non-empty content.  
+- **Consistent**: Use the same variable names, identifiers, or categories across all files or sections.  
+- **Objective**: Materials should support questions with *verifiable* answers (numerical, textual, or structural).  
+- **Size**: Keep datasets concise — typically ≤ 20 rows or ≤ 500 words total content.  
+- **Clarity**: Label all columns, categories, and entities clearly.
+
+---
+
+## ✅ Example (structure only)
+
+<MATERIALS_FOR_CANDIDATE>
+CSV: `customer_transactions.csv`
+You are an expert exam designer. Your task is to create synthetic but realistic digital materials for a **remote practical exam**.
+
+Here is the exam overview for the evaluator:
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can, in a realistic systems-software context, perform the end-to-end work of (1) ingesting operational system data, (2) storing it in a local data store suitable for analysis, (3) retrieving and manipulating it to produce metrics that support system capability and requirements analysis, and (4) produce reproducible outputs and brief recommendations. The exam verifies practical ability, not just conceptual knowledge.
+
+Intended real-world capability demonstrated:
+- Turning raw system telemetry / inventory / logs into a usable analytic dataset.
+- Designing a minimal data model and implementing it.
+- Writing reproducible ingestion and query code.
+- Producing metrics and a short analysis that can be used to inform design/requirements decisions.
+
+### Core Competencies
+The basic exam tests whether the candidate can reliably do the following at an entry level:
+- Parse and validate typical system data (CSV/JSON/text logs).
+- Create and populate a lightweight local data store (SQLite) using a practical schema.
+- Write correct SQL queries to retrieve aggregates and filtered results for analysis.
+- Compute aggregate metrics (counts, averages, percentiles, time-window summaries).
+- Handle common data issues (missing values, inconsistent timestamps, duplicates).
+- Produce reproducible scripts and a small, clear results artifact (JSON summary + brief recommendations).
+- Provide brief, clear documentation of how to reproduce their work.
+
+### Recommended Structure
+Total time: 90 minutes maximum.
+
+Overview: 3 sequential hands-on tasks (ingest → query → analyze) plus packaging/README. Candidate submits a single JSON file "test_submission.json" (format specified below) containing code, outputs, and brief explanations. The exam creator will provide sample input files (small, representative dataset, see Practical Elements).
+
+Task 1 — Data ingestion and storage (30 minutes, 35%):
+- Provided: two small files:
+  - systems.csv — inventory of hosts (hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at)
+  - metrics.log — timestamped telemetry lines (hostname, timestamp, cpu_percent, mem_percent, io_wait_ms)
+- Candidate must:
+  - Design a reasonable SQLite schema to store both inventory and time-series telemetry.
+  - Write a short ingestion script (Python 3 recommended) that parses the provided files and populates an SQLite DB file named systems_metrics.db.
+- Deliverable: ingestion script source included in test_submission.json and evidence that the DB contains expected tables (a schema dump or PRAGMA output).
+
+Task 2 — Retrieval and basic analysis queries (30 minutes, 40%):
+- Candidate must write and run a small set of specified SQL queries against the created DB and include their results:
+  1. List top 5 hosts by average CPU usage over the last 24 hours.
+  2. Compute per-host average and peak memory usage for the last 7 days.
+  3. Identify hosts where current inventory memory_gb < recommended_minimum (simple provided constant, e.g., 8 GB).
+  4. Count telemetry samples per host and flag hosts with < 95% of expected samples (expected sampling rate provided).
+- Deliverable: SQL text for each query and the exact row results as arrays in test_submission.json.
+
+Task 3 — Simple manipulations to inform requirements (20 minutes, 20%):
+- Using query results or in code, compute:
+  - A short list of hosts that are capacity-constrained (e.g., average CPU > 75% OR memory usage > 80% with small memory_gb).
+  - One suggested concrete requirement change (e.g., raise minimum memory to X GB, or increase sampling cadence, or plan for N additional cores) justified by metrics.
+- Deliverable: JSON object with computed metric values and a one-paragraph recommendation per suggested change.
+
+Packaging and reproducibility (10 minutes, 5%):
+- Include a README field that lists the exact command(s) to run ingestion and queries locally to reproduce the DB and results (e.g., python ingest.py && python queries.py).
+
+Total scoring weight: 100% (breakdown above). Passing cutoff for basic exam: ≥ 80%.
+
+Notes about language/tools:
+- Allowed: Python 3 (recommended), SQLite (sqlite3). Candidate may use standard library only (no external packages). The exam environment will provide Python and sqlite3.
+- All work should be reproducible locally without network access.
+
+### Practical Elements to Include
+To ensure the exam is hands-on and realistic, include these elements:
+
+Datasets provided by the examiner (small, e.g., 100–1000 telemetry rows total):
+- systems.csv (inventory). Example columns: hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at.
+- metrics.log (line-delimited JSON or CSV with timestamps). Example columns: hostname, timestamp (ISO 8601), cpu_percent (0–100), mem_percent (0–100), io_wait_ms.
+
+Parsing & data quality issues to require hands-on decisions:
+- Some telemetry rows missing mem_percent or cpu_percent.
+- Inconsistent timestamp formats for a small fraction (e.g., different timezone or missing seconds).
+- Duplicate telemetry records for the same timestamp+host.
+- A few hosts present in telemetry but not in inventory (and vice versa).
+
+Schema design decisions:
+- Candidate must choose to store telemetry in a normalized table with appropriate types, and create indexes for typical queries (e.g., host + timestamp index).
+- Candidate must decide how to treat missing values (skip, default, or insert NULL), and how to deduplicate.
+
+Reproducibility requirement:
+- Candidate provides scripts and a README with the exact commands to recreate DB and run queries.
+- Candidate includes the SQL used for result extraction (to make evaluation simple and auditable).
+
+Submission format (test_submission.json)
+- To simplify evaluation, candidate should submit one JSON file exactly named test_submission.json with the following fields:
+
+{
+  "candidate": {
+    "name": "<full name>",
+    "email": "<email>"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "<sqlite3 version used>"
+  },
+  "ingestion_script": "<string with full source code of ingestion script>",
+  "schema_dump": ["<line1>", "<line2>", ...],         // e.g., output of .schema or PRAGMA table_info
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "<SELECT ...>",
+      "result_rows": [
+        ["host1", 72.3],
+        ["host2", 68.1],
+        ...
+      ]
+    },
+    ...
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {"hostname": "host1", "avg_cpu": 82.1, "avg_mem_percent": 65.4, "memory_gb": 4}
+    ],
+    "counts": {
+      "total_hosts": 42,
+      "hosts_with_low_samples": 2
+    }
+  },
+  "recommendations": [
+    {"id": "R1", "text": "Raise minimum memory to 8 GB for new hosts because N hosts have avg_mem_percent>80 and memory_gb<8."}
+  ],
+  "README": "exact commands to run to reproduce (single string)"
+}
+
+Important: all scripts should be included as string values (not as attachments) so the single JSON is self-contained. All query results must be exact numeric values/strings; timestamp formatting used in results must be consistent ISO-8601.
+
+Why JSON? It makes automated scoring and manual review straightforward.
+
+### Strategic Elements (to distinguish real ability)
+Multi-step dependencies and decision points that separate doers from knowers:
+- Schema design affects query simplicity and performance. A candidate who can map analytics needs to a schema will produce simpler, correct SQL; someone who only knows theory may create a poor schema and struggle with queries.
+- Handling missing/duplicate data: candidates must choose how to treat these and document their approach. Real practitioners will pick reasonable strategies and explain tradeoffs.
+- Index choices: minimal but correct use (e.g., index on hostname+timestamp) indicates practical performance awareness.
+- Reproducibility and packaging: someone who can perform the task will provide clear commands and include the exact SQL; someone who knows only conceptually may not make it trivially reproducible.
+- Trade-off judgement: when asked to recommend a requirement change (e.g., raise minimum memory), the candidate should justify with specific metrics and a small cost/benefit rationale.
+
+Edge cases to include (small but present so they can be resolved quickly):
+- A few telemetry timestamps outside the expected window (should be ignored or flagged).
+- Hosts present in telemetry but missing from inventory — candidate must decide to ignore, insert a placeholder inventory row, or flag as unknown.
+- Slight timestamp format variance — requires parsing with tolerant code.
+
+These elements force the candidate to make real decisions and implement them.
+
+### Evaluation Insights (observable outputs and criteria)
+Primary observable outputs:
+- ingestion_script (source) — should be readable, documented with brief comments, and runnable without internet.
+- systems_metrics.db (not required as file; the schema_dump and query results suffice) — schema consistency and use of types and indexes.
+- queries (SQL) and result_rows — must correctly answer the specified questions with accurate values.
+- metrics object and recommendations — concise, specific, justified by computed metrics.
+- README — clear reproducible commands (one or two shell lines).
+
+Scoring rubric (basic exam, total 100 points)
+- Data ingestion and schema (35 points)
+  - Correct schema design and types: 15
+  - Correct parsing and insertion into DB (handles missing values and duplicates reasonably): 10
+  - Indexes or pragmatic performance choices: 5
+  - Readability and documentation of ingestion script: 5
+- Retrieval queries and correctness (40 points)
+  - Each of 4 required queries: 7 points each (28)
+  - Correctness and formatting of returned result_rows: 8
+  - Reasonable SQL style and use of appropriate functions (window/aggregates): 4
+- Analysis & recommendations (20 points)
+  - Correct identification of capacity-constrained hosts: 10
+  - Recommendation is concrete and justified by metrics: 7
+  - Simple risk/assumption note or next-step suggested: 3
+- Reproducibility & packaging (5 points)
+  - README with exact commands + including scripts in JSON: 5
+
+Pass threshold: ≥ 80/100.
+
+Qualitative evaluation notes:
+- Full credit requires both correct outputs and code that a reviewer can run locally to reproduce.
+- Partial credit if scripts run but some results are off due to minor parsing errors or timezone mistakes; major mistakes in core logic lose heavy points.
+- Style matters but is secondary to correctness: clear variable names and short comments expected.
+
+### How to keep it practical and fast
+- Provide small but representative datasets so ingestion and queries run in seconds.
+- Require only Python standard library and SQLite to avoid dependency installation.
+- Keep number of tasks limited (3) and focused so an entry-level candidate can complete them within 90 minutes.
+- Use JSON submission to make automated and manual review straightforward.
+
+### Example examiner checklist for quick grading
+- test_submission.json present and parsable.
+- ingestion_script runs and creates tables consistent with schema_dump.
+- Q1–Q4 SQL provided and result_rows match expected values produced by running against DB.
+- metrics lists capacity issues and includes numeric thresholds and values.
+- recommendations are specific and reference the computed metrics.
+- README contains exact command lines to reproduce.
+
+This design ensures the exam is hands-on, time-boxed, and discriminating between candidates who can perform real ingestion/analysis tasks and those who only conceptually understand them.
+</examoverview>
+
+Here are the instructions the candidate will see:
+<instructions>
+### Exam Title
+Systems Telemetry: Ingest, Store, Query, and Analyze (Basic Practical)
+
+### Instructions for Candidate
+
+Overview and time limit
+- Total time: 90 minutes maximum.
+- You must work only with the local tools available (Python 3, sqlite3, a text editor and code execution). No network access or external Python packages are allowed.
+- Deliverables must be submitted in a single JSON file named exactly test_submission.json (structure required below).
+
+Task summary (3 hands-on tasks + packaging)
+- Task 1 — Data ingestion & storage (≈30 minutes)
+  - Write a Python 3 script named ingest.py that:
+    - Parses the supplied files systems.csv and metrics.log.
+    - Creates (or replaces) a SQLite database file named systems_metrics.db.
+    - Creates a reasonable schema that stores:
+      - Inventory rows (systems.csv).
+      - Time-series telemetry (metrics.log).
+    - Populates the database with parsed data.
+    - Handles data quality issues in a reasonable way (you must document your chosen handling in-code comments and in README):
+      - Missing cpu_percent or mem_percent (acceptable choices: insert NULL, impute, or skip — you must choose and justify).
+      - Inconsistent timestamp formats (your parser must tolerate the small variations in the provided data).
+      - Duplicate telemetry records (same hostname + timestamp) — deduplicate by your chosen rule (keep first/last); document it.
+      - Telemetry rows for hosts not in inventory — choose whether to insert a placeholder inventory row or leave telemetry with NULL foreign key; document your approach.
+    - Create at least one index appropriate for querying typical telemetry by host and time (e.g., host + timestamp).
+  - The script must use only Python standard library modules (e.g., csv, json, datetime, sqlite3, re, etc.).
+  - The script must produce a SQLite DB file named systems_metrics.db in the current directory.
+
+- Task 2 — Retrieval & analysis queries (≈30 minutes)
+  - Write a script named queries.py (Python 3) that opens systems_metrics.db and runs the following SQL queries. Include the SQL text and exact results in your JSON submission.
+    - Q1: Top 5 hosts by average cpu_percent over the last 24 hours.
+    - Q2: Per-host average and peak (maximum) mem_percent for the last 7 days.
+    - Q3: Inventory hosts where memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB (constant below).
+    - Q4: Count telemetry samples per host and flag hosts with < EXPECTED_COMPLETENESS_THRESHOLD% of expected samples in the last 24 hours (expected cadence below).
+  - Details used for queries (fixed constants — use these exact values):
+    - RECOMMENDED_MINIMUM_MEMORY_GB = 8
+    - EXPECTED_SAMPLING_INTERVAL_MINUTES = 5 (i.e., one telemetry sample every 5 minutes per host)
+    - EXPECTED_COMPLETENESS_THRESHOLD = 95 (percent)
+  - Time windows: define "last 24 hours" and "last 7 days" relative to the maximum timestamp present in metrics.log (i.e., treat the dataset's max timestamp as "now"). Use ISO-8601 timestamps for any displayed timestamps in results.
+
+- Task 3 — Simple manipulations to inform requirements (≈20 minutes)
+  - Using SQL or simple Python post-processing of query results, compute:
+    - A short list (hostname + measured values) of hosts that are "capacity-constrained", defined for this exam as:
+      - average cpu_percent over last 24 hours > 75, OR
+      - average mem_percent over last 7 days > 80 AND memory_gb < 8
+    - Counts:
+      - total number of distinct hosts in inventory.
+      - number of hosts flagged with low telemetry completeness in Q4.
+    - Produce one concrete recommended requirement change (one-line recommendation plus one short justification paragraph) based on observed metrics. Example acceptable recommendations: raise minimum memory to X GB, increase sampling cadence to Y seconds/minutes, provision N extra CPU cores for a group of hosts, or require monitoring changes. Your recommendation must reference the computed numeric metrics.
+
+- Packaging & Reproducibility (≈10 minutes)
+  - Provide a README string explaining exact commands to reproduce the DB and run the queries.
+  - All code must be runnable locally without modification using only Python 3 and sqlite3.
+
+Additional instructions (must follow)
+- Script filenames required: ingest.py and queries.py. Your ingest.py must create systems_metrics.db in the working directory. queries.py must open systems_metrics.db and produce outputs used in the submission JSON.
+- Document any non-trivial choices (missing data handling, deduplication rule, hosts mismatch) in:
+  - brief comments in your scripts, and
+  - the README field in the submission JSON.
+- Use ISO-8601 for any timestamps in your outputs and in the JSON fields.
+- Do not include binary files; you must embed script sources and results inside test_submission.json as strings and arrays (structured JSON). The grader will not accept separate script attachments.
+
+### Expected Outcome
+
+By the end of the exam you must produce:
+- A working ingestion script ingest.py that creates systems_metrics.db from the provided datasets.
+- A query script queries.py that runs the 4 required queries and computes the simple analysis for Task 3.
+- A single JSON file named test_submission.json (structure required below) that includes:
+  - Candidate contact info and environment info.
+  - The full source code of ingest.py and queries.py as string fields.
+  - A schema dump (PRAGMA table_info or .schema output) describing the created tables and indexes (array of strings).
+  - The exact SQL text for each required query and the exact result rows produced by running those queries against systems_metrics.db (results must be exact numeric values/strings).
+  - The computed metrics and capacity-constrained host list.
+  - One concrete recommendation with a short justification referencing the numeric metrics.
+  - README string with exact commands to run ingest.py and queries.py to reproduce all outputs.
+- All outputs must be reproducible by running the commands in the README on a machine with Python 3 and sqlite3, using only the supplied data files.
+
+### Provided Materials
+
+You will be given two files (placed in the working directory):
+1. systems.csv — inventory of hosts (columns: hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at)
+2. metrics.log — line-delimited telemetry (each line is JSON or CSV; contains fields hostname, timestamp (ISO-8601 with a few small format variations), cpu_percent, mem_percent, io_wait_ms)
+
+Data quality characteristics intentionally present in the provided files (you must handle them):
+- A small fraction of telemetry rows are missing cpu_percent or mem_percent.
+- Some timestamps use slightly different ISO-8601 variants (e.g., timezone offsets or missing seconds).
+- A few duplicate telemetry rows exist (same hostname + timestamp).
+- Some hosts appear in telemetry but not in inventory, and some inventory hosts have no telemetry.
+
+Provided constants you must use in queries and analysis (do not change):
+- RECOMMENDED_MINIMUM_MEMORY_GB = 8
+- EXPECTED_SAMPLING_INTERVAL_MINUTES = 5
+- EXPECTED_COMPLETENESS_THRESHOLD = 95 (percent)
+- Time windows are relative to the maximum timestamp found in metrics.log.
+
+### Submission Format
+
+You must submit exactly one file named test_submission.json. It must be valid JSON and must contain the following fields and types (field names and structure are mandatory):
+
+{
+  "candidate": {
+    "name": "<full name string>",
+    "email": "<email string>"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "<sqlite3 version string you used>"
+  },
+  "ingestion_script": "<string with full source code of ingest.py>",
+  "query_script": "<string with full source code of queries.py>",
+  "schema_dump": ["<line1>", "<line2>", ...],         // output of PRAGMA table_info or .schema
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "<exact SQL text used for Q1>",
+      "result_rows": [
+        ["hostname1", 72.3],
+        ["hostname2", 68.1],
+        ...
+      ]
+    },
+    {
+      "id": "Q2",
+      "sql": "<exact SQL text used for Q2>",
+      "result_rows": [
+        ["hostname1", 64.2, 91.0],
+        ["hostname2", 50.0, 67.4],
+        ...
+      ]
+    },
+    {
+      "id": "Q3",
+      "sql": "<exact SQL text used for Q3>",
+      "result_rows": [
+        ["hostnameA", 4],
+        ["hostnameB", 2],
+        ...
+      ]
+    },
+    {
+      "id": "Q4",
+      "sql": "<exact SQL text used for Q4>",
+      "result_rows": [
+        ["hostnameX", 240, 80.0],  // example: hostname, sample_count_in_24h, completeness_pct
+        ...
+      ]
+    }
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {"hostname": "host1", "avg_cpu_24h": 82.1, "avg_mem_7d": 65.4, "memory_gb": 4}
+    ],
+    "counts": {
+      "total_hosts_inventory": 42,
+      "hosts_with_low_samples": 2
+    }
+  },
+  "recommendations": [
+    {"id": "R1", "text": "Raise minimum memory to 8 GB for new hosts because 5 hosts have avg_mem_7d>80 and memory_gb<8."}
+  ],
+  "README": "exact commands to run to reproduce (single string). Example: python3 ingest.py && python3 queries.py",
+  "notes": "brief notes about handling of missing/duplicate data and any assumptions (string)"
+}
+
+Important submission rules (must follow)
+- The fields and names above are required and must be present. Use the same field names and structure.
+- Include ingest.py and queries.py source code as strings (fields ingestion_script and query_script).
+- result_rows must contain exact values (numbers as numbers, strings as strings). Use ISO-8601 for any timestamps you include in results.
+- The schema_dump should be the exact textual lines that show table and index creations or PRAGMA table_info outputs.
+- The README must contain the exact shell commands (one or two lines) that a grader can copy/paste to reproduce your DB and query outputs.
+- Include a short "notes" string documenting your data handling choices (missing values, deduplication, hosts-not-in-inventory policy).
+
+Grading / objectivity reminders
+- The grader will run your ingest.py and queries.py locally; outputs must match the SQL and result_rows you included.
+- Use only Python standard library. If your scripts import external packages, the grader cannot run them and the submission will be rejected.
+- Do not submit any additional files. All required code and outputs must be embedded inside test_submission.json.
+
+Good luck. Work cleanly and keep focus on reproducible ingestion, correct SQL queries, and a concise evidence-backed recommendation.
+</instructions>
+
+---
+
+## 🎯 Your objectives
+
+1. Determine whether **any materials are required** for the candidate to complete the exam.  
+   - If *no* materials are needed, respond **exactly** with: `No material required` (and nothing else).  
+   - Otherwise, proceed with Steps 2–3.
+
+2. Create **synthetic materials for the candidate** that are:
+   - Small enough to be completed within 90 minutes.
+   - Fully deterministic — no randomness, placeholders, or vague “sample” references.
+   - Internally coherent and cross-referenced (e.g., matching IDs, categories, or filenames).
+   - Labeled with consistent structures that prevent arbitrary interpretation.
+   - Provided as complete content (not summaries or templates).
+
+3. Provide an **evaluator explanation** describing how materials were constructed and what patterns or relationships exist.
+
+---
+
+## 🧱 Output Format (MUST follow exactly)
+
+<MATERIALS_FOR_CANDIDATE>
+[Provide here the exact material content to be given to the candidate.  
+Examples: small CSV table, short text passage, JSON dataset, or multi-part folder structure.  
+Use clear identifiers (e.g., `Customer_ID`, `Transaction_Code_A1`) and avoid arbitrary naming.  
+Ensure the candidate can complete the exam with only these materials.]
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+[Explain to the evaluator:
+- How and why you created these materials
+- What data patterns or hidden relationships exist
+- What traps, ambiguities, or common errors a candidate might make
+- What the correct or expected answers depend on
+- How these materials help differentiate between conceptual and practical understanding]
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+---
+
+## ⚙️ Design Rules
+
+- **Deterministic**: Never include the words “random”, “example only”, “placeholder”, or “sample data”.  
+- **Complete**: Both XML tag pairs must exist and contain non-empty content.  
+- **Consistent**: Use the same variable names, identifiers, or categories across all files or sections.  
+- **Objective**: Materials should support questions with *verifiable* answers (numerical, textual, or structural).  
+- **Size**: Keep datasets concise — typically ≤ 20 rows or ≤ 500 words total content.  
+- **Clarity**: Label all columns, categories, and entities clearly.
+
+---
+
+## ✅ Example (structure only)
+
+<MATERIALS_FOR_CANDIDATE>
+CSV: `customer_transactions.csv`
+Customer_ID,Product_Code,Amount,Region
+C001,P01,120,North
+C002,P02,80,East
+...
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+This dataset was created to simulate customer purchases across 4 regions.
+Only "North" region includes a loyalty discount, affecting task 3 results.
+The expected correct result involves calculating net revenue using column "Amount".
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

@@ -1,174 +1,157 @@
 Here is the exam overview written by another exam designer:
 <examoverview>
 ### Exam Purpose
-This basic practical exam verifies that a candidate can take raw system telemetry/log data, design a simple persistent schema, reliably store the data, retrieve and manipulate it to produce analysis-ready aggregates and reports, and provide reproducible, runnable code that performs these steps. In real world terms it confirms the candidate can perform the core job of collecting and preparing system metrics data to support capacity planning, performance troubleshooting, and requirements analysis.
+Confirm that a candidate can practically collect, store, retrieve, and manipulate system-related data (logs/telemetry/configuration) to produce measurements and summaries needed for systems-capability analysis and requirements decisions. This exam verifies the candidate can design a simple storage model, load data reliably, write correct queries/transformations, produce analysis-ready summaries, and package results and runnable artifacts in a reproducible way.
 
-Intended outcome: after running the candidate’s submission, an evaluator (or an automated grader) can confirm that the candidate’s code created a persistent store, executed expected queries and aggregations, handled simple data issues, and produced the requested outputs in the required JSON submission.
+Real-world capability validated:
+- Turning raw system telemetry/logs into queryable, consistent data.
+- Extracting correct operational metrics (counts, aggregates, rollups).
+- Performing joins, deduplication, basic time-window analysis and filtering.
+- Exporting results and documenting assumptions so a systems engineer can act on them.
 
----
+### Core Competencies
+- Data ingestion and storage design (schema choice for simple telemetry/logs).
+- Use of local storage (SQLite or file-based) and standard language I/O (no external DB servers).
+- Data cleaning (type coercion, missing/invalid value handling, de-duplication).
+- Retrieval & manipulation: SQL or equivalent (group-by, time-window aggregation, joins, filters).
+- Scriptable, repeatable workflow: single command runs end-to-end.
+- Reproducible output packaged as structured JSON for automated evaluation.
+- Clear, concise documentation of steps and decisions.
 
-### Core Competencies to be Tested
-1. Data ingestion/parsing
-   - Read and validate CSV/log input, parse timestamps and numeric fields, handle missing values and duplicates.
-2. Data modeling and persistence
-   - Design a compact, sensible schema for telemetry data and implement it in a file-backed DB (SQLite recommended).
-3. Data storage & performance basics
-   - Create tables and appropriate indices; demonstrate awareness of basic performance tradeoffs for read-heavy queries.
-4. Querying & aggregation
-   - Write SQL (or equivalent) to select, filter, join, aggregate, and compute time-window metrics (averages, max, percentiles or counts).
-5. Reporting / export
-   - Produce structured outputs (JSON, CSV) required for downstream analysis.
-6. Reproducibility & automation
-   - Provide a single runnable script/CLI to perform the steps; include minimal but clear instructions.
-7. Documentation & reasoning
-   - Briefly justify schema/approach and propose one or two simple improvements.
+### Recommended Structure
+Total time: 90 minutes. The exam package (delivered to candidate) contains:
+- A small dataset file: system_logs.csv (approx. 1–5 MB, ~1–10k rows). Columns: timestamp (ISO8601), host, component, level (INFO/WARN/ERROR), event_id, metric_name, metric_value (nullable), message.
+- A README.txt with allowed languages (prefer Python 3 + sqlite3 as default) and required deliverable filename: test_submission.json.
 
-These competencies map to the kinds of work performed by junior systems-software developers working with system telemetry and capacity analysis.
+Organize as three sequential tasks (expected completion times in parentheses):
+1. Ingest & Store (30 minutes)
+   - Build a script that creates a local SQLite DB (or local file storage) and loads system_logs.csv into a normalized table schema. Coerce types (timestamp -> datetime, metric_value -> numeric), ensure event_id uniqueness, and remove exact duplicate rows.
+   - Deliverable: DB file (system_logs.db) and ingestion script with run instruction.
+2. Query & Analyze (35 minutes)
+   - Using the stored data, produce the following outputs (exact numbers must match authoritative expected answers for automatic grading):
+     a. Total number of unique hosts.
+     b. Count of ERROR events per host (top 5 hosts by ERROR count).
+     c. Time-series: hourly count of ERROR events for the last 24 hours of data (ISO hour -> count).
+     d. For each component, average metric_value for metric_name = "cpu_usage" (ignore nulls).
+     e. Identify the 10 most frequent event_id values and their counts.
+   - Deliverable: Query scripts or a combined analysis script that outputs the required aggregates when run.
+3. Manipulate & Export (20 minutes)
+   - Create a filtered export (CSV) of all ERROR events in the last 7 days with columns: timestamp, host, component, event_id, message, metric_value.
+   - Create a summarized JSON (report) with top-5 hosts by ERROR and hourly error counts as an embedded array.
+   - Deliverable: error_events_7days.csv, summary_report.json.
 
----
+Final packaging (part of submission)
+- A single JSON file named test_submission.json containing:
+  - metadata: candidate_name, language, command_to_run (one-liner to run ingestion+analysis), runtime_seconds (approx).
+  - required numeric outputs for automated checking (items from Query & Analyze).
+  - small sample of exported CSV first 5 rows and path to files produced.
+  - short (<=200 words) explanation of schema choices, deduplication logic, and any edge-case assumptions.
 
-### Recommended Structure (Basic exam)
-Total time allowance: 90 minutes.
+Note: All scripts must run without network access and must use only the language's standard library or pre-installed tooling documented in the README.
 
-High-level: 4 timed tasks + final submission metadata. Expected deliverables: scripts and one JSON file named test_submission.json with prescribed fields.
+### Practicality — making it hands-on
+- Provide a real CSV dataset resembling system telemetry/logs (not questions). Candidate must actually load and operate on that file.
+- Require producing an actual store (SQLite DB file) rather than just writing SQL statements on paper.
+- Require runnable scripts that perform the full pipeline from ingest to export; evaluator runs the candidate's command to verify reproducibility.
+- Provide automatic checks against deterministic expected results (counts, top lists) so scoring can be partly automated.
 
-Tasks:
-1. Setup & Ingest (25 minutes)
-   - Input: a single CSV file (provided by exam creator) named telemetry.csv.
-   - Candidate implements a script (e.g., ingest.py or run_exam.py) that:
-     - Creates an SQLite DB file telemetry.db.
-     - Creates table(s) and indices.
-     - Loads data from telemetry.csv into the DB, performing minimal validation/normalization (parse timestamps, convert numeric types, skip or coalesce bad rows).
-   - Deliverable: DB file (telemetry.db) and ingest script.
+### Strategic elements (distinguish doing vs. knowing)
+Include decision points and multi-step dependencies:
+- Schema choice: candidate must decide whether to keep metric_name/value in a wide table vs normalized separate metrics table — their choice affects query complexity and must be explained briefly in test_submission.json.
+- Deduplication: define "duplicate" as rows identical across all fields; candidate must implement removal and justify handling of partially duplicated rows (e.g., identical event_id at different timestamps).
+- Type coercion: timestamp parsing and timezone handling (explicit assumptions allowed but must be documented).
+- Indexing: candidate may optionally create indexes to speed queries — presence/choice of index is extra credit and shows awareness of scaling.
+- Aggregation windows: hourly roll-ups require correct truncation of ISO timestamps; off-by-one hour errors are common and reveal practical mistakes.
+- Null/invalid metric handling: candidate must decide to ignore or impute null metric_values—must document and implement.
 
-2. Query & Analysis (30 minutes)
-   - Using the DB created, candidate must run specific queries and return results:
-     - Q1: Time range count: total number of records.
-     - Q2: Top 3 hosts by average CPU usage over the entire dataset (host + avg CPU value).
-     - Q3: For a given host (specified in the task), compute hourly average CPU and peak memory for the last 24 hours in the data. Return results as an array of (hour-start-timestamp, avg_cpu, max_mem).
-     - Q4: Identify periods where CPU > 90% for at least 3 consecutive samples for any host (return host, start_ts, end_ts).
-   - Deliverable: Query results captured in test_submission.json exactly in the specified schema.
+These elements force the candidate to implement, test, and make explicit operational choices rather than answer conceptual questions.
 
-3. Update & Small Manipulation (15 minutes)
-   - Implement a small function/CLI to insert one new telemetry record (provided in the task text) into the DB and update any derived table(s) if used.
-   - After insertion, re-run one relevant query (e.g., host average CPU) and provide the updated numeric result in the submission.
+### Practical Elements to Include (for the exam creator to supply)
+- system_logs.csv (well-documented format, includes edge cases: null metric_values, duplicate rows, malformed timestamps in a few rows).
+- README.txt specifying:
+  - Time limit (90 minutes).
+  - Allowed languages/tools (recommend Python 3 with sqlite3 preinstalled).
+  - Exact required filenames: system_logs.db, error_events_7days.csv, summary_report.json, test_submission.json.
+  - Single-command run requirement (e.g., ./run.sh or python3 run.py).
+  - JSON schema required for test_submission.json (see Evaluation Insights).
+- An example run command and an example test_submission.json (small template) to reduce ambiguity.
 
-4. Short Explanation & Recommendations (10 minutes)
-   - In test_submission.json, include:
-     - A short explanation (1–3 sentences) of the schema design choices (why columns typed that way, any normalization decisions).
-     - Two practical improvements you would make in a production setting (e.g., retention policy, partitioning, compressing, sharding, monitoring, batching writes).
+### Evaluation Insights (what to check and how to score)
+Scoring (suggested, total 100 pts):
+- Ingestion & Storage correctness (30 pts)
+  - DB created and table(s) exist with appropriate types (10).
+  - Duplicates removed correctly (5).
+  - Malformed timestamps/values handled (5).
+  - Script runs end-to-end with a single command (10).
+- Queries & Analysis correctness (40 pts)
+  - Unique hosts count correct (5).
+  - Top-5 hosts by ERROR count correct and ordered (10).
+  - Hourly ERROR time-series correct for last 24 hours (10).
+  - Average cpu_usage per component correct (10).
+  - Top-10 event_id frequencies correct (5).
+- Exports & Reporting (15 pts)
+  - error_events_7days.csv contains correct filtered rows and correct columns (8).
+  - summary_report.json contains properly structured arrays and top-5 host list as per required schema (7).
+- Code quality & reproducibility (10 pts)
+  - Clear, concise README/run instruction; scripts exit cleanly (5).
+  - Use of standard library only and no network calls; small, tidy code with comments (5).
+- Documentation & rationale (5 pts)
+  - Short explanation in test_submission.json of schema decisions, dedup rules, timestamp handling, and any edge-case choices (evaluated for clarity and appropriateness).
 
-Final deliverable required: a single file test_submission.json with required fields (see below), plus code files and DB/outputs as allowed by evaluator.
+Automation checks:
+- The evaluator should run candidate's one-line command; then:
+  - Open system_logs.db and run a deterministic SQL query to compute ground-truth aggregates (exam author provides expected outputs when generating dataset) and compare to values in test_submission.json.
+  - Verify exported CSV columns and sample rows against DB query.
+  - Validate summary_report.json structure and embedded arrays match computed aggregates.
 
-Note: Candidate must not require external network or non-standard libraries; exam should be solvable with common standard libraries (e.g., Python standard library including sqlite3, csv, datetime). The exam creator provides telemetry.csv as part of the test package.
+Pass criteria for basic exam:
+- Candidate should achieve >= 80/100. The tasks are designed so a competent entry-level developer using standard libraries and commonsense will reach that threshold within 90 minutes.
 
----
+Required structure of test_submission.json (exact fields for automated checking)
+- candidate_name: string
+- language: string (e.g., "python3")
+- run_command: string (one-liner)
+- runtime_seconds: number (approx)
+- outputs: object with keys:
+  - unique_hosts: integer
+  - top5_hosts_error: array of {"host": string, "error_count": integer} ordered desc
+  - hourly_errors_last24: array of {"hour": "YYYY-MM-DDTHH:00:00", "count": integer} ordered asc
+  - avg_cpu_by_component: array of {"component": string, "avg_cpu": number}
+  - top10_event_ids: array of {"event_id": string, "count": integer}
+- sample_error_csv_rows: array of first up to 5 rows of error_events_7days.csv (each row as object with exported columns)
+- files_produced: array of produced filenames and sizes (e.g., [{"file":"system_logs.db","bytes":...}, ...])
+- notes: string (<=200 words) explaining schema choice, dedup rules, timestamp handling
 
-### Practicality — How to ensure this is hands-on
-- Provide an actual telemetry.csv file (sample size 500–2000 rows) with realistic columns: timestamp (ISO 8601), host, cpu_percent (0–100), mem_mb, disk_io_kb, net_io_kb, event_type (INFO/WARN/ERROR), and possibly small controlled edge cases (a few missing CPU fields, one duplicate row, one malformed timestamp).
-- Require the candidate to run code in the provided environment (no internet) and produce a DB file and results JSON.
-- Require the output values to match exact expected results for deterministic parts so the grader can validate automatically (e.g., total row count, top 3 hosts must match).
-- Provide a single new record to insert in Task 3, so graders can automatically recompute expected updated numbers.
-- Make it clear that they should submit code, DB, and the test_submission.json; but the official required file for grading is test_submission.json (it will also contain the outputs so a grader can quickly verify).
+Example (short) test_submission.json skeleton (exam author provides full template to candidate):
+{
+  "candidate_name": "<your name>",
+  "language": "python3",
+  "run_command": "python3 run.py",
+  "runtime_seconds": 42,
+  "outputs": {
+    "unique_hosts": 12,
+    "top5_hosts_error": [{"host":"host-1","error_count":120}, ...],
+    "hourly_errors_last24": [{"hour":"2025-10-12T10:00:00","count":3}, ...],
+    "avg_cpu_by_component": [{"component":"web","avg_cpu":23.4}, ...],
+    "top10_event_ids": [{"event_id":"E1001","count":53}, ...]
+  },
+  "sample_error_csv_rows": [
+    {"timestamp":"...", "host":"...", "component":"...", "event_id":"...", "message":"...", "metric_value":12.4}
+  ],
+  "files_produced": [{"file":"system_logs.db","bytes":123456}, ...],
+  "notes":"Schema: single table logs(...). Dedup: drop exact duplicate rows. Timestamps parsed as UTC..."
+}
 
----
-
-### Strategic elements (decision points and multi-step processes)
-Design these to separate the candidates who can do and those who only know theory:
-
-1. Multi-step dependency
-   - Queries rely on the DB created in Task 1, so failure to ingest correctly will cascade. This tests end-to-end ability.
-2. Data normalization decision
-   - Candidate must choose whether to normalize host metadata (separate host table) or use a single flat table. For basic exam, either is acceptable—but the candidate must explain the choice briefly.
-3. Handling messy data
-   - The dataset contains a few malformed or missing values; candidate must either skip or coerce them, and results must match expected choices. This forces practical handling rather than theoretical answers.
-4. Indexing trade-off
-   - Candidate may create indices to make queries faster. The evaluator inspects whether indices exist (PRAGMA index_list) and whether they are sensible (e.g., index on host + timestamp).
-5. Time grouping and windowing
-   - Require hourly aggregation and detection of consecutive-high CPU windows — forces correct time parsing and ordering logic.
-6. Deterministic outputs for grading
-   - Provide specific hosts and timestamps to check for expected output so the grader can automatically confirm correctness.
-
-These strategic elements reveal mastery of practical skills rather than rote knowledge.
-
----
-
-### test_submission.json — required schema (make this exact)
-The candidate must produce this single JSON file named test_submission.json. Fields:
-
-- candidate: { name: string, email: string (optional) }
-- env: { language: string (e.g., "python3"), entrypoint: string (filename to run), db_file: string (path to created DB) }
-- ingestion: { rows_loaded: integer, rows_skipped: integer, note: string (optional) }
-- results:
-  - total_rows: integer
-  - top_hosts_by_avg_cpu: [ { host: string, avg_cpu: number } ]   (length 3)
-  - hourly_stats_for_host: [ { hour_start: ISO8601 string, avg_cpu: number, max_mem_mb: number } ]   (for 24 hours or fewer as applicable)
-  - cpu_spike_periods: [ { host: string, start_ts: ISO8601 string, end_ts: ISO8601 string } ]
-- after_insert:
-  - inserted_record_ok: boolean
-  - updated_avg_cpu_for_host: number   (for the host used in Task 3)
-- schema_and_choices:
-  - schema_description: string  (1–4 sentences describing tables/columns and rationale)
-  - suggested_improvements: [ string, string ]  (two short suggestions)
-- run_instructions: string (exact commands to run the script(s) from the exam root; one line or a couple of lines)
-- optional: errors: [ string ] (any non-fatal warnings/errors encountered)
-
-All numeric values should be numbers (not strings) with reasonable precision (two decimal places OK). Timestamps must be ISO 8601 strings.
-
-Provide an example minimal test_submission.json skeleton in the exam materials so candidates know structure.
-
----
-
-### Evaluation Insights — observable outputs and scoring rubric
-Total: 100 points. Passing threshold: 80+ points for basic exam.
-
-Suggested scoring breakdown:
-- Task 1: Ingest & DB creation (30 points)
-  - DB created at specified path (10)
-  - Table(s) with sensible types and columns (10)
-  - rows_loaded equals expected count and rows_skipped consistent with malformed data (10)
-- Task 2: Query & Analysis (40 points)
-  - total_rows correct (5)
-  - top 3 hosts by average CPU correct (10)
-  - hourly stats correct format and plausible numbers for the given host (10)
-  - cpu spike detection correct (15)
-- Task 3: Insert/update (15 points)
-  - insert operation succeeds, updated_avg_cpu is correct per expectation (10)
-  - code handles duplicates/validation for inserted record (5)
-- Task 4: Documentation & reproducibility (10 points)
-  - run_instructions correct and scripts runnable (5)
-  - schema_description + two practical improvements present and reasonable (5)
-- Code hygiene & robustness (5 points)
-  - minimal error handling, readable code, comments, no reliance on non-standard libraries
-
-Automatic grader checks:
-- Parse test_submission.json and verify numeric results against expected ground truth (derived from the provided telemetry.csv and known inserted record).
-- Verify DB file exists and optional PRAGMA checks (table/indices) if the grader expects to perform deeper checks.
-
-What indicates competence:
-- End-to-end working script that produces telemetry.db and the exact result numbers in test_submission.json.
-- Correct handling of timestamps and consistent hours in hourly aggregation.
-- Correct identification of continuous CPU spike periods (requires ordering and grouping).
-- Clean, reproducible run instructions and a short but sensible explanation of schema and production improvements.
-
-What flags a weak candidate:
-- Delivering only SQL or conceptual answers without executable ingest script or DB file.
-- Incorrect counts or aggregates that indicate misunderstanding of grouping/time windows.
-- No handling of malformed data, causing crashes or wildly incorrect row counts.
-- Missing run instructions or inability to reproduce outputs.
+Evaluator workflow:
+1. Run candidate run_command on exam folder.
+2. Validate test_submission.json format and required fields.
+3. Run a deterministic validation script that reads system_logs.db and computes the expected aggregates (the exam pack author supplies expected outputs but the validator can recompute to be robust) and compares to outputs in test_submission.json.
+4. Check presence and non-empty exported files.
+5. Apply scoring rubrics and provide feedback for each item failed or warning.
 
 ---
 
-### Practical tips for the exam creator / evaluator
-- Provide telemetry.csv and a short README that states allowed languages (e.g., Python/3, Bash, etc.), time limit (90 minutes), and that no external internet or libraries are allowed.
-- Include an exact new-record JSON/CSV line to be inserted for Task 3 and precompute the expected updated numbers to enable automatic scoring.
-- Create a small automated grader script (optional) that opens test_submission.json, checks expected numeric fields and existence of telemetry.db to compute score automatically.
-- Keep dataset size moderate (500–2000 rows) so queries run quickly without needing tuning beyond a basic index.
-- Provide one known corner-case row to test robustness (e.g., timestamp "2020-13-01" malformed) and document that candidates should either skip or coerce rows and reflect skipped rows in ingestion.rows_skipped.
-
----
-
-This structure gives a practical, end-to-end hands-on assessment of a junior systems-software engineer’s ability to store, retrieve, and manipulate telemetry data for system capability and requirements analysis, while being straightforward to grade and feasible in a 90-minute remote environment.
+This structure keeps the exam practical and reproducible, verifies end‑to‑end ability to store, retrieve, and manipulate system data, and provides an automated way to evaluate correctness while leaving room for assessors to grade code quality and rationale.
 </examoverview>
 
 ### Your assignment:
@@ -181,7 +164,7 @@ Your instructions must include:
    - Do not prescribe methods or tools beyond what’s listed in the context.
 2. **Expected Outcome** – What the candidate must achieve or produce by the end of the test.
 3. **Provided Materials** – Briefly describe any materials or data files that will be given.
-4. **Submission Instructions** – Instrut candidates that they must submit results as `"test_submission.json"`.
+4. **Submission Instructions** – Instruct candidates that they must submit results as `"test_submission.json"` and that this will be the only file used for evaluation.
 
 ### Objectivity and Evaluation Constraints
 - Avoid tasks that require subjective interpretation.

@@ -1,82 +1,64 @@
 {
-  "candidate_name": "Example Candidate",
-  "language_and_version": "Python 3.8.10",
-  "task_1": {
-    "command_run": "python3 program.py inputs/input1.txt",
-    "stdout": "Alpha,15.00,2,7.50\nBeta,5.00,1,5.00\n",
-    "stderr": "",
-    "exit_code": 0,
-    "expected_output_match": true,
-    "comment": "Output matches expected/expected1.txt exactly."
+  "candidate": {
+    "name": "Answer Key, Ideal Candidate",
+    "candidate_id": "IDEAL-001",
+    "start_time": "2025-10-12T09:00:00Z",
+    "end_time": "2025-10-12T10:20:00Z"
   },
-  "task_2": {
-    "harness_filename": "run_tests.py",
-    "harness_source": "#!/usr/bin/env python3\n\"\"\"\nSimple test harness for program.py.\nRuns three tests: inputs/input1.txt, inputs/input2.txt, inputs/input3.txt\nCompares program stdout to expected files. Exits 0 iff all tests pass.\n\"\"\"\nimport subprocess\nimport sys\nimport os\n\ntests = [\n    (\"inputs/input1.txt\", \"expected/expected1.txt\"),\n    (\"inputs/input2.txt\", \"expected/expected2.txt\"),\n    (\"inputs/input3.txt\", \"expected/expected3.txt\"),\n]\n\nall_passed = True\nresults = []\nprint(\"Running tests...\")\nfor i, (inp, exp) in enumerate(tests, start=1):\n    print(f\"Test {i}: {inp} -> running program...\")\n    proc = subprocess.run([sys.executable, \"program.py\", inp], capture_output=True, text=True)\n    out = proc.stdout\n    err = proc.stderr\n    rc = proc.returncode\n\n    # Read expected output\n    with open(exp, 'r', encoding='utf-8') as f:\n        expected = f.read()\n\n    # Normalize by splitting into lines and stripping trailing CRLF differences\n    out_lines = [ln.rstrip('\\r') for ln in out.splitlines()]\n    exp_lines = [ln.rstrip('\\r') for ln in expected.splitlines()]\n\n    passed = (rc == 0) and (out_lines == exp_lines)\n    note = \"\"\n    if rc != 0:\n        note = f\"program exited with code {rc}. stderr:\\n{err}\"\n    elif out_lines != exp_lines:\n        note = \"Output does not match expected exactly.\\n--- program stdout ---\\n\" + out + \"--- expected ---\\n\" + expected\n\n    results.append({\n        'input': inp,\n        'expected': exp,\n        'passed': passed,\n        'returncode': rc,\n        'stderr': err,\n        'note': note,\n    })\n\n    if passed:\n        print(f\"Test {i}: {inp} -> PASS\")\n    else:\n        print(f\"Test {i}: {inp} -> FAIL\")\n        if note:\n            print(\"  Reason:\")\n            for line in note.splitlines():\n                print(\"    \" + line)\n        all_passed = False\n\nprint(f\"All tests completed: {sum(1 for r in results if r['passed'])}/{len(results)} passed\")\nif not all_passed:\n    print(\"Exiting with failure (1)\")\n    sys.exit(1)\nprint(\"All tests passed. Exiting with success (0)\")\nsys.exit(0)\n",
-    "harness_command_run": "python3 run_tests.py",
-    "harness_stdout": "Running tests...\nTest 1: inputs/input1.txt -> running program...\nTest 1: inputs/input1.txt -> PASS\nTest 2: inputs/input2.txt -> running program...\nTest 2: inputs/input2.txt -> PASS\nTest 3: inputs/input3.txt -> running program...\nTest 3: inputs/input3.txt -> FAIL\n  Reason:\n    program exited with code 1. stderr:\n    Traceback (most recent call last):\n      File \"program.py\", line 24, in main\n        category = parts[1].strip()\n    IndexError: list index out of range\nAll tests completed: 2/3 passed\nExiting with failure (1)\n",
-    "harness_stderr": "",
-    "harness_exit_code": 1,
-    "test_results": [
-      {
-        "input_filename": "inputs/input1.txt",
-        "expected_output_filename": "expected/expected1.txt",
-        "passed": true,
-        "notes": "Output matches expected exactly."
+  "tasks": [
+    {
+      "task_id": "T1",
+      "title": "Run & Reproduce",
+      "time_spent_minutes": 20,
+      "commands_executed": [
+        "python program.py input_primary.txt"
+      ],
+      "raw_console_output": "Summary Report\nTotal records: 5\nAverage score: 82.40\nTop scorer: S004 (95)\n",
+      "exit_code": 0,
+      "expected_output_match": "yes",
+      "difference_note": ""
+    },
+    {
+      "task_id": "T2",
+      "title": "Automated Checks",
+      "time_spent_minutes": 30,
+      "test_files": {
+        "run_tests.py": "#!/usr/bin/env python3\nimport subprocess, sys\n\ndef fail(msg):\n    print(\"FAIL:\", msg)\n    sys.exit(1)\n\ndef ok(msg):\n    print(\"PASS:\", msg)\n\n# Test 1: Primary output matches expected_output.txt exactly\nr = subprocess.run([sys.executable, 'program.py', 'input_primary.txt'], capture_output=True, text=True)\nif r.returncode != 0:\n    fail(f\"program.py exit code non-zero on primary input: {r.returncode}\")\nout = r.stdout\nwith open('expected_output.txt', 'r', encoding='utf-8') as f:\n    expected = f.read()\nif out != expected:\n    fail('Output mismatch for primary input')\nok('primary_output_matches_expected')\n\n# Test 2: Average value is correct (parse output)\nlines = out.strip().splitlines()\navg_line = next((l for l in lines if l.startswith('Average score:')), None)\nif avg_line is None:\n    fail('Average score line missing')\ntry:\n    avg = float(avg_line.split(':', 1)[1].strip())\nexcept Exception as e:\n    fail(f'Could not parse average line: {e}')\nif abs(avg - 82.40) > 0.001:\n    fail(f'Average value incorrect: {avg}')\nok('average_value_correct')\n\n# Test 3: Top scorer is reported correctly\ntop_line = next((l for l in lines if l.startswith('Top scorer:')), None)\nif top_line is None:\n    fail('Top scorer line missing')\nif 'S004 (95)' not in top_line:\n    fail(f'Top scorer incorrect: {top_line}')\nok('top_scorer_correct')\n\nprint('ALL TESTS PASSED')\nsys.exit(0)\n"
       },
-      {
-        "input_filename": "inputs/input2.txt",
-        "expected_output_filename": "expected/expected2.txt",
-        "passed": true,
-        "notes": "Output matches expected exactly (numeric aggregation and formatting correct)."
+      "test_command": "python run_tests.py",
+      "test_output": "PASS: primary_output_matches_expected\nPASS: average_value_correct\nPASS: top_scorer_correct\nALL TESTS PASSED\n",
+      "test_exit_code": 0,
+      "tests_passed": 3,
+      "tests_failed": 0,
+      "coverage_note": "Three checks: (1) byte-for-byte match of stdout for input_primary.txt against expected_output.txt; (2) parsing and numeric check of the Average score value (82.40); (3) verification that the Top scorer line contains 'S004 (95)'. These capture the core behaviors required in Task 1."
+    },
+    {
+      "task_id": "T3",
+      "title": "Diagnose & Fix",
+      "time_spent_minutes": 30,
+      "root_cause": "The program's parsing loop does not skip empty or whitespace-only lines and assumes each line contains a comma-delimited ID and score. input_extra.txt contains blank lines, which causes parts = line.split(',') to produce too few parts and leads to IndexError / ValueError when accessing parts[1] or converting to int.",
+      "patch_files": {
+        "program.py": "#!/usr/bin/env python3\nimport sys\n\ndef main():\n    if len(sys.argv) != 2:\n        print(\"Usage: python program.py <input_file>\", file=sys.stderr)\n        sys.exit(2)\n\n    input_path = sys.argv[1]\n    with open(input_path, \"r\", encoding=\"utf-8\") as f:\n        lines = f.read().splitlines()\n\n    total = 0\n    count = 0\n    top_score = -999\n    top_id = \"\"\n\n    for line in lines:\n        line = line.strip()\n        # Skip empty lines introduced by some data sources\n        if not line:\n            continue\n        # Accept comma or semicolon as delimiter for robustness\n        if ',' in line:\n            parts = line.split(',')\n        elif ';' in line:\n            parts = line.split(';')\n        else:\n            # Malformed line: skip it rather than crash\n            continue\n        # Trim whitespace around fields\n        id = parts[0].strip()\n        try:\n            score = int(parts[1].strip())\n        except Exception:\n            # Skip lines that don't contain a valid integer score\n            continue\n        total += score\n        count += 1\n        if score > top_score:\n            top_score = score\n            top_id = id\n\n    if count == 0:\n        print(\"No valid records found\", file=sys.stderr)\n        sys.exit(1)\n\n    avg = total / count\n    print(\"Summary Report\")\n    print(\"Total records: {}\".format(count))\n    print(\"Average score: {:.2f}\".format(avg))\n    print(\"Top scorer: {} ({})\".format(top_id, top_score))\n\nif __name__ == \"__main__\":\n    main()\n"
       },
-      {
-        "input_filename": "inputs/input3.txt",
-        "expected_output_filename": "expected/expected3.txt",
-        "passed": false,
-        "notes": "program exited with code 1. stderr contains IndexError: list index out of range caused by an empty (blank) line in the input file.\nCaptured stderr:\nTraceback (most recent call last):\n  File \"program.py\", line 24, in main\n    category = parts[1].strip()\nIndexError: list index out of range"
-      }
-    ]
-  },
-  "task_3": {
-    "investigation_commands": [
-      "python3 program.py inputs/input3.txt",
-      "cat -n inputs/input3.txt",
-      "python3 -c \"import sys; print(sys.version)\""
-    ],
-    "diagnosis": "The program does not skip empty/blank lines. When the input contains a blank line, line.split(',') produces [''] and accessing parts[1] raises IndexError: list index out of range. Root cause: missing guard to ignore empty lines before splitting/processing.",
-    "fix_strategy": "patch",
-    "fix_diff_or_wrapper": "--- program.py\t2025-01-01 00:00:00.000000000 +0000\n+++ program.py\t2025-01-01 00:00:00.000000000 +0000\n@@\n-    with open(input_path, 'r', encoding='utf-8') as f:\n-        for line in f:\n-            line = line.strip()\n-            parts = line.split(',')\n-            # NOTE (intentional bug): this code does not skip empty lines.\n-            # If `line` is empty, `parts` will be [''] and accessing parts[1] will fail.\n-            id_field = parts[0].strip()\n-            category = parts[1].strip()\n-            value = float(parts[2].strip())\n+    with open(input_path, 'r', encoding='utf-8') as f:\n+        for line in f:\n+            line = line.strip()\n+            # Skip empty/blank lines to avoid IndexError on malformed blank lines\n+            if not line:\n+                continue\n+            parts = line.split(',')\n+            # After skipping blank lines, proceed to parse fields\n+            id_field = parts[0].strip()\n+            category = parts[1].strip()\n+            value = float(parts[2].strip())\n",
-    "post_fix_harness_stdout": "Running tests...\nTest 1: inputs/input1.txt -> running program...\nTest 1: inputs/input1.txt -> PASS\nTest 2: inputs/input2.txt -> running program...\nTest 2: inputs/input2.txt -> PASS\nTest 3: inputs/input3.txt -> running program...\nTest 3: inputs/input3.txt -> PASS\nAll tests completed: 3/3 passed\nAll tests passed. Exiting with success (0)\n",
-    "post_fix_harness_exit_code": 0,
-    "post_fix_test_results": [
-      {
-        "input_filename": "inputs/input1.txt",
-        "expected_output_filename": "expected/expected1.txt",
-        "passed": true,
-        "notes": "Pass after patch; behaviour unchanged for normal input."
+      "patch_summary": "Minimal, targeted changes (≈12 lines): strip and skip empty/whitespace-only lines; allow comma or semicolon as delimiter; trim whitespace around fields; guard int conversion with try/except to skip malformed records. This prevents crashes on input_extra.txt blank lines and makes delimiter handling slightly more robust.",
+      "commands_executed_after_patch": [
+        "python program.py input_primary.txt",
+        "python program.py input_extra.txt",
+        "python run_tests.py"
+      ],
+      "post_patch_console_output": "Summary Report\nTotal records: 5\nAverage score: 82.40\nTop scorer: S004 (95)\n",
+      "post_patch_test_output": "PASS: primary_output_matches_expected\nPASS: average_value_correct\nPASS: top_scorer_correct\nALL TESTS PASSED\n",
+      "post_patch_exit_codes": {
+        "python program.py input_primary.txt": 0,
+        "python program.py input_extra.txt": 0,
+        "python run_tests.py": 0
       },
-      {
-        "input_filename": "inputs/input2.txt",
-        "expected_output_filename": "expected/expected2.txt",
-        "passed": true,
-        "notes": "Pass after patch; numeric aggregation and formatting preserved."
-      },
-      {
-        "input_filename": "inputs/input3.txt",
-        "expected_output_filename": "expected/expected3.txt",
-        "passed": true,
-        "notes": "Previously failing test passes after skipping blank lines; output matches expected exactly."
-      }
-    ]
-  },
-  "task_4": {
-    "summary_report": "I ran the provided program against the three supplied inputs, captured stdout/stderr/exit codes, and automated the checks with run_tests.py. Task 1 confirmed that input1 produces the expected output. Task 2 automated all three runs: input1 and input2 passed; input3 raised an IndexError due to a blank line in the input. For Task 3 I diagnosed the root cause (the program does not skip empty lines) and applied a minimal patch that skips blank lines before parsing. Re-running the harness shows all three tests now pass. Limitations: the patch only skips blank lines and does not add full validation for malformed records or non-numeric values. Assumptions: tests were run with Python 3 (3.8.10 in my environment), no external packages are required. The fix is intentionally minimal and low-risk.",
-    "repro_commands": [
-      "python3 --version",
-      "python3 run_tests.py"
-    ],
-    "assumptions_and_limitations": "Assumes a POSIX shell and Python 3.x (example used: Python 3.8.10). The patch only ignores blank lines; it does not validate field counts or numeric conversion beyond existing behavior. If inputs contain malformed non-numeric values, program may still raise exceptions."
-  },
-  "time_taken_minutes": 75,
-  "final_notes": "Provided a minimal in-place patch (unified diff included). The harness (run_tests.py) exits with nonzero on failure and zero on success, and all required artifacts are present in the JSON."
+      "final_status": "fixed",
+      "decision_justification": "I modified the code rather than only updating instructions because: (1) the seeded problem is a runtime crash caused by empty lines in otherwise valid data files — skipping empty lines is a minimal, safe, and user-friendly fix; (2) accepting both commas and semicolons (if present) is a small, robust enhancement and addresses the README ambiguity in a backward-compatible way; (3) these changes are limited (1–15 lines) and improve the program's resilience without imposing additional requirements on data providers. Updating README alone would have left the program brittle to common minor input variants."
+    }
+  ],
+  "self_evaluation": {
+    "confidence_level": 4,
+    "notes": "Explanations and derivations:\n\nTask 1 derivation:\n- Command: 'python program.py input_primary.txt' is the run instruction in README-run.txt. The provided program reads the input file and prints the four-line summary.\n- raw_console_output is filled with the exact contents of expected_output.txt (byte-for-byte). The expected file contains a trailing newline; the program's print() calls produce newline-terminated lines, so the concatenated stdout is exactly the provided string.\n- exit_code is 0 because program.py completes successfully on input_primary.txt.\n- expected_output_match is 'yes' because stdout matches expected_output.txt exactly.\n\nTask 2 derivation:\n- run_tests.py uses only Python standard library (subprocess, sys) and runs program.py to capture stdout and return code.\n- Tests included: (1) exact-match of stdout for input_primary.txt vs expected_output.txt; (2) parsing average value equals 82.40 within a tiny tolerance; (3) verifying the Top scorer contains 'S004 (95)'. These are directly derived from the Expected Outcome and Core Competencies sections that require reproducing outputs and writing deterministic automated checks.\n- test_command is 'python run_tests.py'. The test_output shows three PASS lines and 'ALL TESTS PASSED'. The test_exit_code is 0 because the script exits with sys.exit(0) on success. tests_passed=3, tests_failed=0.\n\nTask 3 derivation:\n- Root cause: per evaluator materials, input_extra.txt contains blank lines; program.py assumes each line splits into two fields and attempts int(parts[1]) without validation. This causes an IndexError or ValueError. The diagnosis matches the seeded-bug description.\n- Patch: minimal changes to strip lines and skip empty ones, accept ',' or ';' delimiters, and guard int conversion. The patched program.py included is intentionally concise and changes only the parsing loop and a final guard for count==0. It is 1–15 lines of functional change and preserves original behavior for well-formed inputs. This aligns with the 'minimal patch' requirement.\n- After patch, running the same Task 1 command on input_primary.txt produces identical output and exit code 0 (post_patch_console_output and exit code mapping). Running the program on input_extra.txt also succeeds (no crash) and produces the same aggregate results (5 records, average 82.40, top S004). The tests re-run (python run_tests.py) and pass, confirming the fix.\n\nPassing criteria (scoring guidance for evaluator):\n- To pass the exam overall, a candidate should score ≥ 80/100 using the rubric in the exam overview. Practical checkpoints to grant full credit for each task:\n  - Task 1 (25 pts): commands executed correctly (10 pts), exact stdout match to expected_output.txt (10 pts), explanation if mismatch (5 pts). In this answer key: full credit because commands, exact output, and exit code are correct.\n  - Task 2 (25 pts): test harness exists and runs with single command (10 pts), tests assert meaningful behaviors (10 pts — at least 3 checks present), test outputs/logs included (5 pts). Full credit in this key (3 passing tests, exit code 0).\n  - Task 3 (35 pts): correct root cause identification (10 pts), correct minimal patch applied and included (15 pts), re-run shows passing tests and expected outputs with explanation of trade-offs (10 pts). Full credit here because patch is minimal, justified, and fixes the seeded bug while preserving original outputs.\n  - Documentation & Reproducibility (15 pts): JSON contains all required fields and embedded files (5 pts), commands and plausible timestamps/time_spent (5 pts), clear patch notes and justification (5 pts). Full credit when JSON is complete and reproducible as in this key.\n\nPartial credit rules (summary):\n- If tests exist but fail to run due to syntax errors: partial credit for intent (award up to half of Task 2 points for coverage and attempt). \n- If root cause correctly identified but fix is brittle (e.g., deletes lines from input or heavily hardcodes behavior): partial credit for diagnosis but deduct for maintainability (award reduced Task 3 points).\n- If candidate updates README instead of code, accept if justification is reasonable; award full or partial credit depending on whether the decision meets real-world requirements (e.g., if inputs are strictly controlled by upstream, updating instructions can be acceptable).\n\nTime accounting:\n- time_spent_minutes fields sum to 80 (20 + 30 + 30), which is ≤ 90 as required.\n\nNotes to evaluator: recreate files exactly from the embedded strings, run the listed commands in the working directory, and verify that outputs and exit codes match the recorded values above. If any minor whitespace mismatches occur, verify byte-for-byte against the expected_output.txt content provided in the exam materials."
+  }
 }

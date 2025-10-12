@@ -1,178 +1,174 @@
 ### Exam Title
-CSV Summarizer — Implementation, Revision, Comments, and Documentation (Basic Practical Exam, 90 minutes)
+Basic Practical Programming Exam — "sales_agg" CSV Aggregator (90 minutes)
 
 ### Instructions for Candidate
-You have 90 minutes total. Use the provided computer, code execution environment, and text editor only. Do not use the internet or other external materials.
 
-High-level steps and suggested time:
-- 0–10 min: Read these instructions and inspect provided files (data.csv).
-- 10–50 min (Task A): Implement the initial CLI program that reads data.csv and writes a JSON summary.
-- 50–75 min (Task B): Implement the required revision (group-by feature) and update code/comments.
-- 75–90 min: Produce README, changelog, capture outputs, and package everything into test_submission.json.
+Overview
+- Time limit: 90 minutes total. Work offline on your local computer with only the code execution environment and a text editor. No internet or external resources allowed.
+- Goal: produce working, documented, commented code that compiles/runs, plus a short revision and tests — all submitted as a single JSON file named test_submission.json (instructions below).
 
-You may choose one language: Python, Java, or C. Use the exact filenames below for your chosen language:
-- Python: summarizer.py
-- Java: Summarizer.java
-- C: summarizer.c
+Tasks (perform in order)
+1. Implement the command-line program named sales_agg:
+   - It must accept the input CSV filename as a required positional argument:
+     sales_agg <input_file> [--min-revenue N]
+   - Behavior:
+     - Read the CSV file whose columns are: date,product_id,quantity,unit_price (comma-separated).
+     - The file may include a header row. If present, skip it.
+     - For each well-formed line, compute line revenue = quantity * unit_price and aggregate total revenue per product_id.
+     - If quantity or unit_price is missing for a line, treat the missing value as zero.
+     - Ignore malformed lines (lines that cannot be parsed into the expected number of fields or have non-numeric quantity/unit_price that cannot be treated as missing).
+     - After aggregating, round each product's total revenue to exactly two decimal places (e.g., 123.456 -> 123.46).
+     - Sort the output by product_id in ascending lexical order.
+     - Print the result to stdout in CSV format, no header: product_id,total_revenue
+   - Follow-up (revision) requirement: implement the optional command-line flag --min-revenue (or short -m) that, when provided, filters out products whose total_revenue is less than the numeric threshold N. The flag is optional and defaults to no filtering.
+   - Program name: the executable/script must be called sales_agg (or sales_agg.py, sales_agg.go, sales_agg.java, etc., but indicate exactly how to run it in your build_instructions).
 
-Do not rename these files.
+2. Create and run automated/script-driven tests (at least two):
+   - Test A (normal): run sales_agg on provided sample_sales.csv and verify it matches the provided expected output.
+   - Test B (malformed/edge): run sales_agg on provided malformed_sales.csv and verify it matches the provided expected output for malformed data handling.
+   - Additionally run a test exercise that demonstrates the --min-revenue filter (for example run with --min-revenue 20.0 on sample_sales.csv).
+   - Tests may be small shell scripts or simple commands saved in your instructions; they must be runnable locally with the commands you list in build_instructions.
 
-Task A — Core implementation (required)
-1. Implement a command-line program named as above (depending on language) that:
-   - Accepts: data.csv as the first positional argument.
-   - Optional flag: --output <file> (if omitted, write JSON to stdout).
-   - Reads data.csv (CSV with header row).
-   - Computes summary statistics for each numeric column: count, sum, mean, min, max.
-     - Numeric columns for this exam are: value1 and value2 (the provided data.csv will include columns: id, group, value1, value2).
-     - count: integer number of non-empty numeric cells included in calculations.
-     - sum/mean/min/max: numeric values formatted with exactly two decimal places (e.g., 12.34). If a column has count 0, set sum/mean/min/max to null.
-   - Behavior for missing/invalid cells:
-     - Empty cells (blank) in numeric columns must be ignored (not counted).
-     - If a non-empty, non-parseable value appears in a numeric column, the program must print a clear error message to stderr naming the row number and column, exit with non-zero status, and produce no JSON output file.
-   - If the input file is missing or unreadable, print a clear error message and exit non-zero.
-   - Output JSON structure (see "Expected Outcome" below) with stable ordering:
-     - For the top-level "summary" object: numeric column keys must be sorted alphabetically.
-     - For group-by output (Task B): group keys must be sorted lexicographically ascending.
+3. Document your work:
+   - Add clear inline comments in source files explaining non-trivial logic and the revision you made.
+   - Create a short README describing how to build/run, the exact assumptions you made, and example usage.
+   - Maintain a changelog recording the sequence of edits (implement, tests run, revision) with short rationale and timestamps.
 
-Task B — Revision / feature addition (required)
-2. Modify the program to add an optional flag:
-   - --group-by <column_name>
-   - When provided, compute the same per-numeric-column summaries separately for each distinct value in the group-by column.
-   - Output JSON must then include a top-level "groups" object mapping each group value (string) to that group's per-column summary object (same format as Task A for each group). Group keys must be sorted.
-   - If the group-by column does not exist, print a clear error message and exit non-zero.
+4. Revision step (during the same session):
+   - Implement the --min-revenue option described above (if you initially left it out, add it now).
+   - Update inline comments and the changelog to reflect this revision.
+   - Re-run tests and include the updated test outputs.
 
-Comments and documentation (required)
-3. While implementing:
-   - Add a top-of-file header comment describing the file purpose.
-   - Provide docstrings (or equivalent comments) for each top-level function or non-trivial block.
-   - Add inline comments explaining any non-obvious logic.
-4. Create a README (README.md) describing:
-   - One-paragraph project purpose.
-   - Exact, copy-pasteable run commands for Task A and Task B for your language.
-   - Any assumptions you made.
-   - How you format numeric output (two decimal places) and numeric tolerance if applicable (not required).
-5. Create a changelog (CHANGELOG.md) with at least two entries:
-   - Initial implementation — short description and files changed.
-   - Revision — description of group-by feature and files changed.
+Time guidance (suggested, but stay within 90 minutes)
+- Implement core feature: ~40 minutes
+- Create & run tests: ~15 minutes
+- Write README, comments, changelog: ~20 minutes
+- Implement small revision (--min-revenue) and re-run tests: ~10 minutes
+- Package submission: ~5 minutes
 
-Capturing outputs (required)
-6. Run and capture outputs (for the provided data.csv):
-   - Task A command (primary): produce out_initial.json (exact file).
-   - Task B command (revision): produce out_groupby.json (exact file).
-   - Include the exact run commands you used in the submission.
+Important constraints
+- Do not use the internet. Do not include any external libraries that are not part of the standard runtime for the language you choose.
+- You may use any programming language, but your submission must include exact build/run commands so an evaluator can reproduce your results.
+- You must include the source code itself inside the submission JSON (see Submission Format).
 
-Time and constraints
-- Complete everything in 90 minutes.
-- You may assume the provided data.csv has no invalid numeric cells for the main scenario, but your program must still implement invalid-cell detection as specified.
-
-Allowed tools
-- Code execution environment (run/compile code).
-- Text editor.
+Checklist of required deliverables (everything must be present inside test_submission.json)
+- Source code file(s) (complete content).
+- build/run commands used to compile and execute the program.
+- README content (plain text).
+- Changelog entries.
+- At least three test runs: normal case, malformed case, and a --min-revenue case with expected outputs and actual outputs captured.
+- A brief statement of assumptions you made.
+- Candidate self-evaluation and signature statement.
 
 ### Expected Outcome
-By the end of the exam you must produce:
-1. A working CLI program (summarizer.py, Summarizer.java, or summarizer.c) that implements Task A and Task B behavior.
-2. Inline comments and docstrings/top-file header as specified.
-3. README.md containing purpose, exact run commands, assumptions, and formatting decisions.
-4. CHANGELOG.md with at least two entries (initial and revision).
-5. Two JSON output files produced from the provided data.csv:
-   - out_initial.json — result of Task A
-   - out_groupby.json — result of Task B (grouped by the "group" column)
-6. A single JSON wrapper named test_submission.json containing all deliverables (see Submission Format below).
 
-Exact JSON output structure requirements (must match exactly):
-- Task A (no group-by) output: a JSON object containing exactly one key "summary".
+By the end of the test you must deliver a valid test_submission.json file that demonstrates:
+- A working sales_agg program (source included) that runs and produces the correct CSV output for the provided sample tests.
+- The program handles header rows, missing quantity/price (treated as zero), ignores malformed lines, and rounds final per-product totals to two decimal places.
+- The program accepts and implements the --min-revenue filter.
+- At least two automated/scripted test runs were executed and their outputs (stdout/stderr) captured and included.
+- README explains how to reproduce build and test commands, describes assumptions, and documents the --min-revenue flag behavior.
+- Inline comments exist in code explaining non-trivial logic and the revision(s).
+- A changelog records the initial implementation and the follow-up revision and why they were made.
+- The JSON submission follows the required schema detailed below.
 
-Example structure (keys and ordering rules described above):
-{
-  "summary": {
-    "value1": { "count": 12, "sum": 123.45, "mean": 10.29, "min": 1.00, "max": 20.00 },
-    "value2": { "count": 12, "sum": 234.56, "mean": 19.55, "min": 2.00, "max": 25.00 }
-  }
-}
+Evaluation criteria (objective)
+- Correctness of outputs for the provided tests (automatically verifiable).
+- Presence and reproducibility of build/run commands.
+- Inclusion of code, README, changelog, tests, and captured outputs in the JSON.
+- Inline comments explaining non-trivial code.
+- Implementation of the --min-revenue option and test demonstrating it.
+- Clear statement of assumptions.
 
-- Task B (with --group-by group) output: a JSON object containing exactly one key "groups".
-
-Example structure:
-{
-  "groups": {
-    "A": {
-      "value1": { ... },
-      "value2": { ... }
-    },
-    "B": {
-      "value1": { ... },
-      "value2": { ... }
-    }
-  }
-}
-
-Formatting and ordering rules:
-- Numeric values in JSON must be represented with exactly two digits after the decimal point (e.g., 3.00, 0.00). Use null for missing numeric aggregates (when count is 0).
-- In "summary" object, numeric column keys sorted alphabetically ascending.
-- In "groups" object, group keys sorted lexicographically ascending.
-- Use JSON null (not string) for null aggregates.
-
-Validation behavior:
-- For any non-empty cell in value1 or value2 that is not a valid number, program must print an error to stderr with row number and column name and exit non-zero (no JSON written).
-- If data.csv is missing, print a clear message and exit non-zero.
-
-Exact run commands required in README and test_submission.json:
-- Python:
-  - Task A primary_run_command: python3 summarizer.py data.csv --output out_initial.json
-  - Task B revision_run_command: python3 summarizer.py data.csv --group-by group --output out_groupby.json
-- Java:
-  - Build: javac Summarizer.java
-  - Task A: java Summarizer data.csv --output out_initial.json
-  - Task B: java Summarizer data.csv --group-by group --output out_groupby.json
-- C:
-  - Build: gcc summarizer.c -o summarizer
-  - Task A: ./summarizer data.csv --output out_initial.json
-  - Task B: ./summarizer data.csv --group-by group --output out_groupby.json
-
-(Include the exact commands you used in test_submission.json fields primary_run_command and revision_run_command.)
+You are expected to score >= 80% to pass the basic exam if you are a qualified entry-level programmer.
 
 ### Provided Materials
-You will be given one file:
-- data.csv — a CSV file with header row and about ~20 rows. The header is:
-  id,group,value1,value2
-- The CSV contains integer id, string group (categorical), and numeric columns value1 and value2. Some cells may be blank. The provided file will not contain invalid non-numeric strings in numeric columns for the main test data, but your program must still detect and handle such cases if present.
 
-No starter code is provided. Start from an empty project.
+Create these two files locally as given below (you will be given these content blocks as part of the exam; paste them into files with the exact filenames listed):
+
+1) sample_sales.csv
+Contents:
+date,product_id,quantity,unit_price
+2025-01-01,ABC123,2,10.00
+2025-01-02,XYZ999,1,20.50
+2025-01-03,ABC123,3,10.00
+2025-01-04,LMN456,5,5.25
+2025-01-05,XYZ999,2,20.00
+
+Expected output for sample_sales.csv (exact expected stdout):
+ABC123,50.00
+LMN456,26.25
+XYZ999,61.00
+
+2) malformed_sales.csv
+Contents:
+date,product_id,quantity,unit_price
+2025-01-01,ABC123,2,10.00
+BADLINEWITHOUTCOMMAs
+2025-01-02,XYZ999,,20.50
+2025-01-03,ABC123,3,notanumber
+2025-01-04,LMN456,5,5.25
+2025-01-05,XYZ999,2,20.00
+2025-01-06,BAD,4     <-- malformed due to missing fields after trimming
+(empty line)
+2025-01-07,NEG001,-1,15.00
+
+Expected output for malformed_sales.csv (exact expected stdout):
+ABC123,20.00
+LMN456,26.25
+NEG001,-15.00
+XYZ999,61.00
+
+Notes on provided materials
+- The lines labeled "BAD..." are intentionally malformed. Your program should ignore malformed lines rather than crash.
+- For the malformed file:
+  - For the XYZ999 line where quantity is missing, treat missing quantity as zero for that line.
+  - For the ABC123 line where unit_price is non-numeric, treat unit_price as zero for that line.
+  - Negative quantities are allowed and must affect revenue (NEG001 shows a negative entry).
+  - Empty lines must be ignored.
+- You must reproduce the exact expected_output strings above for each provided test when run with default (no --min-revenue) behavior.
 
 ### Submission Format
-You must submit a single JSON file named test_submission.json. It must exactly follow this schema (all fields required unless noted):
 
-{
-  "candidate_name": "Full Name (string)",
-  "language": "Python|Java|C (string)",
-  "time_minutes_used": integer,
-  "primary_run_command": "exact shell command to reproduce Task A output (string)",
-  "revision_run_command": "exact shell command to reproduce Task B output (string)",
-  "files": [
-    { "path": "relative/path/filename.ext", "content": "file contents as plain text" },
-    ...
-  ],
-  "captured_outputs": [
-    { "name": "out_initial.json", "path": "out_initial.json", "content": "actual Task A output text" },
-    { "name": "out_groupby.json", "path": "out_groupby.json", "content": "actual Task B output text" }
-  ],
-  "README": "README.md content as plain text (same text must also appear in files array at path README.md)",
-  "changelog": "CHANGELOG.md content as plain text (same text must also appear in files array at path CHANGELOG.md)",
-  "notes_for_evaluator": "optional notes or assumptions (string)"
-}
+You must submit exactly one file named test_submission.json. This is the only file an evaluator will open. It must be valid JSON and contain the following fields exactly:
 
-Submission requirements (checklist you must satisfy)
-- Include all source files for your chosen language under files with the exact filenames required.
-- Include data.csv under files (the provided data.csv) so the evaluator can re-run commands without needing external files.
-- Include out_initial.json and out_groupby.json contents inside captured_outputs and also include these files in files array (paths must match those in your run commands).
-- README.md and CHANGELOG.md must appear both as separate file entries in files and in the README and changelog fields.
-- primary_run_command and revision_run_command must be executable in a standard shell in the evaluation environment (include build command in notes_for_evaluator for compiled languages).
-- time_minutes_used must reflect how long you actually spent (integer).
+- candidate_name: string
+- language: string (programming language used)
+- time_spent_minutes: integer (total minutes spent, <= 90)
+- source_files: array of objects, each with:
+  - filename: string (e.g., sales_agg.py)
+  - language: string (e.g., python)
+  - content: string (the full source code of that file)
+- build_instructions: string (exact commands needed to compile and run your program and tests; e.g., "python3 sales_agg.py sample_sales.csv")
+- readme: string (plain text README content)
+- changelog: array of entries, each an object:
+  - time: string (a short timestamp)
+  - change: string (what you changed)
+  - reason: string (why)
+- tests: array of test objects (one per test run), each with:
+  - test_name: string (e.g., "normal_sample")
+  - command: string (the exact command you ran to execute this test)
+  - expected_output: string (exact expected stdout for that test)
+  - actual_output: string (captured stdout from your run; include stderr if any)
+  - passed: boolean (true if actual_output exactly equals expected_output)
+- run_output_summary: string (brief summary of program run behavior and any issues)
+- assumptions: array of strings (all assumptions you made, e.g., header handling, numeric parsing rules)
+- comments_coverage: string (self-assessment of how well code is commented, e.g., "All functions documented; complex loops explained")
+- self_score_estimate: number (0-100) and a one-sentence justification
+- signature: string (a one-line statement asserting the submission is your own work, e.g., "I certify this submission is my own work — <Name>")
 
-Important: filenames and JSON keys are used by the grader to find and run your work. Do not change the required filenames.
+Additional submission rules
+- All source file contents must be placed inside source_files[]. Do not attach files separately—everything must be in the JSON.
+- expected_output strings must match the exact expected outputs provided earlier for sample files without extra blank lines or trailing spaces.
+- actual_output must be what your program printed when you ran the command (captured exactly).
+- The evaluator will reject submissions missing required fields or with invalid JSON.
 
-### Final notes
-- The grader will run your primary_run_command and revision_run_command to verify outputs. Make sure the commands you provide match the files (relative paths) in your submission.
-- The program will be evaluated on correctness, reproducibility, code comments/docstrings, README clarity, and changelog.
-- Focus on correctness and clear, minimal documentation. Good inline comments explaining intent are required.
+Minimal example of exact commands to include in build_instructions (adjust for your language):
+- For Python: python3 sales_agg.py sample_sales.csv
+- With min filter: python3 sales_agg.py sample_sales.csv --min-revenue 50.00
+
+Final note — evaluation will be objective and automated where possible:
+- The core correctness checks will compare your actual_output strings to the expected ones provided above.
+- Make sure to implement rounding and sorting exactly as specified and include the --min-revenue option and its test.
+
+Good luck. Begin when ready and stop at 90 minutes.

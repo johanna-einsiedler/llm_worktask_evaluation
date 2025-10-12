@@ -1,588 +1,615 @@
-Here's the requested grader script. Save it as task_evaluation.py and run it as:
+Below is the requested grader script task_evaluation.py. It implements the grading logic described in the exam materials. It loads the candidate submission and the answer key JSON files, applies the rubric and partial-credit rules, and writes detailed results to test_results.json in the same directory as the script. The script uses only the Python standard library and includes error handling and explanatory comments.
+
+Save this as task_evaluation.py and run:
 
 python task_evaluation.py test_submission.json answer_key.json
 
-It writes test_results.json in the same directory as the script.
-
+-------------------------------------------------------------------------------
+task_evaluation.py
+-------------------------------------------------------------------------------
 ```python
 #!/usr/bin/env python3
 """
 task_evaluation.py
 
-Automated grader for the basic practical exam.
+Automatic grader for the Practical programming exam (basic).
 
 Usage:
     python task_evaluation.py <candidate_submission.json> <answer_key.json>
 
-Produces:
-    test_results.json (in same directory as this script) with a breakdown of scores,
-    explanations for deductions, total score, percentage and overall_score numeric value.
+Output:
+    Writes test_results.json into the same directory as this script.
 
 Notes:
 - Uses only Python standard library.
-- Tolerant of minor whitespace/newline differences when comparing textual outputs.
-- Robust to missing keys and invalid JSON; reports errors and assigns partial credit accordingly.
+- Implements rubric and partial-credit heuristics described in exam materials.
 """
 
 import json
 import sys
 import os
-from typing import Any, Dict, List
+import re
+from datetime import datetime
 
-# ------------------------
-# Utility helpers
-# ------------------------
+# ----------------------- Utility helpers -------------------------------------
 
-def load_json(path: str) -> Any:
-    """Load JSON file robustly, raising clear error on failure."""
+
+def load_json(path):
+    """Load JSON file and return object; raise informative errors."""
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception as e:
-        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+    except FileNotFoundError:
+        raise SystemExit(f"ERROR: File not found: {path}")
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"ERROR: Invalid JSON in {path}: {e}")
 
-def normalize_text(s: Any) -> str:
-    """Normalize textual content for tolerant comparison:
-    - empty -> ''
-    - unify CRLF to LF
-    - strip leading/trailing whitespace overall
-    - strip trailing spaces on each line
-    """
-    if s is None:
-        return ""
+
+def iso8601_like(s):
+    """Quick check whether string looks like an ISO8601 timestamp."""
     if not isinstance(s, str):
-        s = str(s)
-    s = s.replace('\r\n', '\n').replace('\r', '\n')
-    # Strip trailing spaces per line
-    lines = [ln.rstrip() for ln in s.split('\n')]
-    # Strip leading/trailing blank lines and overall whitespace
-    # Join with single \n
-    joined = '\n'.join(lines).strip()
-    return joined
-
-def word_count(s: str) -> int:
-    if not s:
-        return 0
-    return len(s.split())
-
-def safe_get(d: Dict, *keys, default=None):
-    """Fetch nested keys with safety. Usage: safe_get(d, 'task_1', 'stdout')"""
-    cur = d
-    try:
-        for k in keys:
-            cur = cur[k]
-        return cur
-    except Exception:
-        return default
-
-def all_tests_passed(test_results: List[Dict]) -> bool:
-    if not isinstance(test_results, list) or not test_results:
         return False
-    for t in test_results:
-        if not t.get('passed', False):
-            return False
-    return True
+    # Very permissive regex to check basic ISO8601 patterns (YYYY-MM-DDThh:mm)
+    return bool(re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+\-]\d{2}:?\d{2})?$", s))
 
-# ------------------------
-# Scoring functions
-# ------------------------
 
-def score_task_1(candidate: Dict, answer: Dict) -> Dict:
+def normalize_cmd(cmd):
+    """Normalize a shell command string to compare essential parts (lowercase, collapse whitespace).
+    Also normalize 'python3' to 'python' for leniency.
     """
-    Task 1 scoring (20 pts)
-    - 10 pts: Repro evidence captured
-    - 10 pts: Correct verification vs expected
+    if not isinstance(cmd, str):
+        return ""
+    s = cmd.strip().lower()
+    s = re.sub(r"\s+", " ", s)
+    s = s.replace("python3 ", "python ")
+    s = s.replace("python3$", "python")
+    return s
+
+
+def normalize_output(s):
+    """Normalize console output for tolerant comparison:
+    - unify line endings to '\n'
+    - strip trailing spaces on each line
+    - keep leading/trailing newlines to enable exact-match attempts elsewhere
     """
-    max_points = 20
-    awarded = 0
-    comments = []
+    if not isinstance(s, str):
+        return ""
+    s = s.replace("\r\n", "\n").replace("\r", "\n")
+    # remove trailing spaces at EOL but preserve newline structure
+    lines = [line.rstrip() for line in s.split("\n")]
+    return "\n".join(lines)
 
-    cand_t1 = candidate.get('task_1', {})
-    ans_t1 = answer.get('task_1', {})
 
-    # Repro evidence: breakdown (10 points)
-    repro_points = 0
-    # command_run presence
-    cmd = cand_t1.get('command_run')
-    if isinstance(cmd, str) and cmd.strip():
-        repro_points += 4
+def contains_keywords(text, keywords):
+    """Return True if text contains at least one of the keywords (case-insensitive)."""
+    if not isinstance(text, str):
+        return False
+    txt = text.lower()
+    return any(k.lower() in txt for k in keywords)
+
+
+def collect_reason(notes, reason):
+    notes.append(reason)
+
+
+# ----------------------- Grading logic --------------------------------------
+
+
+def grade_task1(candidate_task, answer_task, notes):
+    """
+    Task 1 scoring rules (max 25):
+    - 10 pts: correct command used to run program (must call program.py with input_primary.txt)
+    - 10 pts: output matches expected (byte-for-byte or tolerant normalized match)
+    - 5 pts: clear explanation if mismatch (difference_note)
+    If exact match on output, award full 25 (per example).
+    """
+
+    max_points = 25
+    pts = 0
+
+    # Safety: ensure fields exist
+    commands = candidate_task.get("commands_executed", [])
+    raw_output = candidate_task.get("raw_console_output", "")
+    exit_code = candidate_task.get("exit_code", None)
+    expected_flag = candidate_task.get("expected_output_match", "").lower()
+    diff_note = candidate_task.get("difference_note", "")
+
+    # Expected canonical output from answer key (if present)
+    answer_raw_output = answer_task.get("raw_console_output", "")
+
+    # 10 pts: check command correctness
+    cmd_ok = False
+    if isinstance(commands, list) and commands:
+        # Look for a command that runs program.py with input_primary.txt
+        for c in commands:
+            nc = normalize_cmd(c)
+            if "program.py" in nc and "input_primary.txt" in nc:
+                cmd_ok = True
+                break
+    if cmd_ok:
+        pts += 10
     else:
-        comments.append("Task1: Missing or empty 'command_run' (0/4).")
+        collect_reason(notes, "T1: No command invoking 'program.py' with 'input_primary.txt' found (10 pts lost).")
 
-    # stdout presence (non-empty)
-    stdout = cand_t1.get('stdout')
-    if isinstance(stdout, str) and stdout.strip() != "":
-        repro_points += 3
+    # Compare outputs
+    # First try exact (byte-for-byte) comparison using normalized line endings and trimmed EOL spaces.
+    norm_candidate = normalize_output(raw_output)
+    norm_answer = normalize_output(answer_raw_output)
+
+    exact_match = norm_candidate == norm_answer
+
+    if exact_match:
+        # award full Task1
+        pts = max_points
+        collect_reason(notes, "T1: Exact output match and proper command found -> full Task1 credit.")
+        return {"score": pts, "max": max_points, "notes": notes}
+
+    # Not exact: award partial depending on candidate's self-reported expected_output_match and explanation
+    # 10 pts for outputs if candidate marked 'partial' (5) or 'no'(0); if they marked 'yes' but not matching, treat as 0 and deduct.
+    output_pts = 0
+    if expected_flag == "yes":
+        # claimed yes but not exact: award 0 for output and note contradiction
+        collect_reason(notes, "T1: Candidate claimed expected_output_match='yes' but output did not match exact expected output (0/10 for outputs).")
+    elif expected_flag == "partial":
+        output_pts = 5
+        collect_reason(notes, "T1: Candidate marked output match as 'partial' -> 5/10 for output match.")
+    elif expected_flag == "no":
+        output_pts = 0
+        collect_reason(notes, "T1: Candidate marked output match='no' -> 0/10 for output match.")
     else:
-        comments.append("Task1: Missing or empty 'stdout' capture (0/3).")
-
-    # stderr present (can be empty) and exit_code is int
-    if 'stderr' in cand_t1 and 'exit_code' in cand_t1:
-        # further check exit_code type
-        try:
-            int(cand_t1.get('exit_code'))
-            repro_points += 2
-        except Exception:
-            comments.append("Task1: 'exit_code' not an integer (0/2).")
-    else:
-        comments.append("Task1: Missing 'stderr' or 'exit_code' fields (0/2).")
-
-    # expected_output_match boolean present
-    if isinstance(cand_t1.get('expected_output_match'), bool):
-        repro_points += 1
-    else:
-        comments.append("Task1: Missing or invalid 'expected_output_match' boolean (0/1).")
-
-    awarded += repro_points
-    # End repro
-
-    # Verification correctness: 10 points
-    verify_points = 0
-    # Normalize outputs
-    cand_stdout_norm = normalize_text(cand_t1.get('stdout'))
-    ans_stdout_norm = normalize_text(ans_t1.get('stdout'))
-    cand_exit = cand_t1.get('exit_code')
-    ans_exit = ans_t1.get('exit_code')
-
-    cand_match_flag = cand_t1.get('expected_output_match')
-    # Compare normalized stdout and exit codes
-    stdout_matches = False
-    exit_matches = False
-    try:
-        stdout_matches = (cand_stdout_norm == ans_stdout_norm)
-    except Exception:
-        stdout_matches = False
-    try:
-        exit_matches = (int(cand_exit) == int(ans_exit))
-    except Exception:
-        exit_matches = False
-
-    if isinstance(cand_match_flag, bool) and cand_match_flag and stdout_matches and exit_matches:
-        verify_points = 10
-    else:
-        # Partial credit cases
-        if isinstance(cand_match_flag, bool) and cand_match_flag and not stdout_matches:
-            verify_points = 5
-            comments.append("Task1: Candidate reported expected_output_match=true but stdout did not match expected exactly (5/10).")
-        elif stdout_matches and exit_matches and (not isinstance(cand_match_flag, bool) or not cand_match_flag):
-            verify_points = 8
-            comments.append("Task1: Program output matches expected, but expected_output_match flag missing or false (8/10).")
+        # no flag: check normalized content similarity heuristics (e.g., same lines count and same key substrings)
+        # If the normalized outputs share key lines (Summary Report and Total records and Top scorer), give partial points.
+        got_summary = "summary report" in norm_candidate.lower()
+        got_total = bool(re.search(r"total records:\s*\d+", norm_candidate.lower()))
+        got_top = "top scorer" in norm_candidate.lower()
+        if got_summary and got_total and got_top:
+            output_pts = 5
+            collect_reason(notes, "T1: Output contains key summary lines but not exact bytes -> 5/10 for output match.")
         else:
-            # small credit if either stdout or exit matches
-            if stdout_matches or exit_matches:
-                verify_points = 3
-                comments.append("Task1: Partial match: either stdout or exit code matched expected (3/10).")
+            output_pts = 0
+            collect_reason(notes, "T1: Output missing key summary lines -> 0/10 for output match.")
+    pts += output_pts
+
+    # 5 pts for explanation if mismatch: require difference_note reasonably descriptive
+    explain_pts = 0
+    if not exact_match:
+        if isinstance(diff_note, str) and len(diff_note.strip()) >= 10:
+            explain_pts = 5
+            collect_reason(notes, "T1: Candidate provided a sufficiently descriptive difference_note -> 5/5 for explanation.")
+        else:
+            # partial credit if some note
+            if isinstance(diff_note, str) and len(diff_note.strip()) > 0:
+                explain_pts = 2
+                collect_reason(notes, "T1: Candidate provided a short difference_note -> 2/5 for explanation.")
             else:
-                verify_points = 0
-                comments.append("Task1: Output and exit code do not match expected (0/10).")
+                explain_pts = 0
+                collect_reason(notes, "T1: No difference_note provided for mismatched output -> 0/5 for explanation.")
+    # If exact match, explanation not needed and we already returned full credit.
+    pts += explain_pts
 
-    awarded += verify_points
+    return {"score": pts, "max": max_points, "notes": notes}
 
-    return {
-        'task': 'task_1',
-        'max_points': max_points,
-        'awarded': awarded,
-        'comments': comments
-    }
 
-def score_task_2(candidate: Dict, answer: Dict) -> Dict:
+def grade_task2(candidate_task, answer_task, notes):
     """
-    Task 2 scoring (30 pts)
-    - 10 pts harness runnable
-    - 10 pts harness asserts and exit codes
-    - 10 pts test cases coverage (>=3 cases + edge case)
+    Task 2 scoring rules (max 25):
+    - 10 pts: test harness exists and runs with single command (test_command present and test_exit_code is 0)
+    - 10 pts: tests correctly assert important behaviors (at least 3 meaningful checks) -> infer from tests_passed/tests_failed or coverage_note
+    - 5 pts: test outputs/logs included and documented (test_output present and test_exit_code present)
+    Partial credit applied as described in evaluator notes.
     """
-    max_points = 30
-    awarded = 0
-    comments = []
+    max_points = 25
+    pts = 0
 
-    cand_t2 = candidate.get('task_2', {})
+    test_files = candidate_task.get("test_files")
+    test_command = candidate_task.get("test_command", "")
+    test_output = candidate_task.get("test_output", "")
+    test_exit_code = candidate_task.get("test_exit_code", None)
+    tests_passed = candidate_task.get("tests_passed", None)
+    tests_failed = candidate_task.get("tests_failed", None)
+    coverage_note = candidate_task.get("coverage_note", "")
 
-    # Harness runnable (10)
-    runnable_pts = 0
-    # harness_filename == 'run_tests.py'
-    if cand_t2.get('harness_filename') == 'run_tests.py':
-        runnable_pts += 5
-    else:
-        comments.append("Task2: harness_filename is not 'run_tests.py' (0/5 for that part).")
-    # harness_source present and harness_command_run contains 'run_tests.py'
-    src = cand_t2.get('harness_source')
-    cmd = cand_t2.get('harness_command_run', "")
-    if isinstance(src, str) and src.strip():
-        if 'run_tests.py' in (cmd or ""):
-            runnable_pts += 5
-        else:
-            runnable_pts += 3
-            comments.append("Task2: harness_source present but harness_command_run does not reference 'run_tests.py' (3/5).")
-    else:
-        comments.append("Task2: Missing or empty harness_source (0/5 for second part).")
-
-    awarded += runnable_pts
-
-    # Harness asserts & exit code (10)
-    assert_pts = 0
-    harness_stdout = normalize_text(cand_t2.get('harness_stdout', ''))
-    harness_exit = cand_t2.get('harness_exit_code')
-    # check presence of PASS/FAIL lines and summary
-    has_pass = 'PASS' in harness_stdout or 'All tests passed' in harness_stdout
-    has_fail = 'FAIL' in harness_stdout or 'Exiting with failure' in harness_stdout
-    if has_pass:
-        assert_pts += 5
-    else:
-        comments.append("Task2: harness stdout does not indicate PASS lines or 'All tests passed' (0/5 for pass detection).")
-    # check exit code present and is integer
-    try:
-        int(harness_exit)
-        assert_pts += 5
-    except Exception:
-        comments.append("Task2: harness_exit_code missing or not integer (0/5 for exit code).")
-
-    awarded += assert_pts
-
-    # Test cases coverage (10)
-    coverage_pts = 0
-    test_results = cand_t2.get('test_results', [])
-    if isinstance(test_results, list) and len(test_results) >= 3:
-        coverage_pts += 4
-    else:
-        comments.append("Task2: Less than 3 test cases provided in test_results (0/4).")
-    # check existence of per-test fields and at least one edge/failing case
-    good_entries = True
-    has_fail_case = False
-    for t in test_results:
-        if not all(k in t for k in ('input_filename', 'expected_output_filename', 'passed')):
-            good_entries = False
-            break
-        if not t.get('passed', False):
-            has_fail_case = True
-    if good_entries:
-        coverage_pts += 3
-    else:
-        comments.append("Task2: test_results entries missing required fields (0/3).")
-    if has_fail_case:
-        coverage_pts += 3
-    else:
-        # partial credit if at least one has notes indicating a failure
-        found_fail_note = any('fail' in (t.get('notes') or '').lower() or ('stderr' in (t.get('notes') or '').lower()) for t in test_results)
-        if found_fail_note:
-            coverage_pts += 2
-            comments.append("Task2: No test_results had passed=false, but notes indicate failure (2/3).")
-        else:
-            comments.append("Task2: No failing/edge test case present in initial test_results (0/3).")
-
-    awarded += coverage_pts
-
-    return {
-        'task': 'task_2',
-        'max_points': max_points,
-        'awarded': awarded,
-        'comments': comments
-    }
-
-def score_task_3(candidate: Dict, answer: Dict) -> Dict:
-    """
-    Task 3 scoring (30 pts)
-    - 10 pts diagnosis (commands + correct root cause)
-    - 10 pts fix implemented (patch or wrapper and content present)
-    - 10 pts demonstration: post-fix harness shows success (exit 0 and all tests pass)
-    """
-    max_points = 30
-    awarded = 0
-    comments = []
-
-    cand_t3 = candidate.get('task_3', {})
-
-    # Diagnosis (10)
-    diag_pts = 0
-    inv_cmds = cand_t3.get('investigation_commands')
-    diagnosis_text = (cand_t3.get('diagnosis') or "").lower()
-    if isinstance(inv_cmds, list) and len(inv_cmds) >= 1:
-        diag_pts += 6
-    else:
-        comments.append("Task3: investigation_commands missing or empty (0/6).")
-    # Check presence of key diagnostic hints (blank/empty/indexerror)
-    keywords = ['blank', 'empty', 'indexerror', 'skip', 'blank line', 'index error', 'list index']
-    if any(k in diagnosis_text for k in keywords):
-        diag_pts += 4
-    elif diagnosis_text.strip():
-        diag_pts += 2
-        comments.append("Task3: diagnosis present but does not include typical keywords (2/4).")
-    else:
-        comments.append("Task3: diagnosis missing or empty (0/4).")
-
-    awarded += diag_pts
-
-    # Fix implementation (10)
-    fix_pts = 0
-    fix_strategy = cand_t3.get('fix_strategy', '')
-    fix_artifact = cand_t3.get('fix_diff_or_wrapper', '')
-    if fix_strategy in ('patch', 'wrapper', 'other'):
-        # give base points if artifact present
-        if isinstance(fix_artifact, str) and fix_artifact.strip():
-            fix_pts += 6
-        else:
-            comments.append("Task3: fix_strategy set but fix_diff_or_wrapper is empty (0/6).")
-    else:
-        comments.append("Task3: fix_strategy missing or invalid (expected 'patch'/'wrapper'/'other') (0/6).")
-
-    # extra points if strategy corresponds to answer's strategy (if provided)
-    ans_strategy = safe_get(answer, 'task_3', 'fix_strategy', default=None)
-    if ans_strategy and isinstance(ans_strategy, str):
-        if fix_strategy == ans_strategy:
-            fix_pts += 4
-        else:
-            # acceptable alternative strategies still get some credit
-            if fix_strategy in ('patch', 'wrapper', 'other'):
-                fix_pts += 2
-                comments.append("Task3: fix_strategy differs from answer key but is acceptable (2/4).")
+    # 10 pts: harness exists and runs (single command)
+    if isinstance(test_command, str) and test_command.strip():
+        # Check exit code presence
+        if isinstance(test_exit_code, int):
+            if test_exit_code == 0:
+                pts += 10
+                collect_reason(notes, "T2: test_command provided and returned exit code 0 -> 10/10.")
             else:
-                comments.append("Task3: fix_strategy differs and is not acceptable (0/4).")
-    else:
-        # If answer key doesn't specify, award remaining if artifact present
-        if fix_pts >= 6:
-            fix_pts += 4
-
-    awarded += fix_pts
-
-    # Demonstration (10)
-    demo_pts = 0
-    post_stdout = normalize_text(cand_t3.get('post_fix_harness_stdout', ''))
-    post_exit = cand_t3.get('post_fix_harness_exit_code')
-    post_results = cand_t3.get('post_fix_test_results', [])
-    # Check exit==0
-    try:
-        if int(post_exit) == 0:
-            demo_pts += 5
+                # harness ran but tests failed -> partial credit
+                pts += 5
+                collect_reason(notes, f"T2: test_command ran with non-zero exit code ({test_exit_code}) -> 5/10 for harness run.")
         else:
-            comments.append("Task3: post-fix harness exit code is non-zero (0/5 for exit).")
-    except Exception:
-        comments.append("Task3: post-fix harness exit code missing or invalid (0/5).")
-
-    # Check all post_fix_test_results passed
-    if isinstance(post_results, list) and post_results:
-        if all(t.get('passed', False) for t in post_results):
-            demo_pts += 5
-        else:
-            # partial credit if some tests pass
-            passed_count = sum(1 for t in post_results if t.get('passed', False))
-            total = len(post_results)
-            # proportional credit up to 4 points
-            demo_pts += int((passed_count / total) * 5)
-            comments.append(f"Task3: Not all post-fix tests passed ({passed_count}/{total}); partial credit awarded.")
+            # test command provided but no exit code recorded
+            pts += 3
+            collect_reason(notes, "T2: test_command provided but test_exit_code missing -> 3/10 for harness run.")
     else:
-        comments.append("Task3: post_fix_test_results missing or empty (0/5).")
+        collect_reason(notes, "T2: No test_command provided -> 0/10 for harness run.")
 
-    awarded += demo_pts
+    # 10 pts: checks meaningful (at least 3 checks)
+    meaningful_pts = 0
+    meaningful_reasons = []
+    # Preferred evidence: tests_passed + tests_failed indicates number of tests
+    num_tests = None
+    if isinstance(tests_passed, int) and isinstance(tests_failed, int):
+        num_tests = tests_passed + tests_failed
+        if num_tests >= 3 and tests_passed >= 3:
+            meaningful_pts = 10
+            meaningful_reasons.append("At least 3 tests passed -> 10/10 for test coverage.")
+        elif num_tests >= 3 and tests_passed > 0:
+            # Some tests passed but not all
+            meaningful_pts = 6
+            meaningful_reasons.append(f"{tests_passed}/{num_tests} tests passed -> 6/10 for partial coverage.")
+        elif num_tests >= 1 and tests_passed == 0:
+            meaningful_pts = 2
+            meaningful_reasons.append(f"{num_tests} tests present but none passed -> 2/10 for existence.")
+        else:
+            meaningful_pts = 0
+            meaningful_reasons.append("Less than 1 test reported -> 0/10 for coverage.")
+    else:
+        # If tests_passed/fail not numeric, inspect coverage_note and test_files content heuristically
+        coverage_text = (coverage_note or "").lower()
+        if contains_keywords(coverage_text, ["primary", "average", "top scorer", "average score", "expected"]):
+            meaningful_pts = 8
+            meaningful_reasons.append("coverage_note describes relevant checks -> 8/10 for coverage (heuristic).")
+        elif isinstance(test_files, dict) and any("test" in fn.lower() or "run_tests" in fn.lower() for fn in test_files.keys()):
+            meaningful_pts = 5
+            meaningful_reasons.append("Test files present but no numeric test counts -> 5/10 for coverage (heuristic).")
+        else:
+            meaningful_pts = 0
+            meaningful_reasons.append("No evidence of meaningful tests -> 0/10 for coverage.")
+    pts += meaningful_pts
+    for r in meaningful_reasons:
+        collect_reason(notes, "T2: " + r)
 
-    return {
-        'task': 'task_3',
-        'max_points': max_points,
-        'awarded': awarded,
-        'comments': comments
+    # 5 pts: logs included and documented
+    log_pts = 0
+    if isinstance(test_output, str) and test_output.strip():
+        if isinstance(test_exit_code, int):
+            log_pts = 5
+            collect_reason(notes, "T2: test_output and test_exit_code present -> 5/5 for logs.")
+        else:
+            log_pts = 3
+            collect_reason(notes, "T2: test_output present but test_exit_code missing -> 3/5 for logs.")
+    else:
+        collect_reason(notes, "T2: test_output missing or empty -> 0/5 for logs.")
+    pts += log_pts
+
+    return {"score": pts, "max": max_points, "notes": notes}
+
+
+def grade_task3(candidate_task, answer_task, notes):
+    """
+    Task 3 scoring (max 35):
+    - 10 pts: correct identification of root cause (root_cause field, keywords)
+    - 15 pts: correct, minimal patch applied; evaluate patch_files presence, minimality heuristics, and content
+    - 10 pts: Re-run shows passing tests and expected outputs (post_patch exit codes and outputs)
+    """
+
+    max_points = 35
+    pts = 0
+
+    root_cause = candidate_task.get("root_cause", "")
+    patch_files = candidate_task.get("patch_files", {})
+    patch_summary = candidate_task.get("patch_summary", "")
+    commands_after = candidate_task.get("commands_executed_after_patch", [])
+    post_console = candidate_task.get("post_patch_console_output", "")
+    post_test_output = candidate_task.get("post_patch_test_output", "")
+    post_exit_codes = candidate_task.get("post_patch_exit_codes", {}) or {}
+    final_status = candidate_task.get("final_status", "")
+    decision_just = candidate_task.get("decision_justification", "")
+
+    # 10 pts: root cause
+    if isinstance(root_cause, str) and root_cause.strip():
+        # Check for key phrases that match seeded bug (empty/blank lines, delimiter)
+        if contains_keywords(root_cause, ["empty", "blank", "line", "delimiter", "split", "indexerror", "valueerror", "int(", "parts"]):
+            pts += 10
+            collect_reason(notes, "T3: Root cause description mentions parsing/blank lines/delimiter issues -> 10/10.")
+        else:
+            pts += 5
+            collect_reason(notes, "T3: Root cause given but not specific to parsing blank lines/delimiters -> 5/10.")
+    else:
+        collect_reason(notes, "T3: root_cause missing or empty -> 0/10.")
+
+    # 15 pts: patch applied and minimality
+    patch_pts = 0
+    if isinstance(patch_files, dict) and patch_files:
+        # Preference: program.py should be in patch_files (unless candidate chose to modify instructions)
+        if "program.py" in patch_files:
+            prog_content = patch_files["program.py"] or ""
+            # Heuristics to check minimal robust fix: presence of .strip(), skipping empty lines, try/except around int()
+            good_snippets = ["strip()", "if not line", "continue", "parts = line.split", "try:", "except", "int("]
+            snippet_hits = sum(1 for s in good_snippets if s in prog_content)
+            if snippet_hits >= 2:
+                patch_pts = 15
+                collect_reason(notes, "T3: program.py included in patch_files and contains robust parsing fixes -> 15/15.")
+            elif snippet_hits >= 1:
+                patch_pts = 8
+                collect_reason(notes, "T3: program.py patch present and contains some fix elements -> 8/15.")
+            else:
+                patch_pts = 4
+                collect_reason(notes, "T3: program.py changed but does not show clear parsing fixes -> 4/15.")
+        elif "README-run.txt" in patch_files:
+            # Candidate changed instructions instead of code - accept if justified
+            decision = candidate_task.get("decision_justification", "")
+            if isinstance(decision, str) and len(decision.strip()) > 20:
+                patch_pts = 10
+                collect_reason(notes, "T3: Candidate changed README-run.txt and provided justification -> 10/15 (partial for instruction change).")
+            else:
+                patch_pts = 3
+                collect_reason(notes, "T3: README modified but justification weak or missing -> 3/15.")
+        else:
+            # Other files changed; partial credit
+            patch_pts = 5
+            collect_reason(notes, "T3: patch_files present but program.py not modified; partial credit -> 5/15.")
+    else:
+        collect_reason(notes, "T3: No patch_files included -> 0/15 for patch.")
+    pts += patch_pts
+
+    # 10 pts: re-run shows passing tests and expected outputs
+    rerun_pts = 0
+    # Check post-exit codes for both main program and tests if present
+    # Candidate should have run at least:
+    #  - "python program.py input_primary.txt"
+    #  - "python run_tests.py"  (per instructions)
+    # We'll accept variations (python3) by normalizing keys.
+    exit_map = {}
+    for k, v in post_exit_codes.items():
+        if isinstance(k, str):
+            nk = normalize_cmd(k)
+            exit_map[nk] = v
+    # Look up main program invocation
+    main_keys = [k for k in exit_map.keys() if "program.py" in k and "input_primary.txt" in k]
+    test_keys = [k for k in exit_map.keys() if "run_tests.py" in k or "run_tests" in k]
+    main_ok = all(exit_map[k] == 0 for k in main_keys) if main_keys else False
+    tests_ok = all(exit_map[k] == 0 for k in test_keys) if test_keys else False
+
+    # Additionally inspect post_patch_console_output to see whether it matches expected (from answer key)
+    answer_post_console = answer_task.get("post_patch_console_output", "")
+    norm_post_console = normalize_output(post_console)
+    norm_answer_post = normalize_output(answer_post_console)
+    post_console_matches = norm_post_console == norm_answer_post
+
+    if (main_ok or post_console_matches) and tests_ok:
+        rerun_pts = 10
+        collect_reason(notes, "T3: post-patch program run and tests indicate success -> 10/10.")
+    else:
+        # partial credit if either program succeeded or tests succeeded
+        if main_ok or post_console_matches:
+            rerun_pts = 6
+            collect_reason(notes, "T3: program run after patch succeeded but tests did not -> 6/10.")
+        elif tests_ok:
+            rerun_pts = 6
+            collect_reason(notes, "T3: tests succeeded after patch but main program run not recorded/succeeded -> 6/10.")
+        else:
+            # Look heuristically at post_patch_test_output for PASS strings
+            if isinstance(post_test_output, str) and ("all tests passed" in post_test_output.lower() or "pass" in post_test_output.lower()):
+                rerun_pts = 5
+                collect_reason(notes, "T3: post_patch_test_output contains PASS-like text -> 5/10 (heuristic).")
+            else:
+                rerun_pts = 0
+                collect_reason(notes, "T3: No evidence that post-patch runs/tests passed -> 0/10.")
+    pts += rerun_pts
+
+    return {"score": pts, "max": max_points, "notes": notes}
+
+
+def grade_documentation(candidate, candidate_tasks, notes):
+    """
+    Documentation & Reproducibility (15 pts):
+    - 5 pts: JSON properly formatted and contains requested fields (top-level candidate and tasks)
+    - 5 pts: Commands, timestamps, and time_spent entries complete and plausible
+    - 5 pts: Clear, concise patch notes and decision justification
+    """
+    max_points = 15
+    pts = 0
+
+    # 5 pts JSON structure: presence of candidate and tasks with expected fields
+    structure_ok = True
+    if not isinstance(candidate, dict):
+        structure_ok = False
+    if not isinstance(candidate_tasks, list) or len(candidate_tasks) < 3:
+        structure_ok = False
+    if structure_ok:
+        pts += 5
+        collect_reason(notes, "DOC: Required top-level fields present -> 5/5.")
+    else:
+        collect_reason(notes, "DOC: Missing required top-level fields (candidate/tasks) -> 0/5.")
+
+    # 5 pts for commands, timestamps, time_spent plausibility
+    time_pts = 0
+    # timestamps
+    start = candidate.get("start_time")
+    end = candidate.get("end_time")
+    times_ok = iso8601_like(start) and iso8601_like(end)
+    # commands exist in each task
+    cmds_present = True
+    total_time = 0
+    for t in candidate_tasks:
+        if t.get("task_id") == "T1":
+            if not t.get("commands_executed"):
+                cmds_present = False
+        if isinstance(t.get("time_spent_minutes"), (int, float)):
+            total_time += t.get("time_spent_minutes")
+        else:
+            # if missing or invalid treat as problematic but don't immediately fail
+            pass
+
+    # plausibility: timestamps ok and total_time <= 90
+    if times_ok and total_time <= 90 and cmds_present:
+        time_pts = 5
+        collect_reason(notes, "DOC: Timestamps look ISO8601, commands present, and time_spent sum plausible -> 5/5.")
+    else:
+        # partial credit heuristics
+        if times_ok or total_time <= 90 or cmds_present:
+            time_pts = 3
+            collect_reason(notes, "DOC: Some timing/commands data present but not fully plausible -> 3/5.")
+        else:
+            time_pts = 0
+            collect_reason(notes, "DOC: Missing or implausible timestamps/commands/time_spent -> 0/5.")
+    pts += time_pts
+
+    # 5 pts patch notes and decision justification
+    patch_notes_ok = False
+    # look in T3 for patch_summary and decision_justification
+    t3 = next((t for t in candidate_tasks if t.get("task_id") == "T3"), {})
+    if isinstance(t3.get("patch_summary", ""), str) and len(t3.get("patch_summary", "").strip()) >= 10:
+        if isinstance(t3.get("decision_justification", ""), str) and len(t3.get("decision_justification", "").strip()) >= 20:
+            patch_notes_ok = True
+
+    if patch_notes_ok:
+        pts += 5
+        collect_reason(notes, "DOC: Patch summary and decision justification present and descriptive -> 5/5.")
+    else:
+        if isinstance(t3.get("patch_summary", ""), str) and len(t3.get("patch_summary", "").strip()) >= 5:
+            pts += 2
+            collect_reason(notes, "DOC: Patch summary present but decision justification short/missing -> 2/5.")
+        else:
+            collect_reason(notes, "DOC: Patch summary or decision justification missing/insufficient -> 0/5.")
+
+    return {"score": pts, "max": max_points, "notes": notes}
+
+
+def grade_submission(candidate_json, answer_key_json):
+    """
+    Orchestrate grading for the submission using the answer key.
+    Returns a results dict that will be serialized to test_results.json.
+    """
+    results = {
+        "candidate_info": candidate_json.get("candidate", {}),
+        "scores": {},
+        "explanations": {},
+        "total": {"earned": 0, "max": 100, "percent": 0.0}
     }
 
-def score_task_4(candidate: Dict, answer: Dict) -> Dict:
-    """
-    Task 4 scoring (20 pts)
-    - 10 pts: reproducible commands and assumptions
-    - 10 pts: concise summary <= 300 words
-    """
-    max_points = 20
-    awarded = 0
-    comments = []
+    # Find tasks in both submission and answer key by task_id
+    candidate_tasks = candidate_json.get("tasks", [])
+    answer_tasks = answer_key_json.get("tasks", [])
 
-    cand_t4 = candidate.get('task_4', {})
+    def find_task(tasks, tid):
+        for t in tasks:
+            if t.get("task_id") == tid:
+                return t
+        return {}
 
-    # Repro & assumptions (10)
-    repro_pts = 0
-    repro_cmds = cand_t4.get('repro_commands')
-    assumptions = cand_t4.get('assumptions_and_limitations', '')
-    if isinstance(repro_cmds, list) and len(repro_cmds) >= 1:
-        # prefer presence of run_tests command
-        has_run_tests = any('run_tests.py' in (c or "") or 'run_tests' in (c or "") for c in repro_cmds)
-        if has_run_tests:
-            repro_pts += 6
-        else:
-            repro_pts += 4
-            comments.append("Task4: repro_commands present but does not include running the harness explicitly (4/6).")
-    else:
-        comments.append("Task4: repro_commands missing or empty (0/6).")
-    if isinstance(assumptions, str) and assumptions.strip():
-        repro_pts += 4
-    else:
-        comments.append("Task4: assumptions_and_limitations missing or empty (0/4).")
+    # Prepare notes arrays to collect reasons
+    notes_t1 = []
+    notes_t2 = []
+    notes_t3 = []
+    notes_doc = []
 
-    awarded += repro_pts
+    # Grade T1
+    t1_candidate = find_task(candidate_tasks, "T1")
+    t1_answer = find_task(answer_tasks, "T1")
+    t1_result = grade_task1(t1_candidate, t1_answer, notes_t1)
+    results["scores"]["T1"] = {"earned": t1_result["score"], "max": t1_result["max"]}
+    results["explanations"]["T1"] = t1_result["notes"]
 
-    # Summary (10)
-    summ_pts = 0
-    summary = cand_t4.get('summary_report', '')
-    if isinstance(summary, str) and summary.strip():
-        wc = word_count(summary)
-        if wc <= 300:
-            summ_pts += 10
-        else:
-            # partial credit if summary present but too long
-            summ_pts += 5
-            comments.append(f"Task4: summary_report exceeds 300 words ({wc} words); partial credit (5/10).")
-    else:
-        comments.append("Task4: summary_report missing or empty (0/10).")
+    # Grade T2
+    t2_candidate = find_task(candidate_tasks, "T2")
+    t2_answer = find_task(answer_tasks, "T2")
+    t2_result = grade_task2(t2_candidate, t2_answer, notes_t2)
+    results["scores"]["T2"] = {"earned": t2_result["score"], "max": t2_result["max"]}
+    results["explanations"]["T2"] = t2_result["notes"]
 
-    awarded += summ_pts
+    # Grade T3
+    t3_candidate = find_task(candidate_tasks, "T3")
+    t3_answer = find_task(answer_tasks, "T3")
+    t3_result = grade_task3(t3_candidate, t3_answer, notes_t3)
+    results["scores"]["T3"] = {"earned": t3_result["score"], "max": t3_result["max"]}
+    results["explanations"]["T3"] = t3_result["notes"]
 
-    return {
-        'task': 'task_4',
-        'max_points': max_points,
-        'awarded': awarded,
-        'comments': comments
-    }
+    # Grade Documentation & Reproducibility
+    doc_result = grade_documentation(candidate_json.get("candidate", {}), candidate_tasks, notes_doc)
+    results["scores"]["Documentation"] = {"earned": doc_result["score"], "max": doc_result["max"]}
+    results["explanations"]["Documentation"] = doc_result["notes"]
 
-# ------------------------
-# Main grading flow
-# ------------------------
+    # Total up
+    total_earned = (
+        results["scores"]["T1"]["earned"]
+        + results["scores"]["T2"]["earned"]
+        + results["scores"]["T3"]["earned"]
+        + results["scores"]["Documentation"]["earned"]
+    )
+    total_max = (
+        results["scores"]["T1"]["max"]
+        + results["scores"]["T2"]["max"]
+        + results["scores"]["T3"]["max"]
+        + results["scores"]["Documentation"]["max"]
+    )
+    percent = (total_earned / total_max) * 100 if total_max > 0 else 0.0
 
-def grade_submission(candidate_path: str, answer_path: str) -> Dict:
-    # Load files
-    try:
-        candidate = load_json(candidate_path)
-    except Exception as e:
-        # Fatal: cannot load candidate submission
-        return {
-            'error': str(e)
-        }
-    try:
-        answer = load_json(answer_path)
-    except Exception as e:
-        return {
-            'error': str(e)
-        }
-
-    results = {}
-    per_task = []
-    total_awarded = 0
-    total_max = 0
-    global_comments = []
-
-    # Score each task with try/except to avoid total script failure
-    try:
-        t1 = score_task_1(candidate, answer)
-        per_task.append(t1)
-        total_awarded += t1['awarded']
-        total_max += t1['max_points']
-    except Exception as e:
-        per_task.append({'task': 'task_1', 'max_points': 20, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
-        total_max += 20
-        global_comments.append(f"Error scoring task_1: {e}")
-
-    try:
-        t2 = score_task_2(candidate, answer)
-        per_task.append(t2)
-        total_awarded += t2['awarded']
-        total_max += t2['max_points']
-    except Exception as e:
-        per_task.append({'task': 'task_2', 'max_points': 30, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
-        total_max += 30
-        global_comments.append(f"Error scoring task_2: {e}")
-
-    try:
-        t3 = score_task_3(candidate, answer)
-        per_task.append(t3)
-        total_awarded += t3['awarded']
-        total_max += t3['max_points']
-    except Exception as e:
-        per_task.append({'task': 'task_3', 'max_points': 30, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
-        total_max += 30
-        global_comments.append(f"Error scoring task_3: {e}")
-
-    try:
-        t4 = score_task_4(candidate, answer)
-        per_task.append(t4)
-        total_awarded += t4['awarded']
-        total_max += t4['max_points']
-    except Exception as e:
-        per_task.append({'task': 'task_4', 'max_points': 20, 'awarded': 0, 'comments': [f"Scoring error: {e}"]})
-        total_max += 20
-        global_comments.append(f"Error scoring task_4: {e}")
-
-    # Safety: ensure totals expected (100)
-    # If total_max not 100, adapt but still compute percentage
-    percentage = (total_awarded / total_max * 100.0) if total_max > 0 else 0.0
-
-    # Assemble detailed messages: flatten comments
-    detailed_comments = []
-    for t in per_task:
-        for c in t.get('comments', []):
-            detailed_comments.append(f"{t['task']}: {c}")
-    detailed_comments.extend(global_comments)
-
-    results['per_task'] = per_task
-    results['total_awarded'] = total_awarded
-    results['total_max'] = total_max
-    results['percentage'] = round(percentage, 2)
-    results['overall_score'] = round(percentage, 2)
-    results['detailed_comments'] = detailed_comments
-
-    # Additional metadata: include candidate name if present for convenience
-    results['candidate_name'] = candidate.get('candidate_name', '(unknown)')
+    results["total"] = {"earned": total_earned, "max": total_max, "percent": round(percent, 2)}
+    # Provide an overall_score numeric variable for convenience
+    results["overall_score"] = round(percent, 2)
 
     return results
 
-def save_results(results: Dict, out_path: str) -> None:
-    try:
-        with open(out_path, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        raise RuntimeError(f"Failed to write results to {out_path}: {e}")
+
+# ------------------------- Main script --------------------------------------
+
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>", file=sys.stderr)
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
         sys.exit(2)
 
     cand_path = sys.argv[1]
-    ans_path = sys.argv[2]
+    key_path = sys.argv[2]
 
-    # Grade
+    # Load JSON inputs
     try:
-        results = grade_submission(cand_path, ans_path)
-    except Exception as e:
-        print(f"Fatal error during grading: {e}", file=sys.stderr)
-        sys.exit(2)
-
-    # Save to test_results.json in same directory as this script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    out_file = os.path.join(script_dir, 'test_results.json')
-    try:
-        save_results(results, out_file)
-    except Exception as e:
-        print(f"Failed to save results: {e}", file=sys.stderr)
-        sys.exit(2)
-
-    # Print summary to stdout
-    print("Grading complete.")
-    if 'error' in results:
-        print("Error:", results['error'])
+        candidate_json = load_json(cand_path)
+    except SystemExit as e:
+        print(e)
         sys.exit(1)
-    else:
-        print(f"Candidate: {results.get('candidate_name', '(unknown)')}")
-        print(f"Score: {results['total_awarded']} / {results['total_max']} ({results['percentage']}%)")
-        print(f"Results written to: {out_file}")
+    try:
+        answer_key_json = load_json(key_path)
+    except SystemExit as e:
+        print(e)
+        sys.exit(1)
+
+    # Validate minimal structure
+    if "tasks" not in candidate_json or "candidate" not in candidate_json:
+        print("ERROR: Candidate submission missing required top-level fields ('candidate' and 'tasks').")
+        sys.exit(1)
+    if "tasks" not in answer_key_json:
+        print("ERROR: Answer key missing 'tasks' field.")
+        sys.exit(1)
+
+    # Run grading
+    results = grade_submission(candidate_json, answer_key_json)
+
+    # Determine output path: same directory as this script
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        script_dir = os.getcwd()
+    out_path = os.path.join(script_dir, "test_results.json")
+
+    # Write results file
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"Grading complete. Results written to: {out_path}")
+        print(f"Overall score: {results['overall_score']}%")
+    except Exception as e:
+        print(f"ERROR: Failed to write results to {out_path}: {e}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
 ```
 
-What this script does
-- Loads candidate submission JSON and the answer key JSON.
-- Scores tasks 1–4 per the rubric with partial credit allowances and tolerant text comparisons.
-- Produces test_results.json with:
-  - per_task breakdown (awarded, max, comments)
-  - total_awarded, total_max, percentage, overall_score
-  - detailed comments and candidate name (if present)
+-------------------------------------------------------------------------------
 
-Error handling
-- If JSON cannot be read, the script reports an error in the results.
-- Missing fields produce descriptive deduction comments rather than failing silently.
+Notes and limitations / how scoring decisions were implemented:
+- Exact-match outputs award full Task 1 points. If outputs differ, the grader applies heuristic partial credit and also rewards a clear difference_note.
+- Task 2 looks for a single test_command, exit code, numeric tests_passed/test_failed counts, and coverage_note to infer quality. It gives partial credit when harness ran but tests failed, or when coverage is described but not numerically reported.
+- Task 3 awards points for an accurate root_cause description, presence and content of program.py in patch_files showing parsing fixes (strip(), skipping empty lines, try/except), and evidence that post-patch runs/tests passed (exit codes or PASS-like text). If the candidate updated README instead of code and justified it, partial credit is allowed.
+- Documentation grading verifies presence of required fields, ISO8601-like timestamps, plausible time_spent totals, and descriptive patch notes/justification.
+- The grader is intentionally tolerant (normalizes commands/outputs) but will record reasons for deductions in the explanations arrays so a human evaluator can review edge cases.
 
-Customization
-- You can tune the per-subtask point allocations inside the score_task_* functions if you want a different distribution.
+If you want adjustments to scoring weights, stricter output-matching rules, or different heuristics for detecting patches, say what to change and I will update the script.

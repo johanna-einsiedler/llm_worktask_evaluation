@@ -1,0 +1,112 @@
+<MATERIALS_FOR_CANDIDATE>
+File: systems.csv
+Columns: hostname,cpu_cores,memory_gb,storage_gb,os_version,created_at
+hostA,4,4,100,Ubuntu18.04,2024-01-10T09:00:00Z
+hostB,8,16,200,Ubuntu20.04,2024-02-15T12:30:00Z
+hostC,2,2,50,CentOS7,2024-03-01T08:15:00Z
+hostD,4,8,100,Ubuntu20.04,2024-04-20T14:00:00+01:00
+hostE,16,32,500,Ubuntu22.04,2024-05-05T10:00:00Z
+hostF,2,4,100,Debian10,2024-06-10T11:00:00Z
+
+File: metrics.log
+Line-delimited JSON. Each line is a telemetry event with fields: hostname, timestamp, cpu_percent (0-100), mem_percent (0-100), io_wait_ms.
+Timestamps intentionally include slight ISO-8601 format variants (Z, +00:00, +01:00, and some missing seconds). Some events omit cpu_percent or mem_percent entirely. There is one deliberate duplicate (same hostname + timestamp). The maximum timestamp in this file is 2025-10-12T12:00:00Z (treat that as "now" for time-window queries).
+
+{"hostname":"hostA","timestamp":"2025-10-12T12:00:00Z","cpu_percent":82.5,"mem_percent":70.1,"io_wait_ms":5}
+{"hostname":"hostA","timestamp":"2025-10-12T11:00:00Z","cpu_percent":78.0,"mem_percent":68.0,"io_wait_ms":4}
+{"hostname":"hostA","timestamp":"2025-10-12T10:00:00+00:00","cpu_percent":80.0,"mem_percent":69.5,"io_wait_ms":6}
+{"hostname":"hostA","timestamp":"2025-10-12T09:00Z","cpu_percent":75.0,"io_wait_ms":3}
+{"hostname":"hostA","timestamp":"2025-10-12T08:30:00Z","cpu_percent":77.5,"mem_percent":67.0,"io_wait_ms":2}
+{"hostname":"hostA","timestamp":"2025-10-11T15:00:00Z","cpu_percent":70.0,"mem_percent":60.0,"io_wait_ms":1}
+
+{"hostname":"hostB","timestamp":"2025-10-12T12:00:00Z","cpu_percent":55.0,"mem_percent":45.0,"io_wait_ms":10}
+{"hostname":"hostB","timestamp":"2025-10-12T11:00:00Z","cpu_percent":null,"mem_percent":50.0,"io_wait_ms":12}
+{"hostname":"hostB","timestamp":"2025-10-12T10:00:00Z","cpu_percent":60.0,"mem_percent":52.0,"io_wait_ms":8}
+{"hostname":"hostB","timestamp":"2025-10-12T10:00:00Z","cpu_percent":60.0,"mem_percent":52.0,"io_wait_ms":8}
+{"hostname":"hostB","timestamp":"2025-10-11T13:30:00+01:00","cpu_percent":65.0,"io_wait_ms":7}
+
+{"hostname":"hostC","timestamp":"2025-10-12T04:00:00Z","cpu_percent":90.0,"mem_percent":85.0,"io_wait_ms":20}
+{"hostname":"hostC","timestamp":"2025-10-11T12:15Z","cpu_percent":88.0,"mem_percent":83.0,"io_wait_ms":18}
+{"hostname":"hostC","timestamp":"2025-10-10T11:00:00Z","cpu_percent":50.0,"mem_percent":45.0,"io_wait_ms":2}
+
+{"hostname":"hostE","timestamp":"2025-10-12T07:00:00Z","cpu_percent":20.0,"mem_percent":30.0,"io_wait_ms":1}
+
+{"hostname":"hostX","timestamp":"2025-10-12T09:00:00Z","cpu_percent":95.0,"mem_percent":90.0,"io_wait_ms":50}
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How these materials were constructed and why
+- Inventory (systems.csv): 6 distinct host rows (hostA..hostF). memory_gb values include entries below and above the required threshold (RECOMMENDED_MINIMUM_MEMORY_GB = 8). Two hosts (hostD and hostF) intentionally have no telemetry events in metrics.log to test handling of inventory-only hosts.
+- Telemetry (metrics.log): 16 telemetry events across 5 host identifiers (hostA, hostB, hostC, hostE, hostX). The maximum timestamp is 2025-10-12T12:00:00Z — candidates must treat this as "now" when computing "last 24 hours" and "last 7 days".
+- Variations and data-quality issues intentionally included:
+  - Missing fields: some events omit mem_percent (e.g., hostA 09:00) or have cpu_percent explicitly null (hostB 11:00).
+  - Inconsistent ISO-8601 forms: trailing Z, explicit +00:00, +01:00 offset, and timestamps with or without seconds (e.g., "2025-10-11T13:30:00+01:00" yields 2025-10-11T12:30:00Z).
+  - Duplicate event: hostB has two identical events at 2025-10-12T10:00:00Z.
+  - Telemetry-only host: hostX appears in telemetry but not in systems.csv.
+  - Inventory-only hosts: hostD and hostF have no telemetry rows.
+- Purpose: The dataset is compact but contains the realistic issues a candidate must handle: timestamp parsing/normalization, missing numeric values, deduplication of telemetry by (hostname + timestamp), and joining telemetry to inventory with mismatches.
+
+Expected numeric relationships and intended grading targets (what a correct solution should show)
+- Identify max timestamp: 2025-10-12T12:00:00Z. Use that to set:
+  - last_24h_window = 2025-10-11T12:00:00Z through 2025-10-12T12:00:00Z (inclusive)
+  - last_7d_window = 2025-10-05T12:00:00Z through 2025-10-12T12:00:00Z (inclusive)
+- Deduplication rule the evaluator should expect candidates to adopt (and which was used to compute expected results below): for identical (hostname, timestamp) keep the first occurrence and ignore later duplicates.
+- Handling of missing numeric values the evaluator should accept: store NULL in DB for missing cpu_percent or mem_percent and exclude NULLs from average/maximum calculations (documented by candidate).
+- Expected per-host telemetry counts in last 24 hours (after deduplication):
+  - hostA: 6 events (timestamps at 2025-10-11T15:00Z, 2025-10-12T08:30Z, 09:00Z, 10:00Z, 11:00Z, 12:00Z)
+  - hostB: 4 unique events (2025-10-11T12:30Z [from 13:30+01:00], 2025-10-12T10:00:00Z, 11:00:00Z, 12:00:00Z)
+  - hostC: 2 events in last 24h (2025-10-11T12:15Z and 2025-10-12T04:00Z)
+  - hostE: 1 event (2025-10-12T07:00:00Z)
+  - hostX: 1 event (2025-10-12T09:00:00Z)
+  - hostD: 0 events
+  - hostF: 0 events
+- Expected averages and peaks (used to grade Q1 and Q2) computed ignoring NULLs:
+  - Q1 (average cpu_percent over last 24h), per host:
+    - hostX: avg_cpu = 95.0 (1 sample)
+    - hostC: avg_cpu = (90.0 + 88.0) / 2 = 89.0
+    - hostA: avg_cpu = (82.5 + 78.0 + 80.0 + 75.0 + 77.5 + 70.0) / 6 = 77.1666666667
+    - hostB: avg_cpu = (55.0 + 60.0 + 65.0) / 3 = 60.0  (null cpu at 11:00 excluded; duplicate 10:00 ignored)
+    - hostE: avg_cpu = 20.0
+    - hostD, hostF: no data (should not appear or should show NULL/0 per candidate decision)
+  - Q2 (per-host average and peak mem_percent for last 7 days), per host (ignore NULL mem values):
+    - hostA: mem values = [70.1,68.0,69.5,67.0,60.0] => avg = 66.92 (334.6/5), peak = 70.1
+    - hostB: mem values = [45.0,50.0,52.0] => avg = 49.0, peak = 52.0
+    - hostC: mem values = [85.0,83.0,45.0] => avg = 71.0, peak = 85.0
+    - hostE: mem values = [30.0] => avg = 30.0, peak = 30.0
+    - hostX: mem values = [90.0] => avg = 90.0, peak = 90.0
+    - hostD, hostF: no telemetry (NULLs)
+- Q3 inventory hosts where memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB (8):
+  - hostA (4), hostC (2), hostF (4)
+- Q4 expected numbers (use EXPECTED_SAMPLING_INTERVAL_MINUTES = 5):
+  - expected_samples_in_24h = 24*60/5 = 288
+  - completeness_pct = (observed_unique_samples_in_24h / 288) * 100
+  - Using counts above, completeness percentages:
+    - hostA: 6 -> 2.0833333333%
+    - hostB: 4 -> 1.3888888889%
+    - hostC: 2 -> 0.6944444444%
+    - hostE: 1 -> 0.3472222222%
+    - hostX: 1 -> 0.3472222222%
+    - hostD: 0 -> 0.0%
+    - hostF: 0 -> 0.0%
+  - All of these are below EXPECTED_COMPLETENESS_THRESHOLD (95%). The materials intentionally lead to low completeness to verify that candidates compute expected counts correctly and handle hosts with zero telemetry.
+Traps, common errors, and evaluator guidance
+- Timestamp parsing mistakes:
+  - A common error is failing to normalize timezone offsets (e.g., treating "2025-10-11T13:30:00+01:00" as 13:30Z rather than converting to 12:30Z). The correct behavior is to convert all timestamps to a single timezone (UTC) before filtering into windows.
+- Deduplication mistakes:
+  - Some candidates may forget to deduplicate duplicates. The duplicate for hostB at 2025-10-12T10:00:00Z is present; expected behavior is to deduplicate by (hostname, normalized_timestamp) and keep the first occurrence (documented in ingestion code and README).
+- Missing values in aggregates:
+  - Candidates should store NULLs for missing cpu_percent or mem_percent and exclude NULLs from average/peak calculations. Including NULLs as zeros will distort averages and should be flagged by the grader as incorrect.
+- Hosts cross-reference:
+  - Candidates must decide whether Q4 includes hosts present only in telemetry (hostX) and inventory-only hosts (hostD, hostF). The intended scoring accepts counting across the union of inventory and telemetry hosts; candidates should document their choice. The dataset is designed so all reasonable choices (inventory-only focus or union) will show low completeness; the grader should accept either approach if documented and consistent.
+How these materials distinguish practical skill from pure theory
+- A candidate who only knows concepts might write SQL or pseudo-code but fail to:
+  - normalize and parse the timestamp variants,
+  - deduplicate correctly, or
+  - handle missing numeric values properly.
+- A practical candidate will provide:
+  - an ingestion script that normalizes timestamps to UTC, inserts NULL for missing numeric fields, deduplicates by (hostname, timestamp), creates sensible schema and indexes, and documents choices; and
+  - SQL queries that use the dataset's max timestamp as "now", apply correct WHERE clauses for time windows, and compute aggregates excluding NULLs.
+Acceptable grader tolerances
+- Numeric rounding: the grader should allow reasonable floating-point formatting differences (e.g., 77.1666667 vs 77.1666666667). Candidates should return numeric values; string formatting of numbers is not acceptable.
+- Query inclusion of hosts with no data: accept either excluding hosts with no telemetry from Q1/Q2 results or showing them with NULLs, provided the approach is documented in the README and scripts.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

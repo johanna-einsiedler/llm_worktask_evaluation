@@ -1,80 +1,119 @@
 ```json
 {
-  "candidate_name": "",
-  "language": "",
+  "candidate": {
+    "name": "",
+    "email": "",
+    "language_used": "",
+    "environment": ""
+  },
   "time_spent_minutes": null,
-  "task1": {
-    "schema": {},
-    "row_counts": {},
-    "persistent_store_files": []
-  },
-  "task2": {
-    "queries": {
-      "q1_total_events": "",
-      "q2_unique_users": "",
-      "q3_top3_event_types": "",
-      "q4_events_by_plan": ""
+  "steps": [
+    {
+      "name": "Setup & Import",
+      "time_spent_minutes": null,
+      "artifacts": {
+        "code": "", 
+        "commands": [],
+        "outputs": {
+          "total_rows_in_csv": null,
+          "rows_loaded_into_store": null,
+          "rows_dropped": null,
+          "rows_modified": null,
+          "malformed_metric_row_ids": [],
+          "malformed_timestamp_row_ids": [],
+          "created_tables": [],
+          "create_table_statements": "",
+          "data_cleaning_decision_one_line": ""
+        },
+        "short_explanation": ""
+      }
     },
-    "results": {
-      "q1_total_events": null,
-      "q2_unique_users": null,
-      "q3_top3_event_types": [
-        {
-          "event_type": "",
-          "count": null
+    {
+      "name": "Core Queries",
+      "time_spent_minutes": null,
+      "artifacts": {
+        "code": "",
+        "commands": [],
+        "outputs": {
+          "query_1": {
+            "sql": "",
+            "command": "",
+            "result_rows": [],
+            "rows_total": null,
+            "one_line_explanation": ""
+          },
+          "query_2": {
+            "sql": "",
+            "command": "",
+            "result_rows": [],
+            "rows_total": null,
+            "one_line_explanation": ""
+          },
+          "query_3": {
+            "sql": "",
+            "command": "",
+            "result_rows": [],
+            "rows_total": null,
+            "one_line_explanation": ""
+          },
+          "query_4": {
+            "sql": "",
+            "command": "",
+            "result_rows": [],
+            "rows_total": null,
+            "one_line_explanation": ""
+          },
+          "query_5": {
+            "sql": "",
+            "command": "",
+            "result_rows": [],
+            "rows_total": null,
+            "one_line_explanation": ""
+          }
         },
-        {
-          "event_type": "",
-          "count": null
-        },
-        {
-          "event_type": "",
-          "count": null
-        }
-      ],
-      "q4_events_by_plan": {}
-    }
-  },
-  "task3": {
-    "transformations": [],
-    "sample_transformed_rows": [],
-    "aggregates": {
-      "average_events_per_active_user": null,
-      "average_events_per_user_by_plan": {}
-    }
-  },
-  "task4": {
-    "report": {
-      "total_events": null,
-      "unique_users": null,
-      "average_events_per_active_user": null,
-      "top3_event_types": [
-        {
-          "event_type": "",
-          "count": null
-        },
-        {
-          "event_type": "",
-          "count": null
-        },
-        {
-          "event_type": "",
-          "count": null
-        }
-      ],
-      "events_by_plan": {},
-      "average_events_per_user_by_plan": {}
+        "short_explanation": ""
+      }
     },
-    "design_decisions": [
-      "",
-      ""
-    ],
-    "index_created": {
-      "created": null,
-      "column": ""
+    {
+      "name": "Transformation & Export",
+      "time_spent_minutes": null,
+      "artifacts": {
+        "code": "",
+        "commands": [],
+        "outputs": {
+          "export_format": "", 
+          "export_rows": null,
+          "export_rows_total": null,
+          "export_full_if_included": [],
+          "export_sample_if_large": [],
+          "transformation_description_one_to_two_sentences": "",
+          "how_malformed_or_missing_values_were_handled": ""
+        },
+        "short_explanation": ""
+      }
+    },
+    {
+      "name": "Summary",
+      "time_spent_minutes": null,
+      "artifacts": {
+        "code": "",
+        "commands": [],
+        "outputs": {},
+        "short_explanation": ""
+      }
     }
+  ],
+  "summary": {
+    "key_findings": [],
+    "recommendations": [],
+    "assumptions": []
   },
-  "run_command": "",
-  "notes": ""
+  "reproducibility": {
+    "commands": [],
+    "files_created": []
+  },
+  "justification": {
+    "ingestion_choice": ""
+  }
 }
 ```

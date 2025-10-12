@@ -1,9 +1,0 @@
-{
-  "prompt_summary": "LLM diagnosis of answer key self-test failure",
-  "response_raw": "{\n    \"diagnosis\": \"answer_key_content_issue\",\n    \"rationale\": \"The grader lost 8 points likely because the answer-key submission lacked evidence for negative-quantity validation (losing 4 robustness points) and the short_description exceeded the <=200-word heuristic (losing 4 code-quality points). These are content issues in the provided answer_key.json, not the grader logic or template.\",\n    \"recommendation\": \"Regenerate the answer_key (answer_key.json) to include an explicit failing command demonstrating negative-quantity rejection (non-zero exit and stderr) and shorten the short_description to <=200 words, then re-run the grading script.\"\n}",
-  "parsed_result": {
-    "diagnosis": "answer_key_content_issue",
-    "rationale": "The grader lost 8 points likely because the answer-key submission lacked evidence for negative-quantity validation (losing 4 robustness points) and the short_description exceeded the <=200-word heuristic (losing 4 code-quality points). These are content issues in the provided answer_key.json, not the grader logic or template.",
-    "recommendation": "Regenerate the answer_key (answer_key.json) to include an explicit failing command demonstrating negative-quantity rejection (non-zero exit and stderr) and shorten the short_description to <=200 words, then re-run the grading script."
-  }
-}

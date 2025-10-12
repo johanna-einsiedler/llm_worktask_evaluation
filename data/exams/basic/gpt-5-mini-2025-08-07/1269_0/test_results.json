@@ -1,80 +1,80 @@
 {
-  "candidate_name": "Reference Solution",
-  "language": "Python",
-  "time_minutes_used": 90,
-  "scores": {
-    "functional": {
-      "primary": {
-        "score": 40.0,
-        "max": 40,
-        "messages": [
-          "Numeric column keys match expected ordering/values.",
-          "Column 'value1': all metrics match (full column credit).",
-          "Column 'value2': all metrics match (full column credit)."
-        ]
-      },
-      "revision": {
-        "score": 20.0,
-        "max": 20,
-        "messages": []
-      }
-    },
-    "code_readability": {
-      "score": 20.0,
-      "max": 20,
-      "messages": [
-        "Top-of-file header comment detected (5/5).",
-        "At least one function has a docstring (10/10).",
-        "Python main guard detected (5/5)."
+  "breakdown": {
+    "correctness": {
+      "score": 50.0,
+      "max_score": 50.0,
+      "details": [
+        "Source files provided.",
+        "Found source file(s) named like sales_agg: ['sales_agg.py'].",
+        "Test 'normal_sample' passed (command: python3 sales_agg.py sample_sales.csv).",
+        "Test 'malformed_sample' passed (command: python3 sales_agg.py malformed_sales.csv).",
+        "Test 'min_revenue_filter' passed (command: python3 sales_agg.py sample_sales.csv --min-revenue 50.00)."
       ]
     },
     "documentation": {
-      "score": 15.0,
-      "max": 15,
-      "messages": [
-        "README content in field and file match.",
-        "All required run/build commands found in README (6/10).",
-        "Assumptions section found in README.",
-        "Numeric formatting (two decimal places) mentioned in README.",
-        "CHANGELOG contains at least two entries (5/5)."
+      "score": 20.0,
+      "max_score": 20.0,
+      "details": [
+        "README present and non-empty.",
+        "README mentions sample input filenames.",
+        "README documents --min-revenue flag.",
+        "README documents assumptions (header/missing/rounding).",
+        "Changelog present.",
+        "Changelog has multiple entries.",
+        "Changelog documents follow-up revision (--min-revenue/filter)."
       ]
     },
-    "packaging": {
+    "comments": {
+      "score": 15.0,
+      "max_score": 15.0,
+      "details": [
+        "comments_coverage field present.",
+        "Comment density is high (100.00%), awarding full comment points."
+      ]
+    },
+    "tests_evidence": {
+      "score": 10.0,
+      "max_score": 10.0,
+      "details": [
+        "3 test runs provided (>=2).",
+        "At least 3 test runs provided.",
+        "build_instructions include commands for sample, malformed, and --min-revenue runs.",
+        "All candidate tests include non-empty actual_output.",
+        "Tests include 'passed' boolean flags."
+      ]
+    },
+    "revision": {
       "score": 5.0,
-      "max": 5,
-      "messages": [
-        "All required files present in files array (partial packaging credit).",
-        "Captured output entries present (partial packaging credit).",
-        "Primary and revision run commands present."
+      "max_score": 5.0,
+      "details": [
+        "Follow-up revision (--min-revenue filter) implemented and documented."
       ]
     }
   },
+  "reasons": [],
   "total_points": 100.0,
-  "max_points": 100,
-  "percentage": 100.0,
-  "overall_score": 100.0,
-  "notes": {
-    "functional_messages": [
-      "Numeric column keys match expected ordering/values.",
-      "Column 'value1': all metrics match (full column credit).",
-      "Column 'value2': all metrics match (full column credit)."
-    ],
-    "packaging_messages": [
-      "All required files present in files array (partial packaging credit).",
-      "Captured output entries present (partial packaging credit).",
-      "Primary and revision run commands present."
-    ],
-    "documentation_messages": [
-      "README content in field and file match.",
-      "All required run/build commands found in README (6/10).",
-      "Assumptions section found in README.",
-      "Numeric formatting (two decimal places) mentioned in README.",
-      "CHANGELOG contains at least two entries (5/5)."
-    ],
-    "code_readability_messages": [
-      "Top-of-file header comment detected (5/5).",
-      "At least one function has a docstring (10/10).",
-      "Python main guard detected (5/5)."
-    ]
-  }
+  "max_points": 100.0,
+  "overall_percentage": 100.0,
+  "pass": true,
+  "test_summary": [
+    {
+      "expected_test_name": "normal_sample",
+      "matched_candidate_test": "normal_sample",
+      "command": "python3 sales_agg.py sample_sales.csv",
+      "passed": true
+    },
+    {
+      "expected_test_name": "malformed_sample",
+      "matched_candidate_test": "malformed_sample",
+      "command": "python3 sales_agg.py malformed_sales.csv",
+      "passed": true
+    },
+    {
+      "expected_test_name": "min_revenue_filter",
+      "matched_candidate_test": "min_revenue_filter",
+      "command": "python3 sales_agg.py sample_sales.csv --min-revenue 50.00",
+      "passed": true
+    }
+  ],
+  "overall_score": 100.0
 }

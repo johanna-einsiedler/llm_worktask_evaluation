@@ -1,172 +1,157 @@
 Here is the exam overview written by another exam designer:
 <examoverview>
 ### Exam Purpose
-Confirm that the candidate can practically modify an existing application to (1) diagnose and correct defects, (2) adapt the code/configuration to a changed runtime environment (a simple "new hardware" or platform constraint), and (3) make a small, measurable performance improvement — all within a real codebase and using normal developer tools (editor + execution environment). This verifies the candidate’s hands-on ability to maintain and evolve software rather than only their conceptual knowledge.
+To confirm that a candidate can practically modify an existing application to (a) find and correct defects, (b) adapt code to run correctly on constrained or different hardware environments, and (c) improve the runtime/memory performance of code. This exam demonstrates hands‑on ability to read an unfamiliar small codebase, implement correct fixes, make pragmatic architectural changes to cope with hardware constraints, and apply straightforward performance optimizations — all under time pressure as in real maintenance tasks.
 
 ### Core Competencies to be Tested
-- Debugging / root-cause analysis: reproduce a failing behavior, find the source, and apply a minimal, correct fix.
-- Code modification and testing: make edits, run provided tests, produce reproducible test output.
-- Environment adaptation: update code/configuration so the application runs under a changed runtime constraint (for example: different I/O semantics, reduced buffer size, simple API change).
-- Basic performance reasoning and measurement: run a simple benchmark, propose and implement one safe optimization, and demonstrate measurable improvement.
-- Communication and traceability: produce clear, concise explanation of changes, include a patch/diff, and provide run instructions.
-- Minimal code hygiene: readable changes, appropriate variable names, brief inline comments if needed, and a small unit test or a test update when applicable.
+- Reading and understanding a small existing codebase and its tests.
+- Debugging and fixing functional defects so that provided tests pass.
+- Making safe changes that preserve correctness (regression-aware modification).
+- Adapting code to resource-constrained hardware (e.g., low memory, single CPU).
+- Identifying and implementing targeted performance improvements (algorithmic or I/O changes).
+- Producing clear, concise evidence of what was changed and why (commit/diff + short explanation).
+- Basic code hygiene: readable code, small tests or assertions, no breaking of other features.
 
-### Recommended Structure (Basic exam — single 90-minute session, target completion <= 90 minutes)
-Total time budget: 90 minutes (exam materials should explicitly recommend this split to candidates).
+### Recommended Structure
+- Total time: 90 minutes (strict).
+- Number of tasks: 3 hands-on tasks, executed in sequence on a provided small codebase.
+  - Task A — Bug Fix (35 minutes)
+  - Task B — Hardware Adaptation (25 minutes)
+  - Task C — Performance Improvement (25 minutes)
+  - 5 minutes reserved at the end for preparing the JSON submission file
+- Deliverables:
+  - Modified source files (in-place in the provided repo).
+  - A single JSON file named test_submission.json (see required schema below).
+  - Optionally a small unified diff file (if the environment supports saving diffs).
+  - All tasks must include the command output evidence that proves correctness (unit test output, benchmark output, memory checkpoints, etc.) embedded in the JSON.
 
-Number of practical tasks: 3 small, sequential hands-on tasks in one repository:
-1. Task A — Bug Fix (40 minutes)
-2. Task B — Environment Adaptation (20 minutes)
-3. Task C — Small Performance Improvement + short explanation (25 minutes)
+Sequence:
+1. Candidate unpacks the exam package (contains codebase, tests, instructions).
+2. Run the supplied test and benchmark scripts to observe failing tests and baseline performance.
+3. Fix the defect(s) in Task A and re-run tests.
+4. Implement the hardware adaptation for Task B and re-run the adapted tests/validation script.
+5. Implement the performance changes for Task C and run the performance check.
+6. Populate test_submission.json with required structured information and paste outputs.
 
-Reserve 5 minutes buffer for packaging submission.
+Notes for exam pack author:
+- Provide a small single-language project (recommended: Python 3). Python is easy to run in most environments and requires minimal setup.
+- Provide a script run_all.sh (or run_all.py) that runs unit tests and the simple benchmarks; candidate will run that repeatedly.
+- Avoid any external network dependencies; use only the standard library.
 
-Expected deliverables (candidate uploads in test_submission.json and as files in the repo if the platform permits):
-- test_submission.json (required): structured answers and metadata (see template below).
-- Patches/diffs or modified source files (either included as a unified diff string field inside test_submission.json or saved in the repo). If diffs are not possible, include full updated source file(s) contents.
-- Test run outputs and/or benchmark outputs captured as plain text strings inside test_submission.json.
-- A brief explanation (1–3 short paragraphs) per task describing approach, root cause, and trade-offs.
+### Practicality — How to make it hands-on
+- Provide a runnable repository (zipped) including:
+  - src/ small program (200–300 lines total max) implementing a realistic tiny feature (e.g., CSV aggregator, log parser, or text indexer).
+  - tests/ unit tests or simple assertion scripts (some passing, at least one failing).
+  - scripts/ run_tests.sh, benchmark.sh or run_all.py that print clear pass/fail and baseline runtime/memory numbers.
+  - data/ a medium sized input file (a few MB) to permit measurable performance differences.
+- The tasks require direct code edits to pass tests and meet runtime/memory targets. No theoretical answers — all proof must come from running scripts and including their outputs.
 
-High-level flow:
-- Candidate clones repo (provided by exam admin) containing a small Python application (or language chosen by the exam designer), a failing test or reproducible bug, an adaptation requirement, and a benchmark script.
-- Candidate runs provided test runner and benchmark harness, makes code edits, re-runs tests/benchmarks, and records results.
-- Candidate packages results into test_submission.json.
+Concrete examples of hands-on elements (to include in the package):
+- A failing unit test that exercises a bug in parsing or numeric edge case.
+- A program that currently reads an entire data file into memory (Task B asks to adapt it to stream processing).
+- A function implemented with an O(n^2) approach on the dataset; Task C asks to reduce complexity (e.g., use a dictionary/hash map) so that the included benchmark shows improvement.
 
-Why these tasks and sequence?
-- Sequential dependency: Task A ensures the candidate can reproduce and fix failures — necessary baseline. Task B tests ability to reason about runtime differences and make configuration/code changes. Task C tests the candidate’s capability to measure and safely optimize code.
-- The sequence mirrors common real-world maintenance tasks.
+### Strategic elements (decision points and multi-step processes)
+Design tasks so candidates must make and justify small trade-offs:
+- Task A: Candidate must identify the root cause (not just patch). Provide multiple plausible but incorrect quick fixes to trap candidates who do not run tests after changes.
+- Task B: Provide an adaptation scenario (e.g., “target hardware has <= 128MB RAM or no floating-point unit”) and require the candidate to modify code to still produce correct output under these constraints. Candidate decisions:
+  - Stream the data rather than loading whole file.
+  - Provide fallback code path when multiprocessing is not available (use sequential mode).
+  - Replace float-heavy calculations with integer math if the dataset is integer-compatible.
+- Task C: Candidate must select one focused optimization strategy (algorithmic, data structure, or I/O) and implement it. Decision points:
+  - Improve asymptotic complexity vs microoptimizations — the exam should favor asymptotic changes where feasible.
+  - Verify changes with supplied benchmark and include before/after measurements in JSON.
 
-### Practical Elements to Include (how to make it hands-on)
-- Self-contained repo with:
-  - Small but realistic code base (approx. 150–400 LOC across a few files) implementing a simple utility or microservice functionality (e.g., data processing, simple cache, file-transformer).
-  - A test runner script (e.g., run_tests.py) that prints PASS/FAIL and shows failing traces for Task A. Must run without external packages.
-  - A small benchmarking script (e.g., bench.py) that performs repeated work and prints timings. Provide deterministic input to make improvements measurable.
-  - Clear README with commands for running tests and bench.
-- No internet access for candidates; ensure code has no external dependencies.
-- Provide a failing test case and a reproducible failing run; candidate must correct the code to pass it.
-- For environment adaptation, simulate a hardware/platform change that requires code change (examples below).
-- Make performance improvement modest but measurable (e.g., reduce median runtime by 20–40% on the supplied benchmark through algorithmic or micro-optimization like avoiding repeated computation, caching, or using more efficient data structures).
-- Require submission of:
-  - the modified file(s) or unified diff,
-  - outputs (console logs) of test runner before and after fixes (they can paste the before/after logs),
-  - benchmark numbers before and after the optimization,
-  - a short explanation of the thought process and verification steps,
-  - one-line summary of potential side-effects or risk areas from the change.
+These decision points separate candidates who can perform hands-on maintenance from those who only know theory: good candidates will run tests/benchmarks, iterate, and explain trade-offs succinctly.
 
-Examples of environment-adaptation scenarios (choose one for the exam):
-- New hardware has less available memory: require processing to be streaming-based instead of in-memory for one operation (the basic exam should use a tiny, trivial streaming adaptation like switching from list-based accumulation to incremental write).
-- I/O change: previously the code read from local files; now it must accept data from stdin (or a given file descriptor). Candidate must add an alternate code path.
-- Constrained API: a helper function's parameter signature changes (e.g., callback signature) and candidate must adapt the wrapper code to the new signature.
+### Evaluation insights — what to look for and how to score
+Structure scoring across three tasks; total 100 points. Passing threshold for the basic exam: 80 points or more.
 
-Practical scoring safeguards
-- Include an automated acceptance test runner that prints explicit results. Evaluators can reproduce candidate’s claims by applying the candidate patch and running the same runner.
+Suggested point allocation:
+- Task A — Bug Fix: 35 points
+  - Correctness (unit tests pass) — 25 points
+  - Quality of fix (minimal, non-regressive, clear) — 5 points
+  - Explanation in JSON (root cause and what changed) — 5 points
+- Task B — Hardware Adaptation: 30 points
+  - Adaptation correctness (behavior preserved on streaming / fallback) — 15 points
+  - Evidence (show that the new mode runs on a simulated constrained setting or with reduced memory; e.g., benchmark script that checks memory) — 10 points
+  - Explanation of trade-offs and instructions on how to run adapted mode — 5 points
+- Task C — Performance Improvement: 35 points
+  - Meets reasonable performance improvement target (e.g., 2–5x faster on provided dataset or memory use reduced by a target) — 20 points
+  - Regression free (existing tests still pass) — 10 points
+  - Short explanation of the optimization and why it’s safe — 5 points
 
-### Strategic Elements (steps/decision points that distinguish real ability)
-- Reproducibility step: candidate must run tests and paste failing logs — distinguishes someone who actually ran code vs. someone who only conceptualized fixes.
-- Minimal, targeted changes: evaluate whether candidate modifies only necessary lines vs. sweeping unrelated edits. Good candidates produce minimal diffs.
-- Root-cause explanation: require candidate to describe the bug's cause in one or two sentences. This checks diagnosis ability, not guesswork.
-- Trade-off decision for performance: the candidate must pick a safe optimization and explain trade-offs (memory vs. speed, complexity, maintainability). This shows practical judgment.
-- Evidence-based optimization: candidate must capture before/after benchmark numbers. Candidates who "optimize" without measurement cannot score well.
-- Add/adjust a small unit test if appropriate: if the bug was not covered, writing a short test demonstrates competence.
-- Edge-case handling: ask the candidate to note one edge case that remains untested or a risk that would require further work.
+Grading rubric details / observable outputs:
+- Definitive pass indicator: run_all script exits zero and prints “ALL TESTS PASSED” and benchmark script prints before/after numbers. These outputs should be embedded into test_submission.json.
+- Evidence of streaming/adaptation: developer must run a provided script that invokes the adapted mode (e.g., ./run_all.py --low-mem) and show it completes without exceeding a memory usage threshold. If the environment cannot measure memory precisely, require the candidate to run the low-memory mode and the script to assert no OOM and correct output (byte-for-byte or checksum).
+- Performance evidence: the benchmark script should run baseline then optimized and print both elapsed times; the candidate’s JSON must include these outputs. The grader can check if elapsed_optimized <= threshold * elapsed_baseline.
+- Code review: evaluator inspects diffs/modified files for code clarity and potential regressions (e.g., loss of error handling). Minor style problems are OK for a basic exam but egregious breaks are penalized.
 
-These elements force a candidate to actually run/debug/measure, not just describe.
+What indicates competence
+- Candidate passes the provided tests after changes.
+- Candidate can show the adapted mode runs correctly (explicit command + output).
+- Candidate shows a measurable and sensible performance improvement, and that tests still pass.
+- Candidate provides concise, accurate explanations for what they changed and why (in JSON). Explanations should show they located root causes, not just trial-and-error patches.
 
-### Test Submission JSON Schema (test_submission.json)
-Require test_submission.json with these fields. All fields must be plain strings or numbers and small arrays, so it is easy to validate automatically.
+Common failure modes to penalize
+- Fix that hard-codes test inputs instead of fixing logic.
+- Performance “optimization” that introduces incorrectness or fails some tests.
+- Incomplete evidence (no test outputs in JSON).
+- Big-behavior changes that break features not covered by the tests.
 
+### Required submission format (test_submission.json)
+Candidates must submit one JSON file named test_submission.json. It must be valid JSON UTF-8 and include the following fields:
+
+- name: string
+- email: string
+- time_spent_minutes: integer
+- environment: string (Python version, OS, any short notes)
+- tasks: array of objects, each with:
+  - id: string (e.g., "A-bugfix")
+  - status: string (one of "fixed", "partially_fixed", "not_fixed")
+  - files_changed: array of file paths modified (relative)
+  - commands_run: array of objects:
+    - cmd: string (command run)
+    - stdout: string (captured command stdout/stderr)
+    - exit_code: integer
+  - explanation: string (short summary of the root cause and what was changed; <200 words)
+  - evidence: object (task-specific numeric evidence)
+    - For Task A: {"tests_passed": true/false}
+    - For Task B: {"low_mem_mode_ran": true/false, "notes": string}
+    - For Task C: {"baseline_time_s": number, "optimized_time_s": number, "improvement_factor": number}
+- optional_diff: string (unified diff or link to file path in submission)
+- final_notes: string (anything else)
+
+Example minimal tasks array entry:
 {
-  "candidate_name": "<Full name>",
-  "time_taken_minutes": <number>,
-  "task_results": [
-    {
-      "task_id": "A-bugfix",
-      "status": "fixed" | "not_fixed" | "partial",
-      "files_modified": ["src/file1.py", "src/file2.py"],
-      "patch_unified_diff": "<string containing unified diff or 'N/A' if whole file provided>",
-      "pre_fix_test_output": "<exact console output from running run_tests.py before edits>",
-      "post_fix_test_output": "<exact console output from running run_tests.py after edits>",
-      "explanation": "<1–3 short paragraphs: root cause, why fix works, why minimal>",
-      "unit_tests_added_or_modified": ["tests/test_bugcase.py"] or [],
-      "self_assessed_confidence": "<1-5>"
-    },
-    {
-      "task_id": "B-adapt_env",
-      "status": "adapted" | "not_adapted" | "partial",
-      "files_modified": ["src/io_adapter.py"],
-      "patch_unified_diff": "<string>",
-      "run_output_after_adaptation": "<console output showing app running in new mode>",
-      "explanation": "<what changed in environment, what you changed in code, why safe>",
-      "risks_or_limitations": "<short note about residual issues>"
-    },
-    {
-      "task_id": "C-performance",
-      "status": "improved" | "no_change" | "regressed",
-      "files_modified": ["src/processor.py"],
-      "patch_unified_diff": "<string>",
-      "benchmark_before_ms": <number>,
-      "benchmark_after_ms": <number>,
-      "bench_command_run": "<command used to run bench>",
-      "explanation": "<brief explanation of what was optimized and trade-offs>"
-    }
+  "id": "A-bugfix",
+  "status": "fixed",
+  "files_changed": ["src/parser.py"],
+  "commands_run": [
+    {"cmd": "python3 -m pytest -q", "stdout": "...\n1 failed\n", "exit_code": 1},
+    {"cmd": "python3 -m pytest -q", "stdout": "...\nAll tests passed\n", "exit_code": 0}
   ],
-  "other_notes": "<optional: anything else the candidate wants to state>"
+  "explanation": "The parser incorrectly split fields with quoted commas. Fixed regex and added unit test for quoted fields.",
+  "evidence": {"tests_passed": true}
 }
 
-Notes for candidate instructions:
-- Paste exact console outputs including any stack traces or timing lines.
-- If multiple files are changed, include all in the files_modified list and include a single unified diff string (git format) or the new file contents labeled with file path headers.
-- Provide exact commands used to run tests and benchmarks.
+Evaluator instructions (manual or automated)
+- Run the included run_all script to verify the candidate’s final state reproduces the reported outputs.
+- Check that tests pass and examine the output blocks pasted into JSON to confirm authenticity.
+- Run the low-memory/alternate-mode command to verify Task B behavior.
+- Run the benchmark or inspect reported baseline/optimized times to check improvement factor.
+- Inspect files_changed and the diff/changed lines to ensure change scope is reasonable.
+- Score by the rubric above.
 
-### Evaluation Insights (observable outputs and scoring guidance)
-Overall scoring: total 100 points. Entry-level threshold: 80+ points to pass the basic exam.
+### Time allocation (recommended)
+- 0–5 min: unpack and read README & task descriptions
+- 5–40 min: Task A (bug triage + fix + run tests)
+- 40–65 min: Task B (implement streaming/fallback + run validation)
+- 65–90 min: Task C (optimize, bench, ensure tests) + write test_submission.json and finalize
 
-Suggested weighting
-- Task A — Bug Fix (50 points)
-  - Reproduces failure and shows pre-fix failing output (5 points)
-  - Fix correctness: all provided tests pass after fix (30 points)
-  - Minimal and appropriate patch (10 points)
-  - Clear root-cause explanation (5 points)
+---
 
-- Task B — Environment Adaptation (20 points)
-  - Adapts code/config to run in the new environment and demonstrates run output (12 points)
-  - Explains the changes and notes residual risks (8 points)
-
-- Task C — Performance (20 points)
-  - Measures and reports before/after benchmark numbers (8 points)
-  - Demonstrates meaningful improvement (e.g., >=15–20% speedup on benchmark) (8 points)
-  - Explanation of optimization and trade-offs (4 points)
-
-- Communication & Packaging (10 points)
-  - Proper test_submission.json format (3 points)
-  - Patch/diff clarity and ability to reproduce (4 points)
-  - Concise, clear run instructions and logs (3 points)
-
-Grading thresholds and indicators of competence:
-- Must pass Task A tests to be considered competent (fail = automatic major penalty). An entry-level candidate should be able to fully pass Task A for >60% of available points.
-- Task B should be fully correct for at least an 80% pass in the basic exam: a single, simple adaptation is expected.
-- Task C: small improvement is required; if there is no measurable improvement but the candidate shows correct methodology and explains why no safe improvement exists, partial credit applies.
-- Minimal invasive edits: awarding more points if the diff is concise and well-scoped. Large unrelated edits reduce points.
-- Evidence of proper verification: providing pre/post logs and benchmark numbers is mandatory — absence loses most of the associated points.
-
-Sample automatic checks an evaluator can run:
-- Apply the candidate’s patch; run ./run_tests.py and check for PASS markers.
-- Run the benchmark with provided command(s) and compare the reported ms to the claimed numbers in JSON.
-- Verify that the modified files listed actually match the provided diffs or contents.
-
-Examples of “red flags”
-- Candidate gives only abstract descriptions without logs or diffs.
-- Candidate removes failing tests instead of fixing code.
-- Patch introduces new failing tests or regressions.
-- No measurement supplied for performance task or obviously unstable benchmarking (no repeated runs).
-
-### Final notes for exam creators and evaluators
-- Use Python 3 for maximum accessibility; ensure no third-party dependencies.
-- Make the repo small and deterministic. Provide clear reproducible commands.
-- Keep task complexity modest so an entry-level developer can finish in ~70–80 minutes, leaving buffer for packaging.
-- Provide a sample solution and expected outputs for evaluators to speed grading and to set pass thresholds.
-
-This design gives exam creators a reproducible, hands-on basic practical test that reliably separates candidates who can perform real maintenance and adaptation tasks from those who only understand them conceptually.
+This design yields a compact, hands‑on, 90‑minute practical exam for entry-level Software Developers, Applications, focused on modifying existing software to fix defects, adapt to constrained hardware, and improve performance — all with strict evidence requirements (runnable commands and outputs) and an explicit JSON submission to simplify automated or semi-automated grading.
 </examoverview>
 
 ### Your assignment:
@@ -179,7 +164,7 @@ Your instructions must include:
    - Do not prescribe methods or tools beyond what’s listed in the context.
 2. **Expected Outcome** – What the candidate must achieve or produce by the end of the test.
 3. **Provided Materials** – Briefly describe any materials or data files that will be given.
-4. **Submission Instructions** – Instrut candidates that they must submit results as `"test_submission.json"`.
+4. **Submission Instructions** – Instruct candidates that they must submit results as `"test_submission.json"` and that this will be the only file used for evaluation.
 
 ### Objectivity and Evaluation Constraints
 - Avoid tasks that require subjective interpretation.

@@ -1,214 +1,328 @@
 ```json
 {
-  "candidate_name": "Official Answer Key",
-  "language": "Python 3.9",
-  "time_spent_minutes": 60,
-  "task1": {
-    "schema": {
-      "users": {
-        "user_id": "TEXT",
-        "signup_date": "TEXT",
-        "plan": "TEXT"
-      },
-      "events": {
-        "event_id": "TEXT",
-        "user_id": "TEXT",
-        "timestamp": "TEXT",
-        "event_type": "TEXT",
-        "value": "INTEGER"
+  "candidate": {
+    "name": "ANSWER_KEY",
+    "email": "examiner@example.com",
+    "language_used": "python3, sqlite3",
+    "environment": "python3.9, sqlite3 (CLI)"
+  },
+  "time_spent_minutes": 85,
+  "steps": [
+    {
+      "name": "Setup & Import",
+      "time_spent_minutes": 20,
+      "artifacts": {
+        "code": "# ingest.py - reads system_events.csv and components_lookup.csv, validates rows,\n# and writes a cleaned SQLite DB named cleaned.db with tables: events, components.\nimport csv\nimport sqlite3\nfrom datetime import datetime\n\nDB = 'cleaned.db'\nconn = sqlite3.connect(DB)\nc = conn.cursor()\n# create tables\nc.execute('''CREATE TABLE IF NOT EXISTS events (\n  id INTEGER PRIMARY KEY,\n  timestamp TEXT,\n  date TEXT,\n  component_id TEXT,\n  metric_value REAL,\n  status_code INTEGER,\n  message TEXT\n);''')\n\nc.execute('''CREATE TABLE IF NOT EXISTS components (\n  component_id TEXT PRIMARY KEY,\n  name TEXT\n);''')\nconn.commit()\n\n# load components_lookup.csv\nwith open('components_lookup.csv','r',newline='',encoding='utf-8') as f:\n    r = csv.DictReader(f)\n    for row in r:\n        c.execute('INSERT OR REPLACE INTO components(component_id,name) VALUES(?,?)',\n                  (row['component_id'], row['name']))\nconn.commit()\n\n# helper to parse timestamps (accept ISO-8601 with Z)\ndef parse_timestamp(s):\n    if not s:\n        return None\n    s = s.strip()\n    # normalize Z to +00:00\n    if s.endswith('Z'):\n        s = s[:-1] + '+00:00'\n    # try a few common formats\n    fmts = ['%Y-%m-%dT%H:%M:%S%z', '%Y/%m/%d %H:%M:%S']\n    for fm in fmts:\n        try:\n            dt = datetime.strptime(s, fm)\n            return dt.isoformat()\n        except Exception:\n            pass\n    return None\n\n# ingest events, skipping rows with malformed timestamp or non-numeric metric_value\ntotal = 0\ninserted = 0\ndropped_ts = []\ndropped_metric = []\nwith open('system_events.csv','r',newline='',encoding='utf-8') as f:\n    r = csv.DictReader(f)\n    for row in r:\n        total += 1\n        tid = row['id']\n        ts = parse_timestamp(row['timestamp'])\n        if ts is None:\n            dropped_ts.append(int(tid))\n            continue\n        mv = row['metric_value'].strip() if row['metric_value'] is not None else ''\n        try:\n            mvf = float(mv)\n        except Exception:\n            dropped_metric.append(int(tid))\n            continue\n        # insert\n        date_only = ts[:10]\n        c.execute('INSERT INTO events(id,timestamp,date,component_id,metric_value,status_code,message) VALUES(?,?,?,?,?,?,?)',\n                  (int(row['id']), ts, date_only, row['component_id'], mvf, int(row['status_code']), row['message']))\n        inserted += 1\nconn.commit()\nconn.close()\n\n# print summary for reproducibility (printed to stdout when run)\nprint({\n    'total_rows_in_csv': total,\n    'rows_loaded_into_store': inserted,\n    'rows_dropped_due_to_malformed_timestamps': dropped_ts,\n    'rows_dropped_due_to_non_numeric_metric': dropped_metric\n})",
+        "commands": [
+          "python3 ingest.py  # reads system_events.csv and components_lookup.csv; creates cleaned.db"
+        ],
+        "outputs": {
+          "total_rows_in_csv": 60,
+          "rows_loaded_into_store": 55,
+          "rows_dropped": 5,
+          "rows_modified": 0,
+          "malformed_metric_row_ids": [
+            7,
+            18,
+            55
+          ],
+          "malformed_timestamp_row_ids": [
+            10,
+            58
+          ],
+          "created_tables": [
+            "events",
+            "components"
+          ],
+          "create_table_statements": "CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, timestamp TEXT, date TEXT, component_id TEXT, metric_value REAL, status_code INTEGER, message TEXT);\nCREATE TABLE IF NOT EXISTS components (component_id TEXT PRIMARY KEY, name TEXT);",
+          "data_cleaning_decision_one_line": "Dropped rows with malformed timestamps (ids 10,58) and excluded non-numeric metric_value rows (ids 7,18,55) from the cleaned events table."
+        },
+        "short_explanation": "Used a short Python ingestion script to validate timestamps and numeric metric_value, inserted only fully valid rows into cleaned.db (55 rows). Script and exact printed summary are included for reproducibility."
       }
     },
-    "row_counts": {
-      "users": 6,
-      "events": 12
+    {
+      "name": "Core Queries",
+      "time_spent_minutes": 30,
+      "artifacts": {
+        "code": "-- Query 1: days with more than N=50 events\n-- Query 2: top 5 components by average metric_value (exclude invalid metrics)\n-- Query 3: error rate (status_code >=500) per component, components with at least 5 events\n-- Query 4: avg metric for successful (200..299) vs error (>=500) per component\n-- Query 5: top 5 components by avg metric joined with components lookup\n\n-- Query text shown per query below (run with sqlite3 cleaned.db \"<SQL>\")",
+        "commands": [
+          "sqlite3 cleaned.db \"SELECT date AS day, COUNT(*) AS cnt FROM events GROUP BY date HAVING cnt > 50;\"",
+          "sqlite3 cleaned.db \"SELECT component_id, ROUND(AVG(metric_value),2) AS avg_metric FROM events GROUP BY component_id ORDER BY AVG(metric_value) DESC LIMIT 5;\"",
+          "sqlite3 cleaned.db \"SELECT component_id, COUNT(*) AS total_events, SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) AS errors, ROUND(1.0*SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END)/COUNT(*),4) AS error_rate FROM events GROUP BY component_id HAVING COUNT(*) >= 5 ORDER BY error_rate DESC;\"",
+          "sqlite3 cleaned.db \"SELECT component_id, ROUND(AVG(CASE WHEN status_code BETWEEN 200 AND 299 THEN metric_value END),2) AS avg_success, ROUND(AVG(CASE WHEN status_code >= 500 THEN metric_value END),2) AS avg_error FROM events GROUP BY component_id;\"",
+          "sqlite3 cleaned.db \"SELECT e.component_id, c.name, ROUND(AVG(e.metric_value),2) AS avg_metric FROM events e LEFT JOIN components c ON e.component_id = c.component_id GROUP BY e.component_id ORDER BY AVG(e.metric_value) DESC LIMIT 5;\""
+        ],
+        "outputs": {
+          "query_1": {
+            "sql": "SELECT date AS day, COUNT(*) AS cnt FROM events GROUP BY date HAVING cnt > 50;",
+            "command": "sqlite3 cleaned.db \"SELECT date AS day, COUNT(*) AS cnt FROM events GROUP BY date HAVING cnt > 50;\"",
+            "result_rows": [
+              {
+                "day": "2025-01-10",
+                "cnt": 53
+              }
+            ],
+            "rows_total": 1,
+            "one_line_explanation": "2025-01-10 has 53 events after dropping malformed rows (ids 10 and 58) and non-numeric metric rows (ids 7,18,55); this exceeds N=50."
+          },
+          "query_2": {
+            "sql": "SELECT component_id, ROUND(AVG(metric_value),2) AS avg_metric FROM events GROUP BY component_id ORDER BY AVG(metric_value) DESC LIMIT 5;",
+            "command": "sqlite3 cleaned.db \"SELECT component_id, ROUND(AVG(metric_value),2) AS avg_metric FROM events GROUP BY component_id ORDER BY AVG(metric_value) DESC LIMIT 5;\"",
+            "result_rows": [
+              {
+                "component_id": "comp_A",
+                "avg_metric": 449.12
+              },
+              {
+                "component_id": "comp_B",
+                "avg_metric": 264.67
+              },
+              {
+                "component_id": "comp_D",
+                "avg_metric": 184.38
+              },
+              {
+                "component_id": "comp_C",
+                "avg_metric": 72.00
+              },
+              {
+                "component_id": "comp_E",
+                "avg_metric": 16.20
+              }
+            ],
+            "rows_total": 5,
+            "one_line_explanation": "Top 5 components by mean metric_value (invalid metric rows excluded): comp_A highest (449.12), then comp_B, comp_D, comp_C, comp_E."
+          },
+          "query_3": {
+            "sql": "SELECT component_id, COUNT(*) AS total_events, SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) AS errors, ROUND(1.0*SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END)/COUNT(*),4) AS error_rate FROM events GROUP BY component_id HAVING COUNT(*) >= 5 ORDER BY error_rate DESC;",
+            "command": "sqlite3 cleaned.db \"SELECT component_id, COUNT(*) AS total_events, SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) AS errors, ROUND(1.0*SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END)/COUNT(*),4) AS error_rate FROM events GROUP BY component_id HAVING COUNT(*) >= 5 ORDER BY error_rate DESC;\"",
+            "result_rows": [
+              {
+                "component_id": "comp_A",
+                "total_events": 17,
+                "errors": 3,
+                "error_rate": 0.1765
+              },
+              {
+                "component_id": "comp_B",
+                "total_events": 15,
+                "errors": 2,
+                "error_rate": 0.1333
+              },
+              {
+                "component_id": "comp_D",
+                "total_events": 8,
+                "errors": 1,
+                "error_rate": 0.1250
+              },
+              {
+                "component_id": "comp_C",
+                "total_events": 10,
+                "errors": 0,
+                "error_rate": 0.0000
+              },
+              {
+                "component_id": "comp_E",
+                "total_events": 5,
+                "errors": 0,
+                "error_rate": 0.0000
+              }
+            ],
+            "rows_total": 5,
+            "one_line_explanation": "Error rate computed as errors / total_events for components with >=5 events; comp_A has the highest error rate (~17.65%)."
+          },
+          "query_4": {
+            "sql": "SELECT component_id, ROUND(AVG(CASE WHEN status_code BETWEEN 200 AND 299 THEN metric_value END),2) AS avg_success, ROUND(AVG(CASE WHEN status_code >= 500 THEN metric_value END),2) AS avg_error FROM events GROUP BY component_id;",
+            "command": "sqlite3 cleaned.db \"SELECT component_id, ROUND(AVG(CASE WHEN status_code BETWEEN 200 AND 299 THEN metric_value END),2) AS avg_success, ROUND(AVG(CASE WHEN status_code >= 500 THEN metric_value END),2) AS avg_error FROM events GROUP BY component_id;\"",
+            "result_rows": [
+              {
+                "component_id": "comp_A",
+                "avg_success": 446.07,
+                "avg_error": 463.33
+              },
+              {
+                "component_id": "comp_B",
+                "avg_success": 264.23,
+                "avg_error": 267.50
+              },
+              {
+                "component_id": "comp_C",
+                "avg_success": 72.00,
+                "avg_error": null
+              },
+              {
+                "component_id": "comp_D",
+                "avg_success": 180.71,
+                "avg_error": 210.00
+              },
+              {
+                "component_id": "comp_E",
+                "avg_success": 16.20,
+                "avg_error": null
+              }
+            ],
+            "rows_total": 5,
+            "one_line_explanation": "Per-component average metric for successful (200..299) vs error (>=500) events; NULL indicates no events in that category."
+          },
+          "query_5": {
+            "sql": "SELECT e.component_id, c.name, ROUND(AVG(e.metric_value),2) AS avg_metric FROM events e LEFT JOIN components c ON e.component_id = c.component_id GROUP BY e.component_id ORDER BY AVG(e.metric_value) DESC LIMIT 5;",
+            "command": "sqlite3 cleaned.db \"SELECT e.component_id, c.name, ROUND(AVG(e.metric_value),2) AS avg_metric FROM events e LEFT JOIN components c ON e.component_id = c.component_id GROUP BY e.component_id ORDER BY AVG(e.metric_value) DESC LIMIT 5;\"",
+            "result_rows": [
+              {
+                "component_id": "comp_A",
+                "name": "Auth Service",
+                "avg_metric": 449.12
+              },
+              {
+                "component_id": "comp_B",
+                "name": "Payment Service",
+                "avg_metric": 264.67
+              },
+              {
+                "component_id": "comp_D",
+                "name": "Search Service",
+                "avg_metric": 184.38
+              },
+              {
+                "component_id": "comp_C",
+                "name": "Cache Service",
+                "avg_metric": 72.00
+              },
+              {
+                "component_id": "comp_E",
+                "name": "Notification Service",
+                "avg_metric": 16.20
+              }
+            ],
+            "rows_total": 5,
+            "one_line_explanation": "Joined with components_lookup to produce human-readable names for the top-5 components by average metric_value."
+          }
+        },
+        "short_explanation": "All queries were run against cleaned.db (55-row cleaned events table). SQL uses GROUP BY, HAVING, aggregates, CASE for derived columns, and a join to components for human-readable names. Results reflect the cleaning rules stated in Step 1."
+      }
     },
-    "persistent_store_files": [
-      "data.db"
+    {
+      "name": "Transformation & Export",
+      "time_spent_minutes": 20,
+      "artifacts": {
+        "code": "-- transformation.sql: create a per-component per-day summary (date,component_id,name,total_events,avg_metric,error_rate)\n-- Then export with sqlite3 -header -csv\n\nSELECT\n  e.date AS date,\n  e.component_id AS component_id,\n  c.name AS component_name,\n  COUNT(*) AS total_events,\n  ROUND(AVG(e.metric_value),2) AS avg_metric,\n  ROUND(1.0*SUM(CASE WHEN e.status_code >= 500 THEN 1 ELSE 0 END)/COUNT(*),4) AS error_rate\nFROM events e\nLEFT JOIN components c ON e.component_id = c.component_id\nGROUP BY e.date, e.component_id\nORDER BY e.date, e.component_id;\n\n-- Example export command:\n-- sqlite3 -header -csv cleaned.db \"<above SQL>\" > transformed_daily.csv",
+        "commands": [
+          "sqlite3 -header -csv cleaned.db \"SELECT e.date AS date, e.component_id AS component_id, c.name AS component_name, COUNT(*) AS total_events, ROUND(AVG(e.metric_value),2) AS avg_metric, ROUND(1.0*SUM(CASE WHEN e.status_code >= 500 THEN 1 ELSE 0 END)/COUNT(*),4) AS error_rate FROM events e LEFT JOIN components c ON e.component_id = c.component_id GROUP BY e.date, e.component_id ORDER BY e.date, e.component_id;\" > transformed_daily.csv"
+        ],
+        "outputs": {
+          "export_format": "csv",
+          "export_rows": 6,
+          "export_rows_total": 6,
+          "export_full_if_included": [
+            {
+              "date": "2025-01-10",
+              "component_id": "comp_A",
+              "component_name": "Auth Service",
+              "total_events": 17,
+              "avg_metric": 449.12,
+              "error_rate": 0.1765
+            },
+            {
+              "date": "2025-01-10",
+              "component_id": "comp_B",
+              "component_name": "Payment Service",
+              "total_events": 15,
+              "avg_metric": 264.67,
+              "error_rate": 0.1333
+            },
+            {
+              "date": "2025-01-10",
+              "component_id": "comp_C",
+              "component_name": "Cache Service",
+              "total_events": 10,
+              "avg_metric": 72.00,
+              "error_rate": 0.0000
+            },
+            {
+              "date": "2025-01-10",
+              "component_id": "comp_D",
+              "component_name": "Search Service",
+              "total_events": 8,
+              "avg_metric": 184.38,
+              "error_rate": 0.1250
+            },
+            {
+              "date": "2025-01-10",
+              "component_id": "comp_E",
+              "component_name": "Notification Service",
+              "total_events": 3,
+              "avg_metric": 15.00,
+              "error_rate": 0.0000
+            },
+            {
+              "date": "2025-01-11",
+              "component_id": "comp_E",
+              "component_name": "Notification Service",
+              "total_events": 2,
+              "avg_metric": 18.00,
+              "error_rate": 0.0000
+            }
+          ],
+          "export_sample_if_large": [],
+          "transformation_description_one_to_two_sentences": "Created a per-component per-day summary with total events, average metric_value, and error rate; this is analysis-ready for capacity planning and trend detection per component per day.",
+          "how_malformed_or_missing_values_were_handled": "Rows with malformed timestamps (ids 10,58) were dropped; rows with non-numeric metric_value (ids 7,18,55) were excluded from insertion into the events table, therefore not included in aggregations."
+        },
+        "short_explanation": "Produced transformed_daily.csv containing 6 rows (per-component per-day aggregates). Export includes avg_metric rounded to 2 decimals and error_rate as fraction rounded to 4 decimals."
+      }
+    },
+    {
+      "name": "Summary",
+      "time_spent_minutes": 15,
+      "artifacts": {
+        "code": "",
+        "commands": [],
+        "outputs": {
+          "summary_text": "Concise findings and reproducibility notes included in summary.key_findings, recommendations, and assumptions below."
+        },
+        "short_explanation": "Final interpretation, recommendations, and assumptions are provided below; total time 85 minutes."
+      }
+    }
+  ],
+  "summary": {
+    "key_findings": [
+      "2025-01-10 recorded 53 valid events after cleaning (dropped malformed timestamps and non-numeric metrics), which exceeds N=50 and indicates a high-activity day.",
+      "Auth Service (comp_A) has the highest average metric_value (449.12) and the highest error rate (~17.65%), suggesting performance and reliability concerns.",
+      "Payment Service (comp_B) and Search Service (comp_D) have mid-range average metrics (264.67 and 184.38 respectively) with non-zero error rates (13.33% and 12.50%).",
+      "Cache Service (comp_C) shows consistent low metrics (avg 72.00) with 0% server-error rate, while Notification Service (comp_E) shows very low metrics (avg 16.20 overall) and 0% error rate after cleaning."
+    ],
+    "recommendations": [
+      "Investigate comp_A (Auth Service): high average metric and highest error rate merit profiling and error-root-cause analysis; consider scaling or optimization.",
+      "Add/verify monitoring and alerts for error rate thresholds (e.g., >10%) per component and consider tracing for comp_A and comp_B.",
+      "Ensure ingestion pipeline validates timestamps and metric types (as done here); consider logging and automated alerts for malformed rows to avoid silent data loss.",
+      "Passing criteria for this basic exam (for evaluators): candidate must score >=80/100 overall. Key requirements for pass: reproducible ingestion and cleaning (20 pts), all five core queries implemented with correct logic and outputs (40 pts), a correct transformation & export with description (20 pts), and concise summary with assumptions and reproducibility commands (20 pts). Partial credit allowed per rubric; see Assumptions for scoring details."
+    ],
+    "assumptions": [
+      "Timestamps in valid rows are in UTC; ingestion normalized timestamps to ISO-8601 with timezone offset and extracted date (YYYY-MM-DD).",
+      "Rows with malformed timestamps (ids 10,58) were dropped to avoid incorrect date-grouping; this choice is documented and used consistently.",
+      "Rows with non-numeric metric_value (ids 7,18,55) were excluded from insertion and all numeric aggregations.",
+      "components_lookup.csv was used as provided to map component_id to human-readable names in Query 5 and the exported transform.",
+      "All numeric averages are rounded to two decimal places; error_rate reported as fraction rounded to four decimals.",
+      "Scoring guidance (detailed):\n  - Setup & Import (20 pts): schema + ingestion reproducibility (5 pts commands), correct row counts & cleaning (7 pts), schema appropriateness (8 pts).\n  - Core Queries (40 pts): correctness of each of five queries (5 pts each functional correctness = 25 pts), SQL clarity/comments (5 pts), outputs included and matching (10 pts).\n  - Transformation & Export (20 pts): transform correctness/usefulness (10 pts), export included (5 pts), explanation of handling missing/invalid (5 pts).\n  - Summary & Reproducibility (20 pts): concise findings and recommendations (7 pts), assumptions/time log (3 pts), test_submission.json completeness and runnable commands (10 pts).\n  - Passing threshold: >=80/100. Partial credit awarded proportionally per rubric above."
     ]
   },
-  "task2": {
-    "queries": {
-      "q1_total_events": "SELECT COUNT(*) FROM events;",
-      "q2_unique_users": "SELECT COUNT(DISTINCT user_id) FROM events;",
-      "q3_top3_event_types": "SELECT event_type, COUNT(*) as cnt FROM events GROUP BY event_type ORDER BY cnt DESC LIMIT 3;",
-      "q4_events_by_plan": "SELECT u.plan, COUNT(e.event_id) as event_count FROM users u LEFT JOIN events e ON u.user_id = e.user_id GROUP BY u.plan;"
-    },
-    "results": {
-      "q1_total_events": 12,
-      "q2_unique_users": 5,
-      "q3_top3_event_types": [
-        {
-          "event_type": "click",
-          "count": 6
-        },
-        {
-          "event_type": "view",
-          "count": 4
-        },
-        {
-          "event_type": "purchase",
-          "count": 2
-        }
-      ],
-      "q4_events_by_plan": {
-        "pro": 6,
-        "free": 4,
-        "enterprise": 2
-      }
-    }
-  },
-  "task3": {
-    "transformations": [
-      "Deduplicated exact-duplicate rows (full-row equality) - removed duplicate row for event_id E3.",
-      "Dropped rows with missing or malformed timestamps (E5 and E8) per chosen policy.",
-      "Trimmed whitespace and lowercased event_type into event_type_normalized.",
-      "Parsed timestamps into ISO-8601 with trailing Z (treated timezone-less timestamps as UTC).",
-      "Casted value field to integer.",
-      "Added derived column event_hour (0-23) extracted from timestamp.",
-      "Joined events with users to include plan for each event.",
-      "Created index on events.user_id to speed joins/filters (reported in task4)."
+  "reproducibility": {
+    "commands": [
+      "python3 ingest.py  # creates cleaned.db and prints a summary dict",
+      "sqlite3 cleaned.db \"SELECT date AS day, COUNT(*) AS cnt FROM events GROUP BY date HAVING cnt > 50;\"",
+      "sqlite3 cleaned.db \"SELECT component_id, ROUND(AVG(metric_value),2) AS avg_metric FROM events GROUP BY component_id ORDER BY AVG(metric_value) DESC LIMIT 5;\"",
+      "sqlite3 cleaned.db \"SELECT component_id, COUNT(*) AS total_events, SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) AS errors, ROUND(1.0*SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END)/COUNT(*),4) AS error_rate FROM events GROUP BY component_id HAVING COUNT(*) >= 5 ORDER BY error_rate DESC;\"",
+      "sqlite3 cleaned.db \"SELECT component_id, ROUND(AVG(CASE WHEN status_code BETWEEN 200 AND 299 THEN metric_value END),2) AS avg_success, ROUND(AVG(CASE WHEN status_code >= 500 THEN metric_value END),2) AS avg_error FROM events GROUP BY component_id;\"",
+      "sqlite3 cleaned.db \"SELECT e.component_id, c.name, ROUND(AVG(e.metric_value),2) AS avg_metric FROM events e LEFT JOIN components c ON e.component_id = c.component_id GROUP BY e.component_id ORDER BY AVG(e.metric_value) DESC LIMIT 5;\"",
+      "sqlite3 -header -csv cleaned.db \"SELECT e.date AS date, e.component_id AS component_id, c.name AS component_name, COUNT(*) AS total_events, ROUND(AVG(e.metric_value),2) AS avg_metric, ROUND(1.0*SUM(CASE WHEN e.status_code >= 500 THEN 1 ELSE 0 END)/COUNT(*),4) AS error_rate FROM events e LEFT JOIN components c ON e.component_id = c.component_id GROUP BY e.date, e.component_id ORDER BY e.date, e.component_id;\" > transformed_daily.csv"
     ],
-    "sample_transformed_rows": [
-      {
-        "event_id": "E1",
-        "user_id": "U1",
-        "timestamp": "2021-07-01T08:30:00Z",
-        "event_type_normalized": "click",
-        "event_hour": 8,
-        "value": 10,
-        "plan": "pro"
-      },
-      {
-        "event_id": "E2",
-        "user_id": "U2",
-        "timestamp": "2021-07-01T09:15:00Z",
-        "event_type_normalized": "view",
-        "event_hour": 9,
-        "value": 5,
-        "plan": "free"
-      },
-      {
-        "event_id": "E3",
-        "user_id": "U1",
-        "timestamp": "2021-07-01T10:00:00Z",
-        "event_type_normalized": "purchase",
-        "event_hour": 10,
-        "value": 100,
-        "plan": "pro"
-      },
-      {
-        "event_id": "E4",
-        "user_id": "U3",
-        "timestamp": "2021-07-01T11:05:00Z",
-        "event_type_normalized": "click",
-        "event_hour": 11,
-        "value": 20,
-        "plan": "pro"
-      },
-      {
-        "event_id": "E6",
-        "user_id": "U4",
-        "timestamp": "2021-07-01T12:00:00Z",
-        "event_type_normalized": "click",
-        "event_hour": 12,
-        "value": 0,
-        "plan": "enterprise"
-      },
-      {
-        "event_id": "E7",
-        "user_id": "U1",
-        "timestamp": "2021-07-01T12:30:00Z",
-        "event_type_normalized": "view",
-        "event_hour": 12,
-        "value": 2,
-        "plan": "pro"
-      },
-      {
-        "event_id": "E9",
-        "user_id": "U3",
-        "timestamp": "2021-07-01T13:00:00Z",
-        "event_type_normalized": "purchase",
-        "event_hour": 13,
-        "value": 50,
-        "plan": "pro"
-      },
-      {
-        "event_id": "E10",
-        "user_id": "U2",
-        "timestamp": "2021-07-01T14:00:00Z",
-        "event_type_normalized": "click",
-        "event_hour": 14,
-        "value": 3,
-        "plan": "free"
-      },
-      {
-        "event_id": "E11",
-        "user_id": "U4",
-        "timestamp": "2021-07-01T15:00:00Z",
-        "event_type_normalized": "view",
-        "event_hour": 15,
-        "value": 4,
-        "plan": "enterprise"
-      },
-      {
-        "event_id": "E12",
-        "user_id": "U1",
-        "timestamp": "2021-07-01T16:00:00Z",
-        "event_type_normalized": "click",
-        "event_hour": 16,
-        "value": 7,
-        "plan": "pro"
-      }
-    ],
-    "aggregates": {
-      "average_events_per_active_user": 2.4,
-      "average_events_per_user_by_plan": {
-        "pro": 3.0,
-        "free": 1.3333333333333333,
-        "enterprise": 2.0
-      }
-    }
+    "files_created": [
+      "cleaned.db",
+      "ingest.py",
+      "transformed_daily.csv"
+    ]
   },
-  "task4": {
-    "report": {
-      "total_events": 12,
-      "unique_users": 5,
-      "average_events_per_active_user": 2.4,
-      "top3_event_types": [
-        {
-          "event_type": "click",
-          "count": 6
-        },
-        {
-          "event_type": "view",
-          "count": 4
-        },
-        {
-          "event_type": "purchase",
-          "count": 2
-        }
-      ],
-      "events_by_plan": {
-        "pro": 6,
-        "free": 4,
-        "enterprise": 2
-      },
-      "average_events_per_user_by_plan": {
-        "pro": 3.0,
-        "free": 1.3333333333333333,
-        "enterprise": 2.0
-      }
-    },
-    "design_decisions": [
-      "Schema decision: normalized into two tables (users and events) to avoid duplicating user metadata and to make joins for plan-based aggregates straightforward and efficient.",
-      "Missing/malformed timestamp handling: dropped rows with missing or non-parseable timestamps (E5 and E8) because those events cannot be reliably placed in time for the required time-based transformations; this keeps aggregates deterministic and avoids introducing artificial timestamps."
-    ],
-    "index_created": {
-      "created": true,
-      "column": "user_id"
-    }
-  },
-  "run_command": "python3 run_exam.py",
-  "notes": "Derivation and justification notes:\n\n1) Cleaning and deduplication:\n- The provided events.csv had 15 rows including an exact duplicate of E3. Per instructions, exact-duplicate rows were removed (dedupe on full row equality), removing one E3 duplicate, leaving 14 rows before timestamp handling.\n- Two rows had timestamp issues: E5 had a missing timestamp and E8 had a malformed timestamp 'not_a_timestamp'. The canonical answer key follows the evaluator guidance to DROP rows with missing or malformed timestamps. Dropping these two rows yields 12 events.\n\n2) Type casting and normalization:\n- The value column was cast to integer (e.g., \"10\" -> 10).\n- event_type values had inconsistent casing and whitespace; we trimmed whitespace and lowercased to produce event_type_normalized (e.g., ' Click' -> 'click', 'PURCHASE' -> 'purchase').\n- Timestamps missing 'T' and 'Z' (e.g., '2021-07-01 09:15:00') were treated as UTC and converted to ISO-8601 with trailing 'Z' ('2021-07-01T09:15:00Z'). All remaining timestamps were parsed to ISO-8601 strings.\n\n3) Counts and aggregates (how numbers were computed):\n- total_events = number of rows remaining in events table after dedupe and dropping bad timestamps = 12.\n- unique_users = distinct user_id values present in the cleaned events table = U1,U2,U3,U4,U5 => 5.\n- top3_event_types computed from normalized event_type counts: click=6, view=4, purchase=2.\n- events_by_plan computed by joining users to cleaned events and counting events per plan. Per users dataset: pro users U1 and U3 -> 6 events total; free users U2,U5,U6 -> 4 events total (U6 has 0 events); enterprise user U4 -> 2 events.\n- average_events_per_active_user = total_events / number_of_active_users (users with >=1 event). Active users = U1..U5 => 12 / 5 = 2.4.\n- average_events_per_user_by_plan computed over all users in the plan (including zero-event users) per evaluator guidance: pro 6/2=3.0, free 4/3=1.3333333333333333, enterprise 2/1=2.0.\n\n4) Sample transformed rows:\n- The first 10 deterministic transformed rows were chosen by ordering cleaned events by event_id ascending. Each row includes event_id, user_id, normalized ISO-8601 timestamp, event_type_normalized, event_hour (0-23), integer value, and plan joined from users.\n\n5) Index:\n- An index was created on events.user_id (if using SQLite: CREATE INDEX idx_events_user_id ON events(user_id);). This is reported in index_created as required.\n\nPassing criteria (basic exam rubric & rules):\n- Total points = 100, distributed per exam overview rubric: correctness of numeric/boolean outputs = 60 points; reproducibility (script + run_command produces test_submission.json) = 15 points; schema & data handling = 10 points; code quality & safety (parameterized queries, no absolute paths) = 10 points; justifications clarity = 5 points.\n- Passing threshold: >= 80 points (satisfactory for entry-level). In practice this means:\n  * All numeric outputs (total_events, unique_users, top3_event_types, events_by_plan, averages) must match the canonical numbers above to receive full correctness points (60 pts).\n  * Script must be runnable with the provided run_command and produce identical test_submission.json to receive reproducibility points (15 pts).\n  * Schema must include users and events (or a justified alternative) and row counts must match the stored files (10 pts).\n  * Use of parameterized SQL (or safe programmatic filters), no external libraries, and no hard-coded absolute paths earns code quality points (10 pts).\n  * Two short design decision justifications must be present and clear (5 pts).\n\nPartial credit / conditional scoring notes:\n- If a candidate chooses a different but consistent policy for missing/malformed timestamps (e.g., imputation) that is implemented programmatically and clearly documented, accept their numeric results if their code and run_command produce the reported numbers and transformations; adjust canonical expected numbers accordingly for grading. To receive full correctness points, their chosen policy must be consistent across all reported metrics and justified in design_decisions.\n- If deduplication is omitted, numeric aggregates will be off; graders should deduct correctness points proportionally to the discrepancy and note the missed deduplication as a data-handling error.\n- If the sample_transformed_rows ordering is non-deterministic, deduct reproducibility/quality points; deterministic ordering (e.g., ORDER BY event_id) is required.\n\nThis answer key follows the canonical approach outlined in the evaluator materials: dedupe exact duplicates, drop bad timestamps, normalize event_type, cast value to integer, parse timestamps to ISO-8601 (UTC), and compute aggregates via joins. The numeric values provided above are the deterministic results of that pipeline.\n"
+  "justification": {
+    "ingestion_choice": "Used a short Python ingestion script to validate and normalize timestamps and to robustly coerce/check numeric metric_value before inserting into SQLite for reproducible, auditable cleaning."
+  }
 }
 ```

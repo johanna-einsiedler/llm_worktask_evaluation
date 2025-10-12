@@ -1,95 +1,58 @@
 {
-  "candidate_name": "Example Candidate",
-  "start_time_utc": "2025-10-12T12:00:00Z",
-  "end_time_utc": "2025-10-12T13:20:00Z",
-  "total_minutes": 80,
-  "commands_run": [
+  "candidate_name": "Correct Fix Example",
+  "time_started_iso": "2025-10-12T09:00:00Z",
+  "time_finished_iso": "2025-10-12T09:45:00Z",
+  "time_spent_minutes": 45,
+  "initial_test_results": "============================= test session starts ==============================\nplatform linux -- Python 3.9.16, pytest-7.2.0\ncollected 3 items\n\ntests/test_user_api.py F                                               [ 33%]\ntests/test_ui.py F                                                     [ 66%]\ntests/test_subscription.py F                                           [100%]\n\n=================================== FAILURES ===================================\n_____________________ test_get_user_profile_username_key ______________________\n\n    def test_get_user_profile_username_key():\n        profile = get_user_profile(1)\n        # This test expects the older field name 'userName' (camelCase).\n        # The application now returns 'username' (lowercase).\n>       assert profile['userName'] == 'alice'\nE       KeyError: 'userName'\n\ntests/test_user_api.py:6: KeyError\n___________________________ test_login_button_label ___________________________\n\n    def test_login_button_label():\n        html = render_login_button()\n        # This test checks the visible label text 'Sign In', which was changed to 'Log In'.\n>       assert 'Sign In' in html\nE       AssertionError: assert 'Sign In' in '<button data-test-id=\"login-btn\">Log In</button>'\nE        +  where '<button data-test-id=\"login-btn\">Log In</button>' = render_login_button()\n\ntests/test_ui.py:6: AssertionError\n___________________________ test_subscription_is_active ________________________\n\n    def test_subscription_is_active():\n        expiry = TEST_SUBSCRIPTION['expiry_date']\n        # The fixture expiry_date is '2024-06-30', which is before app.TODAY (2025-01-15).\n        # The test currently expects the subscription to be active.\n>       assert is_subscription_active(expiry) is True\nE       AssertionError: assert False is True\nE        +  where False = is_subscription_active('2024-06-30')\n\ntests/test_subscription.py:7: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_user_api.py::test_get_user_profile_username_key - KeyError: 'userName'\nFAILED tests/test_ui.py::test_login_button_label - AssertionError\nFAILED tests/test_subscription.py::test_subscription_is_active - AssertionError\n3 failed in 0.12s\n",
+  "updated_test_results": "============================= test session starts ==============================\nplatform linux -- Python 3.9.16, pytest-7.2.0\ncollected 3 items\n\ntests/test_user_api.py .                                               [ 33%]\ntests/test_ui.py .                                                     [ 66%]\ntests/test_subscription.py .                                           [100%]\n\n============================== 3 passed in 0.04s ===============================\n",
+  "modified_files": [
     {
-      "command": "./run_tests.sh",
-      "purpose": "Run test suite (initial run to reproduce failures)"
+      "path": "tests/test_user_api.py",
+      "original_content": "from app import get_user_profile\n\ndef test_get_user_profile_username_key():\n    profile = get_user_profile(1)\n    # This test expects the older field name 'userName' (camelCase).\n    # The application now returns 'username' (lowercase).\n    assert profile['userName'] == 'alice'\n",
+      "new_content": "from app import get_user_profile\n\ndef test_get_user_profile_username_key():\n    profile = get_user_profile(1)\n    # The application returns the 'username' field (lowercase).\n    assert profile['username'] == 'alice'\n",
+      "brief_diff": "--- a/tests/test_user_api.py\n+++ b/tests/test_user_api.py\n@@\n-    # The application now returns 'username' (lowercase).\n-    assert profile['userName'] == 'alice'\n+    # The application returns the 'username' field (lowercase).\n+    assert profile['username'] == 'alice'\n"
     },
     {
-      "command": "./run_tests.sh",
-      "purpose": "Run test suite after edits (verify fixes)"
+      "path": "tests/test_ui.py",
+      "original_content": "from app import render_login_button\n\ndef test_login_button_label():\n    html = render_login_button()\n    # This test checks the visible label text 'Sign In', which was changed to 'Log In'.\n    assert 'Sign In' in html\n",
+      "new_content": "from app import render_login_button\nfrom tests.helpers import LOGIN_BUTTON_TEST_ID\n\ndef test_login_button_label():\n    html = render_login_button()\n    # Prefer stable data-test-id instead of visible label text which changed.\n    assert f'data-test-id=\"{LOGIN_BUTTON_TEST_ID}\"' in html\n",
+      "brief_diff": "--- a/tests/test_ui.py\n+++ b/tests/test_ui.py\n@@\n-from app import render_login_button\n-\n-def test_login_button_label():\n-    html = render_login_button()\n-    # This test checks the visible label text 'Sign In', which was changed to 'Log In'.\n-    assert 'Sign In' in html\n+from app import render_login_button\n+from tests.helpers import LOGIN_BUTTON_TEST_ID\n+\n+def test_login_button_label():\n+    html = render_login_button()\n+    # Prefer stable data-test-id instead of visible label text which changed.\n+    assert f'data-test-id=\"{LOGIN_BUTTON_TEST_ID}\"' in html\n"
+    },
+    {
+      "path": "tests/fixtures.py",
+      "original_content": "# Test fixture data used by subscription tests.\nTEST_SUBSCRIPTION = {\n    'user_id': 1,\n    # This expiry_date is intentionally in the past relative to app.TODAY to create a failing test.\n    'expiry_date': '2024-06-30'\n}\n",
+      "new_content": "# Test fixture data used by subscription tests.\nTEST_SUBSCRIPTION = {\n    'user_id': 1,\n    # Updated expiry_date to be after app.TODAY (2025-01-15) so the subscription is active.\n    'expiry_date': '2026-06-30'\n}\n",
+      "brief_diff": "--- a/tests/fixtures.py\n+++ b/tests/fixtures.py\n@@\n-    # This expiry_date is intentionally in the past relative to app.TODAY to create a failing test.\n-    'expiry_date': '2024-06-30'\n+    # Updated expiry_date to be after app.TODAY (2025-01-15) so the subscription is active.\n+    'expiry_date': '2026-06-30'\n"
     }
   ],
-  "initial_test_output": "============================= test session starts =============================\nplatform linux -- Python 3.x\ncollected 3 items\n\ntests/test_suite.py::test_title FAILED\ntests/test_suite.py:8: in test_title\n    content = helpers.get_page_content(cfg['base_url'])\nE   KeyError: 'base_url'\n\ntests/test_suite.py::test_login_button FAILED\ntests/test_suite.py:15: in test_login_button\n    btn = helpers.old_find_by_id(content, 'login-btn')\nE   AttributeError: module 'tests.helpers' has no attribute 'old_find_by_id'\n\ntests/test_suite.py::test_users_data_loaded FAILED\ntests/test_suite.py:22: in test_users_data_loaded\n    with open('data/users.json', 'r', encoding='utf-8') as f:\nE   FileNotFoundError: [Errno 2] No such file or directory: 'data/users.json'\n\n=========================== short test summary info ============================\nFAILED tests/test_suite.py::test_title - KeyError: 'base_url'\nFAILED tests/test_suite.py::test_login_button - AttributeError: module 'tests.helpers' has no attribute 'old_find_by_id'\nFAILED tests/test_suite.py::test_users_data_loaded - FileNotFoundError: [Errno 2] No such file or directory: 'data/users.json'\n",
-  "final_test_output": "============================= test session starts =============================\nplatform linux -- Python 3.x\ncollected 3 items\n\n3 passed in 0.02s\n",
-  "changed_files": [
+  "explanation_of_changes": [
     {
-      "file_path": "tests/test_suite.py",
-      "original_content": "import time\nimport json\nfrom tests import helpers\n\ndef test_title():\n    # Test expects config to provide 'base_url' (old key)\n    cfg = helpers.load_config()\n    content = helpers.get_page_content(cfg['base_url'])\n    assert '<h1 id=\"main-title\">Sample App</h1>' in content\n\ndef test_login_button():\n    # Test expects helper old_find_by_id and id 'login-btn' (both outdated)\n    content = helpers.get_page_content('app/index.html')\n    btn = helpers.old_find_by_id(content, 'login-btn')\n    assert btn == '<button id=\"login-btn\">Login</button>'\n\ndef test_users_data_loaded():\n    # Flaky sleep used; also data path is outdated (data/users.json -> data/users_v2.json)\n    time.sleep(2)\n    with open('data/users.json', 'r', encoding='utf-8') as f:\n        data = json.load(f)\n    assert 'users' in data and len(data['users']) == 2\n",
-      "updated_content": "import time\nimport json\nimport os\nfrom tests import helpers\n\ndef test_title():\n    # Config key updated to 'app_url'; assert updated text to match current app\n    cfg = helpers.load_config()\n    content = helpers.get_page_content(cfg['app_url'])\n    assert '<h1 id=\"main-title\">Demo App</h1>' in content\n\ndef test_login_button():\n    # Use current helper find_by_id and updated id 'btn-login'\n    content = helpers.get_page_content('app/index.html')\n    btn = helpers.find_by_id(content, 'btn-login')\n    assert btn == '<button id=\"btn-login\">Login</button>'\n\ndef test_users_data_loaded():\n    # Replace hard sleep with a short polling wait for the expected data file\n    timeout = 5\n    start = time.time()\n    target = 'data/users_v2.json'\n    while not os.path.exists(target) and (time.time() - start) < timeout:\n        time.sleep(0.1)\n    with open(target, 'r', encoding='utf-8') as f:\n        data = json.load(f)\n    assert 'users' in data and len(data['users']) == 2\n",
-      "short_rationale": "Updated tests to match current app/config: use cfg['app_url'] (config key changed), use helpers.find_by_id and id 'btn-login' (helper name and element id changed), and replace hard sleep + outdated data path with a short polling loop opening data/users_v2.json (file renamed and remove flaky sleep). Changes are minimal and focused on adapting tests rather than modifying app files."
+      "path": "tests/test_user_api.py",
+      "why_changed": "The test referenced a removed/renamed API field 'userName' (camelCase). The application now returns 'username' (lowercase), causing a KeyError.",
+      "what_changed": "Replaced profile['userName'] with profile['username'] to match the current API shape.",
+      "risk_or_tradeoff": "Low risk: change keeps the test aligned with current API; no behavior changes to application code.",
+      "assertion_design_decision": ""
+    },
+    {
+      "path": "tests/test_ui.py",
+      "why_changed": "The test relied on visible label text 'Sign In' which was changed in the UI to 'Log In', causing an assertion failure and brittle selector usage.",
+      "what_changed": "Rewrote the assertion to check for the stable data-test-id attribute using the provided LOGIN_BUTTON_TEST_ID constant from tests/helpers.py.",
+      "risk_or_tradeoff": "Improves robustness; small coupling to a test-only attribute which is intended for this purpose.",
+      "assertion_design_decision": ""
+    },
+    {
+      "path": "tests/fixtures.py",
+      "why_changed": "Fixture expiry_date was '2024-06-30', which is before the app's deterministic TODAY (2025-01-15), causing is_subscription_active to return False while the test expected True.",
+      "what_changed": "Updated 'expiry_date' to '2026-06-30' so the fixture represents an active subscription relative to app.TODAY.",
+      "risk_or_tradeoff": "Low risk: updates test data to be current; ensure that test intent (active subscription) is preserved.",
+      "assertion_design_decision": ""
     }
   ],
-  "summary_of_changes": "I reproduced three failing tests and made minimal, targeted edits to tests/test_suite.py so the suite matches current app and config. Specifically: (1) replaced cfg['base_url'] with cfg['app_url'] to match config.json; (2) replaced the deprecated helper call helpers.old_find_by_id with helpers.find_by_id and updated the expected button id to 'btn-login'; (3) removed the hard sleep and implemented a short polling wait (timeout 5s) for the renamed data file data/users_v2.json before loading it. These edits are minimal, preserve assertions, and improve stability by removing a fixed sleep and waiting for the actual resource. Final test run shows all three tests passing.",
-  "risk_notes_and_next_steps": "Remaining risks and next steps:\n- Risk: The polling wait uses a 5s timeout; if the CI environment is slower or file generation is delayed longer, the test may still fail. Recommendation: increase timeout or make test-driven fixture setup deterministic in CI.\n- Risk: Tests still assert exact HTML string fragments; consider using a small HTML parser or more structural assertions to avoid brittle string matches.\n- Next steps: (1) Add a compatibility wrapper in helpers.py (e.g., old_find_by_id -> find_by_id) if more tests expect the deprecated API. (2) Add simple page-object helpers or central locators to avoid repeating selectors. (3) Add tests to validate config schema so test failures due to renamed keys are flagged earlier.\n- Passing criteria used: 3 tests must pass; edits must not remove assertions or delete tests.",
-  "optional_bonus": "",
-  "tasks": {
-    "task_1_reproduce": {
-      "task_id": "Task 1 - Reproduce",
-      "instructions": "Run the provided test command once to reproduce failures and capture raw console output. Record the exact command(s) you ran and paste the raw output below (this may duplicate initial_test_output).",
-      "commands_executed": [
-        "./run_tests.sh"
-      ],
-      "raw_failure_output": "============================= test session starts =============================\nplatform linux -- Python 3.x\ncollected 3 items\n\ntests/test_suite.py::test_title FAILED\ntests/test_suite.py:8: in test_title\n    content = helpers.get_page_content(cfg['base_url'])\nE   KeyError: 'base_url'\n\ntests/test_suite.py::test_login_button FAILED\ntests/test_suite.py:15: in test_login_button\n    btn = helpers.old_find_by_id(content, 'login-btn')\nE   AttributeError: module 'tests.helpers' has no attribute 'old_find_by_id'\n\ntests/test_suite.py::test_users_data_loaded FAILED\ntests/test_suite.py:22: in test_users_data_loaded\n    with open('data/users.json', 'r', encoding='utf-8') as f:\nE   FileNotFoundError: [Errno 2] No such file or directory: 'data/users.json'\n\n=========================== short test summary info ============================\nFAILED tests/test_suite.py::test_title - KeyError: 'base_url'\nFAILED tests/test_suite.py::test_login_button - AttributeError: module 'tests.helpers' has no attribute 'old_find_by_id'\nFAILED tests/test_suite.py::test_users_data_loaded - FileNotFoundError: [Errno 2] No such file or directory: 'data/users.json'\n"
-    },
-    "task_2_selector_fix": {
-      "task_id": "Task 2 - Diagnose & quick selector fix",
-      "instructions": "Identify test(s) failing due to selector/id/class/text changes. List which test file(s) you inspected, which file(s) you changed (file paths), and provide a brief rationale for the selector changes.",
-      "inspected_test_files": [
-        "tests/test_suite.py"
-      ],
-      "files_changed_for_task": [
-        "tests/test_suite.py"
-      ],
-      "short_rationale": "The login button id changed from 'login-btn' to 'btn-login' and the tests used a removed helper old_find_by_id. I updated the test to call helpers.find_by_id and expect '<button id=\"btn-login\">Login</button>' to match app/index.html."
-    },
-    "task_3_timing_and_stability": {
-      "task_id": "Task 3 - Stabilize timing/flaky test",
-      "instructions": "Replace hard sleeps with explicit waits or make assertions more robust. List which test(s) you modified, include the reason, and provide a short rationale.",
-      "inspected_test_files": [
-        "tests/test_suite.py"
-      ],
-      "files_changed_for_task": [
-        "tests/test_suite.py"
-      ],
-      "short_rationale": "Replaced time.sleep(2) with a short polling loop (timeout 5s) that waits for 'data/users_v2.json' to exist before opening it. This removes a fixed sleep and makes the test deterministic with a bounded wait."
-    },
-    "task_4_config_or_api_fix": {
-      "task_id": "Task 4 - Config / API / deprecation fix",
-      "instructions": "Update config keys, data paths, or replace deprecated helper calls used by tests. List changed file(s) and provide a short rationale for each change.",
-      "inspected_files": [
-        "tests/test_suite.py",
-        "config.json",
-        "app/index.html",
-        "data/users_v2.json"
-      ],
-      "files_changed_for_task": [
-        "tests/test_suite.py"
-      ],
-      "short_rationale": "tests/test_suite.py was updated to use cfg['app_url'] (config key renamed). The users data path was updated from 'data/users.json' to 'data/users_v2.json' and the deprecated helper call was replaced with the current helpers.find_by_id API."
-    },
-    "task_5_optional_improvement": {
-      "task_id": "Task 5 - Optional small improvement (bonus)",
-      "instructions": "If you added a small improvement (refactor, helper, comment, small new test), describe it here and list any files changed.",
-      "did_bonus_work": "no",
-      "files_changed_for_task": [],
-      "short_description": ""
-    }
+  "reproduce_instructions": "Run the test suite with the command shown in the README: pytest -q",
+  "self_check": {
+    "all_tests_passing": true,
+    "number_of_tests_passed": 3,
+    "number_of_tests_failed": 0
   },
-  "schemas_and_guidance": {
-    "commands_run_item_schema": {
-      "command": "",
-      "purpose": ""
-    },
-    "changed_files_item_schema": {
-      "file_path": "",
-      "original_content": "",
-      "updated_content": "",
-      "short_rationale": ""
-    },
-    "notes": "Use the commands_run array to list each exact command you executed (exact text). For changed_files, include one object per file you edited. All raw console outputs must be full copy-paste. Use ISO 8601 for start_time_utc and end_time_utc. total_minutes must be an integer. Leave optional_bonus empty if you did not perform extra work."
-  }
+  "optional_attachments": "Evaluator explanation and passing criteria:\n\n1) How each JSON field was derived / why these are the correct answers:\n- candidate_name/time_started_iso/time_finished_iso/time_spent_minutes: Populated with example/stable values representing a realistic run (start at 2025-10-12T09:00Z, finish 09:45Z, 45 minutes). Any valid ISO timestamps and integer minutes are acceptable; these show a plausible session duration under the 90-minute limit.\n\n- initial_test_results: Constructed from running pytest -q on the provided repository prior to modifying tests. The three failing tests correspond exactly to the repository scenarios described in the exam materials:\n  * tests/test_user_api.py failed with KeyError('userName') because app.get_user_profile uses 'username' (lowercase).\n  * tests/test_ui.py failed because it asserted visible text 'Sign In' but render_login_button() returns 'Log In' and includes data-test-id.\n  * tests/test_subscription.py failed because the fixture expiry_date '2024-06-30' is before app.TODAY (2025-01-15), so is_subscription_active returned False while the test expected True.\n  The failure traces and assertion messages included in initial_test_results match the test code and the app behavior described in the exam content.\n\n- updated_test_results: Shows a successful test run after making only test/fixture changes. The expected final state per evaluator materials is 3 passed. The timing (0.04s) is illustrative and acceptable as pytest reports approximate run times.\n\n- modified_files: Three files were the minimal and focused edits required (tests/test_user_api.py, tests/test_ui.py, tests/fixtures.py). For each file the original_content is verbatim from the exam repository and new_content shows the minimal edits. brief_diff gives a small unified-diff style description.\n\n- explanation_of_changes: For each modified file, the why_changed links the failing symptom to a concrete root cause from the failing traces and repository description. what_changed describes the minimal code edit. risk_or_tradeoff mentions relevant considerations. assertion_design_decision is left empty when assertions were tightened/adjusted rather than broadened.\n\n- reproduce_instructions: Matches README and exam instructions: pytest -q.\n\n- self_check: After the minimal test-only changes the suite should have all tests passing: 3 passed, 0 failed.\n\n2) Mapping to the evaluator-only materials and exam content:\n- The changes shown exactly follow the 'What correct fixes look like' section in the evaluator materials: change 'userName' -> 'username'; prefer stable data-test-id or assert new visible label; update fixture expiry_date to be after app.TODAY.\n- Only test files / helpers / fixtures were changed; app.py was not modified, as required.\n\n3) Passing criteria (how to score a candidate; deterministic and machine-checkable):\n- Tests passing after changes (50%): Candidate must make the previously failing tests pass. Full marks (50 points) awarded if updated_test_results shows all tests that were failing in initial_test_results are now passing and overall test suite is green.\n  * Partial credit: If only some failing tests are fixed, award proportional points (e.g., fixing 2 of 3 failing tests = 33.3/50).\n\n- Correctness and minimality of changes (20%): Changes must be limited to test code and test helpers/fixtures and must be minimal (no application code changes, no removal of assertions, no trivial no-op replacements). Full marks if only test files/fixtures/helpers modified and edits are narrowly scoped to address root cause. Deduct points for broad refactors or changing application code.\n\n- Clarity of explanations and reproducibility (15%): explanation_of_changes entries must clearly map root cause -> edit. Reproduce_instructions must be exact. Full marks if explanations succinctly justify changes and link to failures. Partial credit if explanations are present but lacking detail.\n\n- Test quality / maintainability improvements (10%): Prefer stable selectors (data-test-id), removing brittle text assertions, using provided helpers/constants, updating fixtures deterministically. Full marks if edits improve maintainability (as in this answer: using LOGIN_BUTTON_TEST_ID and updating fixture date).\n\n- Time management and completeness (5%): Submission must be within time limit and include all required fields and original_content for modified files. Full marks if all fields present and content is complete.\n\nPassing threshold: Candidate must achieve >= 80% overall using the rubric above. In practical terms, the mandatory checks are:\n- updated_test_results shows previously failing tests now passing (this is required to pass; counts heavily).\n- No application source files modified (automatic fail if app.py changed).\n- explanation_of_changes present for each modified file and includes root-cause to change mapping.\n\nSpecial rules for partial credit:\n- If a candidate fixes some but not all failing tests, grade proportionally in the 'Tests passing' category and deduct across other categories where applicable (e.g., explanations incomplete or changes not minimal).\n- If a candidate broadens an assertion (e.g., accepts old OR new label), they must include assertion_design_decision justification; otherwise deduct points for weakening test intent.\n\nNote: This JSON object is the authoritative answer key: it contains the expected initial and updated outputs, the minimal file edits, and rationales that an evaluator can compare against a candidate submission for correctness and completeness."
 }

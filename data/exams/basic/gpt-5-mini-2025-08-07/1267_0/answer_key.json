@@ -1,57 +1,76 @@
 {
-  "candidate_name": "Answer Key (Reference)",
-  "task_results": [
+  "candidate_name": "Examiner Answer Key",
+  "time_taken_minutes": 52,
+  "tasks": [
     {
-      "task_id": 1,
-      "files_changed": [
-        "src/parser.py"
+      "id": "A",
+      "status_before": "Running the test harness immediately raised a SyntaxError while importing app.calculations: SyntaxError: invalid syntax at the line 'def sum_numbers(nums)' (missing colon).",
+      "status_after": "After adding the missing colon the package imports correctly. The import test (test_import_calculations) now passes; subsequent test output shows remaining failures in normalize_names (AttributeError) and max_gap (logical issue reported in integration test).",
+      "modified_files": [
+        {
+          "filename": "app/calculations.py",
+          "content": "# calculations.py\n# Provides small numeric utilities.\n# Note: This file contains seeded bugs for the exam.\n\ndef sum_numbers(nums):\n    # Return the sum of a list of numbers.\n    return sum(nums)\n\ndef max_gap(nums):\n    \"\"\"Return maximum difference between consecutive sorted numbers.\n    If list is empty or has one element, return 0.\n    \"\"\"\n    if not nums or len(nums) < 2:\n        return 0\n    nums_sorted = sorted(nums)\n    # BUG: incorrect aggregation used (returns the minimum gap instead of the maximum) (Task B)\n    gaps = [nums_sorted[i+1] - nums_sorted[i] for i in range(len(nums_sorted)-1)]\n    return max(gaps)\n\ndef average(nums):\n    \"\"\"Return the average of a list of numbers. Return 0 for empty list.\"\"\"\n    if not nums:\n        return 0\n    # This returns an integer due to int() conversion but tests expect a float in some contexts.\n    return int(sum(nums) / len(nums))\n"
+        }
       ],
-      "change_summary": "Fixed a syntax error: added missing colon in the 'with open(...) as f' line so the read_csv function can execute and return header and rows.",
-      "root_cause": "Syntax error (missing colon) in src/parser.py prevented the module from importing and read_csv from running.",
-      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask1: PASS",
-      "time_spent_minutes": 10,
-      "confidence_level": "high",
-      "notes": "Explanation / derivation: Running the provided test runner initially shows Task1 failing to import the parser module. Inspecting src/parser.py shows 'with open(path, 'r') as f' missing the trailing colon. Adding the colon is the minimal fix; no other lines needed. After the fix, re-running the test runner results in 'Task1: PASS'."
+      "commands_run": [
+        "./run_tests.sh\nOutput:\n============================= test session starts =============================\ncollected 5 items\n\napp/calculations.py:5: in <module>\n    def sum_numbers(nums)\n                     ^\nSyntaxError: invalid syntax\n\nRUN_TESTS_COMPLETE",
+        "python -m pytest -q\nOutput (after fixing missing colon):\n============================= test session starts =============================\ncollected 5 items\n\ntest_taskB.py::test_sum_numbers PASSED\ntest_taskB.py::test_max_gap_two_numbers PASSED\ntest_taskC.py::test_normalize_names_mixed ERROR\n\nE   AttributeError: 'NoneType' object has no attribute 'strip'\n\ntest_taskD.py::test_generate_report_integration FAILED\n\n>       assert report['max_gap'] == 7\nE       assert 1 == 7\nE        +  where 1 = report['max_gap']\n\n=== short test summary info ===\nERROR tests/test_taskC.py::test_normalize_names_mixed - AttributeError: 'NoneType' object has no attribute 'strip'\nFAILED tests/test_taskD.py::test_generate_report_integration - assert 1 == 7\n=========================== 1 failed, 1 error, 3 passed in 0.00s ===\n\nRUN_TESTS_COMPLETE"
+      ],
+      "explanation": "Root cause: the function definition for sum_numbers was missing a colon, causing a SyntaxError during import and preventing any tests from running. Fix: added the missing ':' to 'def sum_numbers(nums):'. This is a minimal change that allows the test harness to import the module and proceed to run tests so deeper logical/edge-case failures can be observed.",
+      "time_spent_minutes": 8
     },
     {
-      "task_id": 2,
-      "files_changed": [
-        "src/aggregator.py"
+      "id": "B",
+      "status_before": "After fixing syntax, the integration test test_generate_report_integration failed: it reported max_gap == 1 but expected 7 (sorted gaps [1,7]). This shows the gap aggregation returned the wrong value.",
+      "status_after": "Changed the aggregation from min(gaps) to max(gaps). After this change the max_gap logic tests and the integration assertion for max_gap pass; remaining failing test (if any) was the normalize_names AttributeError (Task C).",
+      "modified_files": [
+        {
+          "filename": "app/calculations.py",
+          "content": "# calculations.py\n# Provides small numeric utilities.\n# Note: This file contains seeded bugs for the exam.\n\ndef sum_numbers(nums):\n    # Return the sum of a list of numbers.\n    return sum(nums)\n\ndef max_gap(nums):\n    \"\"\"Return maximum difference between consecutive sorted numbers.\n    If list is empty or has one element, return 0.\n    \"\"\"\n    if not nums or len(nums) < 2:\n        return 0\n    nums_sorted = sorted(nums)\n    # BUG: incorrect aggregation used (returns the minimum gap instead of the maximum) (Task B)\n    gaps = [nums_sorted[i+1] - nums_sorted[i] for i in range(len(nums_sorted)-1)]\n    return max(gaps)\n\ndef average(nums):\n    \"\"\"Return the average of a list of numbers. Return 0 for empty list.\"\"\"\n    if not nums:\n        return 0\n    # This returns an integer due to int() conversion but tests expect a float in some contexts.\n    return int(sum(nums) / len(nums))\n"
+        }
       ],
-      "change_summary": "Rewrote the iteration to loop directly over rows (for row in rows) instead of range(1, len(rows)), ensuring the first data row is included in aggregation.",
-      "root_cause": "Off-by-one logic bug: code used range(1, len(rows)) which skipped the first data row, causing totals to be incorrect.",
-      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask2: PASS",
-      "time_spent_minutes": 25,
-      "confidence_level": "high",
-      "notes": "Explanation / derivation: The test harness expected totals {\"P01\": 9, \"P02\": 3, \"P03\": 6}. The original compute_totals used range(1, len(rows)) which omitted rows[0]. Iterating directly over rows or using range(0, len(rows)) fixes the off-by-one. Kept change minimal and localized to a single loop construct change."
+      "commands_run": [
+        "python -m pytest tests/test_taskD.py::test_generate_report_integration -q\nOutput (before fix):\n============================= test session starts =============================\ncollected 1 item\n\n>       assert report['max_gap'] == 7\nE       assert 1 == 7\nE        +  where 1 = report['max_gap']\n\n================================== FAILURES ==================================\ntests/test_taskD.py::test_generate_report_integration\n>       assert report['max_gap'] == 7\nE       assert 1 == 7\n\n=========================== 1 failed in 0.00s ============================\n\n(Explanation: gaps computed [1,7] and the function returned min(gaps)==1.)",
+        "python -m pytest -q\nOutput (after fix to use max(gaps)):\n============================= test session starts =============================\ncollected 5 items\n\ntest_taskA.py::test_import_calculations PASSED\ntest_taskB.py::test_sum_numbers PASSED\ntest_taskB.py::test_max_gap_two_numbers PASSED\ntest_taskC.py::test_normalize_names_mixed ERROR\n\nE   AttributeError: 'NoneType' object has no attribute 'strip'\n\n=== short test summary info ===\nERROR tests/test_taskC.py::test_normalize_names_mixed - AttributeError: 'NoneType' object has no attribute 'strip'\n=========================== 4 passed, 1 error in 0.00s ===\n\nRUN_TESTS_COMPLETE"
+      ],
+      "explanation": "Root cause: max_gap used min(gaps) which returns the smallest gap instead of the largest; for multiple gaps this produced the wrong result. Fix: replace min(gaps) with max(gaps). This is a single-line, minimal logical correction that preserves the function's intent and returns the correct maximum consecutive gap.",
+      "time_spent_minutes": 12
     },
     {
-      "task_id": 3,
-      "files_changed": [
-        "src/aggregator.py"
+      "id": "C",
+      "status_before": "test_normalize_names_mixed raised an AttributeError: 'NoneType' object has no attribute 'strip' because the code assumed every element in the names list was a string and called strip() unguarded.",
+      "status_after": "Updated normalize_names to safely skip non-string values and ignore empty/whitespace-only strings. After the change pytest reports all tests passing (including the edge-case test that includes None and empty string).",
+      "modified_files": [
+        {
+          "filename": "app/utils.py",
+          "content": "# utils.py\n# Helper utilities for string processing.\n\ndef normalize_names(names):\n    \"\"\"Normalize a list of name values:\n    - strip whitespace\n    - convert to lower-case\n    - remove empty names\n    \"\"\"\n    if not names:\n        return []\n    result = []\n    for n in names:\n        # Skip non-string values (e.g., None) and ignore empty/whitespace-only strings\n        if not isinstance(n, str):\n            continue\n        s = n.strip()\n        if s:\n            result.append(s.lower())\n    return result\n"
+        }
       ],
-      "change_summary": "Added defensive parsing for Quantity: strip the field and treat empty string as 0 before converting to int (quantity = int(qty_str) if qty_str != '' else 0).",
-      "root_cause": "compute_totals attempted int('') when Quantity field was empty in the edge CSV, raising a ValueError and causing Task3 to fail.",
-      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask3: PASS",
-      "time_spent_minutes": 30,
-      "confidence_level": "high",
-      "notes": "Explanation / derivation: transactions_edge.csv contains a row with an empty Quantity field. The tests specify that empty quantities should be treated as 0 so totals remain unchanged. The minimal, robust fix is to check qty_str and use 0 for empty string; this avoids exceptions and matches test expectations. Decision rationale: treating empty as 0 preserves totals and meets provided test assertions. Change was limited to a few lines in compute_totals."
+      "commands_run": [
+        "python -m pytest tests/test_taskC.py::test_normalize_names_mixed -q\nOutput (before fix):\n============================= test session starts =============================\ncollected 1 item\n\nE   AttributeError: 'NoneType' object has no attribute 'strip'\n\n================================== ERRORS ==================================\ntests/test_taskC.py::test_normalize_names_mixed\nE   AttributeError: 'NoneType' object has no attribute 'strip'\n\n=========================== 1 error in 0.00s ============================\n\n(Observed stack trace shows normalize_names calling n.strip() when n is None.)",
+        "python -m pytest -q\nOutput (after fix):\n============================= test session starts =============================\ncollected 5 items\n\n.....\n\n5 passed in 0.02s\n\nRUN_TESTS_COMPLETE"
+      ],
+      "explanation": "Root cause: normalize_names assumed every list element is a str and unconditionally called strip(), causing an AttributeError when encountering None. Fix: add a type check (isinstance(n, str)) and skip non-string values; strip and lower-case only non-empty strings. This matches the tests' expectation to remove None and empty entries and is a minimal, robust change.",
+      "time_spent_minutes": 20
     },
     {
-      "task_id": 4,
-      "files_changed": [
-        "src/formatter.py"
+      "id": "D",
+      "status_before": "Before applying the Task C fix the integration test (test_generate_report_integration) failed due to the earlier max_gap issue; normalize_names also errored. After Tasks A–C the integration test now passes.",
+      "status_after": "No additional source changes required. The integration test passes and the full test suite reports all tests passed, confirming cross-module behavior is correct.",
+      "modified_files": [],
+      "commands_run": [
+        "./run_tests.sh\nOutput (final verification):\n============================= test session starts =============================\ncollected 5 items\n\n.....\n\n5 passed in 0.02s\n\nRUN_TESTS_COMPLETE\n\nPASSING_CRITERIA: All 5 tests must pass for full functional correctness (100% of provided tests)."
       ],
-      "change_summary": "Made JSON serialization deterministic by using json.dump(..., sort_keys=True, indent=2) when writing the report so the produced JSON structurally matches the golden file.",
-      "root_cause": "Non-deterministic JSON key ordering (json.dumps without sort_keys) caused the produced report to differ from the golden reference even though data values/types were correct.",
-      "how_tested": "ran: python3 run_tests.py\nRelevant test runner output lines:\nTask4: PASS",
-      "time_spent_minutes": 15,
-      "confidence_level": "high",
-      "notes": "Explanation / derivation: The test compares the parsed JSON objects, but deterministic ordering via sort_keys ensures consistent output and avoids subtle mismatches in testing environments that may affect string comparison or produced structure. The minimal fix is to use json.dump with sort_keys=True when writing to file. PASSING CRITERIA (summary): To pass the exam, the candidate must get Task1..Task4 to PASS via the provided test runner; automated tests are authoritative. Partial-credit rules (as applied by evaluator): Task correctness (automated) = 70 points (Task1=15, Task2=20, Task3=20, Task4=15), explanation & reproducibility = 20 points, code hygiene & minimality = 10 points. The passing threshold for the basic exam is 80/100."
+      "explanation": "Task D required verifying that the fixes in calculations and utils work together via main.generate_report. No further code changes were necessary after Tasks A–C; the final full test run shows 5 passed, demonstrating correct integration and data flow (sum, max_gap, and normalized names).",
+      "time_spent_minutes": 12
     }
   ],
-  "final_test_output": "Task1: PASS\nTask2: PASS\nTask3: PASS\nTask4: PASS\n\nAll tasks passed.\n",
-  "total_time_minutes": 80,
-  "checksum_of_modified_files": {},
-  "final_score_self_assessment": 100
+  "final_test_summary": {
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "runtime_output": "============================= test session starts =============================\ncollected 5 items\n\n.....\n\n5 passed in 0.02s\n\nRUN_TESTS_COMPLETE\n\nPASSING_CRITERIA: All 5 tests must pass for full functional correctness (100% of provided tests)."
+  },
+  "signature": "Examiner Answer Key",
+  "_notes": "Fill every field. Use empty arrays [] for lists, null for numeric fields, and empty string \"\" for textual fields. For each modified_files entry include objects of the form {\"filename\": \"relative/path.py\", \"content\": \"<full final file contents UTF-8>\"}. In commands_run include the exact commands you executed and the important pasted outputs (failing and passing runs). Ensure time_spent_minutes for tasks sum to <= time_taken_minutes."
 }

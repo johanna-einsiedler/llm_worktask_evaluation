@@ -1,89 +1,476 @@
-```python
 # task_evaluation.py
-"""
-Automated grading script for the SQA practical exam (basic).
-Usage:
-    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
-
-Produces test_results.json in the same directory as this script.
-
-Scoring summary (implements rubric from exam materials):
-- Task 1 (Reproduce): 15 points
-- Task 2 (Selector fix): 25 points
-- Task 3 (Timing/stability): 20 points
-- Task 4 (Config/API/deprecation fix): 20 points
-- Documentation & submission quality: 10 points
-  Base total = 90 points
-- Bonus: up to 10 points (optional)
-  Max possible = 100 points
-
-The script reads the candidate submission JSON and the answer key JSON (optional expected values).
-It performs heuristic checks for required edits and outputs a scored detailed result JSON.
-"""
 import json
 import os
 import re
 import sys
-from datetime import datetime
 
-# -------------------------
-# Helper utility functions
-# -------------------------
+"""
+Automated grading script for the "Updating Automated Tests" basic practical exam.
+
+Usage:
+    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+
+This script:
+- Loads the candidate submission JSON and an answer key JSON (the answer key is used minimally;
+  grading logic is based on expected fields and behaviors described in the exam spec).
+- Applies a rubric to assign points across categories.
+- Produces test_results.json in the same directory as this script with a detailed score breakdown,
+  explanations for deductions, and overall percentage (overall_score).
+- Uses only Python standard library modules.
+
+Notes:
+- The grading logic is heuristic and tolerant to formatting differences.
+- If the candidate JSON is malformed or missing required fields, the script records errors and
+  assigns zero or partial credit where possible.
+"""
+
+# ---------- Helper utilities ----------
+
 def safe_load_json(path):
+    """Load JSON from a file and return (data, error)."""
     try:
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f), None
     except Exception as e:
         return None, str(e)
 
-def contains_any_ci(text, needles):
-    """Case-insensitive check if any needle is in text."""
-    if text is None:
-        return False
-    lower = text.lower()
+def contains_case_insensitive(haystack, needles):
+    """Return True if any of needles (string or list) appear in haystack (case-insensitive)."""
+    if isinstance(needles, str):
+        needles = [needles]
+    hay = haystack.lower() if isinstance(haystack, str) else ""
     for n in needles:
-        if n.lower() in lower:
+        if n.lower() in hay:
             return True
     return False
 
-def count_occurrences_ci(text, needles):
-    """Return count of how many distinct needles from list appear in text (case-insensitive)."""
-    if text is None:
-        return 0
-    lower = text.lower()
-    found = 0
-    for n in set(needles):
-        if n.lower() in lower:
-            found += 1
-    return found
-
-def extract_passed_tests(final_output):
-    """
-    Try to extract number of passed tests from pytest-like output.
-    Returns integer number of passed tests if found, otherwise None.
-    """
-    if not final_output:
-        return None
-    # Look for e.g. "3 passed", possibly "3 passed in 0.00s"
-    m = re.search(r'(\d+)\s+passed', final_output, re.IGNORECASE)
-    if m:
+def find_number_of_pass_fail(output_text):
+    """Try to parse pytest summary counts from output. Returns (passed, failed) or (None, None)."""
+    if not isinstance(output_text, str):
+        return None, None
+    # Look for patterns like "6 passed", "2 passed, 3 failed", "2 passed, 1 skipped, 0 failed", etc.
+    passed = None
+    failed = None
+    # Find all 'X passed' and 'Y failed'
+    m_pass = re.search(r'(\d+)\s+passed', output_text, re.IGNORECASE)
+    if m_pass:
         try:
-            return int(m.group(1))
+            passed = int(m_pass.group(1))
         except:
-            return None
-    return None
+            passed = None
+    m_fail = re.search(r'(\d+)\s+failed', output_text, re.IGNORECASE)
+    if m_fail:
+        try:
+            failed = int(m_fail.group(1))
+        except:
+            failed = None
+    # If no explicit 'failed' but 'failed' word exists (like "FAILED"), assume >0 failed.
+    if failed is None:
+        if re.search(r'\bfailed\b', output_text, re.IGNORECASE):
+            # try to pick up singular "FAILED" or failure summary without counts -> mark unknown
+            failed = 1
+    return passed, failed
 
-def normalize_whitespace(s):
-    if s is None:
-        return ""
-    # collapse multiple whitespace to single spaces for easier comparisons
-    return re.sub(r'\s+', ' ', s).strip()
+# ---------- Grading logic ----------
 
-# -------------------------
-# Main grading logic
-# -------------------------
+def grade_submission(submission, answer_key):
+    """
+    Apply rubric and return a detailed result dict.
+    The rubric weights (out of 100):
+      - baseline execution: 15
+      - all tests passing after changes: 25
+      - correct diagnosis (decision_log): 15
+      - quality of test edits: 20
+      - added test correctness & style: 10
+      - documentation & reproducibility: 15
+    """
+    # Initialize
+    results = {}
+    deductions = []
+    total_earned = 0.0
+    total_max = 100.0
+
+    # Safely extract fields from submission (handle missing keys)
+    s = submission if isinstance(submission, dict) else {}
+    candidate_name = s.get('candidate_name', '')
+    time_spent = s.get('time_spent_minutes', None)
+    commands_run = s.get('commands_run', [])
+    test_output_before = s.get('test_output_before', '')
+    test_output_after = s.get('test_output_after', '')
+    modified_files = s.get('modified_files', [])
+    added_files = s.get('added_files', [])
+    decision_log = s.get('decision_log', [])
+    reproduce_instructions = s.get('reproduce_instructions', '')
+
+    # ---- 1) Baseline execution (15 pts) ----
+    max_pts = 15.0
+    earned = 0.0
+    comments = []
+    # Check commands_run contains at least one pytest invocation
+    found_pytest_cmd = False
+    if isinstance(commands_run, list):
+        for cmd in commands_run:
+            if isinstance(cmd, str) and re.search(r'\bpytest\b', cmd):
+                found_pytest_cmd = True
+                break
+            if isinstance(cmd, str) and re.search(r'python\s+-m\s+pytest', cmd):
+                found_pytest_cmd = True
+                break
+    if not commands_run or len(commands_run) == 0:
+        comments.append("commands_run is empty or missing.")
+    else:
+        comments.append(f"{len(commands_run)} commands recorded in commands_run.")
+    if found_pytest_cmd:
+        comments.append("Found pytest invocation in commands_run.")
+        earned += 5.0  # partial for recording commands
+    else:
+        comments.append("No pytest invocation found in commands_run; expected at least one pytest command.")
+    # Check test_output_before exists and indicates failing tests
+    if isinstance(test_output_before, str) and test_output_before.strip():
+        comments.append("test_output_before present.")
+        # Check for evidence of failing tests
+        if re.search(r'\bfailed\b', test_output_before, re.IGNORECASE) or re.search(r'FAILED', test_output_before):
+            comments.append("test_output_before shows failing tests (contains 'failed'/'FAILED').")
+            earned += 10.0
+        else:
+            comments.append("test_output_before does not clearly show failing tests.")
+            # partial: if non-empty but no 'failed', give small credit
+            earned += 2.5
+    else:
+        comments.append("test_output_before missing or empty.")
+    # Cap and assign
+    results['baseline_execution'] = {
+        'earned': round(earned, 2),
+        'max': max_pts,
+        'comments': comments
+    }
+    total_earned += earned
+
+    # ---- 2) All tests passing after changes (25 pts) ----
+    max_pts = 25.0
+    earned = 0.0
+    comments = []
+    if isinstance(test_output_after, str) and test_output_after.strip():
+        comments.append("test_output_after present.")
+        passed, failed = find_number_of_pass_fail(test_output_after)
+        if failed is None:
+            # If 'failed' not found but 'passed' appears -> assume all passed
+            if passed is not None:
+                comments.append(f"Detected {passed} passed and no failed count; assuming all passed.")
+                earned = max_pts
+            else:
+                # fallback: if word "passed" present and "failed" not present, assume pass
+                if re.search(r'\bpassed\b', test_output_after, re.IGNORECASE) and not re.search(r'\bfailed\b', test_output_after, re.IGNORECASE):
+                    comments.append("Output contains 'passed' and no 'failed'; awarding full credit.")
+                    earned = max_pts
+                else:
+                    comments.append("Could not parse pass/fail counts from test_output_after.")
+                    earned = 0.0
+        else:
+            # Both counts parsed (or failed detected)
+            if failed == 0:
+                comments.append(f"All tests passed according to summary (passed={passed}, failed=0).")
+                earned = max_pts
+            else:
+                # partial credit proportional to passed/(passed+failed) if passed known
+                if passed is not None and (passed + failed) > 0:
+                    ratio = passed / float(passed + failed)
+                    earned = max_pts * ratio
+                    comments.append(f"Partial pass: {passed} passed, {failed} failed; awarding proportional credit ({ratio:.2%}).")
+                else:
+                    comments.append(f"Some tests failed (failed={failed}); awarding no points for full pass requirement.")
+                    earned = 0.0
+    else:
+        comments.append("test_output_after missing or empty.")
+        earned = 0.0
+    results['all_tests_passing'] = {
+        'earned': round(earned, 2),
+        'max': max_pts,
+        'comments': comments
+    }
+    total_earned += earned
+
+    # ---- 3) Correct diagnosis of failures (decision_log) (15 pts) ----
+    max_pts = 15.0
+    earned = 0.0
+    comments = []
+    expected_topics = {
+        'date': False,
+        'status': False,
+        'processed_at': False,
+        'sleep': False,
+        'discount': False,
+        'added_test': False  # mention of adding test or include_discount
+    }
+    if isinstance(decision_log, list) and len(decision_log) > 0:
+        comments.append(f"decision_log has {len(decision_log)} entries.")
+        # Scan decision_log entries for expected topics
+        count_mentions = 0
+        total_topics = len(expected_topics)
+        alt_present_count = 0
+        for entry in decision_log:
+            # entry expected to be dict with 'decision' and 'alternatives_considered'
+            dec_text = str(entry.get('decision', '')).lower() if isinstance(entry, dict) else ''
+            alt_text = str(entry.get('alternatives_considered', '')).lower() if isinstance(entry, dict) else ''
+            # mark topics
+            if 'date' in dec_text or 'iso' in dec_text or 'yyyy' in dec_text:
+                expected_topics['date'] = True
+            if 'status' in dec_text:
+                expected_topics['status'] = True
+            if 'processed_at' in dec_text or 'processed at' in dec_text:
+                expected_topics['processed_at'] = True
+            if 'sleep' in dec_text or 'time.sleep' in dec_text:
+                expected_topics['sleep'] = True
+            if 'discount' in dec_text or 'include_discount' in dec_text:
+                expected_topics['discount'] = True
+            if 'add' in dec_text and ('test' in dec_text or 'discount' in dec_text):
+                expected_topics['added_test'] = True
+            # alternatives considered presence
+            if alt_text and alt_text.strip() and alt_text.lower() not in ('none', 'n/a', 'na'):
+                alt_present_count += 1
+        # tally
+        for k, v in expected_topics.items():
+            if v:
+                count_mentions += 1
+        comments.append(f"Detected mention of {count_mentions}/{total_topics} expected diagnostic topics in decision_log.")
+        # award proportional credit
+        earned = max_pts * (count_mentions / float(total_topics))
+        # small bonus if many alternatives_considered present: if at least half entries had alternatives_considered non-empty, add up to 10% of this section
+        if len(decision_log) > 0 and alt_present_count / len(decision_log) >= 0.5:
+            bonus = 0.10 * max_pts
+            earned += bonus
+            comments.append(f"Alternatives considered present in {alt_present_count}/{len(decision_log)} entries; applied bonus {bonus:.2f} pts.")
+    else:
+        comments.append("decision_log missing or empty; no diagnosis credit.")
+        earned = 0.0
+    # Cap to max_pts + bonus cap (we allow up to 110% if bonus added, but clamp)
+    if earned > max_pts:
+        earned = max_pts
+    results['decision_log'] = {
+        'earned': round(earned, 2),
+        'max': max_pts,
+        'comments': comments,
+        'detected_topics': expected_topics
+    }
+    total_earned += earned
+
+    # ---- 4) Quality of test edits (20 pts) ----
+    max_pts = 20.0
+    earned = 0.0
+    comments = []
+    # First basic validations
+    if not isinstance(modified_files, list) or len(modified_files) == 0:
+        comments.append("No modified_files provided.")
+        # No edits -> zero on this section
+        earned = 0.0
+    else:
+        comments.append(f"{len(modified_files)} modified file(s) submitted.")
+        # Check if any modified files are outside tests/
+        non_test_mods = [mf for mf in modified_files if not mf.get('path', '').startswith('tests/')]
+        if non_test_mods:
+            comments.append(f"Found {len(non_test_mods)} modified file(s) outside tests/: " +
+                            ", ".join([mf.get('path', '') for mf in non_test_mods]) +
+                            ". This is discouraged; tests-only edits required.")
+        # Assess content improvements:
+        improvements = {
+            'date_iso_check': False,
+            'partial_string_checks': False,
+            'removed_sleep': False,
+            'status_checks': False,
+            'no_strict_whole_dict_equality': False
+        }
+        # Iterate through modified_files contents
+        combined_text = ""
+        for mf in modified_files:
+            content = mf.get('content', '') or ''
+            combined_text += "\n" + content.lower()
+        # date ISO example '2025-01-15'
+        if '2025-01-15' in combined_text or re.search(r'\d{4}-\d{2}-\d{2}', combined_text):
+            improvements['date_iso_check'] = True
+        # partial string checks: look for ' in ' usage on summaries or 'contains' style
+        if re.search(r'assert\s+.*in\s+.*summary', combined_text) or ' in summary' in combined_text or 'contains' in combined_text:
+            improvements['partial_string_checks'] = True
+        # removed sleep: ensure time.sleep not present
+        if 'time.sleep' not in combined_text:
+            improvements['removed_sleep'] = True
+        # status checks: presence of '[status:' or 'status' asserts
+        if '[status:' in combined_text or 'status: processing' in combined_text or 'status: pending' in combined_text or 'status' in combined_text:
+            # ensure it's in context of assertions or checks
+            if 'status' in combined_text:
+                improvements['status_checks'] = True
+        # no strict whole-dict equality: detect if 'assert order == expected' or 'processed_at' still present (bad)
+        if 'assert order == expected' not in combined_text and 'processed_at' not in combined_text:
+            improvements['no_strict_whole_dict_equality'] = True
+        # Count improvements
+        improvements_found = sum(1 for v in improvements.values() if v)
+        comments.append(f"Improvements detected: {improvements_found}/5 -> {improvements}.")
+        # Base points proportional to improvements_found
+        earned = max_pts * (improvements_found / 5.0)
+        # If modifications include edits outside tests/, deduct half of this section
+        if non_test_mods:
+            earned *= 0.5
+            comments.append("Modifications outside tests/ detected -> applying 50% penalty to this section.")
+    results['quality_test_edits'] = {
+        'earned': round(earned, 2),
+        'max': max_pts,
+        'comments': comments
+    }
+    total_earned += earned
+
+    # ---- 5) Added test correctness & style (10 pts) ----
+    max_pts = 10.0
+    earned = 0.0
+    comments = []
+    # Candidate should add a test that calls calculate_total(order, include_discount=True) for O1001 == 32.5
+    if isinstance(added_files, list) and len(added_files) > 0:
+        comments.append(f"{len(added_files)} added file(s).")
+        # Look for at least one added file under tests/ containing required assertion
+        found_good = False
+        found_partial = False
+        for af in added_files:
+            path = af.get('path', '')
+            content = (af.get('content', '') or '').lower()
+            if not path.startswith('tests/'):
+                comments.append(f"Added file {path} is not under tests/ (ignored for this check).")
+                continue
+            # Check for calculate_total with include_discount and expected value 32.5
+            if 'calculate_total' in content and 'include_discount=True'.lower() in content:
+                # check for 32.5 or 32.50
+                if '32.5' in content or '32.50' in content:
+                    found_good = True
+                    comments.append(f"Found a correct added test in {path} that asserts include_discount=True yields 32.5.")
+                    break
+                else:
+                    found_partial = True
+            elif 'calculate_total' in content:
+                found_partial = True
+        if found_good:
+            earned = max_pts
+        elif found_partial:
+            earned = max_pts * 0.5
+            comments.append("Added test references calculate_total but missing include_discount=True or expected value; partial credit awarded.")
+        else:
+            comments.append("No added tests matching required discount check found in tests/ added files.")
+            earned = 0.0
+    else:
+        comments.append("No added_files provided; required discount test is missing.")
+        earned = 0.0
+    results['added_test'] = {
+        'earned': round(earned, 2),
+        'max': max_pts,
+        'comments': comments
+    }
+    total_earned += earned
+
+    # ---- 6) Documentation & reproducibility (15 pts) ----
+    max_pts = 15.0
+    earned = 0.0
+    comments = []
+    # Criteria: commands_run non-empty (5), reproduce_instructions includes pytest (5), modified/added file reasons present (3), before/after outputs show failed/passed (2)
+    subpoints = {
+        'commands_run': 5.0,
+        'reproduce_instructions': 5.0,
+        'file_reasons': 3.0,
+        'before_after_outputs': 2.0
+    }
+    # commands_run non-empty
+    if isinstance(commands_run, list) and len(commands_run) > 0:
+        earned += subpoints['commands_run']
+        comments.append("commands_run provided.")
+    else:
+        comments.append("commands_run missing or empty.")
+    # reproduce_instructions includes pytest
+    if isinstance(reproduce_instructions, str) and reproduce_instructions.strip():
+        if re.search(r'\bpytest\b', reproduce_instructions):
+            earned += subpoints['reproduce_instructions']
+            comments.append("reproduce_instructions provided and includes pytest command.")
+        else:
+            comments.append("reproduce_instructions provided but does not include pytest command.")
+    else:
+        comments.append("reproduce_instructions missing or empty.")
+    # modified_files and added_files reasons
+    reasons_ok = True
+    if isinstance(modified_files, list) and len(modified_files) > 0:
+        for mf in modified_files:
+            if not mf.get('reason') or not isinstance(mf.get('reason'), str) or not mf.get('reason').strip():
+                reasons_ok = False
+                comments.append(f"Modified file {mf.get('path','?')} missing reason.")
+                break
+    if isinstance(added_files, list) and len(added_files) > 0:
+        for af in added_files:
+            if not af.get('reason') or not isinstance(af.get('reason'), str) or not af.get('reason').strip():
+                reasons_ok = False
+                comments.append(f"Added file {af.get('path','?')} missing reason.")
+                break
+    if reasons_ok and ( (modified_files and len(modified_files) > 0) or (added_files and len(added_files) > 0) ):
+        earned += subpoints['file_reasons']
+        comments.append("All modified/added files include brief reasons.")
+    else:
+        # no files changed -> still acceptable? If no modified_files, then earlier sections would fail. We don't award these points.
+        comments.append("Some modified/added files are missing reasons or no files were modified/added.")
+    # before/after outputs show failing/passing
+    before_ok = isinstance(test_output_before, str) and re.search(r'\bfailed\b', test_output_before, re.IGNORECASE)
+    after_ok = isinstance(test_output_after, str) and ( (re.search(r'\b0\s+failed\b', test_output_after, re.IGNORECASE)) or (re.search(r'\bpassed\b', test_output_after, re.IGNORECASE) and not re.search(r'\bfailed\b', test_output_after, re.IGNORECASE)) )
+    if before_ok and after_ok:
+        earned += subpoints['before_after_outputs']
+        comments.append("test_output_before shows failures and test_output_after shows passing tests.")
+    else:
+        if not before_ok:
+            comments.append("test_output_before did not clearly show failing tests.")
+        if not after_ok:
+            comments.append("test_output_after did not clearly show all tests passing.")
+    results['documentation_and_reproducibility'] = {
+        'earned': round(earned, 2),
+        'max': max_pts,
+        'comments': comments
+    }
+    total_earned += earned
+
+    # ---- Additional checks and final adjustments ----
+    # Ensure that modified_files and added_files content are present (full content)
+    extra_comments = []
+    missing_content = False
+    for mf in (modified_files or []):
+        if not mf.get('content') or not isinstance(mf.get('content'), str) or not mf.get('content').strip():
+            extra_comments.append(f"Modified file {mf.get('path','?')} missing content.")
+            missing_content = True
+    for af in (added_files or []):
+        if not af.get('content') or not isinstance(af.get('content'), str) or not af.get('content').strip():
+            extra_comments.append(f"Added file {af.get('path','?')} missing content.")
+            missing_content = True
+    if missing_content:
+        # Penalize documentation points slightly if content missing
+        results['documentation_and_reproducibility']['comments'].append("Some modified/added files lacked full content; this may impede reproducibility.")
+        # Deduct a small fixed penalty from total_earned (but not below 0)
+        penalty = 3.0
+        total_earned = max(0.0, total_earned - penalty)
+        extra_comments.append(f"Applied penalty of {penalty} points for missing file content.")
+    if extra_comments:
+        results.setdefault('extra_checks', {'comments': []})
+        results['extra_checks']['comments'].extend(extra_comments)
+
+    # Sum up totals and compute percentage
+    # total_max already 100
+    total_earned = float(total_earned)
+    percentage = round((total_earned / total_max) * 100.0, 2) if total_max > 0 else 0.0
+
+    # Build final results structure
+    final = {
+        'candidate_name': candidate_name,
+        'time_spent_minutes': time_spent,
+        'scores': results,
+        'total_points_earned': round(total_earned, 2),
+        'total_points_possible': total_max,
+        'percentage': percentage,
+        'overall_score': percentage
+    }
+
+    return final
+
+# ---------- Main execution ----------
+
 def main():
-    # Input args
+    # Validate command-line args
     if len(sys.argv) < 3:
         print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
         sys.exit(2)
@@ -91,460 +478,42 @@ def main():
     submission_path = sys.argv[1]
     answer_key_path = sys.argv[2]
 
-    # Load files
+    # Load submission JSON
     submission, err = safe_load_json(submission_path)
     if err:
-        print(f"Error loading submission JSON '{submission_path}': {err}")
-        sys.exit(2)
+        # Write error output to test_results.json and exit gracefully
+        out = {
+            'error': f"Failed to load submission JSON from '{submission_path}': {err}",
+            'overall_score': 0.0
+        }
+        with open('test_results.json', 'w', encoding='utf-8') as f:
+            json.dump(out, f, indent=2)
+        print(f"Error: could not load submission JSON: {err}. Wrote test_results.json with error.")
+        sys.exit(1)
 
+    # Load answer key JSON (not heavily relied upon, but we validate presence)
     answer_key, err2 = safe_load_json(answer_key_path)
     if err2:
-        # answer_key is optional-ish; we proceed with defaults but warn
-        answer_key = {}
-        answer_key_load_error = err2
-    else:
-        answer_key_load_error = None
+        out = {
+            'error': f"Failed to load answer key JSON from '{answer_key_path}': {err2}",
+            'overall_score': 0.0
+        }
+        with open('test_results.json', 'w', encoding='utf-8') as f:
+            json.dump(out, f, indent=2)
+        print(f"Error: could not load answer key JSON: {err2}. Wrote test_results.json with error.")
+        sys.exit(1)
 
-    # Prepare result structure
-    results = {
-        "scoring": {},
-        "details": [],
-        "total_points_awarded": 0,
-        "max_points_possible": 100,
-        "percentage_score": 0.0,
-        "overall_score": 0.0,  # numeric 0-100
-        "errors": []
-    }
+    # Apply grading logic
+    results = grade_submission(submission, answer_key)
 
-    # Basic validation of required fields in submission
-    required_fields = [
-        "candidate_name",
-        "start_time_utc",
-        "end_time_utc",
-        "total_minutes",
-        "commands_run",
-        "initial_test_output",
-        "final_test_output",
-        "changed_files",
-        "summary_of_changes",
-        "risk_notes_and_next_steps"
-    ]
-    missing = []
-    for f in required_fields:
-        if f not in submission or submission[f] in (None, "", []):
-            missing.append(f)
-    if missing:
-        results["errors"].append(f"Submission missing or empty required fields: {missing}")
-
-    # Load expected values from answer_key or use defaults
-    expected_initial_errors = answer_key.get("expected_initial_errors",
-                                            ["KeyError", "AttributeError", "FileNotFoundError"])
-    expected_num_tests = answer_key.get("expected_num_tests", 3)
-    expected_final_pass_phrase = answer_key.get("expected_final_pass_phrase", f"{expected_num_tests} passed")
-
-    # Scoring buckets
-    # Task 1: Reproduce (15)
-    task1_max = 15
-    task1_score = 0
-    task1_notes = []
-
-    # Check commands_run presence and likely run command
-    commands_run = submission.get("commands_run", [])
-    run_command_found = False
-    run_command_texts = []
-    for c in commands_run:
-        cmd = c.get("command", "") if isinstance(c, dict) else ""
-        run_command_texts.append(cmd)
-        if cmd and (("pytest" in cmd.lower()) or ("run_tests" in cmd.lower()) or ("run_tests.sh" in cmd) or ("-m pytest" in cmd.lower())):
-            run_command_found = True
-    if run_command_found:
-        task1_score += 5
-        task1_notes.append("Found a likely test-run command in commands_run (+5).")
-    else:
-        task1_notes.append("No obvious pytest/run_tests command found in commands_run (-5).")
-
-    # Analyze initial_test_output for expected errors
-    initial_output = submission.get("initial_test_output", "") or ""
-    found_errors_count = count_occurrences_ci(initial_output, expected_initial_errors)
-    expected_errors_total = len(expected_initial_errors)
-    if expected_errors_total > 0:
-        # allocate 10 points proportional to how many expected error types are present
-        error_points = int(round(10.0 * (found_errors_count / expected_errors_total)))
-        task1_score += error_points
-        task1_notes.append(f"Detected {found_errors_count}/{expected_errors_total} expected error types in initial_test_output (+{error_points}).")
-        if found_errors_count < expected_errors_total:
-            missing_errs = [e for e in expected_initial_errors if e.lower() not in initial_output.lower()]
-            task1_notes.append(f"Missing expected errors in initial output: {missing_errs}.")
-    else:
-        # no expected errors configured; be generous if any 'error' or 'fail' words are present
-        if contains_any_ci(initial_output, ["error", "fail", "traceback"]):
-            task1_score += 10
-            task1_notes.append("Initial output shows errors/failures; awarding full error-detection points (+10).")
-        else:
-            task1_notes.append("No expected errors configured and initial output did not contain 'error'/'fail' hints (-10).")
-
-    if task1_score > task1_max:
-        task1_score = task1_max
-
-    results["scoring"]["task_1_reproduce"] = {
-        "score": task1_score,
-        "max_score": task1_max,
-        "notes": task1_notes
-    }
-
-    # Task 2: Selector fix (25)
-    task2_max = 25
-    task2_score = 0
-    task2_notes = []
-
-    changed_files = submission.get("changed_files", [])
-    # Find relevant changed files by path
-    changed_paths = [cf.get("file_path", "") for cf in changed_files if isinstance(cf, dict)]
-    # Helper function to fetch file updated_content by path
-    def get_updated_content(path):
-        for cf in changed_files:
-            if cf.get("file_path", "") == path:
-                return cf.get("updated_content", "")
-        return ""
-
-    def get_original_content(path):
-        for cf in changed_files:
-            if cf.get("file_path", "") == path:
-                return cf.get("original_content", "")
-        return ""
-
-    # Heuristics:
-    # - Candidate should have changed tests/test_suite.py or tests/helpers.py to handle button id change
-    updated_test_suite = get_updated_content("tests/test_suite.py")
-    updated_helpers = get_updated_content("tests/helpers.py")
-
-    # Criteria: presence of 'btn-login' and use of 'find_by_id' or addition of compatibility 'old_find_by_id'
-    has_btn_login_in_tests = "btn-login" in (updated_test_suite or "")
-    has_login_btn_old = "login-btn" in (updated_test_suite or "")
-    uses_find_by_id = "find_by_id" in (updated_test_suite or "") or "find_by_id" in (updated_helpers or "")
-    defines_old_find_by_id_in_helpers = "def old_find_by_id" in (updated_helpers or "")
-
-    # Scoring logic
-    if (has_btn_login_in_tests and uses_find_by_id):
-        task2_score = task2_max
-        task2_notes.append("tests/test_suite.py updated to use 'btn-login' and 'find_by_id' (+25).")
-    else:
-        # partial credit possibilities
-        partial = 0
-        if has_btn_login_in_tests or "btn-login" in (updated_helpers or ""):
-            partial += 12
-            task2_notes.append("Updated contents reference 'btn-login' (+12 partial).")
-        if uses_find_by_id or defines_old_find_by_id_in_helpers:
-            partial += 13 if partial == 0 else 13  # allow combination up to 25
-            task2_notes.append("Updated contents use existing 'find_by_id' or provided compatibility 'old_find_by_id' (+13 partial).")
-        # Cap at max
-        task2_score = min(partial, task2_max)
-        if task2_score == 0:
-            # No meaningful selector fix detected
-            task2_notes.append("No clear selector/helper compatibility fix detected in changed_files (-25).")
-
-    results["scoring"]["task_2_selector_fix"] = {
-        "score": task2_score,
-        "max_score": task2_max,
-        "notes": task2_notes
-    }
-
-    # Task 3: Timing/stability (20)
-    task3_max = 20
-    task3_score = 0
-    task3_notes = []
-
-    # Look at tests/test_suite.py updated content to detect removal of time.sleep and corrected data filename
-    updated_ts = updated_test_suite or ""
-    original_ts = get_original_content("tests/test_suite.py") or ""
-
-    removed_sleep = ("time.sleep" not in updated_ts)
-    uses_users_v2 = ("users_v2.json" in updated_ts) or ("users_v2" in updated_ts)
-    still_has_sleep = ("time.sleep" in updated_ts)
-
-    if removed_sleep and uses_users_v2:
-        task3_score = task3_max
-        task3_notes.append("Removed hard sleep and switched to data/users_v2.json (+20).")
-    else:
-        partial = 0
-        if removed_sleep:
-            partial += 10
-            task3_notes.append("Removed hard sleep from test (+10 partial).")
-        if uses_users_v2:
-            partial += 10
-            task3_notes.append("Updated data path to data/users_v2.json (+10 partial).")
-        if partial == 0:
-            # If candidate removed file read and instead used another approach, still give credit if final output shows passing
-            if "users_v2.json" in (submission.get("final_test_output") or "") or "users" in updated_ts:
-                partial = 5
-                task3_notes.append("No explicit evidence of sleep removal or data path change, but final output suggests some fix (+5).")
-            else:
-                task3_notes.append("No timing/stability fix detected (-20).")
-        task3_score = min(partial, task3_max)
-
-    results["scoring"]["task_3_timing_and_stability"] = {
-        "score": task3_score,
-        "max_score": task3_max,
-        "notes": task3_notes
-    }
-
-    # Task 4: Config/API/deprecation fix (20)
-    task4_max = 20
-    task4_score = 0
-    task4_notes = []
-
-    # Expect test to use cfg['app_url'] instead of cfg['base_url'] OR helpers.load_config to map old key
-    app_url_usage_in_tests = False
-    base_url_usage_in_tests = False
-    if updated_ts:
-        if re.search(r"cfg\[['\"]app_url['\"]\]", updated_ts):
-            app_url_usage_in_tests = True
-        if re.search(r"cfg\[['\"]base_url['\"]\]", updated_ts):
-            base_url_usage_in_tests = True
-
-    # Alternatively, helpers.load_config may have been changed to expose both keys
-    updated_helpers_text = updated_helpers or ""
-    helpers_added_mapping = False
-    if updated_helpers_text:
-        # Heuristic: look for 'base_url' in updated_helpers_text or code that sets cfg['base_url'] = cfg.get('app_url')
-        if "base_url" in updated_helpers_text or "old_find_by_id" in updated_helpers_text:
-            helpers_added_mapping = True
-        if re.search(r"cfg\[['\"]base_url['\"]\]\s*=", updated_helpers_text):
-            helpers_added_mapping = True
-        if re.search(r"def old_find_by_id", updated_helpers_text):
-            helpers_added_mapping = True
-
-    if app_url_usage_in_tests or helpers_added_mapping:
-        task4_score = task4_max
-        note = "Updated tests to use cfg['app_url']" if app_url_usage_in_tests else "Updated helpers to provide compatibility for old config/helper names"
-        task4_notes.append(f"{note} (+20).")
-    else:
-        # partial credit: if test no longer references cfg[...] at all but uses literal app/index.html, accept partial
-        if updated_ts and "app/index.html" in updated_ts:
-            task4_score = 10
-            task4_notes.append("Test updated to reference app/index.html directly instead of config (partial +10).")
-        else:
-            task4_notes.append("No config/API compatibility fix detected (-20).")
-
-    results["scoring"]["task_4_config_api_deprecation"] = {
-        "score": task4_score,
-        "max_score": task4_max,
-        "notes": task4_notes
-    }
-
-    # Documentation & submission quality (10)
-    doc_max = 10
-    doc_score = 0
-    doc_notes = []
-    # Requirements: summary_of_changes, risk_notes_and_next_steps, changed_files entries include original_content and updated_content, initial & final outputs present, start/end times present
-    summary = submission.get("summary_of_changes", "")
-    risks = submission.get("risk_notes_and_next_steps", "")
-    initial_output_present = bool(submission.get("initial_test_output", ""))
-    final_output_present = bool(submission.get("final_test_output", ""))
-    times_present = bool(submission.get("start_time_utc")) and bool(submission.get("end_time_utc")) and isinstance(submission.get("total_minutes", None), int)
-    changed_files_ok = True
-    if not isinstance(changed_files, list) or len(changed_files) == 0:
-        changed_files_ok = False
-    else:
-        # each changed file must include file_path, original_content, updated_content, short_rationale
-        for cf in changed_files:
-            if not all(k in cf and cf[k] not in (None, "") for k in ("file_path", "original_content", "updated_content", "short_rationale")):
-                changed_files_ok = False
-                break
-
-    score_components = 0
-    comp_notes = []
-    if summary and len(summary.strip()) >= 10:
-        score_components += 4
-        comp_notes.append("summary_of_changes present (+4).")
-    else:
-        comp_notes.append("summary_of_changes missing or too short (-4).")
-    if risks and len(risks.strip()) >= 10:
-        score_components += 3
-        comp_notes.append("risk_notes_and_next_steps present (+3).")
-    else:
-        comp_notes.append("risk_notes_and_next_steps missing or too short (-3).")
-    if changed_files_ok:
-        score_components += 2
-        comp_notes.append("changed_files entries include required fields (+2).")
-    else:
-        comp_notes.append("changed_files entries incomplete (-2).")
-    if initial_output_present and final_output_present and times_present:
-        score_components += 1
-        comp_notes.append("initial/final outputs and timing fields present (+1).")
-    else:
-        comp_notes.append("Missing initial/final outputs or timing fields (-1).")
-
-    # Normalize to max 10
-    doc_score = min(doc_max, score_components)
-    doc_notes.extend(comp_notes)
-
-    results["scoring"]["documentation_and_submission_quality"] = {
-        "score": doc_score,
-        "max_score": doc_max,
-        "notes": doc_notes
-    }
-
-    # Bonus (up to 10)
-    bonus_max = 10
-    bonus_score = 0
-    bonus_notes = []
-    optional_bonus = submission.get("optional_bonus", "")
-    tasks_section = submission.get("tasks", {})
-    did_bonus_flag = False
-    # Check tasks.task_5_optional_improvement.did_bonus_work or optional_bonus non-empty
+    # Save results to test_results.json
     try:
-        t5 = tasks_section.get("task_5_optional_improvement", {})
-        did_bonus_flag = str(t5.get("did_bonus_work", "")).strip().lower() in ("yes", "true", "y", "1")
-    except:
-        did_bonus_flag = False
-
-    if optional_bonus and len(optional_bonus.strip()) > 5:
-        # If candidate reported a meaningful bonus, award points heuristically
-        bonus_score = 5
-        bonus_notes.append("optional_bonus field non-empty; awarded partial bonus (+5).")
-    if did_bonus_flag:
-        # If they set did_bonus_work flag, award further points up to full
-        bonus_score = max(bonus_score, 8)
-        bonus_notes.append("task_5 indicated bonus work; awarded further bonus points (+8).")
-
-    # Inspect changed_files to heuristically detect small refactor (e.g., helper added, small comment)
-    # If helpers.py was changed to add compatibility wrapper (good small improvement), award full bonus
-    if "tests/helpers.py" in changed_paths:
-        uc = get_updated_content("tests/helpers.py") or ""
-        if "def old_find_by_id" in uc or "def find_by_id" in uc and "compat" in uc.lower():
-            bonus_score = max(bonus_score, 10)
-            bonus_notes.append("Added compatibility helper or similar small improvement in tests/helpers.py (+10).")
-
-    # Cap bonus
-    bonus_score = min(bonus_score, bonus_max)
-
-    results["scoring"]["bonus_improvement"] = {
-        "score": bonus_score,
-        "max_score": bonus_max,
-        "notes": bonus_notes
-    }
-
-    # Final pass check: ensure final_test_output indicates tests passed (expected_num_tests)
-    final_output = submission.get("final_test_output", "") or ""
-    passed_count = extract_passed_tests(final_output)
-    final_pass_notes = []
-    final_pass_ok = False
-    if passed_count is not None:
-        if passed_count >= expected_num_tests:
-            final_pass_ok = True
-            final_pass_notes.append(f"Final output reports {passed_count} passed tests (>= expected {expected_num_tests}).")
-        else:
-            final_pass_notes.append(f"Final output reports {passed_count} passed tests (< expected {expected_num_tests}).")
-    else:
-        # Look for the word 'passed' even if count not extracted
-        if "passed" in final_output.lower():
-            final_pass_ok = True
-            final_pass_notes.append("Final output contains 'passed' (count not parsed).")
-        else:
-            final_pass_notes.append("Final output does not clearly show passing tests (no 'passed' found).")
-
-    # If final_pass_ok is False, apply sensible deductions: if the candidate otherwise fixed items but didn't run final, penalize some tasks
-    if not final_pass_ok:
-        results["details"].append("Warning: final_test_output does not clearly show that tests passed. This will reduce confidence/points.")
-        # The rubric expects passing final output for full credit on tasks; we will reduce some points if not passing.
-        # We'll incorporate this as part of deductions in explanations later.
-
-    # Sum base points
-    base_tasks = ["task_1_reproduce", "task_2_selector_fix", "task_3_timing_and_stability", "task_4_config_api_deprecation", "documentation_and_submission_quality"]
-    base_score = (
-        results["scoring"]["task_1_reproduce"]["score"]
-        + results["scoring"]["task_2_selector_fix"]["score"]
-        + results["scoring"]["task_3_timing_and_stability"]["score"]
-        + results["scoring"]["task_4_config_api_deprecation"]["score"]
-        + results["scoring"]["documentation_and_submission_quality"]["score"]
-    )
-    # Base maximum is 90
-    # Apply small penalty if final tests did not pass: reduce base_score proportional to missing pass
-    if not final_pass_ok:
-        # Determine penalty severity: if candidate fixed many things but final didn't pass, modest penalty; otherwise larger
-        # We'll check if candidate made changes: changed_files non-empty
-        made_changes = len(changed_files) > 0
-        if made_changes:
-            penalty = 10  # out of base_total 90
-            results["details"].append(f"Final tests not passing: applying penalty of {penalty} points from base score.")
-        else:
-            penalty = 25
-            results["details"].append(f"No effective final pass and no or few changes: applying higher penalty of {penalty} points from base score.")
-        base_score = max(0, base_score - penalty)
-        results["details"].append(f"Penalty applied: -{penalty}.")
-    else:
-        results["details"].append("Final test output indicates passing tests; no final-run penalty applied.")
-
-    # Total score = base_score + bonus_score
-    total_score = base_score + bonus_score
-
-    # Compute percentage (0-100) where max possible is 100
-    percentage = round(float(total_score), 2)
-    if percentage < 0:
-        percentage = 0.0
-    if percentage > 100:
-        percentage = 100.0
-
-    # Record per-task breakdown already in results["scoring"], add some high-level notes
-    results["total_points_awarded"] = total_score
-    results["max_points_possible"] = 100
-    results["percentage_score"] = percentage
-    results["overall_score"] = percentage
-
-    # Add more human-readable explanations/deductions for evaluator
-    # Compose concise deduction reasons
-    deductions = []
-    # If missing required fields
-    if missing:
-        deductions.append(f"Submission missing required fields: {missing}. This reduces documentation/verification confidence.")
-    # If Task1 partial issues
-    if results["scoring"]["task_1_reproduce"]["score"] < task1_max:
-        deductions.append("Task 1 incomplete: did not fully reproduce or capture expected failing output or run command.")
-    if results["scoring"]["task_2_selector_fix"]["score"] < task2_max:
-        deductions.append("Task 2 partial/failed: selector or helper compatibility fix incomplete or missing.")
-    if results["scoring"]["task_3_timing_and_stability"]["score"] < task3_max:
-        deductions.append("Task 3 partial/failed: timing/stability fix (removing sleep/updating data path) incomplete.")
-    if results["scoring"]["task_4_config_api_deprecation"]["score"] < task4_max:
-        deductions.append("Task 4 partial/failed: config/API/deprecation fix incomplete.")
-    if results["scoring"]["documentation_and_submission_quality"]["score"] < doc_max:
-        deductions.append("Documentation/submission quality incomplete or missing required details.")
-    if not final_pass_ok:
-        deductions.append("Final test run did not clearly show expected passing tests; this heavily impacts confidence in fixes.")
-
-    results["deductions_summary"] = deductions
-    # attach final pass notes
-    results["final_run_check"] = {
-        "final_pass_ok": final_pass_ok,
-        "passed_count": passed_count,
-        "notes": final_pass_notes
-    }
-
-    # Include some of the submission fields for quick reference (truncated)
-    results["submission_overview"] = {
-        "candidate_name": submission.get("candidate_name"),
-        "commands_run": [c.get("command", "") if isinstance(c, dict) else "" for c in commands_run],
-        "changed_files_listed": changed_paths,
-        "initial_test_output_present": bool(initial_output.strip()),
-        "final_test_output_present": bool(final_output.strip())
-    }
-
-    # Add answer key load error if any
-    if answer_key_load_error:
-        results["notes"] = f"Warning: answer_key file could not be loaded ({answer_key_load_error}). Grader used default expectations."
-
-    # Save results to test_results.json next to this script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    out_path = os.path.join(script_dir, "test_results.json")
-    try:
-        with open(out_path, 'w', encoding='utf-8') as outf:
-            json.dump(results, outf, indent=2)
-        print(f"Grading complete. Results written to {out_path}")
+        with open('test_results.json', 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print("Grading complete. Results saved to test_results.json")
     except Exception as e:
-        print(f"Error writing results to '{out_path}': {e}")
-        sys.exit(3)
+        print(f"Error writing test_results.json: {e}")
+        sys.exit(1)
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
-```

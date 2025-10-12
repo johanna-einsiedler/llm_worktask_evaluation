@@ -1,0 +1,115 @@
+### Exam Title
+Updating Automated Test Scripts to Ensure Currency — Basic Practical Exam
+
+### Instructions for Candidate
+
+Overview
+- Total time allowed: 90 minutes. Start a timer when you begin.
+- You have a local copy of a small, self-contained repository and a one-line test-run command (see repository README).
+- Your job: run the test suite, diagnose the failing test(s) caused by a small, realistic change in the application surface, update only the automated test scripts and test helpers/mocks so the tests are correct and robust again, and submit a single JSON file named test_submission.json containing all required evidence.
+
+Step-by-step instructions
+1. Start time
+   - Note the ISO8601 timestamp when you begin (time_started_iso).
+2. Run the test suite (10–15 minutes)
+   - Execute the single test-run command provided in the repo README (for example: pytest -q or npm test).
+   - Capture the failing test output (raw stdout/stderr). Save the relevant raw/tail text that shows the failing test names, stack traces, and assertions. This will be initial_test_results.
+3. Diagnose failures (10–20 minutes)
+   - Inspect the failing test files, test helpers/fixtures, and any included application stubs/mocks to find the single point(s) of failure (outdated locators, renamed response fields, changed labels, expired test data, timing issues).
+   - Do not modify application source code. You may only modify test code and test helpers/mocks.
+4. Update tests (30–40 minutes)
+   - Make the minimal, focused changes required to restore the tests’ intent and reliability. Examples of acceptable changes:
+     - Update an assertion to refer to a renamed API field used by the test.
+     - Replace a fragile selector with a stable test-specific selector from the test helper.
+     - Add or update mock/test fixture data so the test remains relevant.
+     - Replace fixed sleeps with appropriate waits in test helpers.
+   - Keep changes small, readable, and maintainable. Avoid broad refactors.
+   - Record every file you modify and preserve the original content (copy the original file contents before you edit).
+   - For any place where you decide to broaden an assertion (e.g., accept either old or new values) rather than tighten a selector, include a short justification in your explanation_of_changes.
+5. Re-run tests iteratively (until green or fixed)
+   - Re-run the test command after each change until the tests you intended to fix are passing or until you have made a clear, justified partial fix.
+   - Capture the final updated raw output (updated_test_results).
+6. Finalize submission (10–15 minutes)
+   - Note the end time (time_finished_iso) and compute time_spent_minutes (rounded to nearest whole minute).
+   - Prepare the required JSON file test_submission.json (schema described below). Include:
+     - initial_test_results (raw failing output)
+     - updated_test_results (raw output after your changes)
+     - modified_files with original_content and new_content for each file you altered
+     - explanation_of_changes for each modified file (why, what, risk/tradeoff)
+     - reproduce_instructions (exact command(s) to reproduce updated_test_results)
+     - self_check summary of tests passing/failed
+   - Submit only the single file named test_submission.json. No other files will be evaluated.
+
+Constraints / rules (must-follow)
+- Allowed changes: test files and test helpers/mocks only. Do NOT change application source code.
+- You must include the original content of every file you modify (original_content). If a file is large, include at least the parts you modified, but full file content is preferred.
+- Keep changes minimal and justified. Do not comment out or delete failing assertions without replacing with a meaningful check.
+- When you choose a design trade-off (e.g., broaden assertion vs tighten selector), explicitly justify it in explanation_of_changes.
+- Only the single JSON file test_submission.json will be accepted for evaluation.
+
+What to capture from test runs
+- Include the raw text that shows failing tests (names), stack traces and assertion messages. Trim only extraneous unrelated logs, but keep the parts needed to evaluate diagnosis and fixes.
+- Include the final full raw output of the test run after your changes (green or partially fixed).
+
+### Expected Outcome
+
+By the end of the exam you must produce a single JSON file test_submission.json that demonstrates:
+- You ran the provided test suite and recorded the initial failing output.
+- You diagnosed the reason(s) the tests failed.
+- You updated only test code (and supporting test helpers/mocks) so the tests reflect intended behavior and are more robust.
+- You re-ran tests and produced updated test output showing the results after your changes.
+- You documented every modified file with original and new contents, a brief diff description, and a clear explanation of why you changed it and what the change did.
+- You provided exact reproduce instructions and a self-check summary (number of tests passed/failed and whether all tests are passing).
+
+Minimum success criteria (objective)
+- You must not modify application source code.
+- You must provide initial_test_results and updated_test_results.
+- For every modified file you must include original_content and new_content.
+- Your updated_test_results should show the previously failing test(s) are now passing. If you could not make them all pass, provide justification and state which tests remain failing.
+- Your explanations must link the failing symptoms to the edits you made (root cause → change).
+
+### Provided Materials
+
+You will be given:
+- A self-contained repository (local folder) containing:
+  - A small working application layer or stubs/mocks (no network required).
+  - A test suite with a single test-run command documented in README.
+  - 4–8 tests in total, with 1–3 tests intentionally failing due to a realistic, small change (renamed field, changed UI text/locator, outdated test data, or timing).
+  - A README with the one-line command to run the test suite and the required runtime (for example Python 3.x or Node.js). Follow the README for environment/setup instructions included in the repo.
+- No internet access or external materials will be required; all dependencies are included locally.
+
+### Submission Format
+
+You must submit a single file named test_submission.json (UTF-8 encoded). This JSON must match the following schema exactly with these fields (order does not matter), and each field must be present as described:
+
+- candidate_name: string
+- time_started_iso: string (ISO8601)
+- time_finished_iso: string (ISO8601)
+- time_spent_minutes: integer
+- initial_test_results: string (raw text showing failing tests — include failing test names, stack traces, assertion messages)
+- updated_test_results: string (raw text after your changes)
+- modified_files: array of objects, each with:
+  - path: string (relative file path in the repo)
+  - original_content: string (full file content as provided before your edits; if large, include at least the full function(s) you changed)
+  - new_content: string (full file content after your edits)
+  - brief_diff: string (small unified diff or short description of what changed, e.g., "- assert foo == 'bar'\n+ assert foo == 'baz'")
+- explanation_of_changes: array of objects, each with:
+  - path: string
+  - why_changed: string (1–3 sentences explaining root cause)
+  - what_changed: string (1–3 sentences describing what was altered)
+  - risk_or_tradeoff: string (optional; one sentence describing any risk or tradeoff)
+  - assertion_design_decision: string (required if you broadened an assertion or loosened an assertion/selector; 1–2 sentences justifying the choice; otherwise set to an empty string)
+- reproduce_instructions: string (exact command(s) to run to reproduce updated_test_results; include any environment steps that are required and are available in the repo)
+- self_check: object with:
+  - all_tests_passing: boolean
+  - number_of_tests_passed: integer
+  - number_of_tests_failed: integer
+- optional_attachments: string (optional; base64-encoded large logs if necessary — otherwise omit or set to empty string)
+
+Important submission notes
+- Only test_submission.json will be evaluated. Do not submit any other files.
+- Ensure original_content is literally the content that was in the repo before you modified it (copy it before editing).
+- Be precise and objective in explanations; link failures to fixes.
+- If you intentionally left any failing tests, explain which and why in explanation_of_changes and in reproduce_instructions.
+
+Good luck. Start your timer, run the test command in the repo, and capture the initial failing output now.

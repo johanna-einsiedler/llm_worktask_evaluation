@@ -1,200 +1,81 @@
 {
-  "scores": {
-    "correctness": {
-      "points": 60.0,
-      "max_points": 60,
-      "details": {
-        "q1_total_events": {
-          "points": 15.0,
-          "max_points": 15.0
-        },
-        "q2_unique_users": {
-          "points": 15.0,
-          "max_points": 15.0
-        },
-        "q3_top3_event_types": {
-          "points": 15.0,
-          "max_points": 15.0,
-          "notes": []
-        },
-        "q4_events_by_plan": {
-          "points": 15.0,
-          "max_points": 15.0,
-          "notes": []
-        }
-      }
+  "sections": {
+    "Setup & Import": {
+      "earned": 20,
+      "possible": 20,
+      "notes": [
+        "Setup code present.",
+        "Setup commands provided.",
+        "total_rows_in_csv matches expected (60).",
+        "Malformed metric row ids match expected.",
+        "Malformed timestamp row ids match expected.",
+        "One-line data-cleaning decision present."
+      ]
     },
-    "reproducibility": {
-      "points": 15.0,
-      "max_points": 15,
-      "details": {
-        "run_command": {
-          "points": 8.0,
-          "max_points": 8.0
-        },
-        "persistent_store_files": {
-          "points": 7.0,
-          "max_points": 7.0
-        }
-      }
+    "Core Queries": {
+      "earned": 40,
+      "possible": 40,
+      "notes": [
+        "Core query SQL/script present.",
+        "query_1: matched expected rows. (+5)",
+        "query_2: matched expected rows. (+5)",
+        "query_3: matched expected rows. (+5)",
+        "query_4: matched expected rows. (+5)",
+        "query_5: matched expected rows. (+5)"
+      ]
     },
-    "schema_and_data": {
-      "points": 10.0,
-      "max_points": 10,
-      "details": {
-        "schema_columns": {
-          "points": 6.0,
-          "max_points": 6.0,
-          "notes": []
-        },
-        "row_counts": {
-          "points": 4.0,
-          "max_points": 4.0,
-          "notes": []
-        }
-      }
+    "Transformation & Export": {
+      "earned": 20,
+      "possible": 20,
+      "notes": [
+        "Transformation code present.",
+        "Transformation export commands provided.",
+        "export_rows matches expected (6).",
+        "Transformation description present.",
+        "Malformed/missing values handling described."
+      ]
     },
-    "code_quality": {
-      "points": 10.0,
-      "max_points": 10,
-      "details": {
-        "queries": {
-          "points": 5.0,
-          "max_points": 5.0
-        },
-        "run_command_and_language": {
-          "points": 5.0,
-          "max_points": 5.0
-        }
-      }
-    },
-    "justifications": {
-      "points": 5.0,
-      "max_points": 5,
-      "details": {
-        "decision_1": {
-          "points": 2.5,
-          "max_points": 2.5
-        },
-        "decision_2": {
-          "points": 2.5,
-          "max_points": 2.5
-        }
-      }
+    "Summary & Reproducibility": {
+      "earned": 20,
+      "possible": 20,
+      "notes": [
+        "Key findings present.",
+        "Recommendations present.",
+        "Assumptions mention handling of malformed data or lookup usage.",
+        "Reproducibility commands include 7 expected commands (awarded 5/5)."
+      ]
     }
   },
-  "messages": [],
-  "total_points": 100.0,
-  "max_points": 100,
-  "percentage": 100.0,
+  "messages": [
+    "Section: Setup & Import -> 20/20",
+    "  - Setup code present.",
+    "  - Setup commands provided.",
+    "  - total_rows_in_csv matches expected (60).",
+    "  - Malformed metric row ids match expected.",
+    "  - Malformed timestamp row ids match expected.",
+    "  - One-line data-cleaning decision present.",
+    "Section: Core Queries -> 40/40",
+    "  - Core query SQL/script present.",
+    "  - query_1: matched expected rows. (+5)",
+    "  - query_2: matched expected rows. (+5)",
+    "  - query_3: matched expected rows. (+5)",
+    "  - query_4: matched expected rows. (+5)",
+    "  - query_5: matched expected rows. (+5)",
+    "Section: Transformation & Export -> 20/20",
+    "  - Transformation code present.",
+    "  - Transformation export commands provided.",
+    "  - export_rows matches expected (6).",
+    "  - Transformation description present.",
+    "  - Malformed/missing values handling described.",
+    "Section: Summary & Reproducibility -> 20/20",
+    "  - Key findings present.",
+    "  - Recommendations present.",
+    "  - Assumptions mention handling of malformed data or lookup usage.",
+    "  - Reproducibility commands include 7 expected commands (awarded 5/5)."
+  ],
+  "total_points_earned": 100,
+  "total_points_possible": 100,
   "overall_score": 100.0,
-  "diagnostics": {
-    "expected_summary": {
-      "q1_total_events": 12,
-      "q2_unique_users": 5,
-      "q3_top3_event_types": [
-        {
-          "event_type": "click",
-          "count": 6
-        },
-        {
-          "event_type": "view",
-          "count": 4
-        },
-        {
-          "event_type": "purchase",
-          "count": 2
-        }
-      ],
-      "q4_events_by_plan": {
-        "pro": 6,
-        "free": 4,
-        "enterprise": 2
-      }
-    },
-    "candidate_summary": {
-      "run_command": "python3 run_exam.py",
-      "persistent_store_files": [
-        "data.db"
-      ],
-      "task1_schema": {
-        "users": {
-          "user_id": "TEXT",
-          "signup_date": "TEXT",
-          "plan": "TEXT"
-        },
-        "events": {
-          "event_id": "TEXT",
-          "user_id": "TEXT",
-          "timestamp": "TEXT",
-          "event_type": "TEXT",
-          "value": "INTEGER"
-        }
-      },
-      "task1_row_counts": {
-        "users": 6,
-        "events": 12
-      },
-      "task2_results": {
-        "q1_total_events": 12,
-        "q2_unique_users": 5,
-        "q3_top3_event_types": [
-          {
-            "event_type": "click",
-            "count": 6
-          },
-          {
-            "event_type": "view",
-            "count": 4
-          },
-          {
-            "event_type": "purchase",
-            "count": 2
-          }
-        ],
-        "q4_events_by_plan": {
-          "pro": 6,
-          "free": 4,
-          "enterprise": 2
-        }
-      },
-      "task3_aggregates": {
-        "average_events_per_active_user": 2.4,
-        "average_events_per_user_by_plan": {
-          "pro": 3.0,
-          "free": 1.3333333333333333,
-          "enterprise": 2.0
-        }
-      },
-      "task4_report": {
-        "total_events": 12,
-        "unique_users": 5,
-        "average_events_per_active_user": 2.4,
-        "top3_event_types": [
-          {
-            "event_type": "click",
-            "count": 6
-          },
-          {
-            "event_type": "view",
-            "count": 4
-          },
-          {
-            "event_type": "purchase",
-            "count": 2
-          }
-        ],
-        "events_by_plan": {
-          "pro": 6,
-          "free": 4,
-          "enterprise": 2
-        },
-        "average_events_per_user_by_plan": {
-          "pro": 3.0,
-          "free": 1.3333333333333333,
-          "enterprise": 2.0
-        }
-      }
-    }
-  }
+  "pass_threshold": 80.0,
+  "pass": true
 }

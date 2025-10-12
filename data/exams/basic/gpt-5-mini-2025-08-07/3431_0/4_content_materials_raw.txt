@@ -1,314 +1,338 @@
 <MATERIALS_FOR_CANDIDATE>
-Repository layout (all files listed below; create these exact files in the repo):
+Repository layout (all paths are relative to repository root):
 
-README.txt
----
-Task list and commands.
-
-Overview:
-This repository contains a small Python 3 utility that parses order lines and reports top products by total amount. You will perform three tasks in order:
-
-- Task A — Bug Fix: run tests, reproduce the failing test, fix the bug so tests pass.
-- Task B — Environment Adaptation: adapt the CLI so it can read input from stdin when requested.
-- Task C — Performance: run the benchmark, implement one small optimization to reduce runtime, and report before/after timings.
-
-Commands to run (run these before modifying any files and capture outputs exactly):
-- python3 run_tests.py
-- python3 bench.py
-- python3 src/app.py data/sample_orders.txt
-
-Task B (environment adaptation) requirement:
-- Modify src/app.py so that when invoked with the filename '-' or with a '--stdin' flag, it reads input from standard input (sys.stdin) instead of from a file path. Example invocation after adaptation:
-  - cat data/sample_orders.txt | python3 src/app.py - 
-  - cat data/sample_orders.txt | python3 src/app.py --stdin
-
-Notes:
-- Use only the provided files and Python 3 standard library.
-- Do not change test expectations in tests/test_processor.py (fix the code, not the tests).
-- Record exact console outputs pre- and post-change in test_submission.json.
----
-
-data/sample_orders.txt
----
-1,P01,10.0
-2,P03,30.0
-3,P02,20.0
-4,P03,5.0
-5,P01,2.5
-6,P04,15.0
----
-
+README.md
+run_all.py
+data/events.csv
 src/processor.py
----
-# src/processor.py
-# Small order-processing helper functions.
+tests/test_runner.py
 
-def parse_orders(text):
-    """
-    Parse order lines from a text string.
-    Each line: order_id,product_code,amount
-    Returns a list of dicts: {'id': str, 'product': str, 'amount': float}
-    """
-    orders = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        parts = line.split(',')
-        if len(parts) < 3:
-            continue
-        oid = parts[0].strip()
-        product = parts[1].strip()
-        try:
-            amount = float(parts[2].strip())
-        except ValueError:
-            # ignore malformed amounts
-            continue
-        orders.append({'id': oid, 'product': product, 'amount': amount})
-    return orders
+--- README.md ---
+Practical Maintenance & Optimization — Basic (90-minute hands-on)
 
-def compute_product_totals(orders):
-    """
-    Compute total amount per product.
-    Implementation intentionally written using repeated scans (inefficient)
-    to leave room for a measurable optimization for Task C.
-    Returns dict: {product: total_amount}
-    """
-    # collect product order in a list (preserve first-seen order)
-    products = [o['product'] for o in orders]
-    unique = []
-    for p in products:
-        if p not in unique:
-            unique.append(p)
+Repository structure:
+- src/processor.py        : application code to read events, aggregate and compute co-occurrence
+- data/events.csv        : input dataset (12 rows)
+- tests/test_runner.py   : test runner (uses only the standard library)
+- run_all.py             : runs tests and prints a benchmark; supports --low-mem flag
 
+Quick start (candidate):
+1. Run baseline: python3 run_all.py
+2. Run low-memory validation (will currently fail until Task B fixed): python3 run_all.py --low-mem
+3. Run tests only: python3 tests/test_runner.py
+
+You must make modifications inside src/ only. Produce test_submission.json as instructed in the exam.
+
+--- run_all.py ---
+#!/usr/bin/env python3
+"""
+Run tests and a small benchmark. Use --low-mem to run the low-memory validation.
+"""
+import sys
+import time
+import subprocess
+from pathlib import Path
+
+REPEATS = 5000  # repeat count to amplify the benchmark (adjustable but kept fixed)
+
+def run_tests():
+    print("Running tests (tests/test_runner.py)...")
+    p = subprocess.run([sys.executable, "tests/test_runner.py"], capture_output=True, text=True)
+    print(p.stdout)
+    if p.returncode != 0:
+        print("TESTS FAILED (exit code {})".format(p.returncode))
+    else:
+        print("ALL TESTS PASSED")
+    return p.returncode, p.stdout + p.stderr
+
+def benchmark():
+    print("Running benchmark (compute_cooccurrence) with REPEATS={}...".format(REPEATS))
+    # import processor after tests (in case code changed)
+    import importlib
+    import src.processor as processor
+    importlib.reload(processor)
+    events = processor.load_all_events("data/events.csv")
+    start = time.time()
+    # run compute_cooccurrence REPEATS times
+    for _ in range(REPEATS):
+        _ = processor.compute_cooccurrence(events)
+    elapsed = time.time() - start
+    print("BENCHMARK_TIME_S: {:.6f}".format(elapsed))
+    return elapsed
+
+def low_mem_validation():
+    print("Running low-memory validation (streaming aggregation)...")
+    import importlib
+    import src.processor as processor
+    importlib.reload(processor)
+    try:
+        result = processor.aggregate_by_event_code("data/events.csv", stream=True)
+    except NotImplementedError:
+        print("LOW-MEM MODE: NOT IMPLEMENTED in src/processor.py")
+        return 1, "NotImplemented"
+    # expected results (pre-computed for provided dataset)
+    expected = {"C1": 100, "C2": 20, "C3": 25}
+    ok = result == expected
+    print("LOW-MEM MODE RESULT: {}".format(result))
+    print("LOW-MEM MODE OK: {}".format(ok))
+    return (0 if ok else 2), str(result)
+
+def main():
+    args = sys.argv[1:]
+    rc, test_out = run_tests()
+    if rc != 0:
+        print("Skipping benchmark because tests failed.")
+        # still allow low-mem flag to be executed separately
+        if "--low-mem" in args:
+            lm_rc, lm_out = low_mem_validation()
+            sys.exit(lm_rc)
+        sys.exit(rc)
+    # run benchmark
+    baseline = benchmark()
+    print("BASELINE_TIME_S: {:.6f}".format(baseline))
+    if "--low-mem" in args:
+        lm_rc, lm_out = low_mem_validation()
+        sys.exit(lm_rc)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+
+--- data/events.csv ---
+EventID,UserID,EventCode,Value
+E1,U1,C1,10
+E2,U2,C1,5
+E3,U1,C2,7
+E4,U3,C1,15
+E5,U2,C2,3
+E6,U4,C3,20
+E7,U4,C1,5
+E8,U5,C2,10
+E9,U5,C1,5
+E10,U6,C3,5
+E11,U2,C1,60
+E12,U7,C2,0
+
+--- src/processor.py ---
+"""
+Processor module for the exam.
+Contains simple implementations; some parts intentionally incomplete or suboptimal
+for the candidate to modify.
+
+Public functions used by tests and run_all.py:
+- parse_line(line) -> (event_id, user_id, event_code, value_int)
+- load_all_events(path) -> list of tuples (event_id, user_id, event_code, value)
+- aggregate_by_event_code(path, stream=False) -> dict event_code -> total value
+- compute_cooccurrence(events) -> integer count of unordered user pairs that share event codes
+"""
+
+from typing import List, Tuple, Dict
+
+def parse_line(line: str) -> Tuple[str, str, str, int]:
+    """
+    Parse a CSV line into fields.
+    BUG: does not strip whitespace around fields (intentionally).
+    Candidate must fix this so whitespace is handled correctly.
+    """
+    parts = line.strip().split(",")
+    if len(parts) != 4:
+        raise ValueError("Bad line: {}".format(line))
+    event_id = parts[0]
+    user_id = parts[1]
+    event_code = parts[2]
+    value = int(parts[3])
+    return event_id, user_id, event_code, value
+
+def load_all_events(path: str) -> List[Tuple[str, str, str, int]]:
+    """
+    Load all events into memory and return a list of parsed tuples.
+    This is the non-streaming (default) implementation.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    # skip header
+    lines = lines[1:]
+    events = [parse_line(l) for l in lines]
+    return events
+
+def aggregate_by_event_code(path: str, stream: bool = False) -> Dict[str, int]:
+    """
+    Aggregate total Value per EventCode.
+    If stream=True is requested, this function currently raises NotImplementedError.
+    Candidate must implement a streaming version that does not load entire file into memory.
+    """
+    if stream:
+        raise NotImplementedError("Low-memory streaming mode not implemented")
+    events = load_all_events(path)
     totals = {}
-    # inefficient: for each unique product, sum by scanning orders
-    for p in unique:
-        total = 0.0
-        for o in orders:
-            if o['product'] == p:
-                total += o['amount']
-        totals[p] = total
+    for _eid, _uid, code, value in events:
+        totals.setdefault(code, 0)
+        totals[code] += value
     return totals
 
-def top_n_products(orders, n=3):
+def compute_cooccurrence(events: List[Tuple[str, str, str, int]]) -> int:
     """
-    Return the top N product codes by total amount as a list (product codes only).
-    NOTE: there's an intentional bug in sorting order here for Task A.
+    Compute the total number of unique unordered user pairs that share an EventCode.
+    Current implementation is a naive O(n^2) approach (slow on larger data).
+    Candidate will optimize this function in Task C while preserving correctness.
     """
-    totals = compute_product_totals(orders)
-    # BUG: sorts ascending (smallest totals first), expected descending
-    sorted_items = sorted(totals.items(), key=lambda kv: kv[1])
-    top = [prod for prod, amt in sorted_items[:n]]
-    return top
----
+    # build set of pairs (frozenset of two user ids) where both events have same code
+    pairs = set()
+    n = len(events)
+    for i in range(n):
+        _eid_i, user_i, code_i, _v_i = events[i]
+        for j in range(i+1, n):
+            _eid_j, user_j, code_j, _v_j = events[j]
+            if code_i == code_j and user_i != user_j:
+                pairs.add(frozenset([user_i, user_j]))
+    return len(pairs)
 
-src/app.py
----
-# src/app.py
-# Command-line interface to print top products.
+# end of src/processor.py
+
+--- tests/test_runner.py ---
+#!/usr/bin/env python3
+"""
+A minimal test runner using only the standard library.
+Exits with non-zero code on failures. Prints details to stdout.
+"""
 
 import sys
-from processor import parse_orders, top_n_products
+from pathlib import Path
 
-def read_input_from_file(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return f.read()
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # add repo root to path
+from src import processor
 
-def main(argv):
-    if len(argv) < 2:
-        print("Usage: python3 src/app.py <orders_file> [top_n]")
-        print("Example: python3 src/app.py data/sample_orders.txt 3")
-        return 1
+def assert_equal(a, b, msg=""):
+    if a != b:
+        raise AssertionError("Assertion failed: {} != {}. {}".format(a, b, msg))
 
-    path = argv[1]
-    top_n = 3
-    if len(argv) >= 3:
+def test_parse_line_whitespace():
+    line = "E1, U1, C1, 10"
+    parsed = processor.parse_line(line)
+    # expected: whitespace should be removed from user and code
+    assert_equal(parsed, ("E1", "U1", "C1", 10), "parse_line must strip fields")
+
+def test_aggregate_top_event():
+    totals = processor.aggregate_by_event_code("data/events.csv", stream=False)
+    # expected totals for provided data
+    expected = {"C1": 100, "C2": 20, "C3": 25}
+    assert_equal(totals, expected, "aggregate_by_event_code returned wrong totals")
+
+def test_cooccurrence_count():
+    events = processor.load_all_events("data/events.csv")
+    count = processor.compute_cooccurrence(events)
+    # For provided data:
+    # C1 users: U1,U2,U3,U4,U5 => 5C2 = 10
+    # C2 users: U1,U2,U5,U7 => 4C2 = 6
+    # C3 users: U4,U6 => 1
+    # total = 17
+    assert_equal(count, 17, "compute_cooccurrence returned wrong count")
+
+def run_all():
+    tests = [test_parse_line_whitespace, test_aggregate_top_event, test_cooccurrence_count]
+    failures = []
+    for t in tests:
         try:
-            top_n = int(argv[2])
-        except ValueError:
-            pass
-
-    # current behavior: only reads from a file path
-    content = read_input_from_file(path)
-    orders = parse_orders(content)
-    top = top_n_products(orders, top_n)
-    for p in top:
-        print(p)
-    return 0
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))
----
-
-tests/test_processor.py
----
-# tests/test_processor.py
-import unittest
-from src.processor import parse_orders, compute_product_totals, top_n_products
-
-class ProcessorTests(unittest.TestCase):
-    def test_compute_product_totals(self):
-        text = "1,P01,10.0\n2,P03,30.0\n3,P02,20.0\n4,P03,5.0\n5,P01,2.5\n"
-        orders = parse_orders(text)
-        totals = compute_product_totals(orders)
-        expected = {'P01': 12.5, 'P03': 35.0, 'P02': 20.0}
-        self.assertEqual(totals, expected)
-
-    def test_top_n_products(self):
-        text = "1,P01,10.0\n2,P03,30.0\n3,P02,20.0\n4,P03,5.0\n5,P01,2.5\n"
-        orders = parse_orders(text)
-        top = top_n_products(orders, n=3)
-        # expected order: highest totals first
-        self.assertEqual(top, ['P03', 'P02', 'P01'])
-
-if __name__ == '__main__':
-    unittest.main()
----
-
-run_tests.py
----
-# run_tests.py
-# Simple test runner script. Run before and after edits to capture outputs.
-
-import unittest
-import sys
-
-loader = unittest.TestLoader()
-suite = loader.discover('tests')
-
-runner = unittest.TextTestRunner(verbosity=2)
-result = runner.run(suite)
-if result.wasSuccessful():
-    print("ALL TESTS PASS")
-    sys.exit(0)
-else:
-    print("SOME TESTS FAILED")
-    sys.exit(1)
----
-
-bench.py
----
-# bench.py
-# Deterministic benchmark that measures compute_product_totals runtime (in ms).
-# Uses a larger synthetic dataset to make the inefficient implementation measurable.
-
-import time
-from src.processor import parse_orders, compute_product_totals
-
-def make_benchmark_input(num_records=5000, num_products=500):
-    # deterministic pattern: product codes P0001..P{num_products}
-    lines = []
-    for i in range(num_records):
-        oid = str(i+1)
-        product = f"P{(i % num_products) + 1:04d}"
-        amount = ((i * 13) % 100) + 1  # deterministic numeric pattern
-        lines.append(f"{oid},{product},{amount}")
-    return "\n".join(lines) + "\n"
-
-def time_compute(text, iterations=3):
-    orders = parse_orders(text)
-    # warm-up
-    compute_product_totals(orders)
-    start = time.perf_counter()
-    for _ in range(iterations):
-        compute_product_totals(orders)
-    end = time.perf_counter()
-    total_ms = (end - start) * 1000.0
-    avg_ms = total_ms / iterations
-    return avg_ms
+            t()
+            print("PASS:", t.__name__)
+        except Exception as e:
+            print("FAIL:", t.__name__)
+            print("  ", e)
+            failures.append((t.__name__, str(e)))
+    if failures:
+        print("FAILED {} tests".format(len(failures)))
+        sys.exit(1)
+    else:
+        print("ALL TESTS PASSED")
+        sys.exit(0)
 
 if __name__ == "__main__":
-    text = make_benchmark_input(num_records=5000, num_products=500)
-    avg_ms = time_compute(text, iterations=3)
-    print(f"benchmark_avg_ms: {avg_ms:.3f}")
----
-
-Notes for candidate:
-- Start by running and capturing the outputs of:
-  - python3 run_tests.py
-  - python3 bench.py
-  - python3 src/app.py data/sample_orders.txt
-- Make minimal changes to fix the failing test, adapt stdin behavior, and optimize compute_product_totals for better benchmark timing.
-- Prepare test_submission.json as specified in the exam instructions and include exact console outputs and unified diffs or updated file contents.
+    run_all()
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
-How these materials were constructed and why
+How materials were constructed and purpose
+- Overall goal: small deterministic Python project (no external libs) that exercises reading an unfamiliar codebase and making three types of changes:
+  - Task A (bug fix): fix incorrect parsing (whitespace handling) so tests pass.
+  - Task B (hardware adaptation): implement streaming aggregation to avoid loading the full file into memory when --low-mem / stream=True is requested.
+  - Task C (performance improvement): replace the O(n^2) co-occurrence computation with an O(n) approach that counts unique users per event code and computes pair counts via combinatorics.
 
-Overall design goals
-- Small, deterministic Python 3 codebase (~200 LOC across files) with no external dependencies so candidates can run everything locally.
-- Three clear, sequential tasks:
-  - Task A (bug fix) is localized to one small faulty line in src/processor.py -> top_n_products sorting order.
-  - Task B (environment adaptation) requires a minimal CLI change in src/app.py to support reading from stdin (filename '-' or --stdin).
-  - Task C (performance) uses compute_product_totals implemented inefficiently (repeated scans) so a simple single-pass dict accumulation yields a measurable improvement on the benchmark dataset.
+Files and relationships
+- data/events.csv
+  - 12 deterministic rows. Header plus events E1..E12 with clearly labeled fields EventID,UserID,EventCode,Value.
+  - Pre-computed totals:
+    - C1 -> 100
+    - C2 -> 20
+    - C3 -> 25
+  - Pre-computed co-occurrence count: 17 (explanation included in test file comments).
 
-Files and key relationships
 - src/processor.py
-  - parse_orders(text): deterministic parser used by tests, app, and benchmark.
-  - compute_product_totals(orders): intentionally inefficient (nested scans) to create room for optimization.
-  - top_n_products(orders, n): uses compute_product_totals and sorts totals. The intentional bug is sorting ascending instead of descending.
-- src/app.py
-  - Simple CLI that reads a file path and prints the top N products. Task B requires adding stdin handling here.
-- tests/test_processor.py
-  - Two unit tests:
-    - test_compute_product_totals asserts exact totals for a small inline dataset (should pass immediately).
-    - test_top_n_products asserts descending ordering of top products (this test fails before Task A is completed).
-- run_tests.py
-  - A simple wrapper that runs tests and prints PASS/FAIL, suitable for capturing pre- and post-fix outputs.
-- bench.py
-  - Generates a deterministic dataset (5,000 records, 500 unique products) such that the current O(n*m) behavior of compute_product_totals performs noticeably slower than a linear single-pass implementation. It prints an average runtime in milliseconds.
+  - parse_line(line): intentionally does not strip whitespace — this creates a failing unit test (Task A). This simulates a typical small parsing bug that can be fixed locally without changing test inputs.
+  - load_all_events(path): reads entire file into memory (read().splitlines()) — acceptable initially, but Task B will require a streaming alternative.
+  - aggregate_by_event_code(path, stream=False): uses in-memory events when stream=False; when stream=True raises NotImplementedError. Candidate must implement streaming aggregation (read file line-by-line, parse and accumulate) to succeed on low-memory validation.
+  - compute_cooccurrence(events): computes unique unordered user pairs that share an event code using a naive O(n^2) approach. This is correct but slow; candidate will optimize this to compute counts per code and sum k*(k-1)//2 to get O(n) behavior.
 
-Deterministic patterns and hidden relationships
-- Product code formatting is consistent:
-  - Small test dataset uses codes like P01, P02, P03 for clarity.
-  - Benchmark uses zero-padded codes P0001 .. P0500 to create many distinct products.
-- compute_product_totals is shared by both tests and the benchmark:
-  - Tests exercise correctness on small data.
-  - Benchmark exercises performance on larger data; optimizing compute_product_totals improves bench timings without changing test behavior (functional correctness remains the same).
-- The top_n_products bug is isolated to how sorted() is invoked; fixing it does not alter compute_product_totals logic, so unit tests for totals remain valid.
+- tests/test_runner.py
+  - Three deterministic tests:
+    1. test_parse_line_whitespace: constructs a line with spaces ("E1, U1, C1, 10") and asserts parse_line normalizes whitespace. This fails initially because parse_line doesn't strip — this is Task A.
+    2. test_aggregate_top_event: checks aggregate_by_event_code returns the exact expected dict for the provided dataset.
+    3. test_cooccurrence_count: asserts compute_cooccurrence returns 17 for the provided dataset.
+  - Tests use only the standard library and exit with non-zero if any test fails.
 
-Expected correct fixes
-- Task A expected fix:
-  - Change the sort in top_n_products to descending order (use reverse=True or sort by negative value). Minimal edit: set reverse=True in sorted(..., reverse=True) or change slicing to [-n:] reversed — but reverse=True is preferred for clarity and minimal change.
-- Task B expected adaptation:
-  - Modify src/app.py to detect path == '-' or presence of '--stdin' in argv and read from sys.stdin.read() instead of open(path).read(). Minimal changes: add a conditional before reading file; do not change tests.
-- Task C expected optimization:
-  - Replace the nested-scan accumulation in compute_product_totals with a single-pass dictionary accumulation:
-    totals = {}
-    for o in orders:
-        totals[o['product']] = totals.get(o['product'], 0.0) + o['amount']
-    return totals
-  - This reduces runtime from approximately O(n * unique_products) with multiple scans to O(n) in a single pass. On the provided benchmark (5000 records, 500 unique products), this should yield a significant measurable speedup (commonly >20% on typical machines).
+- run_all.py
+  - Orchestrates tests and a small benchmark.
+  - On normal run: runs tests (calls tests/test_runner.py as a subprocess); if tests pass, runs benchmark that calls processor.load_all_events() and then calls processor.compute_cooccurrence(events) REPEATS times to measure elapsed time and prints BENCHMARK_TIME_S and BASELINE_TIME_S. Candidate should run this before making changes to capture baseline time.
+  - Supports --low-mem flag: when provided, after tests the script calls processor.aggregate_by_event_code(..., stream=True) and compares the returned dict to the expected totals; if stream=True is unimplemented it prints a NotImplemented message. This is the Task B validation target.
 
-Common traps and candidate errors
-- Changing tests instead of fixing code. Tests should remain unchanged. Look for this during evaluation.
-- Over-broad edits (e.g., rewriting parse_orders or reformatting files) — good candidates will make minimal, well-scoped changes.
-- For Task B, forgetting to preserve existing file-reading behavior when implementing stdin support. The CLI should still accept a normal filename argument.
-- For Task C, introducing floating point inaccuracies (avoid altering numeric semantics) or returning different data shapes — maintain the same dict structure and numeric types.
-- Candidates might optimize in a way that breaks stability (different ordering of equal totals). That is acceptable if they maintain function contract (top_n_products returns any correct top N ordering based on totals) — but do not change test expectations.
+Design choices and how they map to exam tasks
+- Task A (Bug Fix)
+  - The parse_line whitespace bug is small, localizable, and realistic. Candidates must run tests, inspect failing assertion from test_parse_line_whitespace, and fix parse_line by stripping whitespace from each field. This tests reading unfamiliar code, running tests, and applying a minimal safe fix.
 
-How these materials differentiate conceptual vs. practical skills
-- Reproducibility requirement forces the candidate to actually run run_tests.py and bench.py and paste pre-fix outputs; this proves they executed and observed the failure rather than only stating a fix.
-- Task A evaluates debugging and minimal, correct changes: the bug is small but requires the candidate to trace where ordering is determined and to run tests.
-- Task B evaluates environment adaptation skills: adding stdin handling is a common maintenance task requiring minimal but correct code changes and care for CLI behavior.
-- Task C assesses performance reasoning and measurement: candidate must run benchmark, implement a safe optimization that preserves correctness (single-pass accumulation), and report measured improvement with before/after ms numbers.
-- The materials reward minimal diffs and evidence-based changes: evaluators can apply the candidate's patch and re-run the supplied runner and bench to confirm claims.
+- Task B (Hardware Adaptation)
+  - The code currently reads the entire file in load_all_events. The run_all.py --low-mem path calls aggregate_by_event_code with stream=True, but the function currently raises NotImplementedError. Candidate should implement streaming aggregation by reading the file line-by-line, calling parse_line for each line, and updating totals without storing the entire dataset. The run_all.py low-memory validation compares the dict to the expected totals, so correctness is verifiable. This tests adapting to constrained memory by replacing in-memory approach with streaming.
 
-Scoring/verification notes for evaluators
-- To verify Task A: apply candidate changes, run python3 run_tests.py and confirm all tests pass.
-- To verify Task B: run both
-  - cat data/sample_orders.txt | python3 src/app.py -
-  - cat data/sample_orders.txt | python3 src/app.py --stdin
-  and confirm the printed top products are sensible (same as running with filename).
-- To verify Task C: run python3 bench.py before and after applying candidate's patch and compare the reported benchmark_avg_ms numbers to the values in test_submission.json. Expect a measurable reduction (optimistic target ~20%+).
-- Check patch size: minimal change in top_n_products (one-line change) and small controlled changes to src/app.py and src/processor.py for optimization indicate quality.
+- Task C (Performance Improvement)
+  - The naive compute_cooccurrence is O(n^2). The optimal approach is to:
+    - Build a mapping from event_code -> set of users (single pass over events).
+    - For each code, compute pairs = k * (k-1) // 2 where k is number of unique users.
+    - Sum over codes to produce the same result.
+  - This yields a substantial improvement for repeated benchmarks because run_all.py calls compute_cooccurrence REPEATS times. Candidates must ensure the optimized result equals the original for the provided data and that tests still pass.
+  - The benchmark uses REPEATS = 5000 to amplify runtime difference deterministically. The evaluator can compare baseline and optimized times printed by run_all.py.
 
-Edge cases left intentionally out of scope
-- Very large file streaming or memory-limited streaming solutions are not required for the basic exam; Task B only requires stdin handling, not full streaming rework.
-- No external concurrency, database, or external I/O is involved.
-- Floating point rounding beyond sum semantics is not the focus.
+Traps, common errors, and grader guidance
+- Possible naive but incorrect fixes for Task A:
+  - Hard-coding stripped values only for the test line or special-casing a test input. The grader should verify parse_line is generally fixed by trying a few additional lines or by inspecting the code change (must use strip()).
+  - Changing tests instead of code — tests are part of material; candidate must not alter tests.
 
-Conclusion
-These deterministic, compact materials provide a realistic, reproducible maintenance workload focused on debugging, adapting to a simple runtime change, and making a small measurable optimization. The three tasks are independent but sequential, allowing straightforward automated verification of candidate submissions and clear signals of practical ability.
+- Task B pitfalls:
+  - Implementing a streaming function that still accumulates all events into memory (e.g., reading lines but appending to a list) defeats the purpose. The evaluator should review code to ensure the stream=True path does not create a full listcopy.
+  - Not preserving correctness: the aggregator must produce the exact expected dict ordering-independent. The run_all.py script compares dict equality.
+
+- Task C pitfalls:
+  - Implementing an optimization that changes semantics (e.g., counting pair occurrences per event instance instead of unique user pairs) will break tests. Tests check cooccurrence number; final code must match 17 for provided dataset.
+  - Forgetting to keep function name compute_cooccurrence so the benchmark picks up the optimized implementation.
+
+What correct answers depend on
+- Correctness for Task A depends on trimming whitespace; parse_line should apply .strip() to each CSV field and still convert Value to int.
+- Correctness for Task B depends on a streaming implementation that iterates file lines and updates totals without building a full events list.
+- Correctness for Task C depends on computing the same unique unordered user-pair count as the naive algorithm, but doing so without nested loops (use mapping code->set(users) then sum combinations).
+
+How these materials differentiate candidates
+- Running tests and reading stack traces reveals whether the candidate follows an evidence-driven workflow (run tests, inspect failure, modify code).
+- Task A checks for straightforward debugging and safe minimal fixes.
+- Task B distinguishes those comfortable making small architectural changes (in-place streaming to adapt to low-memory constraints) versus those who attempt hacky or incomplete fixes.
+- Task C separates candidates who know basic algorithmic improvements (using sets and combinatorics to turn O(n^2) into O(n)) from those who attempt micro-optimizations or give up.
+- The requirement to produce concrete command outputs (run_all.py outputs and test outputs) makes it easy for evaluators to verify claimed improvements.
+
+Note about determinism and size
+- The dataset is concise (12 rows) and fully deterministic. The benchmark amplifies runtime differences by repeating the co-occurrence computation many times (REPEATS = 5000). This keeps files small while still making performance differences measurable.
+
+Evaluator hints
+- Initial run: python3 run_all.py should show tests failing (parse_line whitespace) and benchmark skipped.
+- After Task A: tests should pass; run_all.py then prints ALL TESTS PASSED and baseline benchmark time.
+- After Task B: python3 run_all.py --low-mem should print LOW-MEM MODE RESULT and LOW-MEM MODE OK: True.
+- After Task C: re-run python3 run_all.py and observe BENCHMARK_TIME_S / BASELINE_TIME_S decreased. The test_submission.json must include both baseline and optimized times copied from two runs (pre- and post-optimization).
+- Inspect src/processor.py diffs to ensure changes are minimal and correct: parse_line should now strip fields; aggregate_by_event_code(stream=True) should read file line-by-line; compute_cooccurrence should be optimized but produce identical numeric results.
+
+This set of materials is intentionally compact, deterministic, and directly runnable with only the standard Python interpreter. It supports clear, verifiable outputs for automated or manual grading.
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

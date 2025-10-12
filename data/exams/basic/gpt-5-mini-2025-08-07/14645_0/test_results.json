@@ -1,73 +1,37 @@
 {
-  "breakdown": {
-    "assumptions": {
-      "score": 5,
-      "max": 5,
-      "reasons": [
-        "6 clear assumptions including automation, defect turnaround and environment/test-data assumptions."
-      ]
-    },
-    "schedule": {
-      "score": 5,
-      "max": 30,
-      "reasons": [
-        "Structural schedule issues: Task id 1 includes public holiday 2025-10-23 in date range.",
-        "Dependency sequencing issues: Task id 3 starts 2025-10-24 before or on dependency 1 end 2025-10-24.; Task id 6 starts 2025-10-30 before or on dependency 5 end 2025-10-31.; Task id 7 starts 2025-10-31 before or on dependency 6 end 2025-10-31.",
-        "Resource allocation issues (overlapping same-day tasks): Resource Alice assigned to multiple tasks on 2025-10-21 (task id 1 and another task id 2).; Resource Alice assigned to multiple tasks on 2025-10-22 (task id 1 and another task id 2).; Resource Bob assigned to multiple tasks on 2025-10-21 (task id 1 and another task id 2).; Resource Bob assigned to multiple tasks on 2025-10-22 (task id 1 and another task id 2).; Resource Alice assigned to multiple tasks on 2025-10-24 (task id 1 and another task id 3).; Resource Alice assigned to multiple tasks on 2025-10-27 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-28 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-29 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-27 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-28 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-29 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 6).; Resource Alice assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 6).; Resource Bob assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 6).; Resource Bob assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 6).; Resource Alice assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 7).; Resource Bob assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 7)."
-      ]
-    },
-    "estimates": {
-      "score": 13,
-      "max": 15,
-      "reasons": [
-        "Total estimated hours 168 fit within available capacity 180 across testers in the main window.",
-        "Per-feature estimate coverage looks adequate."
-      ]
-    },
-    "risk_prioritisation": {
-      "score": 15,
-      "max": 15,
-      "reasons": [
-        "Risk prioritisation includes >=5 items, contains rationales, and correctly prioritises F2 and F5 as highest risk."
-      ]
-    },
-    "contingency_options": {
-      "score": 10,
-      "max": 10,
-      "reasons": [
-        "Two contingency options provided, both practical and justified."
-      ]
-    },
-    "entry_exit_criteria": {
-      "score": 10,
-      "max": 10,
-      "reasons": [
-        "All required phases present and exit criteria include measurable gates (e.g., no open critical defects, regression pass rate)."
-      ]
-    },
-    "strategy_summary": {
-      "score": 10,
-      "max": 10,
-      "reasons": [
-        "Strategy summary concise and includes a release-day communication plan with roles and timing."
-      ]
-    }
+  "scores": {
+    "assumptions_and_json": 10.0,
+    "test_strategy": 30.0,
+    "schedule_and_resourcing": 40.0,
+    "risk_and_contingency": 15.0,
+    "metrics_and_reporting": 5.0
   },
-  "total_points": 68,
-  "max_points": 95,
-  "percentage_score": 71.58,
-  "overall_score": 71.58,
-  "verdict": "FAIL",
-  "explanations": [
-    "6 clear assumptions including automation, defect turnaround and environment/test-data assumptions.",
-    "Structural schedule issues: Task id 1 includes public holiday 2025-10-23 in date range.",
-    "Dependency sequencing issues: Task id 3 starts 2025-10-24 before or on dependency 1 end 2025-10-24.; Task id 6 starts 2025-10-30 before or on dependency 5 end 2025-10-31.; Task id 7 starts 2025-10-31 before or on dependency 6 end 2025-10-31.",
-    "Resource allocation issues (overlapping same-day tasks): Resource Alice assigned to multiple tasks on 2025-10-21 (task id 1 and another task id 2).; Resource Alice assigned to multiple tasks on 2025-10-22 (task id 1 and another task id 2).; Resource Bob assigned to multiple tasks on 2025-10-21 (task id 1 and another task id 2).; Resource Bob assigned to multiple tasks on 2025-10-22 (task id 1 and another task id 2).; Resource Alice assigned to multiple tasks on 2025-10-24 (task id 1 and another task id 3).; Resource Alice assigned to multiple tasks on 2025-10-27 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-28 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-29 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-27 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-28 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-29 (task id 4 and another task id 5).; Resource Bob assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 5).; Resource Alice assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 6).; Resource Alice assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 6).; Resource Bob assigned to multiple tasks on 2025-10-30 (task id 4 and another task id 6).; Resource Bob assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 6).; Resource Alice assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 7).; Resource Bob assigned to multiple tasks on 2025-10-31 (task id 5 and another task id 7).",
-    "Total estimated hours 168 fit within available capacity 180 across testers in the main window.",
-    "Per-feature estimate coverage looks adequate.",
-    "Risk prioritisation includes >=5 items, contains rationales, and correctly prioritises F2 and F5 as highest risk.",
-    "Two contingency options provided, both practical and justified.",
-    "All required phases present and exit criteria include measurable gates (e.g., no open critical defects, regression pass rate).",
-    "Strategy summary concise and includes a release-day communication plan with roles and timing."
-  ]
+  "details": [
+    "Assumptions: 7 items present -> full 3.0 points.",
+    "JSON schema and task structure valid -> full 7.0 points.",
+    "test_strategy length 959 chars: above 800 recommended limit.",
+    "Found scope/objectives indicators -> +6.0 pts.",
+    "Entry/Exit criteria detected -> +6.0 pts.",
+    "Multiple test types mentioned (6) -> +6.0 pts.",
+    "Automation approach referenced -> +6.0 pts.",
+    "Reporting metrics/cadence described -> +6.0 pts.",
+    "All required task types present -> +8.0 pts.",
+    "Total effort 284.0 within reasonable range of answer-key 284.0 -> full 8.0 pts.",
+    "All dependencies reference existing tasks -> +8.0 pts.",
+    "Resource allocation fits per-day tester capacity -> +8.0 pts.",
+    "Schedule end 2025-11-28 is on or before release date 2025-11-28 -> +8.0 pts.",
+    "All F1..F6 present in risk_prioritization -> +6.0 pts.",
+    "F1 has testing_priority 1 (appropriate).",
+    "F5 has testing_priority 1 (appropriate).",
+    "Contingency plan covers both short (1-3 days) and long (>3 days) slips -> +5.0 pts.",
+    "Contingency includes defect/env handling -> +4.0 pts.",
+    "Metrics and reporting include daily cadence, defect tracking, and progress metrics -> +5.0 pts.",
+    "PASS: Candidate achieved 100.0% (>=80%)."
+  ],
+  "total_points": 100.0,
+  "max_points": 100.0,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "pass": true,
+  "mandatory_fail_reasons": []
 }

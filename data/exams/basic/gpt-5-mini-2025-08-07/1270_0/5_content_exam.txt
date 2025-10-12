@@ -1,271 +1,213 @@
 ### Exam Title
-Inventory CLI — Basic Practical Programming Exam (90 minutes)
+Basic Practical Exam — Inventory Manager (CRUD, persistence, CSV import/export, demo & tests)
 
 ---
 
 ### Instructions for Candidate
 
-Goal
-- Build a small, single-author CLI program that manages an inventory of items and persists data to disk.
-- The program must be runnable in the provided execution environment using only built-in/standard libraries. You may choose any language available (e.g., python3, node, java), but you must state your language in the submission.
+You have 90 minutes total. Use only the tools available on your machine: a code execution environment and a text editor. Do not use external packages or the internet; use only the language standard library. You must submit a single file named test_submission.json (schema specified below). This single JSON file is the only file the evaluator will use.
 
-Time limit
-- You have 90 minutes total. Suggested pacing:
-  - 5–10 min: design & choose persistence format (JSON file or SQLite recommended)
-  - 45–55 min: implement functionality
-  - 15–20 min: run demonstration commands and capture outputs
-  - 5–10 min: prepare test_submission.json and finalize files
+Follow these steps and requirements exactly.
 
-What you must implement (required)
-- Data model: each item must include at minimum:
-  - sku (string, unique)
-  - name (string)
-  - qty (integer, >= 0)
-  - optional: price (decimal) or description
+1. Core program (required)
+   - Implement a command-line inventory manager program named exactly inventory.py (use another language only if you document that change in README and supply an equivalent main program file name; Python is recommended).
+   - Persistent storage: choose either JSON (inventory.json) or SQLite (inventory.db). Document your choice and any initialization logic in README.md.
+   - The program must support the following non-interactive operations (each callable from the command line; subcommand or flags acceptable):
+     - add --id ID --name NAME --quantity QTY --price PRICE
+     - update --id ID [--name NAME] [--quantity QTY] [--price PRICE]
+     - remove --id ID
+     - get --id ID
+     - list
+     - import --file FILEPATH   (CSV import)
+     - export --file FILEPATH   (export inventory to JSON)
+   - Item fields: id (string), name (string), quantity (integer), price (decimal). IDs are treated case-sensitively.
 
-- CLI commands (exact names and flags are required):
-  1. add
-     - Syntax: <entry_point> add --sku <SKU> --name <NAME> --qty <N> [--price <P>]
-     - Adds a new item. If SKU already exists, error (non-zero exit) and message on stderr.
-  2. list
-     - Syntax: <entry_point> list [--sort sku|name|qty] [--format json|text]
-     - Lists all items. When run with --format json, stdout must be valid JSON array of item objects.
-  3. update
-     - Syntax: <entry_point> update --sku <SKU> (--qty <new_qty> | --change +N|-N)
-     - Updates quantity (either absolute or relative). Invalid quantities (<0) must be rejected with non-zero exit.
-  4. delete
-     - Syntax: <entry_point> delete --sku <SKU>
-     - Deletes an item by SKU. If SKU does not exist, return non-zero exit and stderr message.
-  5. find
-     - Syntax: <entry_point> find --sku <SKU>
-       OR
-       <entry_point> find --name <substring>
-     - Returns matching items. When run with --format json, stdout must be a JSON array with matching item objects.
+2. Validation rules (required)
+   - Enforce unique ID across items.
+   - quantity must be integer >= 0.
+   - price must be numeric >= 0.
+   - Required fields must be present for add.
+   - CLI actions must return non-zero exit code on failure and print a clear error message to stdout or stderr.
 
-- Persistence:
-  - Your program must save inventory to disk and load it on startup.
-  - Use either:
-    - a JSON file (recommended) OR
-    - an SQLite DB (acceptable)
-  - If you choose a JSON file, implement safe write semantics (e.g., write to a temp file then atomically rename) to avoid corrupted files on save.
-  - On startup, if the persistence file exists, it must be loaded and subsequent commands should operate on that data.
+3. CSV import (required)
+   - CSV format (exact): columns id,name,quantity,price (header optional).
+   - Candidate must include a sample file named import.csv with exactly 3 rows: one valid new item, one row with duplicate id (duplicate of existing ID in storage per demo sequence), and one malformed row (e.g., missing fields or invalid numeric).
+   - On encountering invalid rows, your import must handle them gracefully: either skip + report or abort with an error. You must document the chosen behavior in README and implement it consistently.
 
-- Deterministic, machine-parseable output:
-  - list and find must support --format json and produce valid JSON on stdout when asked.
-  - Error messages must go to stderr.
-  - Exit codes: 0 = success, non-zero = error.
+4. Demo runner (required)
+   - Provide an automated, non-interactive demo runner script named demo_runner.py that executes the exact scenario below in order and prints the final inventory JSON to stdout.
+   - The demo runner must start by ensuring the storage is empty (delete inventory.json or inventory.db if present).
+   - Demo sequence (must be performed in this order):
+     1. Add item I100, name "Screwdriver", quantity 15, price 5.50
+     2. Add item I101, name "Hammer", quantity 20, price 9.99
+     3. Update I100 quantity to 12
+     4. Attempt to add I101 again (duplicate ID) — must behave as implemented/published in README (fail/skip/overwrite)
+     5. Remove I101
+     6. Import the provided import.csv (3 rows: one new, one duplicate id, one malformed)
+     7. Export final inventory to final_inventory.json and print the exported JSON content to stdout (this printed JSON must be what you include as final_inventory_json in test_submission.json)
+   - demo_runner.py must be runnable non-interactively (e.g., python3 demo_runner.py) and must exit with code 0 on success.
 
-- Robustness / validation:
-  - Reject duplicate SKUs when adding.
-  - Reject negative quantities.
-  - Return informative error messages on stderr and non-zero exit codes for invalid operations.
+5. Tests / assertions (required)
+   - Provide an automated test file tests.py that runs non-interactively and contains at least 4 assertions / test cases covering important behavior. Example test cases (you may implement similar):
+     - adding an item succeeds
+     - adding a duplicate id fails (or is handled as documented)
+     - updating quantity changes stored value
+     - import skips or reports malformed rows and merges/handles duplicates according to documented policy
+   - tests.py must produce an output summary that the evaluator can capture; however your test results will also be reported in test_submission.json (see schema). tests.py must exit with code 0 if all tests pass and non-zero otherwise.
 
-Demonstration requirements (must be shown in your recorded commands)
-- Create at least 3 distinct items with add.
-- Update the quantity of at least one item.
-- Delete at least one item.
-- Search/find at least one item by SKU or name substring.
-- Demonstrate persistence across program invocations: perform add(s), exit, run a new invocation that lists items and shows previously added items still present.
+6. README and notes (required)
+   - Provide README.md with exact commands to run the demo and tests (e.g., python3 demo_runner.py, python3 tests.py).
+   - Document: chosen persistence (JSON or SQLite), import-duplicate policy (overwrite / skip / error), and any assumptions or known limitations.
+   - State which language and runtime you used (e.g., Python 3.10).
 
-What you may NOT use
-- No internet access or external packages. Only standard libraries in the provided execution environment are allowed.
+7. Packaging files into the submission JSON
+   - You will not upload multiple files. Instead you must include the full contents of every file you created (source code, README.md, import.csv, final_inventory.json if produced) inside the single test_submission.json file following the schema below.
 
-Files you must produce in your submission directory
-- Source code files implementing the CLI.
-- Any persistence file(s) your program creates during your demonstration (e.g., data.json or inventory.db).
-- test_submission.json (exact filename required) — see schema below.
-
-How to capture demonstration runs
-- For every run you show in test_submission.json, capture:
-  - exact command you ran
-  - stdout (or a short excerpt if long) — when using --format json, include the JSON output
-  - stderr (empty string if none)
-  - exit code
-
-Hints
-- Prefer JSON persistence for speed.
-- Provide an easy-to-run entry point (example: python3 inventory.py ...).
-- You do not need to implement concurrency beyond single-user CLI. A simple atomic write is sufficient for file durability.
-- Keep CLI parsing simple and deterministic so the grader can script checks.
+Time guidance (suggested):
+- Core program & persistence: 45 minutes
+- CSV import & validation: 20 minutes
+- Demo, tests, README, and packaging into JSON: 25 minutes
 
 ---
 
 ### Expected Outcome
 
-By the end of the test you must produce:
-- A working CLI program implementing add, list, update, delete, find with persistence and validation.
-- A short sequence of commands (minimum: add 3 items, update one, delete one, find one, restart and list to prove persistence) with captured outputs and exit codes recorded in test_submission.json.
-- test_submission.json (exact name) describing the program, entry command, persistence filename, the demonstration commands and outputs, a short description of design choices, and a brief self-assessment.
+By the end of the exam you must produce, embedded inside test_submission.json:
 
-Evaluation will be automated or manual against objective checks:
-- Correct commands exist and behave as specified (add/list/find/update/delete).
-- Persistence works (items remain after program restart).
-- JSON output for list/find when requested.
-- Proper exit codes and stderr on error cases.
-- The test_submission.json file is complete and well-formed.
+- Source files (inventory.py, demo_runner.py, tests.py, README.md, import.csv, any other modules you used).
+- A demo_stdout string capturing the exact stdout produced when running demo_runner.py.
+- A test_results array containing at least 4 test entries with name, passed boolean, and output string.
+- final_inventory_json: the JSON object/array produced by the demo runner export step.
+- run_commands: at least these two commands clearly listed: "python3 demo_runner.py" and "python3 tests.py".
+- Candidate metadata (name, email), time_taken_minutes, language, notes describing choices.
 
-Passing criteria (informal)
-- You must implement all required commands and persistence and provide the required demonstration. The grading rubric will check functional behavior and required validations. Aim to complete fully within 90 minutes.
+Evaluator must be able to reconstruct files from your test_submission.json and run the listed commands to reproduce demo and tests.
+
+Scoring will be objective: correct implementation of listed CLI operations, persistence, import/export, validation and demo sequence, and passing tests are required to reach passing threshold.
 
 ---
 
 ### Provided Materials
 
-You will be given:
-- A computer with:
-  - code execution environment (language runtimes for common languages such as python3)
-  - a text editor
-  - no internet access and only standard libraries available
-
-No starter code is provided. You must create all files yourself in the submission directory.
+- No starter code is provided. You must create all code and files.
+- You may assume a fresh environment with a standard runtime for your chosen language (Python recommended).
+- Required sample file you must create and include: import.csv (3 rows: one valid new row, one duplicate id row, one malformed row). Use the CSV format exactly as specified: id,name,quantity,price (comma-separated).
+- Use only the standard library of your chosen language.
 
 ---
 
 ### Submission Format
 
-You must submit a single directory containing:
-- all source files required to run your program
-- any persistence file(s) generated during your demo (optional but recommended)
-- a file named exactly test_submission.json that follows this schema (the grader will expect this exact structure and keys).
+You must submit one file named exactly test_submission.json. The evaluator will parse this JSON and recreate files and run commands as-is. The JSON must be UTF-8 encoded and follow this schema (all top-level fields except self_score_estimate are required):
 
-test_submission.json schema (required fields — include exactly these keys)
+- candidate_name: string
+- email: string
+- time_taken_minutes: integer
+- language: string (e.g., "Python 3.10")
+- run_commands: array of strings
+  - Must include at minimum: ["python3 demo_runner.py", "python3 tests.py"]
+- files: array of objects, each with:
+  - filename: string (exact filenames you used, e.g., "inventory.py", "demo_runner.py", "tests.py", "README.md", "import.csv", optionally "final_inventory.json")
+  - content: string (full text content of the file)
+  - Note: Include all files necessary to run the demo and tests.
+- demo_stdout: string (exact stdout captured when running python3 demo_runner.py)
+- test_results: array of objects, each with:
+  - name: string (test name)
+  - passed: boolean
+  - output: string (captured stdout/stderr for that test)
+  - Provide at least 4 test result objects.
+- final_inventory_json: JSON object or array (the data structure representing the final inventory — must match the printed/exported JSON from demo)
+- notes: string (short explanation of assumptions, persistence choice, duplicate-import behavior, and any limitations)
+- self_score_estimate: integer 0–100 (optional)
 
+Important constraints and expectations
+- The demo_runner.py must perform the exact demo sequence in the Instructions section and must print the final exported inventory JSON to stdout as the last significant stdout content (so evaluator can capture it).
+- inventory.py CLI names and option names must match the semantics above, but exact flag names can be adapted if documented in README (e.g., --qty instead of --quantity only if documented).
+- If you choose SQLite, include schema creation code inside inventory.py or demo_runner.py so the evaluator does not need to initialize the DB manually.
+- The import.csv included in files must be the same file your demo_runner imports.
+- All commands referenced in run_commands must work when the evaluator writes the files to disk and runs them with the standard interpreter.
+- Use atomic write for JSON storage or safe SQLite transactions if you implement either (recommended, but optional for basic credit).
+
+Minimal example run_commands entry:
+["python3 demo_runner.py", "python3 tests.py"]
+
+Evaluation reproduction steps the evaluator will perform:
+1. Write files listed in files array to disk.
+2. Run the run_commands in order.
+3. Compare demo_stdout to produced stdout, and parse final_inventory_json to check correctness.
+4. Examine test_results and run tests.py to confirm.
+
+---
+
+Good luck. Work within the 90-minute limit, keep the demo deterministic and fully automated, and make sure your README documents exactly how to run demo and tests.CSV: `import.csv`
+id,name,quantity,price
+I102,Pliers,5,3.25
+I100,ScrewdriverDuplicate,10,5.50
+I104,Chisel,abc,4.00```json
 {
-  "language": "string",                // e.g. "python3"
-  "entry_point": "string",             // exact command to run the program, e.g. "python3 inventory.py"
-  "persistence_file": "string",        // filename used to store data, e.g. "inventory.json"
-  "commands_run": [                    // chronological array of demonstration runs (minimum sequence described above)
-    {
-      "cmd": "string",                 // exact command executed
-      "stdout": "string",              // captured stdout (short excerpt allowed), include JSON output when used
-      "stderr": "string",              // captured stderr (empty string if none)
-      "exit_code": integer             // numeric exit code returned by the command
-    }
-    // ... more command objects in order
-  ],
-  "short_description": "string",       // <= 200 words. How to run your program and summary of design choices (persistence, format)
-  "self_assessment": {
-    "implemented_required": boolean,   // true if you implemented all required features
-    "bonus_features": ["string"],      // list any optional extras implemented (can be empty)
-    "known_issues": "string"           // brief note of any known limitations or bugs (empty string if none)
-  },
-  "time_taken_minutes": integer        // your estimate of minutes spent (<=90)
-}
-
-Example (minimal) commands_run entry:
-
-{
-  "cmd": "python3 inventory.py add --sku SKU001 --name \"Widget\" --qty 10",
-  "stdout": "{\"status\":\"ok\",\"item\":{\"sku\":\"SKU001\",\"name\":\"Widget\",\"qty\":10}}",
-  "stderr": "",
-  "exit_code": 0
-}
-
-Mandatory submission rules (objective constraints)
-- The CLI flag names and command names must match those listed in this instruction (add, list, update, delete, find and their flags).
-- list and find must support --format json and produce valid JSON when used.
-- Errors must print to stderr and return a non-zero exit code.
-- test_submission.json must be well-formed JSON and contain all required fields above.
-- Include the persistence file name you used in the persistence_file field.
-
-Optional bonus features (not required to pass; list implemented ones in self_assessment.bonus_features)
-- CSV import/export
-- Atomic write to persistence file (if using JSON, write-to-temp-and-rename)
-- A small automated test script that runs and asserts expected outputs
-- Sorting/pagination options on list
-
-Good luck. Work within the 90-minute time limit and keep your implementation simple, robust, and scriptable.File: seed_items.json
-Content (valid JSON array; 5 items):
-
-[
-  {
-    "sku": "SKU001",
-    "name": "Alpha Widget",
-    "qty": 10,
-    "price": 12.50,
-    "description": "Standard alpha model"
-  },
-  {
-    "sku": "SKU002",
-    "name": "Beta Widget",
-    "qty": 5,
-    "price": 15.00,
-    "description": "Beta variant with improved durability"
-  },
-  {
-    "sku": "SKU003",
-    "name": "Gamma Gadget",
-    "qty": 20,
-    "price": 7.25,
-    "description": "Small gadget used in assemblies"
-  },
-  {
-    "sku": "SKU004",
-    "name": "Delta Tool",
-    "qty": 2,
-    "price": 55.00,
-    "description": "Heavy-duty hand tool"
-  },
-  {
-    "sku": "SKU005",
-    "name": "Epsilon Part",
-    "qty": 0,
-    "price": 3.99,
-    "description": "Spare part; currently out of stock"
-  }
-]
-
-File: import_extra.csv
-Content (CSV with header; 3 rows; deliberate cases to exercise validation)
-
-sku,name,qty,price,description
-SKU003,Gamma Gadget Duplicate,5,7.25,Duplicate SKU003 to test duplicate-rejection
-SKU006,Zeta Accessory,8,4.50,New accessory item for import
-SKU007,Theta Component,-5,9.99,Invalid negative quantity to test validation
-
-File: scenario_instructions.txt
-Content (plain text; deterministic suggested sequence the candidate may use when demonstrating persistence; these are suggestions only — you may choose a different persistence filename in your implementation):
-
-Suggested deterministic demonstration sequence (use to record runs in test_submission.json):
-1) Start with a fresh workspace (no persistence file present).
-2) Add three items (use add command): SKU001, SKU002, SKU006 (or add new SKUs).
-   Example:
-     <entry_point> add --sku SKU001 --name "Alpha Widget" --qty 10 --price 12.50
-     <entry_point> add --sku SKU002 --name "Beta Widget" --qty 5 --price 15.00
-     <entry_point> add --sku SKU006 --name "Zeta Accessory" --qty 8 --price 4.50
-3) List items in JSON format to capture state:
-     <entry_point> list --format json
-4) Update one item's quantity (absolute or relative):
-     <entry_point> update --sku SKU001 --qty 12
-   or
-     <entry_point> update --sku SKU002 --change +3
-5) Delete one item:
-     <entry_point> delete --sku SKU005
-6) Find by SKU and by name substring:
-     <entry_point> find --sku SKU003 --format json
-     <entry_point> find --name "Widget" --format json
-7) Restart (run a new invocation) and list to demonstrate persistence:
-     (exit and run) <entry_point> list --format json
-8) Optional: attempt to add SKU003 again to confirm duplicate-SKU rejection:
-     <entry_point> add --sku SKU003 --name "Gamma Gadget Duplicate" --qty 5
-
-Notes:
-- Replace <entry_point> with your program command (e.g., python3 inventory.py).
-- When recording outputs in test_submission.json, include stdout JSON for list/find commands and any stderr messages for invalid operations.
-- If you choose to implement CSV import, you may use import_extra.csv as a deterministic input file.
-
-End of supplied materials.```json
-{
+  "candidate_name": "",
+  "email": "",
+  "time_taken_minutes": null,
   "language": "",
-  "entry_point": "",
-  "persistence_file": "",
-  "commands_run": [],
-  "short_description": "",
-  "self_assessment": {
-    "implemented_required": null,
-    "bonus_features": [],
-    "known_issues": ""
+  "run_commands": [],
+  "files": [
+    {
+      "filename": "inventory.py",
+      "content": ""
+    },
+    {
+      "filename": "demo_runner.py",
+      "content": ""
+    },
+    {
+      "filename": "tests.py",
+      "content": ""
+    },
+    {
+      "filename": "README.md",
+      "content": ""
+    },
+    {
+      "filename": "import.csv",
+      "content": ""
+    },
+    {
+      "filename": "final_inventory.json",
+      "content": ""
+    }
+  ],
+  "demo_stdout": "",
+  "test_results": [],
+  "final_inventory_json": null,
+  "notes": "",
+  "self_score_estimate": null,
+  "_instructions": "Fill all required fields above. Use only this JSON as your submission. Required items: inventory.py (main CLI program), demo_runner.py (automated demo sequence), tests.py (automated assertions, exit 0 on success), README.md (run instructions and design choices), import.csv (3 rows as specified). 'run_commands' must list commands an evaluator can run (e.g., \"python3 demo_runner.py\", \"python3 tests.py\"). 'demo_stdout' must contain the exact stdout captured when running the demo command. 'test_results' must be an array of objects with fields {\"name\": string, \"passed\": boolean, \"output\": string} containing at least 4 entries. 'final_inventory_json' must be the JSON array/object representing the final inventory exported by your demo.",
+  "_fields_guidance": {
+    "candidate_name": "string - full name",
+    "email": "string - contact email",
+    "time_taken_minutes": "integer or null - total minutes used",
+    "language": "string - runtime and version, e.g., 'Python 3.10'",
+    "run_commands": [
+      "array of strings - commands to reproduce demo and tests in order"
+    ],
+    "files": [
+      {
+        "filename": "string - exact filename to write (e.g., inventory.py)",
+        "content": "string - full file content (UTF-8). Include all files required to run demo/tests."
+      }
+    ],
+    "demo_stdout": "string - exact stdout captured when running the demo_runner command",
+    "test_results": [
+      {
+        "name": "string - test identifier",
+        "passed": null,
+        "output": "string - captured stdout/stderr for that test"
+      }
+    ],
+    "final_inventory_json": "object or array or null - the JSON data structure produced by the demo export step",
+    "notes": "string - assumptions, persistence choice (JSON or SQLite), duplicate-import behavior (overwrite/skip/error), limitations",
+    "self_score_estimate": "integer 0-100 or null"
   },
-  "time_taken_minutes": null
+  "_validation_rules_reminder": "Use null for numeric/object/list fields you leave blank, use empty string \"\" for text fields, use empty arrays [] for lists. Do not include any external files; put all file contents into the 'files' array. The evaluator will recreate files exactly as provided."
 }
 ```

@@ -1,157 +1,158 @@
 ### Exam Purpose
-Confirm that the candidate can independently produce a small, working program, compile/run it (or provide runnable instructions), and produce clear, usable development documentation and inline code comments describing design and subsequent revisions. This verifies real-world capabilities needed for collaboration: producing reproducible builds/runs, maintainable code, and readable revision history so others can pick up and maintain the work.
+Confirm that a candidate can, in a real-world (junior) setting:
+- Produce working, compilable/runnable code for a small but realistic feature.
+- Explain design decisions and development steps in written documentation (README and changelog).
+- Insert clear, useful inline comments in code so others can understand the program and later revisions.
+- Demonstrate minimal test coverage and show the program runs correctly on sample inputs.
 
-### Core Competencies to be Tested
-- Implementing a small, correct program that reads input and produces expected output.
-- Creating reproducible build/run instructions (compile or run command).
-- Writing clear, explanatory inline comments and docstrings so others understand code intent and structure.
-- Producing concise developer-facing documentation: README, assumptions, usage, and a changelog describing revisions.
-- Performing a simple revision/feature change and documenting that revision.
-- Packaging deliverables in a reproducible format so an evaluator can run and verify results.
+This validates both hands-on programming ability and the documentation discipline needed for collaborative development.
 
-### Recommended Structure (Basic Exam — single-session, 90 minutes)
-Total time allowed: 90 minutes.
+### Core Competencies
+The basic exam tests these practical skills:
+- Coding to a working, buildable/runnable state (syntax, compilation/run).
+- Implementing a simple but complete feature with input/output.
+- Writing a concise README that documents how to build/run, expected inputs and outputs, and any assumptions.
+- Writing inline comments explaining non-trivial code blocks and algorithm intent.
+- Producing a brief changelog/revision history describing what changed and why.
+- Creating and executing simple tests (manual or automated) and reporting their outputs.
+- Communicating assumptions and steps taken during development.
 
-Number of tasks: 2 hands-on coding tasks + documentation packaging.
+Technical focus (entry level):
+- Basic language syntax, IO, control flow, data structures.
+- Minimal error handling and input validation.
+- Simple unit or integration tests (can be script-driven).
+- Clear, professional documentation style.
+
+### Recommended Structure (one 90-minute session)
+Total time: 90 minutes. Candidate uses only their local code execution environment and text editor. No internet or external resources.
+
+Number of tasks: 4 sequential, dependent tasks.
+
+Deliverables: A single JSON file named test_submission.json containing structured fields (source files, README, changelog, test outputs, assumptions, self-evaluation). See "Submission schema" below.
+
+Time allocation (suggested):
+- Task 1 — Implement feature (40 min)
+- Task 2 — Add and run tests + capture outputs (15 min)
+- Task 3 — Write README, inline comments, and changelog (20 min)
+- Task 4 — Minor revision/bugfix or feature extension and update changelog/comments (10 min)
+- Pack and prepare submission (5 min)
+
 Logical sequence:
-1. Setup and quick plan (10 minutes)
-   - Candidate reads instructions, inspects provided sample data / scaffolding (exam creator provides a small sample dataset and a starter empty project directory or single starter file).
-2. Task A — Core implementation (40 minutes)
-   - Implement the primary program to specification (small CLI utility).
-   - Produce initial runnable program and output for provided sample input.
-3. Task B — Revision / feature addition (25 minutes)
-   - Modify the program to add one small feature or fix a specified bug.
-   - Run and produce updated output.
-   - Update comments where code changed.
-4. Documentation and packaging (15 minutes)
-   - Create README and a short changelog describing development steps and the revision.
-   - Produce the required JSON submission file "test_submission.json" containing code files, documentation, run instructions, and captured outputs.
+1. Implement: Build a working program according to a short specification.
+2. Validate: Create runnable tests and show program outputs.
+3. Document: Write README, inline comments, and a development changelog.
+4. Revise: Make a small follow-on change (new requirement or bug fix), comment the change, update changelog, re-run tests.
 
-Expected deliverables (all included inside test_submission.json as specified schema below):
-- Source file(s) (language chosen from allowed list).
-- Sample input file(s) (provided by exam or recreated by candidate as small sample).
-- README (build/run instructions, assumptions, usage examples).
-- Changelog (brief revision history with reason for change).
-- Captured outputs (program outputs for baseline and revised runs).
-- test_submission.json (a JSON wrapper containing all of the above).
+Concrete suggested problem (basic): Implement a command-line tool named "sales_agg" that:
+- Reads a CSV file of sales records (date, product_id, quantity, unit_price).
+- Produces aggregated output for total revenue per product_id (sorted by product_id).
+- Accepts input filename as a CLI argument; prints results to stdout in CSV form: product_id,total_revenue (two columns).
+- Requirements: ignore malformed lines, treat missing quantity or price as zero, round revenue to 2 decimal places.
 
-Language choices (basic exam): allow Python, Java, or C. The exam creator should select one language for all candidates or let candidates choose one of these languages at the start. (Note: candidate has no external internet; they must use only the provided execution environment.)
+This is simple, realistic, involves parsing, aggregation, rounding, and IO — good for an entry-level practical test.
 
-Time allocation example:
-- 10 min plan / read
-- 40 min implement initial program
-- 25 min implement revision + test
-- 15 min documentation + package JSON
+Alternative simpler task: word frequency counter for a text file, outputting top N words.
 
-### Practical Elements to Include (to make this hands-on)
-- Provide a small sample dataset (e.g., data.csv with 20 rows) and a one-paragraph functional spec. Candidate must produce code that reads the sample and produces exact expected results described in the spec.
-- The primary task should be a real minimal engineering task, e.g.:
-  - Implement a CLI CSV summarizer: reads data.csv, computes for each numeric column: count, sum, mean, min, max and outputs JSON (stable ordering). Must skip empty/missing values.
-- Revision task (single, small but non-trivial change): e.g.
-  - Add an optional argument --group-by <column> to compute those statistics per group (categorical column), update output, and document the change. Or, implement argument to write output to a file vs stdout. This forces the candidate to change code and comments and to document the reason.
-- Require robust but minimal input validation: program must detect missing file and invalid numeric values and show a clear error message.
-- Require a reproducibility artifact: a one-line run command (e.g., "python3 summarizer.py data.csv --output out.json") that the evaluator can execute. If compiled language is used, the candidate must provide build instructions and a build script (e.g., makefile or simple compile command).
-- Require the candidate to capture program outputs (stdout or output file) into files and include them in the JSON (so evaluator can compare expected outputs without re-running, and can re-run to verify).
+(Exam creator may pick one of these depending on language/role.)
 
-Why these elements make it practical:
-- Candidate actually writes code that runs on provided data.
-- Revision step tests ability to evolve codebase, not only write initial version.
-- Documentation and run instructions test whether candidate can communicate the work reproduction steps.
+### Practicality — Making it hands-on
+- Real code must be written, compiled, and executed locally. No multiple-choice or essay-only items.
+- Include a small sample input file the candidate can use for testing. (Provide one or require the candidate to create it.)
+- Require the candidate to produce program output and include the captured stdout/stderr in the submission JSON.
+- Require at least one automated or script-driven test (for example, a small shell script or language test runner invocation). This proves they can run tests, not only claim they passed them.
+- Require a second-stage change (feature addition or bugfix) that forces the candidate to modify code and update comments/changelog — tests must still pass. This proves ability to revise and document changes.
 
-### Strategic Elements (distinguishing real ability from conceptual knowledge)
-- Multi-step dependency: program must be written, then modified for new requirement. Candidates who only conceptually understand will fail to update all necessary parts (code, tests, comments, README) consistently.
-- Data dependency: The code must read actual input data and handle missing/invalid rows. This forces error-handling and data-validation behavior.
-- Decision points:
-  - Design trade-offs: how to represent output JSON (flat vs nested for group-by); require candidate to choose and document the choice in README.
-  - Rounding/precision: specify desired numeric formatting (e.g., two decimal places) so candidate must make an explicit decision and document it.
-- Reproducibility check:
-  - Provide a small automated test harness (optional in basic exam) or demand captured run outputs for the sample input. Candidate who understands reproducibility will include a run_command that reproduces exactly the submitted outputs.
-- Minimal scaffolding but explicit acceptance criteria: the sample dataset and the expected format makes the task deterministic and prevents purely conceptual answers.
+Constraints that ensure hands-on:
+- No internet access; candidate must rely on their local environment.
+- Must submit the code itself, not screenshots or external links.
 
-### Required Submission Format (test_submission.json schema)
-To simplify evaluation, the candidate must submit ONE file named test_submission.json containing all deliverables embedded as text. Suggested minimal schema (string fields and arrays):
+### Strategic elements (distinguish concept vs. practice)
+Include these exam design features to separate those who can actually do the work from those who only know the theory:
+- Ambiguous but reasonable edge cases: e.g., malformed CSV lines, empty files, negative quantities; candidate must choose a behavior and document the assumption in README.
+- Dependency on input formatting: candidate must parse and sanitize input; failure to handle a few malformed lines should be visible in test outputs.
+- A small refactor or minor feature extension: e.g., “Add optional --min-sales threshold to only include products with total revenue >= threshold” (or implement rounding change). This requires understanding code structure and making safe modifications.
+- Require automated verification: include at least two test cases (normal data, and malformed data) and expect program outputs to match provided expected outputs. Candidate must capture actual vs expected results in submission.
+- Decision points: allow candidates to choose between implementing rounding before or after aggregation; force them to state and justify choice in README. That shows understanding of correctness vs. precision.
 
-{
-  "candidate_name": "Full Name",
-  "language": "Python|Java|C",
-  "time_minutes_used": integer,
-  "primary_run_command": "exact shell command to reproduce primary output",
-  "revision_run_command": "exact shell command to reproduce revised output (if different)",
-  "files": [
-    {"path": "relative/path/filename.ext", "content": "file contents as plain text"},
-    ...
-  ],
-  "captured_outputs": [
-    {"name": "out_initial.json", "path": "path/to/out_initial.json", "content": "actual program output for Task A"},
-    {"name": "out_groupby.json", "path": "path/to/out_groupby.json", "content": "actual program output for Task B"}
-  ],
-  "README": "README text (same as files entry but also here for quick glance)",
-  "changelog": "short changelog text",
-  "notes_for_evaluator": "any assumptions, known issues, or special instructions"
-}
+These elements require candidates to actually run and debug code, make design choices, and document them — not just answer conceptual questions.
 
-Notes for candidate:
-- All source files must be included inside "files" with exact relative paths as used by run command.
-- primary_run_command and revision_run_command must be executable in the evaluation environment (assume a shell).
-- If using a compiled language, include a "build_command" in notes_for_evaluator and include compiled artifacts in files if the platform allows, or ensure the evaluator can run the compile command.
-- Provide exact captured outputs; these are used to quickly verify correctness and should match what the run commands produce.
+### Evaluation Insights — observable outputs and criteria
+Primary observable outputs:
+- Program runs and produces expected outputs for provided test cases (or explains any deviations with evidence).
+- test_submission.json includes the code (source files), README, changelog, and the captured build/run/test outputs.
+- The modified code after the revision implements the requested change and updated tests still pass.
 
-### Evaluation Insights — Observable outputs and criteria
-Scoring model (weights and pass threshold)
-- Overall passing score for Basic exam: 80% required.
-Suggested weighting:
-- Functional correctness and reproducibility (60%)
-  - Program runs with the given primary_run_command and produces correct output for the sample input (40%)
-    - Exact or numerically tolerant match to expected values (tolerance for floats specified in README; default: absolute error <= 1e-6 or formatted to two decimal places as asked).
-  - Revision correctness (20%)
-    - The added feature or bugfix works and produces the expected revised output.
-- Code readability and commenting (20%)
-  - Presence of top-of-file header comment describing file purpose.
-  - Clear function/method docstrings or comments per non-trivial function.
-  - Inline comments explaining non-obvious logic.
-  - Consistent naming conventions and reasonable structure.
-- Documentation and change history (15%)
-  - README contains purpose, usage examples, exact run commands, assumptions, and error handling instructions.
-  - Changelog documents what was changed for the revision, why, and what files were modified.
-- Packaging and reproducibility (5%)
-  - test_submission.json follows schema, includes all files and captured outputs, and run commands reproduce outputs.
+Measured criteria and suggested weights (basic exam):
+1. Correctness / Functionality — 50%
+   - Program runs without errors for core test(s).
+   - Output format and values match expected for provided normal test case.
+   - Handles at least basic malformed input cases in a reasonable way.
+2. Documentation (README + changelog) — 20%
+   - README includes build/run steps, input format description, sample usage, and clear stated assumptions.
+   - Changelog lists the sequence of changes made, why, and timestamps or brief rationale.
+3. Code comments & clarity — 15%
+   - Inline comments explain non-obvious logic, function roles, and the intent of complex blocks.
+   - Clear variable and function names; code is readable and logically organized.
+4. Tests and evidence of execution — 10%
+   - At least two test cases executed; captured outputs included in submission JSON.
+   - Tests demonstrate normal and an edge/malformed case.
+5. Minor revision implemented & documented — 5%
+   - The follow-on change (feature or bugfix) is present, commented, and recorded in changelog; tests re-run.
 
-Guidance to examiners for each criterion:
-- Reproducibility: Run the candidate's primary_run_command in the provided environment. If it fails, try to compile if a build_command is provided. If still fails, deduct substantial points in reproducibility and correctness.
-- Correctness: Compare produced outputs to the expected outputs (provided by exam creator). Allow minimal numeric tolerance for floats or require specified formatting. For group-by results, check both keys and values.
-- Comments: Open the main source file(s). Expect @top-level header, docstrings for each top-level function, and inline comments where non-obvious transformations occur. For basic exam, require at least one-line docstring per function and comments at entry/exit points.
-- README: Must contain at least — project purpose (one paragraph), exact run command(s) copyable, specification of any non-standard assumptions, and changes summary.
-- Changelog: Must show at least two entries (initial implementation and revision), each with short description and what files changed.
+Concrete pass threshold (basic exam):
+- Entry-level candidates should be expected to score >= 80% overall to pass.
 
-Distinguishing real performers vs concept-only:
-- Real performers produce runnable commands, captured outputs that match, and consistent updates to code comments and README for the revision. Concept-only respondents often leave run instructions vague, provide incomplete captured outputs, or forget to update comments/documentation after modification.
+What to look for qualitatively:
+- Does the README clearly allow an evaluator to reproduce the run? (If not, score down on documentation.)
+- Are comments explaining the why, not just the what? (E.g., “split CSV by comma” comment is weak; “skip header or detect header line” is useful.)
+- Does the changelog show purposeful changes with reasoning, or is it cursory?
+- Are test outputs directly included and machine-readable in the JSON submission (not just textual descriptions)?
 
-### Example Minimal Task Specification (to be provided to candidate)
-(Provide this spec together with sample data)
-- Input: data.csv (contains columns "id", "group", "value1", "value2"). Numeric columns are value1 and value2.
-- Task A: Write a CLI program mysum that:
-  - Reads data.csv.
-  - Outputs a JSON object with a top-level "summary" containing for each numeric column: count, sum, mean, min, max.
-  - Ignores empty cells; if a column is entirely empty, set counts to 0 and numeric fields to null.
-  - Accepts an optional flag --output <file> to write JSON output to a file (default: stdout).
-- Task B (revision): Add --group-by <column_name> to compute per-group summaries (output should be a mapping from group value to per-column summaries).
-- Deliver: source code, README with exact run commands, changelog, outputs for:
-  - Task A run: python3 mysum.py data.csv --output out_initial.json
-  - Task B run: python3 mysum.py data.csv --group-by group --output out_groupby.json
-- Package: All files and outputs embedded in test_submission.json as per schema above.
+### Submission schema (required file: test_submission.json)
+Tell candidates to create a JSON file exactly named test_submission.json containing these fields. Evaluators will parse this to simplify grading.
 
-### Quick grader checklist
-- Can the submitted primary_run_command be executed and produce out_initial.json? (Yes/No — mandatory)
-- Does out_initial.json match expected summary? (Full/Partial/No)
-- Can the revision_run_command be executed and produce out_groupby.json? (Yes/No)
-- Does group-by output structure & values match expected? (Full/Partial/No)
-- Source code: top-level header? functions have docstrings? inline comments for complex logic? (Scored)
-- README: contains run commands and assumptions? (Scored)
-- Changelog: documents the revision and files changed? (Scored)
-- Packaging: test_submission.json follows schema and includes all files and captured outputs? (Yes/No)
+Required JSON fields:
+- candidate_name: string
+- language: string
+- time_spent_minutes: integer
+- source_files: array of objects
+  - filename: string
+  - language: string
+  - content: string (full source)
+- build_instructions: string (exact commands used to compile/run)
+- readme: string (plain text content of README)
+- changelog: array of entries {time: string, change: string, reason: string}
+- tests: array of test objects
+  - test_name: string
+  - command: string (exact command used to run test)
+  - expected_output: string
+  - actual_output: string
+  - passed: boolean
+- run_output_summary: string (brief summary of program run behavior)
+- assumptions: array of strings (any assumptions candidate made)
+- comments_coverage: string (brief assessment by candidate of how well the code is commented, e.g., “All functions have docstrings; complex loops explained”)
+- self_score_estimate: numeric (0-100) and brief justification
+- signature: string (candidate statement the submission is their own work)
 
-Scoring rubrics and thresholds are provided above; use them to compute a final percentage. Candidates passing the Basic exam should score >= 80%.
+Provide an example minimal JSON snippet in the exam instructions (not included here to keep exam concise). The evaluator should reject submissions missing required fields or with invalid JSON.
 
----
+### Example evaluator checklist (quick pass/fail)
+- Is test_submission.json valid JSON and named correctly?
+- Are all required fields present?
+- Does source_files include at least one runnable source file?
+- Do build_instructions allow reproduction?
+- Do tests show at least 1 normal and 1 malformed/edge case, with actual_output included?
+- Does the program produce the expected output for the core test?
+- Is there a changelog entry showing the follow-up change and evidence tests were rerun?
+- Are code comments present and explain non-trivial points?
+- Does README document build/run/assumptions?
 
-This design gives the exam creator clear, hands-on tasks, a deterministic evaluation path, and precise packaging for remote submission (test_submission.json). It ensures the candidate demonstrates both implementation ability and the communication/documentation skills required for maintainable code.
+If the answer is “yes” to most of these, candidate meets basic competency.
+
+### Final notes for exam creator
+- Choose a simple, deterministic task (CSV aggregator or word counter) to avoid environment-dependent behavior.
+- Provide a sample input file and expected output files to the candidate at the start of the exam.
+- Emphasize the naming and JSON schema requirement to streamline automated or semi-automated grading.
+- Keep time limit strict (90 minutes). The task complexity and required documentation are calibrated so a qualified entry-level programmer should score >80% if they are capable.
+
+If you want, I can now draft the exact one-page candidate instructions and the sample input files and expected outputs for the chosen problem (CSV aggregator), plus a ready-to-use JSON example template.

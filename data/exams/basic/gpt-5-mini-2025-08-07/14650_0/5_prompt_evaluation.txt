@@ -5,541 +5,517 @@ You are an expert exam evaluator. Your task is to generate a **complete answer k
 - Exam overview (for evaluator context):
 <examoverview>
 ### Exam Purpose
-Confirm that a candidate can maintain and update automated test scripts so they remain correct and useful when the system under test changes. Specifically, this exam verifies the candidate can:
-- run an existing automated test suite,
-- read and interpret test failures,
-- update tests (selectors/expected values/waits/fixtures) to match the changed application behavior,
-- keep tests readable and maintainable,
-- re-run tests to demonstrate the fixes.
-
-This is a practical, hands-on exercise that simulates the common, real-world activity of fixing and modernizing regression tests after a small change in the application.
-
----
+Confirm that the candidate can take an existing automated test-suite, identify why tests are failing or brittle after changes to the application or requirements, and update the automated tests so they are correct, resilient, and maintainable. This mirrors the real-world skill of keeping automation current when the SUT (system under test) evolves.
 
 ### Core Competencies
-The exam tests these concrete skills:
-- Running automated tests and capturing test output.
-- Diagnosing failing tests from stack traces and failure messages.
-- Editing test code to reflect expected application changes (e.g., updated text, changed IDs/CSS classes, different JSON schema).
-- Updating or adding test fixtures/data to reflect API/data model changes.
-- Applying minimal, correct changes that fix tests without breaking intent (preserve test coverage).
-- Writing concise rationale for each change.
-- Demonstrating that all tests pass after updates.
+- Running and interpreting automated test suites (pytest / test runner basics).
+- Diagnosing failing tests: reading stack traces, locating broken assertions, and identifying brittle test patterns.
+- Modifying automated test scripts to match updated application behavior or to increase robustness (selectors/inputs/assertions/fixture usage).
+- Adding a minimal, correctly structured automated test that follows project style and runs with the suite.
+- Clearly documenting what was changed and why so the change is reviewable and reproducible.
 
-Secondary competencies:
-- Awareness of good test hygiene (clear assertions, stable selectors, minimal flakiness).
-- Clear, structured reporting of changes.
+These competencies combine technical test-editing ability, debugging, and communication — all critical to keep automation current.
 
----
+### Recommended Structure
+Total time: 90 minutes maximum.
 
-### Recommended Structure (Basic exam, <= 90 minutes)
-Total time: 90 minutes suggested. Divide as follows:
-- Setup & initial run: 10–15 minutes
-- Diagnose failures: 15–20 minutes
-- Update tests: 30–35 minutes
-- Re-run and verify: 10–15 minutes
-- Document changes and produce submission JSON: 5–10 minutes
+Number of tasks: 4 sequential, practical tasks that must be completed and documented in a single JSON submission file named test_submission.json.
 
-Number of tasks: 3 hands-on tasks (run/diagnose/update) plus a documentation task. Logical sequence:
-1. Setup and run the test suite; capture failing output.
-2. Fix/update the failing automated test scripts and/or fixtures so tests reflect the new application behavior.
-3. Add or update one small test to cover a changed requirement (simple data-driven or parameterized variant).
-4. Re-run entire suite and produce structured submission.
+High-level sequence and expected time allocation:
+1. Environment & baseline run — 10 minutes
+   - Start from a prepared exam repository (bundled with the exam). Run the test suite and capture the failing tests output.
+   - Deliverable: captured "before" test output.
 
-Expected deliverables (all combined inside test_submission.json):
-- Candidate metadata (name, start/end times).
-- Terminal output of the initial failing test run (pasted raw).
-- For each modified file: path, new full content (or unified diff), and a short rationale (1–3 sentences).
-- Terminal output of the final passing test run (pasted raw).
-- A short self-assessment (confidence level and explanations of any open issues).
+2. Diagnosis & plan — 10 minutes
+   - Inspect the failing tests and small SUT files provided. Note the root causes and decide which tests should be changed (not the product code).
+   - Deliverable: short decision log of planned changes.
 
-Note: The exam designer should deliver the candidate a self-contained project archive that includes the application code and an automated test suite (using only runtime and libraries available in the exam environment, ideally just Python 3 and the built-in unittest module). No external network access should be required.
+3. Implement updates to automated tests — 45 minutes
+   - Make required changes so the test suite reflects the new, correct behavior and is more robust (as specified in provided README/spec).
+   - Make small refactors to remove obvious brittleness (e.g., replace hard-coded waits or fragile string matches with regex/contains; use fixtures for repeated setup).
+   - Add one new test for a small new requirement described in the repo README.
+   - Deliverable: modified/added test files (content included in the JSON), and the commands used.
 
----
+4. Run, verify, and document — 25 minutes
+   - Run the full test suite, capture "after" output showing tests pass.
+   - Provide a concise explanation (per modified file) of what changed and why, and reproduction steps.
+   - Deliverable: test_submission.json with fields described below and any final notes.
 
-### Practicality — How to make this hands-on
-- Provide an actual runnable test suite and a small application (e.g., a command-line Python app or small library) bundled in the exam package. The test suite should use built-in tools (Python unittest) so no internet installation is required.
-- Introduce a small, deliberate, realistic change in the application prior to the exam (e.g., changed field name, changed output format, modified status text, or API response structure). Leave tests intentionally outdated so they fail.
-- Require the candidate to run the tests, edit the test files (not the app code) to make them current, and re-run tests.
-- The candidate must submit the modified test files and a run log embedded in the required JSON file.
-- Because the environment has a code execution environment and text editor only, all fixes must be code edits and console runs — nothing else.
+Expected final deliverables (all inside test_submission.json):
+- commands_run: list of commands the candidate executed
+- test_output_before: raw output (or first/last 40 lines) of the initial failing test run
+- test_output_after: raw output (or first/last 40 lines) after changes
+- modified_files: array of objects { path, reason, content }
+- added_files: array (if any) { path, reason, content }
+- succinct decision_log: step-by-step short rationale
+- reproduce_instructions: commands an evaluator can re-run to reproduce results
 
-Example packaged items for the exam author to include:
-- app/ (simple CLI or library files)
-- tests/test_app.py (unittest tests; some failing)
-- fixtures/*.json (sample test data)
-- run_tests.sh or instructions (python -m unittest discover)
-- README with one-line run commands (no internet requirement)
+Why this structure:
+- It forces a candidate to do a realistic diagnosis-edit-run loop.
+- It is simple enough to complete in 90 minutes but contains multiple decision points that separate junior vs. more practiced candidates.
 
----
+### Practical Elements to Include
+To ensure this is a hands-on practical test (not a knowledge quiz), the exam package given to candidates must include:
+- A small self-contained SUT implemented in a language available in candidate environment (recommendation: Python module + simple CLI or functions). No external network or dependencies needed beyond the bundled venv or pure-Python code.
+- A pytest-based automated test suite that initially fails because the SUT has changed from the tests’ expectation. Typical realistic failure patterns:
+  - Output format changed (e.g., additional field in a printed JSON or a header change).
+  - Function signature slightly changed (optional parameter introduced/renamed) but business logic is similar.
+  - Tests using brittle assertions (exact timestamp match, strict full-string comparisons, fragile ordering) that need to be updated to robust checks.
+  - Tests relying on hard-coded test data that no longer apply.
+- A README/mini-spec describing:
+  - the intended new behavior (so candidate knows what tests should assert)
+  - one small new requirement to create a new automated test for (e.g., a new flag or an edge-case)
+- Inline comments in tests to hint at common fragility patterns (but not full solutions).
 
-### Practical Elements to Include (to ensure it's hands-on)
-- At least 2 failing tests initially, each for a different category of change:
-  - One failing due to a changed literal (e.g., expected greeting "Hello" → "Hi").
-  - One failing due to changed schema/key name in fixture or JSON (e.g., "user_name" → "username").
-- A third task: add a simple parameterized test or data-driven case to cover a small new acceptance rule (for example, a new edge case for input validation).
-- Tests should be short and confined to a couple of files so entry-level candidates can edit them quickly.
-- Keep application code small and stable. The goal is to update tests, not to fix application bugs.
-- Include clear but minimal instructions in README: how to run tests and where to edit tests.
+Make it hands-on:
+- Candidate must run pytest locally, edit the test files, add one test, and re-run pytest to produce passing results.
+- No internet or external lookup required — all needed code & spec included.
 
----
+### Strategic Elements (distinguish conceptual from capable)
+Design the tasks to require multi-step reasoning and small trade-offs:
+- Diagnosis step: Candidate must read stack trace and SUT code and decide whether to update test assertions or change setup fixtures. This reveals practical diagnostic skills.
+- Decision point: Should the candidate update the test to match the new spec, or make the test more tolerant (e.g., partial match / regex)? A sound candidate will prefer correctness and maintainability over brittle quick fixes.
+- Trade-offs in test design: e.g., update a test from checking full JSON equality to checking essential keys/values — this shows judgement.
+- Data dependencies: Provide a test-data file the tests depend on; SUT uses that file. Candidate may need to update the test-data or write the test to be independent (e.g., mock or parametrize). This distinguishes those who can reason about test isolation.
+- Small refactor: instruct candidate to remove an obvious anti-pattern (like time.sleep in tests) and replace with a synchronous or mocked approach. This tests their familiarity with best practices.
 
-### Strategic elements (multi-step and decision points)
-These elements help distinguish candidates who can actually perform the work:
-- Diagnosis step: candidate must paste initial failing output. This tests ability to interpret stack traces and failing assertions.
-- Decision point: whether to update test expectation or to modify fixture/data. The correct choice depends on whether the change represents an intentional application update (tests should change) or a regression (tests should assert older behavior). For the basic exam, the change should be clearly intentional and tests should be updated.
-- Minimal-change principle: candidate should modify tests only as needed (not rewrite large chunks). Evaluate whether the edits are minimal and targeted.
-- Maintainability decision: use stable selectors or keys in tests (prefer semantic IDs or keys). Candidate should show understanding by making changes that reduce flakiness (e.g., use a function to normalize whitespace rather than changing expected literal if appropriate).
-- Data dependency: test fixture update may be required when the app returns a restructured JSON; candidate must update fixture and test assertions consistently.
+These elements require candidates to do more than apply rote edits; they must think about durability and maintainability of tests.
 
----
+### Evaluation Insights
+What to look for in the submission to indicate competence:
 
-### Evaluation Insights — What to look for
-Observable outputs and criteria that indicate competence:
+1. Functional correctness (required)
+   - All tests pass after candidate updates: test_output_after shows pytest summary with 0 failures.
+   - Candidate included commands_run and reproduce_instructions that actually rerun tests.
 
-1. Test execution evidence
-   - Initial failing test run log present.
-   - Final test run shows all tests passing (or clearly documented open issues with justifiable reasons).
-2. Correctness of test updates
-   - Modified test files in submission match the changed app behavior.
-   - Candidate did not change the application code to “make the tests pass” (unless test indicates app change is necessary and candidate documents it).
-3. Minimal and appropriate edits
-   - Changes are focused (only tests/fixtures changed, no unnecessary modifications).
-   - Assertions remain meaningful and validate real behavior.
-4. Maintainable, stable tests
-   - Use of robust selectors/keys or normalization where appropriate.
-   - Clear naming and comments if needed.
-5. Documentation & rationale
-   - Each modified file in the JSON includes a concise rationale (what was changed and why).
-   - Terminal outputs are included and clearly associated with before/after runs.
-6. Timing
-   - Completed within ~90 minutes.
-7. Self-assessment
-   - Candidate notes any remaining flakiness or recommended follow-ups.
+2. Evidence of correct diagnosis (required)
+   - test_output_before shows the failing tests and error messages.
+   - decision_log explains root cause for each failing test and why they chose the change they made.
 
-Scoring suggestion (for basic exam):
-- 40% — Tests pass after update (final run shows pass).
-- 25% — Correctness and minimality of code changes (targeted edits, no unnecessary changes).
-- 15% — Quality of rationale/documentation.
-- 10% — Evidence of correct diagnosis (initial failure logs + correct identification of causes).
-- 10% — Maintainability choices (stable assertions/fixtures).
+3. Quality of test updates (important)
+   - Changes are limited to test code (the SUT normally should not be edited for this basic exam). If SUT was edited, candidate must justify why.
+   - Assertions updated to check relevant behavior (contain/regex/key checks) rather than brittle full-string matches.
+   - Use of fixtures/parametrization where appropriate; no unnecessary duplication.
 
-Entry-level passing threshold: >80% overall.
+4. Maintainability & best practice (important)
+   - No re-introduction of brittle constructs (e.g., sleeps). If timing issues exist, they used proper mocking or retries/timeouts when appropriate.
+   - Test naming and structure are clear and consistent with project style.
+   - New test added follows the same test conventions (naming, setup) and tests one clear behavior.
 
----
+5. Communication & reproducibility (important)
+   - Modified files are submitted as content in JSON with concise reason for each change.
+   - Reproduction instructions are exact and short (commands_run and any env setup).
+   - Decision_log lists alternatives considered and why they were not chosen (short bullet points are fine).
 
-### Recommended Submission schema (test_submission.json)
-Require the candidate to submit a single JSON file named test_submission.json. This schema is concise and easy to validate.
+Suggested scoring rubric for a basic-level exam (total 100 points):
+- Baseline execution (ran tests and captured before/after outputs) — 15 pts
+- All tests passing after changes — 25 pts
+- Correct diagnosis of failures (decision_log quality) — 15 pts
+- Quality of test edits (correctness of assertions, reduced brittleness) — 20 pts
+- Added test correctness & style — 10 pts
+- Documentation & reproducibility (clear commands, file contents, reasoning) — 15 pts
 
-Required fields:
-- candidate_name (string)
-- start_time (ISO 8601 string) — when they began the exam
-- end_time (ISO 8601 string) — when they completed
-- environment (string) — e.g., "Python 3.9.2"
-- initial_test_run (string) — full raw console output from the initial test run
-- final_test_run (string) — full raw console output after edits
-- modified_files (array of objects) — each object:
-  - path (string) — relative path to file modified
-  - content (string) — full contents of the updated file
-  - rationale (string) — 1–3 sentences explaining the change
-- new_tests_added (array of strings) — file paths of any new test files added (if none, empty array)
-- open_issues (string) — short note if any tests still fail or other unresolved problems (empty string if none)
-- confidence (string) — "High", "Medium", or "Low"
-- optional: git_patch (string) — unified diff if candidate used git (optional)
+Passing guideline for basic exam:
+- A competent junior/entry-level candidate should score >= 80/100.
 
-Provide this template to candidates so they can copy-paste and fill fields.
+Minimum evaluator checks (fast pass/fail):
+- Verify that test_output_before shows failing tests and test_output_after shows all passing.
+- Check that modified_files and added_files in test_submission.json contain the updated test content.
+- Spot-check decision_log to ensure candidate understood root cause (1–3 short sentences per failing test is sufficient).
 
-Example minimal template (the exam author should provide a file named submission_template.json in the project):
-{
-  "candidate_name": "",
-  "start_time": "",
-  "end_time": "",
-  "environment": "",
-  "initial_test_run": "",
-  "final_test_run": "",
-  "modified_files": [
-    {
-      "path": "",
-      "content": "",
-      "rationale": ""
-    }
-  ],
-  "new_tests_added": [],
-  "open_issues": "",
-  "confidence": ""
-}
+### test_submission.json: required schema
+Require candidate to submit exactly one JSON file named test_submission.json with the following fields (strings should be escaped as appropriate):
 
----
+- candidate_name: string
+- time_spent_minutes: integer
+- commands_run: array[string] — exact shell commands used to run tests/build/run scripts
+- test_output_before: string — raw output or clipped top/bottom of pytest run before edits
+- test_output_after: string — raw output or clipped top/bottom of pytest run after edits
+- modified_files: array[ { path: string, reason: string, content: string } ]
+- added_files: array[ { path: string, reason: string, content: string } ] (empty array if none)
+- decision_log: array[ { step: string, decision: string, alternatives_considered: string (short) } ]
+- reproduce_instructions: string — minimal steps for evaluator to rerun (commands)
 
-### Examiner notes for packaging the basic exam
-- Provide a compact project that runs with python -m unittest discover (no extra deps).
-- Make the failing tests obvious but realistic:
-  - Example 1: test expects "Welcome, Alice!" but app now prints "Welcome back, Alice!" — candidate should update expected string or use regex/contains as appropriate.
-  - Example 2: test loads fixture.json expecting {"user_name": "..."} but app returns {"username": "..."} — candidate should update fixture and assertions.
-  - Add one task to add a simple extra test (small edge-case).
-- Provide README with exactly one command to run tests.
-- Keep test files small (<150 lines each) so candidates can paste full contents in JSON easily.
-- Ensure test failures have clear tracebacks so diagnosis is possible in short time.
+Evaluator note: require that content entries contain the full text of modified/added test files so you can quickly inspect diffs without retrieving repository snapshots.
 
----
+### Final notes for exam creator
+- Provide a small, well-documented repository bundle (single ZIP) containing:
+  - SUT: small Python package or module + small test-data file(s)
+  - tests/: pytest tests that intentionally fail because the SUT behavior has changed
+  - README.md: describes the new behavior and a small new requirement to add a test for
+  - A single script or command to run tests (e.g., pytest -q)
+- Ensure the environment is truly self-contained (no external pip installs). Prefer pure-Python standard library or include a small virtualenv and instructions in README.
+- Keep the SUT small (20–200 LOC) and the test-suite small (5–12 tests) so the candidate can complete edits within the 90-minute limit.
 
-That completes the basic-exam briefing. If you want, I can now produce:
-- a concrete project template (files and failing tests) you can package for distribution, or
-- the exact README and the submission_template.json file content you can include in the archive. Which would you prefer next?
+This design yields a practical remote exam that verifies the candidate can update automated tests to keep them current, with clear deliverables and an objective, reproducible evaluation process.
 </examoverview>
 
 - Full exam content:
 <exam>
 ### Exam Title
-Update automated test scripts to ensure currency — Basic Practical Exam
+Updating Automated Tests to Match Evolving Application Behavior (Basic Practical Exam)
 
 ---
 
 ### Instructions for Candidate
 
-You have 90 minutes to complete this practical exam. Use only the tools available: the code execution environment (terminal) and a text editor. No internet access or external libraries are required.
+You have 90 minutes to complete this practical exam. Work only in the provided repository using the tools available on your machine (code execution environment and text editor). Do not access the internet or any external resources.
 
-Follow these steps exactly:
+Overview — what you must do (four sequential tasks):
+1. Environment & baseline run — (≈10 minutes)
+   - Run the provided test suite exactly as-is and capture the test output that shows failing tests.
+   - Save the exact commands you ran (order matters). Example commands you might use: pytest -q, python -m pytest.
+   - Deliverable for this step: include the command list and the raw test output before any edits.
 
-1. Start the timer and record your start time (ISO 8601). You will include this in the submission.
-2. Run the test suite as provided to reproduce the initial failures.
-   - Use the run command in the repository README (typically: python -m unittest discover).
-   - Capture and copy the full raw console output (stdout/stderr) exactly as produced. Do not edit it.
-3. Diagnose the failures.
-   - From the console output and stack traces, identify why tests fail. The project includes two deliberately failing tests (different categories) and one small task requiring a new test.
-   - Do not modify application code unless explicitly instructed by the test content — the goal is to update tests/fixtures only.
-4. Update the test suite and/or fixtures so tests reflect the intended (changed) application behavior.
-   - Make only the minimal, correct changes necessary so the tests again validate the application.
-   - Allowed edits: test files under tests/ (rename, edit, add), fixtures/data files used by tests.
-   - Disallowed edits: modifying application code files under app/ (except in an explicitly provided supporting instruction).
-   - Keep tests readable and maintainable (clear assertions, avoid unnecessary complexity).
-5. Add one small new test that covers a simple new acceptance rule or edge case (data-driven/parameterized or one more assertion variant). This should be concise (a few lines) and live in the tests/ folder.
-6. Re-run the entire test suite. Capture and copy the full raw console output showing the final results.
-7. Prepare your submission file test_submission.json (see Submission Format below).
-   - Include your start and end times (ISO 8601), the raw initial and final test outputs, any modified file contents, brief rationales, and a short self-assessment.
-8. Stop the timer and record your end time (ISO 8601). Ensure total time does not exceed 90 minutes.
+2. Diagnosis & plan — (≈10 minutes)
+   - Inspect failing tests, their stack traces, and the small SUT files and README/spec in the repository.
+   - Decide which tests need to be changed (do not change product/SUT code unless absolutely necessary; if you do, you must explain and justify it).
+   - Write a short decision log describing the root cause for each failing test and your planned edits (one entry per failing test or issue).
+   - Deliverable for this step: decision_log entries.
 
-Recommended time allocation (suggested, not enforced):
-- Setup & initial run: 10–15 minutes
-- Diagnose failures: 15–20 minutes
-- Update tests & fixtures: 30–35 minutes
-- Re-run and verify: 10–15 minutes
-- Prepare submission JSON: 5–10 minutes
+3. Implement updates to automated tests — (≈45 minutes)
+   - Edit existing test files to fix failures and to make tests more robust (reduce brittleness). Typical acceptable edits:
+     - Update assertions to match the new behavior (e.g., check essential keys/values rather than exact string equality).
+     - Replace fragile exact matches with contains/regex/partial checks.
+     - Remove hard-coded sleep/waits and use fixtures or mocks where appropriate (mocking may be simulated by small helper functions provided in repo).
+     - Fix or parametrize fixtures and repeated setup to avoid duplication.
+   - Add one new pytest test that implements a small new requirement described in the README.
+   - Keep edits limited to tests (tests/ files). If you believe the SUT must be changed, do so only with explicit justification in your submission (this may reduce score).
+   - Deliverable for this step: include full contents of all modified test files and any added test files in your submission JSON.
 
-Notes:
-- All console output you paste must be the literal output from running the tests in the provided environment.
-- Make minimal targeted edits: exam grades favor focused changes to tests/fixtures rather than broad rewrites.
-- If you encounter an unavoidable problem, document it clearly in the open_issues field.
+4. Run, verify, and document — (≈25 minutes)
+   - Re-run the full test suite and capture the after-edit output that demonstrates all tests pass.
+   - Prepare concise per-file explanations of what changed and why.
+   - Prepare reproducible commands so an evaluator can re-run your steps exactly.
+   - Final deliverable: a single JSON file named test_submission.json containing all required fields described below.
+
+Important rules
+- Time limit: complete within 90 minutes. Record time_spent_minutes in JSON.
+- Only one file will be accepted for evaluation: test_submission.json. Do not submit any other files.
+- The evaluator will only examine the repository you were given plus the contents you place into test_submission.json. Therefore include full contents of any modified or new test files in that JSON.
+- Do not use the internet. Do not install external packages. Use only tools and files provided.
 
 ---
 
 ### Expected Outcome
 
-By the end of the exam you must produce and submit a single JSON file named test_submission.json that shows evidence of the full workflow:
+By the end of the exam you must produce a single file named test_submission.json that demonstrates:
 
-- The initial failing test run output (raw).
-- The final test run output after your edits (raw). Final results should show all tests passing.
-- Every file you modified (or newly added) listed with:
-  - relative path,
-  - full updated file content,
-  - a brief rationale (1–3 sentences) explaining what you changed and why.
-- A record of start and end times (ISO 8601), runtime environment string (e.g., "Python 3.9.2"), a short self-assessment (confidence level and any open issues), and the list of new test files added.
+- You ran the initial failing test suite and captured the failing output.
+- You diagnosed root causes and produced a concise decision_log describing changes to be made.
+- You updated the automated tests (and added one new test) so that the complete test suite passes.
+- You provide the exact commands you used to run tests before and after edits, the raw test outputs (before and after), and the full text of any modified and added test files.
+- You give short per-file reasons for each change and clear reproduction instructions so an evaluator can re-run your results.
 
-All tests should pass after your edits. If something remains failing, document the open issue clearly and explain why it could not be resolved within the time limit.
+To pass this basic-level exam you should ensure:
+- Tests run before edits show failures.
+- Tests run after edits show zero failing tests (pytest summary of 0 failures).
+- All modifications are limited to test files unless a strong justification is provided.
 
 ---
 
 ### Provided Materials
 
-The exam package you receive contains a self-contained small Python project (no external dependencies). Expected items:
+The exam repository you will receive contains:
+- A small Python SUT (module/package) implementing the application logic under test. (Pure Python, small size — no network access.)
+- tests/ — a pytest-based test suite (5–12 tests). Some tests are intentionally failing or brittle because the SUT behavior or outputs changed.
+- testdata/ or sample data files used by the SUT (if applicable).
+- README.md — contains:
+  - A short description of the intended new behavior (so you know what tests should assert).
+  - One small new requirement you must write a test for.
+  - How to run the test suite (example command).
+- A single command to run the tests is supported (e.g., pytest -q). Use that command unless you have good reason to run pytest differently; record any variations in commands_run.
 
-- app/ — small application/library code (do not modify unless explicitly allowed).
-- tests/ — unittest-based test files (short, readable). At least:
-  - tests/test_main.py (contains at least two failing tests initially).
-- fixtures/ — sample JSON fixtures or data files used by tests.
-- run_tests.sh (optional) and README with the exact command to run the tests (python -m unittest discover).
-- submission_template.json — a copy of the JSON template you can use to build test_submission.json.
-
-Test design within the package:
-- Two initial failing tests:
-  - One failing due to a changed literal/expected message (e.g., expected greeting text changed).
-  - One failing due to a changed fixture/schema key (e.g., "user_name" → "username").
-- A third task to add one small test covering a simple new rule or edge case.
-
-You should edit only test files and fixtures (unless a README explicitly authorises a change to app/). The provided tests are short (<150 lines each) to make pasting full file contents feasible.
+No external dependencies or network access will be necessary.
 
 ---
 
 ### Submission Format
 
-Produce a single file named test_submission.json at the repository root. It must be valid JSON and contain the following fields exactly:
+You must submit exactly one file named test_submission.json. This JSON must be valid JSON (UTF-8). The evaluator will use only this file to assess your work. Include all required fields exactly as specified below.
 
-- candidate_name (string) — your full name.
-- start_time (string, ISO 8601) — when you began the exam.
-- end_time (string, ISO 8601) — when you finished the exam.
-- environment (string) — runtime info, e.g., "Python 3.9.2".
-- initial_test_run (string) — full raw console output from the initial test run (copy-paste).
-- final_test_run (string) — full raw console output after your edits (copy-paste).
-- modified_files (array of objects) — one object per modified or added file; each object must have:
-  - path (string) — relative path to the file you changed or added (e.g., "tests/test_main.py").
-  - content (string) — the full content of the updated file (not a partial snippet).
-  - rationale (string) — 1–3 sentences explaining what you changed and why (concise).
-- new_tests_added (array of strings) — list of relative paths of any new test files you added (empty array if none).
-- open_issues (string) — short note if any tests still fail or other unresolved problems (empty string if none).
-- confidence (string) — one of: "High", "Medium", "Low".
-- optional: git_patch (string) — unified diff if you used git (optional; can be omitted).
+Required JSON schema and content expectations:
 
-You may copy the submission_template.json included in the package and fill it in.
+- candidate_name: string
+  - Your full name.
 
-Example minimal template (for your convenience):
-{
-  "candidate_name": "",
-  "start_time": "",
-  "end_time": "",
-  "environment": "",
-  "initial_test_run": "",
-  "final_test_run": "",
-  "modified_files": [
-    {
-      "path": "",
-      "content": "",
-      "rationale": ""
-    }
-  ],
-  "new_tests_added": [],
-  "open_issues": "",
-  "confidence": ""
-}
+- time_spent_minutes: integer
+  - Total minutes you actually spent (<= 90).
 
-Important submission rules:
-- The content field must contain the full, exact file content after your edits.
-- Do not include escaped or transformed console output — paste terminal output as-is.
-- Name the file exactly test_submission.json. Submissions with different filenames will not be accepted.
-- Ensure JSON validity before submission.
+- commands_run: array[string]
+  - Ordered list of exact shell commands you executed while performing the exam. Include commands to run tests before and after edits, any helper commands, and any commands used to show file contents if you want. Example entries: "pytest -q", "python -m pytest", "sed -n '1,200p' tests/test_example.py"
+
+- test_output_before: string
+  - Raw output of the initial failing pytest run, or a clipped subset (first/last ~40 lines) that clearly shows failing tracebacks and pytest summary. Preserve formatting/newlines inside the string.
+
+- test_output_after: string
+  - Raw output of the final pytest run after your edits, or a clipped subset (first/last ~40 lines) that clearly shows a passing summary (e.g., "X passed, 0 failed").
+
+- modified_files: array of objects
+  - Each object must have:
+    - path: string — path to the modified file relative to repo root (e.g., "tests/test_calc.py")
+    - reason: string — brief reason why you changed this file (one sentence)
+    - content: string — full text content of the modified file after your edits (include entire file).
+
+- added_files: array of objects (empty array [] if none)
+  - Each object must have:
+    - path: string — path of the added file (e.g., "tests/test_new_requirement.py")
+    - reason: string — brief reason why you added this file
+    - content: string — full text content of the added file.
+
+- decision_log: array of objects
+  - Each object must have:
+    - step: string — short identifier (e.g., "fix-format-assertion" or "add-new-flag-test")
+    - decision: string — concise description of the decision you made for that step (1–2 sentences)
+    - alternatives_considered: string — short list of alternatives you considered and why you did not choose them (1–2 short bullets or sentences).
+
+- reproduce_instructions: string
+  - Minimal exact commands and steps an evaluator can run in the original repository to reproduce your results and test outputs. Keep this short and precise (example: "1) pytest -q (shows failures); 2) edit files; 3) pytest -q (shows all tests pass)"). Prefer actual shell commands.
+
+Content rules and tips (evaluate for objectivity):
+- All modified_files and added_files content must be full file contents. The evaluator will not open the repository to read your working files; include everything in JSON.
+- Keep changes scoped to tests/ files only unless you explicitly justify SUT edits in modified_files.reason (doing so may lower score).
+- test_output_before must show failing tests; test_output_after must show passing tests.
+- Keep explanations concise and factual. The decision_log should show you understood root causes and why your edits fix them.
 
 ---
 
-Good luck. Work cleanly, make minimal focused edits, and document your changes clearly in test_submission.json.Project: "test_project_greetings"
+If any part of your submission cannot be reproduced from the provided repository using only the included files and the commands you supply, it may be marked incorrect. Good luck.Repository layout and file contents (all files are UTF-8 text). Use the provided repository as-is.
 
-Structure:
-- README.md
-- run_tests.sh
-- submission_template.json
-- app/
-  - __init__.py
-  - main.py
-- fixtures/
-  - user.json
-- tests/
-  - test_main.py
+README.md
+---------
+# Order Processor — Mini Spec (new behavior)
 
---- README.md ---
-Project: test_project_greetings
+The SUT (app/orders.py) now uses the following behavior:
+- Order dates are stored in ISO format `YYYY-MM-DD` in testdata/orders.json and the API returns dates in that format.
+- Each order may now include an optional `status` field (e.g., `"processing"` or `"pending"`). If missing, it should be treated as `"pending"`.
+- `format_order_summary(order)` now includes the status text at the end of the summary string: "... on {date} [status: {status}]".
+- `calculate_total(order, include_discount=False)` returns the sum of (price * quantity) for items. If `include_discount=True`, subtract `order.get("discount", 0.0)` from the sum and round to 2 decimals.
 
-Run instructions:
-1. From the repository root run:
-   python -m unittest discover
+Your tasks:
+1. Run the test suite (command: `pytest -q`) and capture the failing output.
+2. Diagnose failing/brittle tests and decide edits (tests only).
+3. Update tests to match the new behavior and to be less brittle (no exact whole-dict equality, remove unnecessary sleeps, prefer contains/partial checks or key assertions).
+4. Add one new pytest test to verify `calculate_total(..., include_discount=True)` works correctly for order `O1001`.
+5. Re-run tests and produce a single `test_submission.json` as described in the exam instructions.
 
-No external libraries required. Use only the provided files. Edit only files under tests/ and fixtures/ (app/ should not be modified for this exam).
+Run command example:
+pytest -q
 
---- run_tests.sh ---
-#!/bin/sh
-python -m unittest discover
+app/__init__.py
+----------------
+# package marker for app
 
---- submission_template.json ---
-{
-  "candidate_name": "",
-  "start_time": "",
-  "end_time": "",
-  "environment": "",
-  "initial_test_run": "",
-  "final_test_run": "",
-  "modified_files": [
-    {
-      "path": "",
-      "content": "",
-      "rationale": ""
-    }
-  ],
-  "new_tests_added": [],
-  "open_issues": "",
-  "confidence": ""
-}
-
---- app/__init__.py ---
-# Package initializer for app
-__all__ = ["main"]
-
---- app/main.py ---
+app/orders.py
+-------------
 import json
+import os
 
-def greet(name):
-    """
-    New application behavior: greeting message includes the phrase 'Welcome back, ...'
-    """
-    return f"Welcome back, {name}!"
+DATA_PATH_DEFAULT = os.path.join(os.path.dirname(__file__), '..', 'testdata', 'orders.json')
 
-def load_user_from_fixture(path):
+def load_order(order_id, data_path=DATA_PATH_DEFAULT):
+    """Load an order dict by id from testdata/orders.json.
+    New behavior: date is stored as ISO 'YYYY-MM-DD'; 'status' may be present.
     """
-    Load a user dictionary from a JSON fixture file at 'path'.
-    Expected JSON structure (current application): {"username": "<name>", "status": "<status>"}
-    """
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    with open(data_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    for o in data.get('orders', []):
+        if o.get('id') == order_id:
+            # return order dict as-is (status might be missing; callers should default)
+            return o
+    raise KeyError(f"order {order_id} not found")
 
-def is_active(user):
-    """
-    Returns True if user has status 'active'.
-    """
-    return user.get("status") == "active"
+def calculate_total(order, include_discount=False):
+    """Calculate total for an order. If include_discount is True, subtract order.get('discount', 0.0)."""
+    total = 0.0
+    for item in order.get('items', []):
+        total += item.get('price', 0.0) * item.get('quantity', 0)
+    if include_discount:
+        total -= order.get('discount', 0.0)
+    return round(total, 2)
 
---- fixtures/user.json ---
+def format_order_summary(order):
+    """Return a one-line summary for an order.
+    New behavior: includes status at the end: [status: {status}]
+    """
+    order_id = order.get('id')
+    customer = order.get('customer')
+    date = order.get('date')  # ISO format YYYY-MM-DD in current data
+    total = calculate_total(order)
+    status = order.get('status', 'pending')
+    return f"Order {order_id} for {customer}: ${total:.2f} on {date} [status: {status}]"
+
+testdata/orders.json
+--------------------
 {
-  "username": "Alice",
-  "status": "active"
+  "orders": [
+    {
+      "id": "O1001",
+      "customer": "Alice",
+      "date": "2025-01-15",
+      "items": [
+        {"sku": "A1", "price": 15.0, "quantity": 2},
+        {"sku": "B2", "price": 7.5, "quantity": 1}
+      ],
+      "discount": 5.0,
+      "status": "processing"
+    },
+    {
+      "id": "O1002",
+      "customer": "Bob",
+      "date": "2025-02-20",
+      "items": [
+        {"sku": "C3", "price": 20.0, "quantity": 1}
+      ],
+      "discount": 0.0
+    }
+  ]
 }
 
---- tests/test_main.py ---
-import os
-import unittest
-from app import main
+tests/test_orders.py
+--------------------
+# Tests provided intentionally include brittle/legacy assertions that will fail.
+# Your job: update tests (and add one new test file) to match README spec and SUT behavior.
+import time
+from app.orders import load_order, format_order_summary, calculate_total
 
-class MainTests(unittest.TestCase):
-    def _fixture_path(self, name="user.json"):
-        # Path to fixtures relative to this file
-        base = os.path.dirname(__file__)
-        return os.path.abspath(os.path.join(base, "..", "fixtures", name))
+def test_load_order_strict_keys():
+    # legacy strict comparison expecting old date format and a 'processed_at' key that no longer exists
+    order = load_order("O1001")
+    expected = {
+        "id": "O1001",
+        "customer": "Alice",
+        "date": "01/15/2025",  # old MM/DD/YYYY format (legacy)
+        "items": [
+            {"sku": "A1", "price": 15.0, "quantity": 2},
+            {"sku": "B2", "price": 7.5, "quantity": 1}
+        ],
+        "discount": 5.0,
+        "processed_at": "01/16/2025"  # legacy field no longer produced
+    }
+    assert order == expected
 
-    def test_greet_literal(self):
-        # This test expects the old literal greeting. It will fail initially because the app greeting changed.
-        self.assertEqual(main.greet("Alice"), "Welcome, Alice!")
+def test_format_summary_exact():
+    # brittle exact string expecting old date format and no status
+    order = load_order("O1001")
+    assert format_order_summary(order) == "Order O1001 for Alice: $37.50 on 01/15/2025"
 
-    def test_load_user_schema(self):
-        # This test expects a fixture key named 'user_name'. It will fail initially because fixture uses 'username'.
-        user = main.load_user_from_fixture(self._fixture_path())
-        self.assertEqual(user["user_name"], "Alice")
+def test_calculate_total_default():
+    order = load_order("O1001")
+    # discount should NOT be applied by default (include_discount False)
+    assert calculate_total(order) == 37.5
 
-    def test_is_active(self):
-        # A third test that should pass initially (status is 'active' in fixtures/user.json)
-        user = main.load_user_from_fixture(self._fixture_path())
-        self.assertTrue(main.is_active(user))```json
+def test_brittle_sleep():
+    # This test contains an unnecessary sleep and an exact string match
+    order = load_order("O1002")
+    time.sleep(0.05)  # unnecessary/wasteful in unit tests
+    assert format_order_summary(order) == "Order O1002 for Bob: $20.00 on 02/20/2025"
+
+def test_discount_missing_flag():
+    order = load_order("O1001")
+    # legacy check to confirm discount doesn't apply unless flag set
+    assert calculate_total(order) == 37.5
+
+tests/ (end)```json
 {
   "candidate_name": "",
-  "start_time": "",
-  "end_time": "",
-  "environment": "",
-  "initial_test_run": "",
-  "diagnosis": null,
-  "final_test_run": "",
-  "modified_files": [
-    {
-      "path": "",
-      "content": "",
-      "rationale": "",
-      "related_task": ""
-    }
-  ],
-  "new_tests_added": [],
-  "open_issues": "",
-  "confidence": "",
-  "git_patch": "",
-  "time_taken_seconds": null,
-  "task_1_setup_and_initial_run": null,
-  "task_2_diagnose_failures": null,
-  "task_3_update_tests_and_fixtures": null,
-  "task_4_add_new_test": null,
-  "task_5_rerun_and_verify": null,
-  "submission_notes": ""
+  "time_spent_minutes": null,
+  "commands_run": [],
+  "test_output_before": "",
+  "test_output_after": "",
+  "modified_files": [],
+  "added_files": [],
+  "decision_log": [],
+  "reproduce_instructions": ""
 }
 ```
 </exam>
 
 - Additional materials only visible to the evaluator:
 <materials_evaluator>
-How these materials were constructed and rationale:
-- Goal: A compact, deterministic Python project that demonstrates two realistic, minimal application changes that commonly require updating tests:
-  1. A literal text change in the greeting message (from "Welcome, Alice!" to "Welcome back, Alice!").
-  2. A schema/key rename in JSON fixtures (from "user_name" expected by tests to "username" provided by the application).
-- The project uses only Python built-in modules (json, os, unittest) to ensure it runs in any standard Python 3 environment without external dependencies.
-- The tests are intentionally short (< 120 lines total) to make editing and pasting into the submission JSON practical within the 90-minute constraint.
-- The README contains one-line run instructions: python -m unittest discover.
+How materials were constructed and intended candidate tasks
+---------------------------------------------------------
+I created a small deterministic Python repository (pure stdlib) with a concise SUT and a pytest test-suite that intentionally contains tests which no longer match the SUT's current behavior. The goal is for the candidate to run pytest, observe failing traces, decide appropriate test edits, make those edits (tests only), add one new test per README, and re-run pytest to demonstrate a green suite.
 
-Files and deterministic relationships:
-- app/main.py: the stable application code. greet(name) now returns "Welcome back, {name}!" and load_user_from_fixture reads a JSON file that contains the key "username". is_active checks the "status" key. These behaviors are deterministic and unambiguous.
-- fixtures/user.json: contains {"username":"Alice", "status":"active"}. This matches current application expectations.
-- tests/test_main.py: contains three tests:
-  - test_greet_literal expects the old greeting literal "Welcome, Alice!" — intentionally failing.
-  - test_load_user_schema expects fixture key "user_name" — intentionally failing because fixture provides "username".
-  - test_is_active asserts is_active returns True for the fixture — this test should pass initially.
+Key files and relationships
+- app/orders.py (SUT)
+  - load_order(order_id): reads testdata/orders.json and returns a dict (date is ISO YYYY-MM-DD; 'status' optional).
+  - calculate_total(order, include_discount=False): sums price*quantity; subtracts discount when include_discount True (rounded to 2 decimals).
+  - format_order_summary(order): returns "Order {id} for {customer}: ${total:.2f} on {date} [status: {status}]" (status defaults to "pending"). This is the "changed" behavior tests must accept.
 
-What the correct fixes are (expected from candidate):
-- Update test expectations to reflect the intentional application changes (not change app/main.py). Specifically:
-  - Modify test_greet_literal to expect "Welcome back, Alice!" or change assertion style (e.g., use assertIn or startswith) that still validates the intended behavior without being brittle.
-  - Modify test_load_user_schema to assert the presence/value of "username" (the current key) rather than "user_name".
-- Add one small new test under tests/ (e.g., tests/test_additional.py). Acceptable new tests include:
-  - A simple assertion that greet includes the provided name (self.assertIn).
-  - A small edge case test for is_active with a constructed dict (e.g., {"username": "Eve", "status": "inactive"}).
-  The new test should be concise and deterministic and must pass under current app behavior.
+- testdata/orders.json
+  - Contains two deterministic orders, O1001 and O1002.
+  - O1001: items configured so non-discount total is 37.50 and include_discount=True yields 32.50.
 
-Potential candidate traps and common errors:
-- Changing app/main.py to match tests. The exam forbids editing application code; correct approach is to update tests/fixtures to match intentional app changes. Evaluators should verify the candidate changed files only in tests/ and/or fixtures/ (app/ should remain unchanged).
-- Over-editing: rewriting tests or fixtures beyond minimal changes. The evaluation rewards minimal, focused edits that preserve test intent.
-- Fragile assertions: candidates might change assertions to overly permissive checks (e.g., assertTrue(True)). Look for meaningful assertions that still validate behavior.
-- Wrong file paths: tests use relative paths; if a candidate introduces broken paths, their final test run will fail. The candidate should keep fixture locations unchanged unless updating fixtures themselves.
+- tests/test_orders.py (initial test package provided to candidate)
+  - Contains 5 tests. Several are intentionally brittle/legacy:
+    - test_load_order_strict_keys expects a legacy `processed_at` key and old date format; this will fail because SUT no longer returns that key and date is ISO.
+    - test_format_summary_exact expects the old date format and exact string without the new status suffix; fails due to date and extra status text.
+    - test_brittle_sleep includes an unnecessary time.sleep and an exact format match; it will fail for the same reasons as format_summary.
+    - test_calculate_total_default and test_discount_missing_flag assert totals (these should pass initially).
+  - The candidate must:
+    - Replace strict equality checks with focused key/assertions (e.g., verify essential keys exist, date has expected ISO value).
+    - Update string assertions to use partial contains or regex or split checks to tolerate the new "[status: ...]" suffix and ISO date format.
+    - Remove the sleep and any unnecessary delays.
+    - Add a new test to confirm calculate_total(..., include_discount=True) yields 32.50 for O1001 (per README new requirement).
 
-How these materials differentiate skill levels:
-- The basic tasks (running tests, reading tracebacks, editing assertions or fixture keys, re-running tests) assess entry-level practical ability to maintain automated tests.
-- Correct fixes require interpreting stack traces and knowing where to edit (tests vs fixtures). The materials separate schema/key issues from literal content issues, which tests practical judgment about minimal-change fixes.
-- The new-test task checks whether the candidate can author a short, proper unit test that integrates with the existing suite and demonstrates understanding of test hygiene.
+What failures/diagnosis the candidate will see
+- Pytest failing tracebacks will point to:
+  - dict equality mismatch in test_load_order_strict_keys (expected keys differ).
+  - AssertionError comparing the exact strings in test_format_summary_exact and test_brittle_sleep.
+- Candidates should deduce from the SUT code (app/orders.py) and README that:
+  - Dates are ISO (YYYY-MM-DD) now.
+  - format_order_summary includes status suffix.
+  - calculate_total supports include_discount flag and should be tested when True.
 
-Evaluation notes for graders:
-- Initial failing run should show two failing tests with clear assertion errors (one for greeting string mismatch and one for missing key 'user_name').
-- After candidate updates, all tests should pass and their submission JSON must include:
-  - initial_test_run (raw console output),
-  - final_test_run (raw console output),
-  - modified_files entries with full updated file contents and 1–3 sentence rationales for each change,
-  - any new test file path(s) in new_tests_added.
-- Acceptable minimal edits example:
-  - tests/test_main.py: change expected greeting literal and change 'user_name' to 'username' in the second test.
-  - Or update the fixture file to include "user_name" in addition to "username" (fixtures edits are permitted), but note grader should prefer updates that reflect the intended application change (i.e., prefer updating tests to match app).
+Traps, common mistakes, and evaluator cues
+- Common mistake: editing the SUT instead of tests to "revert" output to the old format. For the basic exam, tests should be updated, not SUT. If a candidate edits SUT, they must justify it; such edits should generally reduce score.
+- Another mistake: making tests pass by loosening assertions too much (e.g., asserting truthy values only). Evaluate whether edits still verify meaningful behavior (essential keys and numeric totals).
+- Candidates might forget to add the required new test verifying include_discount behavior. The README explicitly requires that added test.
+- Candidates might remove the sleep but fail to update the exact string checks; ensure final assertions accept the "[status: ...]" suffix and ISO date.
 
-Deterministic outcomes:
-- Running python -m unittest discover before edits will produce two failing tests and one passing test.
-- After the expected minimal test updates and adding a small, valid new test, running python -m unittest discover should produce all tests passing.
+What correct/expected edits look like (high-level)
+- Replace test_load_order_strict_keys equality with checks like:
+  - assert order['id']=='O1001'
+  - assert order['customer']=='Alice'
+  - assert order['date']=='2025-01-15' (ISO)
+  - assert isinstance(order['items'], list)
+  - assert 'processed_at' not expected (do not assert its presence)
+- Update test_format_summary_exact to either:
+  - check that returned string contains "Order O1001 for Alice" and "2025-01-15" and "[status: processing]", or
+  - use startswith("Order O1001 for Alice: $37.50 on ") and endswith("]") and parse date substring.
+- Remove time.sleep and use direct assertions.
+- Add tests/test_discount_flag.py (or add to existing test file) with:
+  - order=load_order("O1001"); assert calculate_total(order, include_discount=True) == 32.5
 
-Summary:
-These materials provide a focused, deterministic hands-on scenario that requires the candidate to run tests, diagnose failures from tracebacks, make minimal correct edits to tests/fixtures, add a small new test, and re-run tests — exactly matching the Basic Practical Exam objectives.
+How these materials distinguish candidate skill levels
+- A junior/entry-level candidate should:
+  - Run pytest, read failures, inspect tests and SUT, and make straightforward edits to tests to match new behavior (partial string checks, key assertions), remove sleep, and add the discount test. They should be able to complete this within the 90-minute limit.
+- A more experienced candidate will also:
+  - Make minimal and focused changes that preserve test intent, not overly loosen checks.
+  - Add clear test names and simple refactors (e.g., small helper in tests for repeated load_order calls or parametrization).
+  - Provide a concise decision_log explaining choices and alternatives considered (edit tests vs. edit SUT).
+
+Evaluation notes for the assessor
+- Before/after pytest traces are deterministic and should show failing tests before edits and all tests passing after edits (0 failed).
+- Verify the submission JSON includes full contents of modified and added test files.
+- Check decision_log entries: candidate should explain root causes (date format changed, status added, legacy processed_at removed, and removal of sleep).
+- Confirm added test asserts include_discount behavior with exact numeric assertion (32.5).
+- If SUT was edited by candidate, check the justification in modified_files.reason; prefer solutions limited to tests.
 </materials_evaluator>
 
 - Official candidate submission template (JSON object):
 <submission_template>
 {
   "candidate_name": "",
-  "start_time": "",
-  "end_time": "",
-  "environment": "",
-  "initial_test_run": "",
-  "diagnosis": null,
-  "final_test_run": "",
-  "modified_files": [
-    {
-      "path": "",
-      "content": "",
-      "rationale": "",
-      "related_task": ""
-    }
-  ],
-  "new_tests_added": [],
-  "open_issues": "",
-  "confidence": "",
-  "git_patch": "",
-  "time_taken_seconds": null,
-  "task_1_setup_and_initial_run": null,
-  "task_2_diagnose_failures": null,
-  "task_3_update_tests_and_fixtures": null,
-  "task_4_add_new_test": null,
-  "task_5_rerun_and_verify": null,
-  "submission_notes": ""
+  "time_spent_minutes": null,
+  "commands_run": [],
+  "test_output_before": "",
+  "test_output_after": "",
+  "modified_files": [],
+  "added_files": [],
+  "decision_log": [],
+  "reproduce_instructions": ""
 }
 </submission_template>
 

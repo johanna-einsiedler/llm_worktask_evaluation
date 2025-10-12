@@ -1,0 +1,187 @@
+```json
+{
+  "candidate": {
+    "name": "Answer Key - Reference Candidate",
+    "email": "examiner@example.com"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "3.38.0"
+  },
+  "ingestion_script": "#!/usr/bin/env python3\n\"\"\"\ningest.py\nParses systems.csv and metrics.log, normalizes timestamps to UTC ISO-8601 (YYYY-MM-DDTHH:MM:SSZ),\nstores inventory in `systems` and telemetry in `telemetry` tables of systems_metrics.db.\nBehavior decisions (documented here and in README/notes):\n- Missing cpu_percent or mem_percent inserted as NULL.\n- Timestamp variants (Z, +00:00, +01:00, missing seconds) are parsed and normalized to UTC.\n- Duplicate telemetry rows (same hostname + normalized timestamp): keep the first occurrence, skip later duplicates.\n- Telemetry-only hosts are not inserted into systems table (no placeholder rows); telemetry stored as-is.\n- Creates index on (hostname, timestamp) for typical queries.\nUses only Python standard library.\n\"\"\"\n\nimport csv\nimport json\nimport sqlite3\nimport sys\nfrom datetime import datetime, timezone, timedelta\n\n# Helper: parse ISO-8601-ish timestamp variants into a UTC-normalized string YYYY-MM-DDTHH:MM:SSZ\ndef parse_timestamp_to_utc_iso(ts_str):\n    if ts_str is None:\n        return None\n    s = ts_str\n    # Python's fromisoformat does not accept trailing Z, replace with +00:00\n    if s.endswith('Z'):\n        s = s[:-1] + '+00:00'\n    # If timezone offset is missing seconds (e.g., :00) it's fine; fromisoformat handles offsets\n    try:\n        dt = datetime.fromisoformat(s)\n    except Exception:\n        # As a last resort try to parse missing seconds e.g. 2025-10-12T09:00\n        try:\n            if 'T' in s and '+' not in s and '-' not in s[11:]:\n                # add :00 seconds\n                if len(s) == 16:  # YYYY-MM-DDTHH:MM\n                    s2 = s + ':00+00:00'\n                elif len(s) == 19:  # YYYY-MM-DDTHH:MM:SS\n                    s2 = s + '+00:00'\n                else:\n                    s2 = s\n                dt = datetime.fromisoformat(s2)\n            else:\n                raise\n        except Exception:\n            raise\n    # Convert to UTC\n    if dt.tzinfo is None:\n        dt = dt.replace(tzinfo=timezone.utc)\n    dt_utc = dt.astimezone(timezone.utc)\n    return dt_utc.strftime('%Y-%m-%dT%H:%M:%SZ')\n\nDB_FILE = 'systems_metrics.db'\n\ndef create_schema(conn):\n    cur = conn.cursor()\n    cur.execute('PRAGMA foreign_keys = ON')\n    # Inventory\n    cur.execute('''\n    CREATE TABLE IF NOT EXISTS systems (\n        hostname TEXT PRIMARY KEY,\n        cpu_cores INTEGER,\n        memory_gb INTEGER,\n        storage_gb INTEGER,\n        os_version TEXT,\n        created_at TEXT\n    )\n    ''')\n    # Telemetry: keep unique(hostname, timestamp) to avoid storing duplicates\n    cur.execute('''\n    CREATE TABLE IF NOT EXISTS telemetry (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        hostname TEXT,\n        timestamp TEXT,\n        cpu_percent REAL,\n        mem_percent REAL,\n        io_wait_ms REAL,\n        UNIQUE(hostname, timestamp)\n    )\n    ''')\n    cur.execute('CREATE INDEX IF NOT EXISTS idx_telemetry_host_ts ON telemetry(hostname, timestamp)')\n    conn.commit()\n\ndef ingest_systems(conn, systems_csv_path='systems.csv'):\n    cur = conn.cursor()\n    with open(systems_csv_path, 'r', newline='') as fh:\n        rdr = csv.DictReader(fh)\n        rows = []\n        for r in rdr:\n            # Keep created_at as-is (ISO-ish); could normalize similarly if needed\n            rows.append((r['hostname'], int(r['cpu_cores']) if r['cpu_cores'] else None,\n                         int(r['memory_gb']) if r['memory_gb'] else None,\n                         int(r['storage_gb']) if r['storage_gb'] else None,\n                         r.get('os_version'), r.get('created_at')))\n    cur.executemany('INSERT OR REPLACE INTO systems(hostname,cpu_cores,memory_gb,storage_gb,os_version,created_at) VALUES (?,?,?,?,?,?)', rows)\n    conn.commit()\n\ndef ingest_telemetry(conn, metrics_log_path='metrics.log'):\n    cur = conn.cursor()\n    seen = set()  # (hostname, normalized_timestamp) to deduplicate; keep first occurrence\n    to_insert = []\n    with open(metrics_log_path, 'r', newline='') as fh:\n        for line in fh:\n            line = line.strip()\n            if not line:\n                continue\n            # Each line is JSON\n            obj = json.loads(line)\n            hostname = obj.get('hostname')\n            raw_ts = obj.get('timestamp')\n            try:\n                ts = parse_timestamp_to_utc_iso(raw_ts)\n            except Exception:\n                # Skip unparsable timestamps\n                continue\n            key = (hostname, ts)\n            if key in seen:\n                # Duplicate (keep first), skip\n                continue\n            seen.add(key)\n            cpu = obj.get('cpu_percent')\n            # JSON 'null' maps to None already\n            mem = obj.get('mem_percent')\n            io_wait = obj.get('io_wait_ms')\n            # Insert NULL for missing cpu/mem/io_wait\n            to_insert.append((hostname, ts, cpu if cpu is not None else None, mem if mem is not None else None, io_wait if io_wait is not None else None))\n    cur.executemany('INSERT OR IGNORE INTO telemetry(hostname,timestamp,cpu_percent,mem_percent,io_wait_ms) VALUES (?,?,?,?,?)', to_insert)\n    conn.commit()\n\nif __name__ == '__main__':\n    conn = sqlite3.connect(DB_FILE)\n    create_schema(conn)\n    ingest_systems(conn, 'systems.csv')\n    ingest_telemetry(conn, 'metrics.log')\n    conn.close()\n    print('Ingestion complete: systems_metrics.db created/updated')\n",
+  "query_script": "#!/usr/bin/env python3\n\"\"\"\nqueries.py\nOpens systems_metrics.db and runs the 4 required queries. Prints results to stdout (human-readable) and is the source of the SQL used below in the submission JSON.\nThis script computes time windows relative to the maximum timestamp present in telemetry (treated as 'now').\nUses only Python standard library.\n\"\"\"\n\nimport sqlite3\nfrom datetime import datetime, timezone, timedelta\n\nDB_FILE = 'systems_metrics.db'\n\ndef parse_iso_z(s):\n    # parse YYYY-MM-DDTHH:MM:SSZ\n    return datetime.strptime(s, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)\n\nconn = sqlite3.connect(DB_FILE)\ncur = conn.cursor()\n\n# Get max timestamp in telemetry (treat as \"now\")\ncur.execute(\"SELECT MAX(timestamp) FROM telemetry\")\nrow = cur.fetchone()\nif not row or not row[0]:\n    raise SystemExit('No telemetry found in DB')\nmax_ts_str = row[0]\nmax_dt = parse_iso_z(max_ts_str)\n# Window boundaries\nstart_24h = (max_dt - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')\nstart_7d = (max_dt - timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%SZ')\nend_ = max_ts_str\n\n# Constants from exam\nRECOMMENDED_MINIMUM_MEMORY_GB = 8\nEXPECTED_SAMPLING_INTERVAL_MINUTES = 5\nEXPECTED_COMPLETENESS_THRESHOLD = 95\nEXPECTED_SAMPLES_24H = int((24 * 60) / EXPECTED_SAMPLING_INTERVAL_MINUTES)\n\nqueries_results = []\n\n# Q1: Top 5 hosts by average cpu_percent over the last 24 hours (exclude NULL cpu values)\nQ1_sql = '''\nSELECT hostname, AVG(cpu_percent) AS avg_cpu\nFROM telemetry\nWHERE timestamp BETWEEN ? AND ? AND cpu_percent IS NOT NULL\nGROUP BY hostname\nORDER BY avg_cpu DESC\nLIMIT 5\n'''\ncur.execute(Q1_sql, (start_24h, end_))\nq1_rows = cur.fetchall()\n# Normalize numeric types\nq1_rows = [[r[0], float(r[1])] for r in q1_rows]\n\n# Q2: Per-host average and peak mem_percent for the last 7 days (exclude NULL mem values)\nQ2_sql = '''\nSELECT hostname, AVG(mem_percent) AS avg_mem, MAX(mem_percent) AS peak_mem\nFROM telemetry\nWHERE timestamp BETWEEN ? AND ? AND mem_percent IS NOT NULL\nGROUP BY hostname\n'''\ncur.execute(Q2_sql, (start_7d, end_))\nq2_rows = cur.fetchall()\nq2_rows = [[r[0], float(r[1]), float(r[2])] for r in q2_rows]\n\n# Q3: Inventory hosts where memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB\nQ3_sql = '''\nSELECT hostname, memory_gb\nFROM systems\nWHERE memory_gb < ?\nORDER BY hostname\n'''\ncur.execute(Q3_sql, (RECOMMENDED_MINIMUM_MEMORY_GB,))\nq3_rows = cur.fetchall()\nq3_rows = [[r[0], int(r[1])] for r in q3_rows]\n\n# Q4: Count telemetry samples per host in last 24 hours and completeness percent.\n# Use the union of inventory and telemetry hosts to produce rows for hosts with zero samples.\nhosts = set()\ncur.execute('SELECT hostname FROM systems')\nhosts.update([r[0] for r in cur.fetchall()])\ncur.execute('SELECT DISTINCT hostname FROM telemetry')\nhosts.update([r[0] for r in cur.fetchall()])\n\nq4_rows = []\nfor h in sorted(hosts):\n    cur.execute('SELECT COUNT(*) FROM telemetry WHERE hostname=? AND timestamp BETWEEN ? AND ?', (h, start_24h, end_))\n    c = cur.fetchone()[0]\n    completeness = (c / EXPECTED_SAMPLES_24H) * 100.0\n    q4_rows.append([h, int(c), float(completeness)])\n\n# Prepare analyses for Task 3\n# Compute capacity-constrained hosts: avg_cpu_24h > 75 OR (avg_mem_7d > 80 AND memory_gb < 8)\n# Build lookup maps\navg_cpu_map = {}\ncur.execute('SELECT hostname, AVG(cpu_percent) FROM telemetry WHERE timestamp BETWEEN ? AND ? AND cpu_percent IS NOT NULL GROUP BY hostname', (start_24h, end_))\nfor r in cur.fetchall():\n    avg_cpu_map[r[0]] = float(r[1])\n\navg_mem_map = {}\ncur.execute('SELECT hostname, AVG(mem_percent) FROM telemetry WHERE timestamp BETWEEN ? AND ? AND mem_percent IS NOT NULL GROUP BY hostname', (start_7d, end_))\nfor r in cur.fetchall():\n    avg_mem_map[r[0]] = float(r[1])\n\nmemory_gb_map = {}\ncur.execute('SELECT hostname, memory_gb FROM systems')\nfor r in cur.fetchall():\n    memory_gb_map[r[0]] = int(r[1])\n\nhosts_capacity_issues = []\nall_hosts = sorted(list(hosts))\nfor h in all_hosts:\n    avg_cpu = avg_cpu_map.get(h)\n    avg_mem = avg_mem_map.get(h)\n    mem_gb = memory_gb_map.get(h)\n    is_constrained = False\n    if avg_cpu is not None and avg_cpu > 75.0:\n        is_constrained = True\n    if avg_mem is not None and mem_gb is not None and (avg_mem > 80.0 and mem_gb < RECOMMENDED_MINIMUM_MEMORY_GB):\n        is_constrained = True\n    if is_constrained:\n        hosts_capacity_issues.append({\n            'hostname': h,\n            'avg_cpu_24h': float(avg_cpu) if avg_cpu is not None else None,\n            'avg_mem_7d': float(avg_mem) if avg_mem is not None else None,\n            'memory_gb': mem_gb if mem_gb is not None else None\n        })\n\n# Counts for metrics\ntotal_hosts_inventory = len(memory_gb_map)\n# hosts with low telemetry completeness among inventory hosts (completeness < EXPECTED_COMPLETENESS_THRESHOLD)\nhosts_with_low_samples = 0\nfor h in memory_gb_map.keys():\n    # find completeness in q4_rows\n    for r in q4_rows:\n        if r[0] == h:\n            if r[2] < EXPECTED_COMPLETENESS_THRESHOLD:\n                hosts_with_low_samples += 1\n            break\n\n# Print human-readable outputs (not required for JSON submission but useful when running)\nprint('Max timestamp (now):', max_ts_str)\nprint('\\nQ1 Top 5 hosts by avg CPU (last 24h):')\nfor r in q1_rows:\n    print(r)\nprint('\\nQ2 Per-host avg and peak mem (last 7d):')\nfor r in q2_rows:\n    print(r)\nprint('\\nQ3 Inventory hosts with memory_gb <', RECOMMENDED_MINIMUM_MEMORY_GB, ':')\nfor r in q3_rows:\n    print(r)\nprint('\\nQ4 Telemetry counts in last 24h and completeness%:')\nfor r in q4_rows:\n    print(r)\n\n# The script could serialize outputs; for this exam the grader will run the script and compare with included SQL and result_rows in test_submission.json\n\nconn.close()\n",
+  "schema_dump": [
+    "CREATE TABLE systems (",
+    "    hostname TEXT PRIMARY KEY,",
+    "    cpu_cores INTEGER,",
+    "    memory_gb INTEGER,",
+    "    storage_gb INTEGER,",
+    "    os_version TEXT,",
+    "    created_at TEXT",
+    ")",
+    "CREATE TABLE telemetry (",
+    "    id INTEGER PRIMARY KEY AUTOINCREMENT,",
+    "    hostname TEXT,",
+    "    timestamp TEXT,",
+    "    cpu_percent REAL,",
+    "    mem_percent REAL,",
+    "    io_wait_ms REAL,",
+    "    UNIQUE(hostname, timestamp)",
+    ")",
+    "CREATE INDEX idx_telemetry_host_ts ON telemetry(hostname, timestamp)"
+  ],
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "SELECT hostname, AVG(cpu_percent) AS avg_cpu\nFROM telemetry\nWHERE timestamp BETWEEN ? AND ? AND cpu_percent IS NOT NULL\nGROUP BY hostname\nORDER BY avg_cpu DESC\nLIMIT 5",
+      "result_rows": [
+        [
+          "hostX",
+          95.0
+        ],
+        [
+          "hostC",
+          89.0
+        ],
+        [
+          "hostA",
+          77.16666666666667
+        ],
+        [
+          "hostB",
+          60.0
+        ],
+        [
+          "hostE",
+          20.0
+        ]
+      ]
+    },
+    {
+      "id": "Q2",
+      "sql": "SELECT hostname, AVG(mem_percent) AS avg_mem, MAX(mem_percent) AS peak_mem\nFROM telemetry\nWHERE timestamp BETWEEN ? AND ? AND mem_percent IS NOT NULL\nGROUP BY hostname",
+      "result_rows": [
+        [
+          "hostA",
+          66.92,
+          70.1
+        ],
+        [
+          "hostB",
+          49.0,
+          52.0
+        ],
+        [
+          "hostC",
+          71.0,
+          85.0
+        ],
+        [
+          "hostE",
+          30.0,
+          30.0
+        ],
+        [
+          "hostX",
+          90.0,
+          90.0
+        ]
+      ]
+    },
+    {
+      "id": "Q3",
+      "sql": "SELECT hostname, memory_gb\nFROM systems\nWHERE memory_gb < ?\nORDER BY hostname",
+      "result_rows": [
+        [
+          "hostA",
+          4
+        ],
+        [
+          "hostC",
+          2
+        ],
+        [
+          "hostF",
+          4
+        ]
+      ]
+    },
+    {
+      "id": "Q4",
+      "sql": "UNION of inventory and telemetry hosts; for each host: SELECT COUNT(*) FROM telemetry WHERE hostname=? AND timestamp BETWEEN ? AND ? (count) then completeness = count / 288 * 100",
+      "result_rows": [
+        [
+          "hostA",
+          6,
+          2.0833333333333335
+        ],
+        [
+          "hostB",
+          4,
+          1.3888888888888888
+        ],
+        [
+          "hostC",
+          2,
+          0.6944444444444444
+        ],
+        [
+          "hostD",
+          0,
+          0.0
+        ],
+        [
+          "hostE",
+          1,
+          0.3472222222222222
+        ],
+        [
+          "hostF",
+          0,
+          0.0
+        ],
+        [
+          "hostX",
+          1,
+          0.3472222222222222
+        ]
+      ]
+    }
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {
+        "hostname": "hostA",
+        "avg_cpu_24h": 77.16666666666667,
+        "avg_mem_7d": 66.92,
+        "memory_gb": 4
+      },
+      {
+        "hostname": "hostC",
+        "avg_cpu_24h": 89.0,
+        "avg_mem_7d": 71.0,
+        "memory_gb": 2
+      },
+      {
+        "hostname": "hostX",
+        "avg_cpu_24h": 95.0,
+        "avg_mem_7d": 90.0,
+        "memory_gb": null
+      }
+    ],
+    "counts": {
+      "total_hosts_inventory": 6,
+      "hosts_with_low_samples": 6
+    }
+  },
+  "recommendations": [
+    {
+      "id": "R1",
+      "text": "Raise minimum memory for new hosts to 8 GB. Justification: Among inventory hosts, hostC (memory_gb=2) shows avg_mem_7d=71.0 with a peak of 85.0, indicating memory pressure; hostA (memory_gb=4) also has sustained CPU pressure (avg_cpu_24h=77.17). Raising the minimum memory to 8 GB for new hosts will reduce high memory utilization risk for small-memory hosts and provide headroom for workloads. Assumptions: provisioning cost increase is acceptable compared to risk of OOMs or degraded performance on undersized nodes. Next step: monitor after raising the minimum to validate reduced mem% and re-evaluate after 30 days."
+    }
+  ],
+  "README": "Ensure systems.csv and metrics.log are present in the current directory. Then run:\n\npython3 ingest.py && python3 queries.py\n\n- ingest.py creates systems_metrics.db (overwrites existing DB schema where appropriate).\n- queries.py reads systems_metrics.db, computes time windows relative to the maximum telemetry timestamp, and prints query outputs.\n\nNotes about reproducing exact JSON results: the SQL strings included in test_submission.json are the exact SQL statements executed (Q1-Q3). Q4 was implemented by iterating the union of hostnames from systems and telemetry and counting telemetry rows per host in the last 24h using: SELECT COUNT(*) FROM telemetry WHERE hostname=? AND timestamp BETWEEN ? AND ?; completeness was computed as count/288*100 (288 = 24*60/5).",
+  "notes": "Explanation and derivation of answers (detailed):\n\n1) General ingestion choices (implemented in ingestion_script):\n- Timestamp normalization: metrics.log includes variants like trailing 'Z', explicit offsets (+00:00, +01:00), and timestamps possibly missing seconds. The ingestion script normalizes timestamps to UTC using datetime.fromisoformat after replacing a trailing 'Z' with '+00:00', then converts to UTC and stores as 'YYYY-MM-DDTHH:MM:SSZ'. This ensures lexicographic ordering in SQLite matches chronological ordering and allows correct windowing.\n- Missing numeric fields: cpu_percent or mem_percent that are missing or explicitly null in JSON are stored as NULL in the telemetry table. Aggregations in queries exclude NULLs (AVG and MAX ignore NULLs in SQL), consistent with the evaluator guidance.\n- Deduplication: duplicates are detected by (hostname, normalized_timestamp). The ingestion script keeps the first occurrence and ignores subsequent duplicates. This matches the evaluator expectation and avoids double-counting (hostB had a deliberate duplicate at 2025-10-12T10:00:00Z).\n- Telemetry-only hosts: telemetry for hostX is stored in telemetry but no placeholder row was inserted into systems; queries that need a union of hosts consider both systems and telemetry hostnames when appropriate. This is documented and consistent with acceptable approaches.\n\n2) Time windows and 'now':\n- The script computes 'now' as the maximum timestamp in the telemetry table. For the provided dataset that value is 2025-10-12T12:00:00Z. Therefore:\n  - last_24h window: 2025-10-11T12:00:00Z through 2025-10-12T12:00:00Z inclusive\n  - last_7d window: 2025-10-05T12:00:00Z through 2025-10-12T12:00:00Z inclusive\nThese boundaries were used by the query_script when executing Q1 and Q2.\n\n3) Deduplicated telemetry counts used in Q4 (expected_samples calculation):\n- EXPECTED_SAMPLING_INTERVAL_MINUTES = 5 => expected_samples_in_24h = 24*60/5 = 288\n- After deduplication, the unique sample counts in the last 24 hours are (as produced by query_script/Q4):\n  - hostA: 6 samples => completeness = 6/288*100 = 2.0833333333333335%\n  - hostB: 4 samples => completeness = 1.3888888888888888%\n  - hostC: 2 samples => completeness = 0.6944444444444444%\n  - hostE: 1 sample => completeness = 0.3472222222222222%\n  - hostX: 1 sample => completeness = 0.3472222222222222%\n  - hostD: 0 => 0.0%\n  - hostF: 0 => 0.0%\nAll hosts are below EXPECTED_COMPLETENESS_THRESHOLD (95%). The submission's Q4 result_rows include these values (host list is the union of inventory and telemetry hosts).\n\n4) Aggregates computed (used for Q1 and Q2):\n- Q1: average cpu_percent in last 24h, excluding NULL cpu values and after deduplication:\n  - hostX: 95.0 (1 sample)\n  - hostC: (90.0 + 88.0) / 2 = 89.0\n  - hostA: (82.5 + 78.0 + 80.0 + 75.0 + 77.5 + 70.0) / 6 = 77.16666666666667\n  - hostB: (55.0 + 60.0 + 65.0) / 3 = 60.0  (note: the cpu_percent at 11:00 was null so excluded; duplicate 10:00 was deduplicated)\n  - hostE: 20.0\n- Q2: average and peak mem_percent in last 7d, excluding NULL mem values:\n  - hostA mem values: [70.1, 68.0, 69.5, 67.0, 60.0] => avg = 66.92, peak = 70.1\n  - hostB mem values: [45.0, 50.0, 52.0] => avg = 49.0, peak = 52.0\n  - hostC mem values: [85.0, 83.0, 45.0] => avg = 71.0, peak = 85.0\n  - hostE mem values: [30.0] => avg = 30.0, peak = 30.0\n  - hostX mem values: [90.0] => avg = 90.0, peak = 90.0\nThese numbers are in the Q2 result_rows.\n\n5) Capacity-constrained hosts (per exam definition):\n- Definition used: average cpu_percent over last 24h > 75 OR (average mem_percent over last 7d > 80 AND inventory.memory_gb < 8)\n- Applying this to computed aggregates yields three hosts:\n  - hostA: avg_cpu_24h = 77.1667 -> constrained (memory_gb=4)\n  - hostC: avg_cpu_24h = 89.0 -> constrained (memory_gb=2)\n  - hostX: avg_cpu_24h = 95.0 -> constrained (hostX is telemetry-only; memory_gb is null)\nThese appear in metrics.hosts_capacity_issues with avg_cpu_24h, avg_mem_7d and memory_gb (null for hostX).\n\n6) Q3 inventory hosts with memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB (8):\n- From systems.csv the hosts with memory_gb < 8 are: hostA (4), hostC (2), hostF (4). These are listed in Q3 result_rows.\n\n7) Recommendation (R1):\n- Recommendation text references numeric metrics (hostC avg_mem_7d=71.0, peak=85.0; hostA avg_cpu_24h=77.17) and proposes raising minimum memory to 8 GB for new hosts to reduce memory pressure on small-memory hosts. The recommendation includes a next-step monitoring justification.\n\n8) Reproducibility and scripts:\n- The ingestion and query scripts provided in ingestion_script and query_script fields are complete, self-contained, and use only the Python standard library and sqlite3. Running the commands in README will reproduce systems_metrics.db and the printed outputs. The SQL strings used for Q1-Q3 are included verbatim in queries entries; Q4 was implemented with per-host counts using direct COUNT queries (SQL for Q4 is described in the Q4 sql field as a short description plus the method used) — this is explicitly documented in README.\n\n9) Passing criteria for the basic exam (reference answer key rules):\n- Total score is 100 points, distributed per the exam overview rubric. To pass the basic exam the candidate must obtain >= 80 points.\n- For automated checking against this answer key, the following criteria map to passing:\n  * Ingestion & schema (35 points):\n    - schema must include two tables (systems and telemetry) with appropriate column types: award full credit if schema_dump contains CREATE statements or PRAGMA info matching these tables and an index on telemetry(hostname, timestamp). (15 + 5 points)\n    - ingestion script must parse both files, normalize timestamps to UTC, handle missing cpu/mem by inserting NULL, deduplicate by (hostname,timestamp) keeping first, and create systems_metrics.db. (10 + 5 for readability). Partial credit for minor omissions.\n  * Retrieval queries (40 points):\n    - Q1-Q4 SQL must be present and the result_rows must match the expected numeric results within reasonable floating-point tolerance (e.g., 1e-6 relative). Each of the 4 queries worth 7 points each (28), correctness/formatting of returned rows 8 points, SQL style/use of aggregates 4 points.\n    - For Q1 and Q2, excluding NULLs from aggregates is mandatory; including NULLs as zeros is a major error.\n  * Analysis & recommendations (20 points):\n    - hosts_capacity_issues must include the correct hosts with the numeric values derived above (10).\n    - recommendation must be concrete, reference numeric metrics and include a short justification (7).\n    - include a short next-step or note about assumptions (3).\n  * Reproducibility & packaging (5 points):\n    - README must contain exact commands (python3 ingest.py && python3 queries.py) and scripts must be included as strings (5 points).\n\n- For automated grading against this answer key, acceptance thresholds are:\n  - Numeric results must match the values in result_rows within a small floating-point tolerance (e.g., difference < 1e-6 for averages); ordering for Q1 must reflect descending avg_cpu and include the top 5 as shown.\n  - Schema must contain the tables and index as shown (string match of CREATE statements acceptable).\n  - scripts must be present as non-empty strings and follow the described behaviors; the grader may run them to verify outputs (recommended).\n\nNotes about partial credit and tolerant grading:\n- Small differences in floating point formatting are acceptable (e.g., 77.1666666667 vs 77.16666666666667).\n- Accept either approach that counts hosts for Q4 over the union of inventory and telemetry or inventory-only, as long as the script documents and the presented counts match the implemented choice. In this answer key we used the union to provide full visibility and counted hosts_with_low_samples among inventory hosts (6).\n- Major errors that will fail the exam: not normalizing timestamps (leading to incorrect time-window filtering), failing to deduplicate duplicates, inserting 0 instead of NULL for missing cpu/mem, or missing required scripts/fields in the JSON submission.\n\nThis notes field documents how each numeric value and decision was derived and provides the passing criteria as requested.",
+  "notes": "See the long 'notes' field above for detailed derivations and passing criteria (included once due to submission template constraints)."
+}
+```

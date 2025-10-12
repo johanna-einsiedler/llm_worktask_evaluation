@@ -1,730 +1,833 @@
-Here's the requested automated grading script. Save it as task_evaluation.py.
+Here's the requested Python grading script. Save it as task_evaluation.py. It reads the candidate's test_submission.json and an answer_key.json, compares the outputs according to the rubric, and writes test_results.json with a detailed breakdown and overall_score.
 
-It loads the candidate submission JSON and the answer key JSON, runs deterministic comparisons with tolerances, awards points according to the rubric described, and writes a detailed test_results.json with per-item scores, explanations, totals, and the overall_score numeric percentage.
+Notes:
+- Uses only Python standard library.
+- Tolerant ISO8601 parsing for hour-buckets and timestamps (handles "Z", "+00:00", timezone offsets, and naive timestamps interpreted as UTC).
+- Partial credit is given per-element for list comparisons (top lists, hourly buckets, avg per component).
+- Robust error handling for missing keys / malformed JSON.
+- Deterministic scoring.
+
+task_evaluation.py:
 
 ```python
 #!/usr/bin/env python3
 """
 task_evaluation.py
 
-Automated grader for the telemetry basic practical exam.
-
 Usage:
-    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+    python3 task_evaluation.py <candidate_test_submission.json> <answer_key.json>
 
-Outputs:
-    test_results.json (written to current working directory)
+Produces:
+    test_results.json in the current working directory.
 
-Notes:
-- Uses only standard library modules.
-- Tolerances are used for floating point comparisons.
-- Script is defensive about missing keys and reports clear deduction reasons.
+Author: Automated grader for the System Telemetry Basic Practical Exam.
 """
 
 import json
 import sys
 import os
-from math import isclose
+from datetime import datetime, timezone, timedelta
 
-# ---------- Configuration / scoring weights ----------
-WEIGHTS = {
-    "task1": {
-        "total": 30,
-        "db_file_exists": 10,
-        "schema_columns": 10,
-        "ingestion_counts": 10  # split internally
-    },
-    "task2": {
-        "total": 40,
-        "total_rows": 5,
-        "top_hosts": 10,
-        "hourly_stats": 10,
-        "cpu_spike_periods": 15
-    },
-    "task3": {
-        "total": 15,
-        "insert_and_updated_avg": 10,
-        "duplicate_handling_mention": 5
-    },
-    "task4": {
-        "total": 10,
-        "run_instructions": 5,
-        "schema_and_suggestions": 5
-    },
-    "code_hygiene": {
-        "total": 5
-    }
-}
+# ----------------------
+# Helper utilities
+# ----------------------
 
-# Float comparison tolerances
-AVG_TOL = 0.02         # allowed absolute difference for averages (top hosts)
-UPDATED_AVG_TOL = 0.02
-HOURLY_TOL = 0.02
-
-# Expected total CSV lines if available in answer key notes; fallback None
-EXPECTED_TOTAL_CSV_LINES = None
-
-# ---------- Helper functions ----------
-def load_json_file(path):
+def load_json(path):
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f), None
     except Exception as e:
-        raise RuntimeError(f"Failed to load JSON from '{path}': {e}")
+        return None, f"Failed to load JSON from {path}: {e}"
 
-def safe_get(dct, *keys, default=None):
+def save_json(obj, path):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+
+def safe_get(dct, *keys):
     cur = dct
     for k in keys:
         if not isinstance(cur, dict) or k not in cur:
-            return default
+            return None
         cur = cur[k]
     return cur
 
-def float_close(a, b, tol):
+def try_parse_iso_to_hour(s):
+    """
+    Parse an ISO-like timestamp and return a datetime truncated to hour (tz-aware UTC).
+    Tolerates:
+      - 'Z' suffix (converted to +00:00)
+      - timezone offsets like -05:00
+      - naive timestamps (interpreted as UTC)
+    Returns datetime object (UTC, tzinfo=timezone.utc) truncated to hour, or None on failure.
+    """
+    if not isinstance(s, str):
+        return None
+    s = s.strip()
+    if not s:
+        return None
+    # Normalize 'Z'
+    if s.endswith('Z'):
+        s2 = s[:-1] + '+00:00'
+    else:
+        s2 = s
+    # If no timezone offset and no explicit offset, treat as naive UTC
     try:
-        return isclose(float(a), float(b), abs_tol=tol)
+        # datetime.fromisoformat supports offsets like +00:00
+        dt = datetime.fromisoformat(s2)
+    except Exception:
+        # Try to handle if seconds missing or other minor formatting issues
+        # Attempt to split timezone manually
+        # As a fallback, attempt parsing common forms manually
+        try:
+            # If there's a space-separated timezone, replace space with T
+            s3 = s2.replace(' ', 'T')
+            dt = datetime.fromisoformat(s3)
+        except Exception:
+            return None
+    # If dt is naive, set tzinfo=UTC per rules (timestamps without timezone are interpreted as UTC)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    # Convert to UTC
+    try:
+        dt_utc = dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+    # Truncate to hour
+    dt_hour = dt_utc.replace(minute=0, second=0, microsecond=0)
+    return dt_hour
+
+def normalize_hour_str_for_compare(s):
+    """
+    Convert a candidate hour string to canonical "YYYY-MM-DDTHH:00:00" by parsing and formatting.
+    Returns string or None.
+    """
+    dt = try_parse_iso_to_hour(s)
+    if dt is None:
+        return None
+    return dt.strftime('%Y-%m-%dT%H:00:00')
+
+def parse_timestamp_to_utc_iso_no_tz(s):
+    """
+    Parse timestamp and return canonical UTC timestamp string "YYYY-MM-DDTHH:MM:SSZ".
+    Returns None if cannot parse.
+    """
+    if not isinstance(s, str):
+        return None
+    s = s.strip()
+    if not s:
+        return None
+    if s.endswith('Z'):
+        s2 = s[:-1] + '+00:00'
+    else:
+        s2 = s
+    try:
+        dt = datetime.fromisoformat(s2)
+    except Exception:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt_utc = dt.astimezone(timezone.utc)
+    return dt_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+def float_eq(a, b, tol=1e-9):
+    try:
+        return abs(float(a) - float(b)) <= tol
     except Exception:
         return False
 
-def list_of_dicts_to_set_of_tuples(lst, keys):
-    # convert list of dicts to set of tuples of selected key values (stringified)
-    s = set()
-    for item in lst:
-        tup = tuple(item.get(k) for k in keys)
-        s.add(tup)
-    return s
-
-def ensure_list(x):
-    if x is None:
+def ensure_list(obj):
+    if obj is None:
         return []
-    if isinstance(x, list):
-        return x
-    return [x]
+    if isinstance(obj, list):
+        return obj
+    return [obj]
 
-def round_if_number(x, ndigits=2):
+# ----------------------
+# Scoring logic
+# ----------------------
+
+def score_unique_hosts(candidate, expected):
+    max_points = 5
+    reasons = []
+    c = safe_get(candidate, 'outputs', 'unique_hosts')
+    e = safe_get(expected, 'outputs', 'unique_hosts')
+    if c is None:
+        reasons.append("unique_hosts missing in candidate outputs.")
+        return 0, max_points, reasons
+    if e is None:
+        reasons.append("unique_hosts missing in answer key.")
+        return 0, max_points, reasons
     try:
-        if isinstance(x, (int, float)):
-            return round(x, ndigits)
-    except Exception:
-        pass
-    return x
-
-# ---------- Grading logic ----------
-def grade(submission, answer_key, submission_dir):
-    """
-    Returns a result dict with detailed scoring and messages.
-    """
-    results = {
-        "per_check": {},
-        "messages": [],
-        "points": {},
-        "total_points_earned": 0.0,
-        "max_points": 0.0
-    }
-
-    # Helper to record points for a check
-    def record_check(name, earned, possible, message):
-        results["per_check"][name] = {
-            "earned": float(round(earned, 2)),
-            "possible": float(possible),
-            "message": message
-        }
-        results["points"][name] = float(round(earned, 2))
-        results["max_points"] += possible
-        results["total_points_earned"] += earned
-
-    # Extract expected answer values
-    expected = answer_key  # alias
-
-    # Some convenience extraction with safety
-    expected_ingestion = safe_get(expected, "ingestion", default={})
-    expected_results = safe_get(expected, "results", default={})
-    expected_after_insert = safe_get(expected, "after_insert", default={})
-    expected_schema = safe_get(expected, "schema_and_choices", default={})
-    expected_run_instr = safe_get(expected, "run_instructions", default="")
-
-    # Task 1: Ingest & DB creation (30)
-    # 1.1 DB file existence (10)
-    env_db_file = safe_get(submission, "env", "db_file", default=None)
-    db_file_path = None
-    db_file_exists = False
-    db_file_score = 0.0
-    db_message = ""
-    if env_db_file:
-        # Resolve relative to submission_dir (where test_submission.json is expected to be)
-        candidate_db_path = env_db_file
-        # If the path isn't absolute, try relative to current working directory and to submission_dir
-        tried_paths = []
-        if os.path.isabs(candidate_db_path):
-            tried_paths.append(candidate_db_path)
+        if int(c) == int(e):
+            return max_points, max_points, ["unique_hosts matches expected."]
         else:
-            tried_paths.append(os.path.join(submission_dir, candidate_db_path))
-            tried_paths.append(os.path.join(os.getcwd(), candidate_db_path))
-            tried_paths.append(candidate_db_path)
-        found = False
-        for p in tried_paths:
-            if os.path.exists(p):
-                db_file_path = p
-                db_file_exists = True
-                found = True
+            reasons.append(f"unique_hosts mismatch: candidate={c}, expected={e}.")
+            # partial credit if close? No, keep 0 for mismatch per rubric.
+            return 0, max_points, reasons
+    except Exception:
+        reasons.append("unique_hosts not an integer.")
+        return 0, max_points, reasons
+
+def score_topk_list(candidate_list, expected_list, k, max_points, key_fields):
+    """
+    Generic scoring for ordered top-K lists.
+    candidate_list and expected_list are lists of dicts.
+    key_fields: tuple of fields to compare in order (e.g., ('host','error_count'))
+    Scoring: per-position matching both fields => proportional credit.
+    Returns (score, max_points, reasons).
+    """
+    reasons = []
+    cand = ensure_list(candidate_list)
+    exp = ensure_list(expected_list)
+    # Ensure lengths
+    if len(cand) < k:
+        reasons.append(f"Candidate list has {len(cand)} entries; expected {k}. Missing entries will be treated as mismatches.")
+    if len(exp) < k:
+        reasons.append(f"Answer key expected list has {len(exp)} entries; expected {k}.")
+    matches = 0
+    for i in range(k):
+        try:
+            c_item = cand[i]
+        except IndexError:
+            c_item = None
+        try:
+            e_item = exp[i]
+        except IndexError:
+            e_item = None
+        if c_item is None or e_item is None:
+            continue
+        ok = True
+        for f in key_fields:
+            if f not in c_item or f not in e_item:
+                ok = False
                 break
-        if db_file_exists:
-            db_file_score = WEIGHTS["task1"]["db_file_exists"]
-            db_message = f"DB file found at '{db_file_path}'."
-        else:
-            # file not found but provided a path
-            db_file_score = WEIGHTS["task1"]["db_file_exists"] * 0.5
-            db_message = ("env.db_file is provided ('%s') but file not found in expected locations. "
-                          "Partial credit awarded." % (env_db_file,))
-    else:
-        db_file_score = 0.0
-        db_message = "env.db_file not provided in submission."
-    record_check("task1.db_file_exists", db_file_score, WEIGHTS["task1"]["db_file_exists"], db_message)
-
-    # 1.2 Schema columns/types mention (10)
-    schema_desc = safe_get(submission, "schema_and_choices", "schema_description", default="")
-    schema_score = 0.0
-    schema_message = ""
-    if isinstance(schema_desc, str) and schema_desc.strip():
-        lowered = schema_desc.lower()
-        # check presence of at least two core items: timestamp, cpu, mem
-        hits = 0
-        for kw in ("timestamp", "cpu", "cpu_percent", "mem", "mem_mb", "host"):
-            if kw in lowered:
-                hits += 1
-        if hits >= 3:
-            schema_score = WEIGHTS["task1"]["schema_columns"]
-            schema_message = "Schema description mentions key fields and types."
-        elif hits >= 1:
-            schema_score = WEIGHTS["task1"]["schema_columns"] * 0.5
-            schema_message = "Schema description mentions some key fields but is sparse."
-        else:
-            schema_score = 0.0
-            schema_message = "Schema description present but did not mention expected telemetry columns."
-    else:
-        schema_score = 0.0
-        schema_message = "No schema_description provided."
-    record_check("task1.schema_columns", schema_score, WEIGHTS["task1"]["schema_columns"], schema_message)
-
-    # 1.3 Ingestion counts (10) -> split: rows_loaded correct (6), rows_skipped correct (4)
-    expected_rows_loaded = safe_get(expected_ingestion, "rows_loaded", default=None)
-    expected_rows_skipped = safe_get(expected_ingestion, "rows_skipped", default=None)
-    candidate_rows_loaded = safe_get(submission, "ingestion", "rows_loaded", default=None)
-    candidate_rows_skipped = safe_get(submission, "ingestion", "rows_skipped", default=None)
-    ingestion_msgs = []
-    ingestion_score = 0.0
-
-    # rows_loaded (6)
-    part_loaded_weight = 6.0
-    if expected_rows_loaded is None:
-        # cannot grade against expected
-        part_loaded_score = part_loaded_weight * 0.5
-        ingestion_msgs.append("No expected rows_loaded in answer key; partial credit.")
-    else:
-        if candidate_rows_loaded == expected_rows_loaded:
-            part_loaded_score = part_loaded_weight
-            ingestion_msgs.append(f"rows_loaded matches expected ({expected_rows_loaded}).")
-        else:
-            # If candidate reported sum equals expected total CSV lines, treat as consistent partial credit
-            total_lines_expected = safe_get(answer_key, "optional", "errors")
-            # fallback check: if candidate sum + skipped equals 16 (common), get partial
-            try:
-                cand_sum = None
-                if isinstance(candidate_rows_loaded, int) and isinstance(candidate_rows_skipped, int):
-                    cand_sum = candidate_rows_loaded + candidate_rows_skipped
-                # try to detect a total data line count from answer key notes: look in answer_key.optional.errors
-                if isinstance(total_lines_expected, list):
-                    # try to parse lines mention, not required; skip
-                    pass
-                if cand_sum is not None:
-                    if cand_sum == 16:
-                        part_loaded_score = part_loaded_weight * 0.75
-                        ingestion_msgs.append("rows_loaded does not match expected, but rows_loaded+rows_skipped == 16 (consistent). Partial credit.")
-                    else:
-                        part_loaded_score = 0.0
-                        ingestion_msgs.append(f"rows_loaded ({candidate_rows_loaded}) does not match expected ({expected_rows_loaded}).")
-                else:
-                    part_loaded_score = 0.0
-                    ingestion_msgs.append(f"rows_loaded ({candidate_rows_loaded}) does not match expected ({expected_rows_loaded}).")
-            except Exception:
-                part_loaded_score = 0.0
-                ingestion_msgs.append("rows_loaded mismatch and unable to determine consistency.")
-    ingestion_score += part_loaded_score
-    record_check("task1.ingestion_rows_loaded", part_loaded_score, part_loaded_weight, ingestion_msgs[-1])
-
-    # rows_skipped (4)
-    part_skipped_weight = 4.0
-    if expected_rows_skipped is None:
-        part_skipped_score = part_skipped_weight * 0.5
-        ingestion_msgs.append("No expected rows_skipped in answer key; partial credit.")
-    else:
-        if candidate_rows_skipped == expected_rows_skipped:
-            part_skipped_score = part_skipped_weight
-            ingestion_msgs.append(f"rows_skipped matches expected ({expected_rows_skipped}).")
-        else:
-            # Similar leniency if candidate sum equals 16
-            try:
-                cand_sum = None
-                if isinstance(candidate_rows_loaded, int) and isinstance(candidate_rows_skipped, int):
-                    cand_sum = candidate_rows_loaded + candidate_rows_skipped
-                if cand_sum == 16:
-                    part_skipped_score = part_skipped_weight * 0.75
-                    ingestion_msgs.append("rows_skipped differs but rows_loaded+rows_skipped == 16 (consistent). Partial credit.")
-                else:
-                    part_skipped_score = 0.0
-                    ingestion_msgs.append(f"rows_skipped ({candidate_rows_skipped}) does not match expected ({expected_rows_skipped}).")
-            except Exception:
-                part_skipped_score = 0.0
-                ingestion_msgs.append("rows_skipped mismatch and unable to determine consistency.")
-    ingestion_score += part_skipped_score
-    record_check("task1.ingestion_rows_skipped", part_skipped_score, part_skipped_weight, ingestion_msgs[-1])
-
-    # Task 1 total sum check (redundant, for clarity)
-    task1_total_earned = db_file_score + schema_score + ingestion_score
-    record_check("task1.total", task1_total_earned, WEIGHTS["task1"]["total"], "Aggregated Task 1 score.")
-
-    # Task 2: Query & Analysis (40)
-    expected_results = safe_get(answer_key, "results", default={})
-    candidate_results = safe_get(submission, "results", default={})
-
-    # 2.1 total_rows (5)
-    total_rows_weight = WEIGHTS["task2"]["total_rows"]
-    exp_total_rows = safe_get(expected_results, "total_rows", default=None)
-    cand_total_rows = safe_get(candidate_results, "total_rows", default=None)
-    if exp_total_rows is None:
-        total_rows_score = total_rows_weight * 0.5
-        total_rows_msg = "No expected total_rows in answer key; partial credit."
-    else:
-        if cand_total_rows == exp_total_rows:
-            total_rows_score = total_rows_weight
-            total_rows_msg = f"total_rows correct ({exp_total_rows})."
-        else:
-            total_rows_score = 0.0
-            total_rows_msg = f"total_rows incorrect: candidate {cand_total_rows} vs expected {exp_total_rows}."
-    record_check("task2.total_rows", total_rows_score, total_rows_weight, total_rows_msg)
-
-    # 2.2 top_hosts_by_avg_cpu (10)
-    top_hosts_weight = WEIGHTS["task2"]["top_hosts"]
-    exp_top_hosts = safe_get(expected_results, "top_hosts_by_avg_cpu", default=[])
-    cand_top_hosts = safe_get(candidate_results, "top_hosts_by_avg_cpu", default=[])
-    top_hosts_msg = []
-    top_hosts_score = 0.0
-    try:
-        # Validate structure
-        if not isinstance(cand_top_hosts, list) or len(cand_top_hosts) != len(exp_top_hosts):
-            top_hosts_score = 0.0
-            top_hosts_msg.append(f"top_hosts_by_avg_cpu must be a list of length {len(exp_top_hosts)}.")
-        else:
-            # Exact order and numeric tolerance
-            full_matches = 0
-            set_matches = 0
-            for idx, exp_item in enumerate(exp_top_hosts):
+            # allow numeric comparison for counts
+            if isinstance(e_item[f], (int, float)):
                 try:
-                    cand_item = cand_top_hosts[idx]
+                    if int(c_item[f]) != int(e_item[f]):
+                        ok = False
+                        break
                 except Exception:
-                    continue
-                exp_host = exp_item.get("host")
-                exp_avg = exp_item.get("avg_cpu")
-                cand_host = cand_item.get("host")
-                cand_avg = cand_item.get("avg_cpu")
-                if cand_host == exp_host and float_close(cand_avg, exp_avg, AVG_TOL):
-                    full_matches += 1
-                # check set-level match
-            # compute score
-            if full_matches == len(exp_top_hosts):
-                top_hosts_score = top_hosts_weight
-                top_hosts_msg.append("top_hosts_by_avg_cpu matches expected order and values within tolerance.")
+                    ok = False
+                    break
             else:
-                # check set-level (ignore order)
-                try:
-                    exp_map = {it["host"]: it["avg_cpu"] for it in exp_top_hosts}
-                    cand_map = {it["host"]: it["avg_cpu"] for it in cand_top_hosts}
-                    matched_hosts = 0
-                    for h, v in exp_map.items():
-                        if h in cand_map and float_close(cand_map[h], v, AVG_TOL):
-                            matched_hosts += 1
-                    if matched_hosts == len(exp_top_hosts):
-                        top_hosts_score = top_hosts_weight * 0.8
-                        top_hosts_msg.append("top_hosts_by_avg_cpu hosts and values match expected but order differs. Awarding reduced credit.")
-                    else:
-                        # partial by count matched
-                        top_hosts_score = (top_hosts_weight * matched_hosts) / len(exp_top_hosts)
-                        top_hosts_msg.append(f"top_hosts_by_avg_cpu: {matched_hosts}/{len(exp_top_hosts)} host(s) matched expected averages within tolerance.")
-                except Exception as e:
-                    top_hosts_score = 0.0
-                    top_hosts_msg.append(f"Error evaluating top_hosts_by_avg_cpu: {e}")
-    except Exception as e:
-        top_hosts_score = 0.0
-        top_hosts_msg.append(f"Error processing top_hosts_by_avg_cpu: {e}")
-    record_check("task2.top_hosts", top_hosts_score, top_hosts_weight, " ".join(top_hosts_msg))
-
-    # 2.3 hourly_stats_for_host (10)
-    hourly_weight = WEIGHTS["task2"]["hourly_stats"]
-    exp_hourly = safe_get(expected_results, "hourly_stats_for_host", default=[])
-    cand_hourly = safe_get(candidate_results, "hourly_stats_for_host", default=[])
-    hourly_msg = []
-    hourly_score = 0.0
-    try:
-        if not isinstance(cand_hourly, list):
-            hourly_score = 0.0
-            hourly_msg.append("hourly_stats_for_host must be a list.")
+                # string compare tolerant to whitespace
+                if str(c_item[f]).strip() != str(e_item[f]).strip():
+                    ok = False
+                    break
+        if ok:
+            matches += 1
         else:
-            # Compare buckets by position/chronological order
-            matched = 0
-            # We allow candidate to return up to 24 buckets; grade based on matching expected buckets.
-            # For each expected bucket, find candidate bucket with same hour_start at same index.
-            for idx, exp_bucket in enumerate(exp_hourly):
-                if idx >= len(cand_hourly):
-                    continue
-                cand_bucket = cand_hourly[idx]
-                exp_hour = exp_bucket.get("hour_start")
-                exp_avg = exp_bucket.get("avg_cpu")
-                exp_maxmem = exp_bucket.get("max_mem_mb")
-                cand_hour = cand_bucket.get("hour_start")
-                cand_avg = cand_bucket.get("avg_cpu")
-                cand_maxmem = cand_bucket.get("max_mem_mb")
-                if cand_hour == exp_hour and float_close(cand_avg, exp_avg, HOURLY_TOL) and float_close(cand_maxmem, exp_maxmem, 1.0):
-                    matched += 1
-            if matched == len(exp_hourly) and len(exp_hourly) > 0:
-                hourly_score = hourly_weight
-                hourly_msg.append("All hourly buckets match expected values.")
-            else:
-                # award proportional credit
-                hourly_score = hourly_weight * (matched / max(1, len(exp_hourly)))
-                hourly_msg.append(f"{matched}/{len(exp_hourly)} hourly buckets matched expected values.")
-    except Exception as e:
-        hourly_score = 0.0
-        hourly_msg.append(f"Error evaluating hourly_stats_for_host: {e}")
-    record_check("task2.hourly_stats", hourly_score, hourly_weight, " ".join(hourly_msg))
+            reasons.append(f"Position {i+1} mismatch: candidate={c_item}, expected={e_item}")
+    score = (matches / k) * max_points
+    return score, max_points, reasons
 
-    # 2.4 cpu_spike_periods (15)
-    spike_weight = WEIGHTS["task2"]["cpu_spike_periods"]
-    exp_spikes = safe_get(expected_results, "cpu_spike_periods", default=[])
-    cand_spikes = safe_get(candidate_results, "cpu_spike_periods", default=[])
-    spike_msg = []
-    spike_score = 0.0
-    try:
-        if not isinstance(cand_spikes, list):
-            spike_score = 0.0
-            spike_msg.append("cpu_spike_periods must be a list.")
-        else:
-            # Compare sets of (host,start_ts,end_ts)
-            exp_set = set()
-            for it in exp_spikes:
-                exp_set.add((it.get("host"), it.get("start_ts"), it.get("end_ts")))
-            cand_set = set()
-            for it in cand_spikes:
-                cand_set.add((it.get("host"), it.get("start_ts"), it.get("end_ts")))
-            # exact match
-            if cand_set == exp_set:
-                spike_score = spike_weight
-                spike_msg.append("cpu_spike_periods exactly match expected spike periods.")
+def score_hourly_buckets(candidate_buckets, expected_buckets, max_points):
+    reasons = []
+    cand = ensure_list(candidate_buckets)
+    exp = ensure_list(expected_buckets)
+    if len(exp) != 24:
+        reasons.append(f"Answer key hourly buckets length is {len(exp)} != 24 (unexpected).")
+    # We'll compare by normalized hour string and counts.
+    matches = 0
+    total = len(exp)
+    for i, e in enumerate(exp):
+        e_hour_raw = e.get('hour')
+        e_count = e.get('count')
+        # Candidate must have same ordering
+        try:
+            c = cand[i]
+        except Exception:
+            reasons.append(f"Missing candidate bucket at position {i}.")
+            continue
+        c_hour_raw = c.get('hour')
+        c_count = c.get('count')
+        e_hour_norm = normalize_hour_str_for_compare(e_hour_raw)
+        c_hour_norm = normalize_hour_str_for_compare(c_hour_raw)
+        if e_hour_norm is None:
+            reasons.append(f"Could not parse expected hour '{e_hour_raw}' at index {i}.")
+            continue
+        if c_hour_norm is None:
+            reasons.append(f"Could not parse candidate hour '{c_hour_raw}' at index {i}.")
+            continue
+        if e_hour_norm != c_hour_norm:
+            reasons.append(f"Hour mismatch at position {i}: candidate='{c_hour_norm}', expected='{e_hour_norm}'.")
+            continue
+        # Compare counts
+        try:
+            if int(c_count) == int(e_count):
+                matches += 1
             else:
-                # partial: count intersection
-                inter = exp_set.intersection(cand_set)
-                matched = len(inter)
-                total = len(exp_set)
-                if total == 0:
-                    # Nothing expected; if candidate provided none -> full
-                    if len(cand_set) == 0:
-                        spike_score = spike_weight
-                        spike_msg.append("No spike periods expected or provided.")
-                    else:
-                        spike_score = 0.0
-                        spike_msg.append("No spike periods expected, but candidate provided some.")
+                reasons.append(f"Count mismatch for hour {e_hour_norm}: candidate={c_count}, expected={e_count}.")
+        except Exception:
+            reasons.append(f"Non-integer count at hour {e_hour_norm}.")
+    if total == 0:
+        score = 0
+    else:
+        score = (matches / total) * max_points
+    return score, max_points, reasons
+
+def score_avg_cpu_by_component(candidate_arr, expected_arr, max_points):
+    reasons = []
+    cand = ensure_list(candidate_arr)
+    exp = ensure_list(expected_arr)
+    # Build map of candidate by component
+    cand_map = {}
+    for item in cand:
+        comp = item.get('component')
+        val = item.get('avg_cpu')
+        if comp is not None:
+            try:
+                cand_map[str(comp)] = float(val) if val is not None else None
+            except Exception:
+                cand_map[str(comp)] = None
+    matches = 0
+    total = len(exp)
+    if total == 0:
+        reasons.append("No expected components in answer key.")
+        return 0, max_points, reasons
+    for e in exp:
+        comp = e.get('component')
+        e_val = e.get('avg_cpu')
+        if comp not in cand_map:
+            reasons.append(f"Missing component '{comp}' in candidate avg_cpu_by_component.")
+            continue
+        c_val = cand_map.get(comp)
+        if c_val is None and (e_val is None):
+            matches += 1
+        elif c_val is None and e_val is not None:
+            reasons.append(f"Component '{comp}': candidate avg_cpu is NULL but expected {e_val}.")
+        else:
+            # Compare floats with tolerance
+            try:
+                if float_eq(c_val, float(e_val), tol=1e-6):
+                    matches += 1
                 else:
-                    spike_score = spike_weight * (matched / total)
-                    spike_msg.append(f"{matched}/{total} expected spike period(s) matched exactly.")
-                    # If candidate provided the correct host but timestamps differ, award smaller partial credit
-                    if matched < total:
-                        # check per-host presence
-                        exp_hosts = {h for (h, s, e) in exp_set}
-                        cand_hosts = {h for (h, s, e) in cand_set}
-                        host_matches = len(exp_hosts.intersection(cand_hosts))
-                        if host_matches > matched:
-                            spike_score += 0.0  # already proportionate; message:
-                            spike_msg.append(f"Some spike hosts present but timestamps mismatched; partial credit applied.")
-    except Exception as e:
-        spike_score = 0.0
-        spike_msg.append(f"Error evaluating cpu_spike_periods: {e}")
-    # Cap at weight
-    if spike_score > spike_weight:
-        spike_score = spike_weight
-    record_check("task2.cpu_spike_periods", spike_score, spike_weight, " ".join(spike_msg))
+                    reasons.append(f"Component '{comp}': avg_cpu mismatch candidate={c_val}, expected={e_val}.")
+            except Exception:
+                reasons.append(f"Component '{comp}': could not compare values candidate={c_val}, expected={e_val}.")
+    score = (matches / total) * max_points
+    return score, max_points, reasons
 
-    # Task2 total
-    task2_total_earned = total_rows_score + top_hosts_score + hourly_score + spike_score
-    record_check("task2.total", task2_total_earned, WEIGHTS["task2"]["total"], "Aggregated Task 2 score.")
+def score_topk_event_ids(candidate_list, expected_list, max_points):
+    # Similar to topk scoring but for event_id and count; expected_list length may be 10
+    k = len(expected_list) if isinstance(expected_list, list) else 0
+    if k == 0:
+        return 0, max_points, ["Answer key has empty top10_event_ids."]
+    return score_topk_list(candidate_list, expected_list, k, max_points, ('event_id','count'))
 
-    # Task 3: Insert & Recompute (15)
-    expected_after = expected_after_insert
-    candidate_after = safe_get(submission, "after_insert", default={})
-    # 3.1 inserted_record_ok and updated avg (10)
-    insert_weight = WEIGHTS["task3"]["insert_and_updated_avg"]
-    insert_score = 0.0
-    insert_msgs = []
-    exp_inserted_ok = safe_get(expected_after, "inserted_record_ok", default=None)
-    exp_updated_avg = safe_get(expected_after, "updated_avg_cpu_for_host", default=None)
-    cand_inserted_ok = safe_get(candidate_after, "inserted_record_ok", default=None)
-    cand_updated_avg = safe_get(candidate_after, "updated_avg_cpu_for_host", default=None)
-
-    if exp_inserted_ok is None or exp_updated_avg is None:
-        # can't fully grade, partial credit if candidate provided values
-        if cand_inserted_ok is not None and cand_updated_avg is not None:
-            insert_score = insert_weight * 0.5
-            insert_msgs.append("Answer key missing expected insert values; candidate provided values and received partial credit.")
-        else:
-            insert_score = 0.0
-            insert_msgs.append("Insert evaluation skipped due to missing expected values in answer key.")
-    else:
-        # Compare inserted_record_ok
-        inserted_ok_match = (cand_inserted_ok is True and exp_inserted_ok is True) or (cand_inserted_ok == exp_inserted_ok)
-        # updated average comparison within tolerance
-        updated_avg_match = False
+def score_error_csv_sample(candidate_rows, expected_rows, max_points):
+    """
+    Compare sample rows up to expected length. Each row expected to have:
+    timestamp, host, component, event_id, message, metric_value
+    Tolerant timestamp parsing and numeric comparison for metric_value.
+    Score proportional to number of matching rows.
+    """
+    reasons = []
+    cand = ensure_list(candidate_rows)
+    exp = ensure_list(expected_rows)
+    if len(exp) == 0:
+        return 0, max_points, ["No expected sample rows provided in answer key."]
+    matches = 0
+    total = len(exp)
+    for i, e in enumerate(exp):
         try:
-            if isinstance(cand_updated_avg, (int, float)):
-                updated_avg_match = float_close(cand_updated_avg, exp_updated_avg, UPDATED_AVG_TOL)
+            c = cand[i]
         except Exception:
-            updated_avg_match = False
-
-        if inserted_ok_match and updated_avg_match:
-            insert_score = insert_weight
-            insert_msgs.append("Inserted record flagged OK and updated_avg_cpu_for_host matches expected.")
-        elif inserted_ok_match and not updated_avg_match:
-            insert_score = insert_weight * 0.6
-            insert_msgs.append("inserted_record_ok matches expected but updated_avg_cpu_for_host differs; partial credit.")
-        elif not inserted_ok_match and updated_avg_match:
-            insert_score = insert_weight * 0.5
-            insert_msgs.append("Inserted flag differs but updated average matches expected; partial credit.")
+            reasons.append(f"Missing candidate sample row at position {i}.")
+            continue
+        # Compare fields
+        ok = True
+        # timestamp: accept either Z or +00:00 variations; compare by normalized UTC timestamp
+        e_ts = e.get('timestamp')
+        c_ts = c.get('timestamp')
+        e_ts_norm = parse_timestamp_to_utc_iso_no_tz(e_ts)
+        c_ts_norm = parse_timestamp_to_utc_iso_no_tz(c_ts)
+        if e_ts_norm is None or c_ts_norm is None:
+            reasons.append(f"Could not parse timestamps for sample row {i}: candidate='{c_ts}', expected='{e_ts}'.")
+            ok = False
         else:
-            insert_score = 0.0
-            insert_msgs.append("Insert and updated average do not match expected.")
-
-    record_check("task3.insert_and_updated_avg", insert_score, insert_weight, " ".join(insert_msgs))
-
-    # 3.2 duplicate handling mention (5)
-    dup_weight = WEIGHTS["task3"]["duplicate_handling_mention"]
-    dup_score = 0.0
-    dup_msg = ""
-    # Check candidate's schema_description and ingestion.note for mentions of duplicates/dedup
-    cand_note = safe_get(submission, "ingestion", "note", default="")
-    combined_notes = " ".join([str(schema_desc), str(cand_note)]).lower() if schema_desc or cand_note else ""
-    if any(x in combined_notes for x in ("duplicate", "duplicates", "dedup", "de-dup", "skip duplicate", "skip duplicates", "dedupe")):
-        dup_score = dup_weight
-        dup_msg = "Candidate documented duplicate handling (dedup or skipping)."
-    else:
-        dup_score = 0.0
-        dup_msg = "No explicit mention of duplicate handling detected in schema_description or ingestion.note."
-    record_check("task3.duplicate_handling_mention", dup_score, dup_weight, dup_msg)
-
-    # Task3 total
-    task3_total_earned = insert_score + dup_score
-    record_check("task3.total", task3_total_earned, WEIGHTS["task3"]["total"], "Aggregated Task 3 score.")
-
-    # Task 4: Documentation & reproducibility (10)
-    # 4.1 run_instructions correctness (5)
-    run_weight = WEIGHTS["task4"]["run_instructions"]
-    cand_run_instructions = safe_get(submission, "run_instructions", default="")
-    cand_entrypoint = safe_get(submission, "env", "entrypoint", default="")
-    run_score = 0.0
-    run_msg = ""
-    if isinstance(cand_run_instructions, str) and cand_run_instructions.strip():
-        # check entrypoint presence
-        if cand_entrypoint and cand_entrypoint in cand_run_instructions:
-            run_score = run_weight
-            run_msg = "run_instructions present and includes entrypoint."
+            if e_ts_norm != c_ts_norm:
+                reasons.append(f"Timestamp mismatch at sample row {i}: candidate='{c_ts_norm if (c_ts_norm:=c_ts_norm) else c_ts}', expected='{e_ts_norm}'.")
+                ok = False
+        # host/component/event_id/message exact string compare tolerant to whitespace
+        for fld in ('host','component','event_id','message'):
+            if str(c.get(fld, '')).strip() != str(e.get(fld, '')).strip():
+                reasons.append(f"Sample row {i} field '{fld}' mismatch: candidate='{c.get(fld)}', expected='{e.get(fld)}'.")
+                ok = False
+        # metric_value numeric or null
+        e_mv = e.get('metric_value')
+        c_mv = c.get('metric_value')
+        if e_mv is None:
+            if c_mv is not None:
+                reasons.append(f"Sample row {i} metric_value expected NULL but candidate has {c_mv}.")
+                ok = False
         else:
-            # If entrypoint equals run_instructions or env.entrypoint present, give partial
-            if cand_entrypoint and cand_entrypoint.strip():
-                run_score = run_weight * 0.6
-                run_msg = "run_instructions present but does not clearly include entrypoint; partial credit."
-            else:
-                run_score = run_weight * 0.4
-                run_msg = "run_instructions present but entrypoint not specified in env.entrypoint; small credit."
-    else:
-        run_score = 0.0
-        run_msg = "No run_instructions provided."
-    record_check("task4.run_instructions", run_score, run_weight, run_msg)
+            try:
+                if not float_eq(float(c_mv), float(e_mv), tol=1e-6):
+                    reasons.append(f"Sample row {i} metric_value mismatch: candidate={c_mv}, expected={e_mv}.")
+                    ok = False
+            except Exception:
+                reasons.append(f"Sample row {i} metric_value parse error: candidate={c_mv}, expected={e_mv}.")
+                ok = False
+        if ok:
+            matches += 1
+    score = (matches / total) * max_points
+    return score, max_points, reasons
 
-    # 4.2 schema_description + two suggestions (5)
-    sug_weight = WEIGHTS["task4"]["schema_and_suggestions"]
-    schema_and_sug_score = 0.0
-    schema_and_sug_msg = ""
-    sug_list = safe_get(submission, "schema_and_choices", "suggested_improvements", default=[])
-    if isinstance(schema_desc, str) and schema_desc.strip() and isinstance(sug_list, list) and len(sug_list) == 2 and all(isinstance(s, str) and s.strip() for s in sug_list):
-        schema_and_sug_score = sug_weight
-        schema_and_sug_msg = "schema_description present and two suggested_improvements provided."
-    else:
-        # partial: if schema present but suggestions incomplete
-        if isinstance(schema_desc, str) and schema_desc.strip():
-            schema_and_sug_score = sug_weight * 0.6
-            schema_and_sug_msg = "schema_description present; suggested_improvements missing or not exactly two items. Partial credit."
-        else:
-            schema_and_sug_score = 0.0
-            schema_and_sug_msg = "schema_description missing or empty and suggested_improvements missing/insufficient."
-    record_check("task4.schema_and_suggestions", schema_and_sug_score, sug_weight, schema_and_sug_msg)
-
-    # Task4 total
-    task4_total_earned = run_score + schema_and_sug_score
-    record_check("task4.total", task4_total_earned, WEIGHTS["task4"]["total"], "Aggregated Task 4 score.")
-
-    # Code hygiene & robustness (5)
-    hygiene_weight = WEIGHTS["code_hygiene"]["total"]
-    optional_errors = safe_get(submission, "optional", "errors", default=None)
-    hygiene_score = 0.0
-    hygiene_msg = ""
-    if optional_errors is None:
-        # no optional key -> assume fine
-        hygiene_score = hygiene_weight
-        hygiene_msg = "No optional.errors provided; assuming no non-fatal issues reported."
-    else:
+def score_summary_report(candidate, expected, max_points):
+    """
+    summary_report.json should contain top_hosts (5 items) and hourly_errors (24 items).
+    We'll compare components already scored: top5 and hourly. Here, we compute matches across both arrays combined.
+    """
+    reasons = []
+    cand_top = safe_get(candidate, 'outputs', 'top5_hosts_error') or []
+    exp_top = safe_get(expected, 'outputs', 'top5_hosts_error') or []
+    cand_hour = safe_get(candidate, 'outputs', 'hourly_errors_last24') or []
+    exp_hour = safe_get(expected, 'outputs', 'hourly_errors_last24') or []
+    # Combine counts
+    total_elements = len(exp_top) + len(exp_hour)
+    if total_elements == 0:
+        return 0, max_points, ["Answer key has no summary elements."]
+    matches = 0
+    # top hosts: position-wise comparison of host and error_count
+    for i, e in enumerate(exp_top):
         try:
-            if isinstance(optional_errors, list) and len(optional_errors) == 0:
-                hygiene_score = hygiene_weight
-                hygiene_msg = "optional.errors present and empty."
-            else:
-                # if there are warnings, award partial credit
-                hygiene_score = hygiene_weight * 0.6
-                hygiene_msg = f"optional.errors contains {len(optional_errors)} item(s); partial credit."
+            c = cand_top[i]
         except Exception:
-            hygiene_score = hygiene_weight * 0.5
-            hygiene_msg = "optional.errors present but unreadable; partial credit."
-    record_check("code_hygiene", hygiene_score, hygiene_weight, hygiene_msg)
+            continue
+        if str(c.get('host','')).strip() == str(e.get('host','')).strip():
+            try:
+                if int(c.get('error_count')) == int(e.get('error_count')):
+                    matches += 1
+                else:
+                    reasons.append(f"Summary top_host count mismatch at pos {i}: candidate={c.get('error_count')}, expected={e.get('error_count')}")
+            except Exception:
+                reasons.append(f"Summary top_host count parse error at pos {i}.")
+        else:
+            reasons.append(f"Summary top_host mismatch at pos {i}: candidate={c.get('host')}, expected={e.get('host')}")
+    # hourly: compare normalized hours and counts; assume same ordering
+    for i, e in enumerate(exp_hour):
+        try:
+            c = cand_hour[i]
+        except Exception:
+            continue
+        e_hour_norm = normalize_hour_str_for_compare(e.get('hour'))
+        c_hour_norm = normalize_hour_str_for_compare(c.get('hour'))
+        if e_hour_norm is None or c_hour_norm is None:
+            reasons.append(f"Could not parse hours in summary at index {i}.")
+            continue
+        if e_hour_norm != c_hour_norm:
+            reasons.append(f"Summary hour mismatch at pos {i}: candidate='{c_hour_norm}', expected='{e_hour_norm}'.")
+            continue
+        try:
+            if int(c.get('count')) == int(e.get('count')):
+                matches += 1
+            else:
+                reasons.append(f"Summary hourly count mismatch at {e_hour_norm}: candidate={c.get('count')}, expected={e.get('count')}.")
+        except Exception:
+            reasons.append(f"Summary hourly count parse error at pos {i}.")
+    score = (matches / total_elements) * max_points
+    return score, max_points, reasons
 
-    # Final aggregation (total already incrementally built)
-    # ensure max_points equals 100
-    # But sometimes rounding may affect sum; compute max explicitly
-    explicit_max = (
-        WEIGHTS["task1"]["total"] +
-        WEIGHTS["task2"]["total"] +
-        WEIGHTS["task3"]["total"] +
-        WEIGHTS["task4"]["total"] +
-        WEIGHTS["code_hygiene"]["total"]
-    )
-    # total_points_earned already computed
-    # But we also have stored intermediate "total" checks; ensure consistency by using explicit_max
-    results["max_points"] = float(explicit_max)
-    # compute total earned as sum of per_check keys that correspond to primary totals
-    # We already added many checks; ensure dedup: use cumulative computed value
-    # To avoid double counting, compute sum of these top-level totals:
-    top_level = (
-        results["per_check"].get("task1.total", {}).get("earned", 0.0) +
-        results["per_check"].get("task2.total", {}).get("earned", 0.0) +
-        results["per_check"].get("task3.total", {}).get("earned", 0.0) +
-        results["per_check"].get("task4.total", {}).get("earned", 0.0) +
-        results["per_check"].get("code_hygiene", {}).get("earned", 0.0)
-    )
-    results["total_points_earned"] = float(round(top_level, 2))
-    # percentage
-    pct = 0.0
-    try:
-        pct = (results["total_points_earned"] / results["max_points"]) * 100.0 if results["max_points"] > 0 else 0.0
-    except Exception:
-        pct = 0.0
-    results["percentage"] = float(round(pct, 2))
-    results["overall_score"] = results["percentage"]
+def score_ingestion_and_storage(candidate, expected, max_points=30):
+    """
+    Best-effort checks using presence of files_produced, notes content, and data-driven signals
+    (e.g., top10_event_ids all 1 indicates dedup & uniqueness).
+    This is heuristic since we don't inspect the DB file here.
+    Breakdown internal:
+      - DB file present and non-empty: up to 8 points
+      - Notes mention schema and uniqueness: up to 6 points
+      - Duplicates removed correctly: 5 points (uses top10_event_ids & notes)
+      - Malformed timestamps handled: 5 points (notes must state count equals expected)
+      - Single-command run / files present: 6 points (end-to-end)
+    """
+    reasons = []
+    cand = candidate
+    exp = expected
+    score = 0.0
+    # Requirements
+    files = ensure_list(safe_get(candidate, 'files_produced') or [])
+    files_map = { os.path.basename(f.get('file')): f for f in files if isinstance(f, dict) and 'file' in f }
+    # 1) DB file present and non-empty (8)
+    db_part = 8
+    db_file = files_map.get('system_logs.db')
+    if db_file and isinstance(db_file.get('bytes', None), int) and db_file.get('bytes', 0) > 0:
+        score += db_part
+        reasons.append("system_logs.db present and non-empty.")
+    else:
+        reasons.append("system_logs.db missing or empty in files_produced.")
+    # 2) Notes mention schema and event_id uniqueness (6)
+    notes = safe_get(candidate, 'notes') or ""
+    notes_lower = notes.lower()
+    notes_part = 6
+    if 'event_id' in notes_lower and ('unique' in notes_lower or 'unique' in notes):
+        score += notes_part
+        reasons.append("Notes mention event_id uniqueness.")
+    else:
+        reasons.append("Notes do not clearly mention event_id uniqueness.")
+    # 3) Duplicates removed correctly (5)
+    dup_part = 5
+    # Heuristic: expected top10_event_ids all counts == 1 per answer key indicates dedup enforced.
+    exp_top10 = safe_get(exp, 'outputs', 'top10_event_ids') or []
+    cand_top10 = safe_get(cand, 'outputs', 'top10_event_ids') or []
+    dedup_ok = True
+    # If candidate top10 exists, check if all counts == 1 (suggests uniqueness)
+    if ensure_list(cand_top10):
+        try:
+            for item in cand_top10:
+                if int(item.get('count', 0)) != 1:
+                    dedup_ok = False
+                    break
+        except Exception:
+            dedup_ok = False
+        if dedup_ok:
+            score += dup_part
+            reasons.append("Candidate top10_event_ids shows unique counts indicating dedup applied.")
+        else:
+            reasons.append("Candidate top10_event_ids suggests duplicate event_id counts present.")
+    else:
+        reasons.append("Candidate top10_event_ids missing; cannot infer dedup handling.")
+    # 4) Malformed timestamps handled (5)
+    malformed_part = 5
+    # Answer key often mentions how many malformed dropped; try to find "malformed" and a number in notes
+    exp_malformed = None
+    # try to find in expected notes phrase like 'Malformed timestamps dropped: 2' or 'malformed timestamps dropped: 2'
+    exp_notes = safe_get(exp, 'notes') or ""
+    # attempt to extract integer from expected notes if present
+    import re
+    m = re.search(r"malformed.*?(\d+)", exp_notes, re.IGNORECASE)
+    if m:
+        try:
+            exp_malformed = int(m.group(1))
+        except:
+            exp_malformed = None
+    # Extract candidate reported malformed number
+    m2 = re.search(r"malformed.*?(\d+)", notes, re.IGNORECASE)
+    cand_malformed = None
+    if m2:
+        try:
+            cand_malformed = int(m2.group(1))
+        except:
+            cand_malformed = None
+    if exp_malformed is not None and cand_malformed is not None:
+        if cand_malformed == exp_malformed:
+            score += malformed_part
+            reasons.append(f"Notes report malformed timestamps dropped = {cand_malformed}, matches answer key.")
+        else:
+            reasons.append(f"Notes report malformed timestamps dropped = {cand_malformed}, expected {exp_malformed}.")
+    else:
+        # If we can't find numbers, give partial credit if notes mention 'malformed' and 'dropped'
+        if 'malformed' in notes_lower and ('drop' in notes_lower or 'dropped' in notes_lower):
+            score += (malformed_part * 0.5)
+            reasons.append("Notes mention malformed timestamps being dropped (partial credit).")
+        else:
+            reasons.append("Notes do not state malformed timestamp handling.")
+    # 5) Single-command run / files present (6)
+    run_part = 6
+    run_cmd = safe_get(candidate, 'run_command')
+    required_files = ['system_logs.db','error_events_7days.csv','summary_report.json','test_submission.json']
+    missing_files = [f for f in required_files if f not in files_map]
+    if run_cmd and isinstance(run_cmd, str) and run_cmd.strip():
+        if not missing_files:
+            score += run_part
+            reasons.append("run_command provided and all required output files listed in files_produced.")
+        else:
+            # partial if run_command present but missing files
+            score += run_part * 0.5
+            reasons.append(f"run_command provided but some required files missing in files_produced: {missing_files}")
+    else:
+        reasons.append("run_command missing or empty.")
+    return score, max_points, reasons
 
-    # Compose explanatory messages list from per_check entries
-    messages = []
-    for k, v in results["per_check"].items():
-        messages.append(f"{k}: earned {v['earned']}/{v['possible']}. {v['message']}")
-    results["messages"] = messages
+def score_code_quality(candidate, expected, max_points=10):
+    """
+    Heuristics: check run_command presence, language present, test_submission listed, and notes length <=200
+    """
+    reasons = []
+    score = 0.0
+    # run_command non-empty: 3 pts
+    run_cmd = safe_get(candidate, 'run_command')
+    if run_cmd and isinstance(run_cmd, str) and run_cmd.strip():
+        score += 3
+        reasons.append("run_command present.")
+    else:
+        reasons.append("run_command missing or empty.")
+    # files_produced includes test_submission.json (2 pts)
+    files = ensure_list(safe_get(candidate, 'files_produced') or [])
+    files_map = { os.path.basename(f.get('file')): f for f in files if isinstance(f, dict) and 'file' in f }
+    if 'test_submission.json' in files_map:
+        score += 2
+        reasons.append("test_submission.json listed in files_produced.")
+    else:
+        reasons.append("test_submission.json not listed in files_produced.")
+    # language field present (2 pts)
+    lang = safe_get(candidate, 'language')
+    if lang and isinstance(lang, str) and lang.strip():
+        score += 2
+        reasons.append(f"language field present: {lang}")
+    else:
+        reasons.append("language field missing or empty.")
+    # notes length <=200 (3 pts)
+    notes = safe_get(candidate, 'notes') or ""
+    # count words or simply characters? Requirement is <=200 words. We'll approximate by splitting whitespace and count words.
+    words = len(notes.split())
+    if words <= 200 and words > 0:
+        score += 3
+        reasons.append(f"notes provided with {words} words (<=200).")
+    elif words == 0:
+        reasons.append("notes empty.")
+    else:
+        reasons.append(f"notes too long ({words} words > 200).")
+    return score, max_points, reasons
 
-    # Also include a compact breakdown for graders
-    results["breakdown"] = {
-        "task1": {
-            "db_file_exists": results["per_check"].get("task1.db_file_exists"),
-            "schema_columns": results["per_check"].get("task1.schema_columns"),
-            "ingestion_rows_loaded": results["per_check"].get("task1.ingestion_rows_loaded"),
-            "ingestion_rows_skipped": results["per_check"].get("task1.ingestion_rows_skipped"),
-            "total": results["per_check"].get("task1.total")
-        },
-        "task2": {
-            "total_rows": results["per_check"].get("task2.total_rows"),
-            "top_hosts": results["per_check"].get("task2.top_hosts"),
-            "hourly_stats": results["per_check"].get("task2.hourly_stats"),
-            "cpu_spike_periods": results["per_check"].get("task2.cpu_spike_periods"),
-            "total": results["per_check"].get("task2.total")
-        },
-        "task3": {
-            "insert_and_updated_avg": results["per_check"].get("task3.insert_and_updated_avg"),
-            "duplicate_handling_mention": results["per_check"].get("task3.duplicate_handling_mention"),
-            "total": results["per_check"].get("task3.total")
-        },
-        "task4": {
-            "run_instructions": results["per_check"].get("task4.run_instructions"),
-            "schema_and_suggestions": results["per_check"].get("task4.schema_and_suggestions"),
-            "total": results["per_check"].get("task4.total")
-        },
-        "code_hygiene": results["per_check"].get("code_hygiene"),
+def score_documentation(candidate, expected, max_points=5):
+    """
+    Check notes includes required elements:
+      - mention of deduplication ('duplicate'/'dedup')
+      - mention of event_id collision handling ('event_id' & 'earliest' or 'kept earliest')
+      - mention of timezone/UTC handling ('UTC' or 'timezone' or 'converted to UTC')
+    Award proportionally.
+    """
+    notes = safe_get(candidate, 'notes') or ""
+    notes_low = notes.lower()
+    reasons = []
+    checks = [
+        ('duplicate', ['duplicate', 'dedup', 'deduplicate']),
+        ('event_id_earliest', ['event_id', 'earliest', 'keep the earliest', 'kept the earliest']),
+        ('utc_timezone', ['utc', 'timezone', 'converted to utc', 'interpreted as utc'])
+    ]
+    matched = 0
+    for name, tokens in checks:
+        ok = False
+        for t in tokens:
+            if t in notes_low:
+                ok = True
+                break
+        if ok:
+            matched += 1
+            reasons.append(f"Notes mention '{name}'.")
+        else:
+            reasons.append(f"Notes do not clearly mention '{name}'.")
+    score = (matched / len(checks)) * max_points
+    return score, max_points, reasons
+
+# ----------------------
+# Main grading orchestration
+# ----------------------
+
+def grade(candidate_json, answer_key_json):
+    """
+    Returns a dictionary with detailed scoring and overall_score numeric.
+    """
+    results = {}
+    total_points = 100.0
+    breakdown = []
+
+    # 1) Ingestion & Storage (30)
+    ingestion_score, ingestion_max, ingestion_reasons = score_ingestion_and_storage(candidate_json, answer_key_json, max_points=30)
+    breakdown.append({
+        "section": "Ingestion & Storage",
+        "score": round(ingestion_score, 3),
+        "max_score": ingestion_max,
+        "reasons": ingestion_reasons
+    })
+
+    # 2) Queries & Analysis (40)
+    q_reasons = []
+    q_score = 0.0
+    # unique_hosts (5)
+    s, m, r = score_unique_hosts(candidate_json, answer_key_json)
+    q_score += s
+    q_reasons += ["unique_hosts:"] + r
+    breakdown.append({
+        "section": "Queries & Analysis: unique_hosts",
+        "score": round(s,3),
+        "max_score": m,
+        "reasons": r
+    })
+    # top5_hosts_error (10)
+    cand_top5 = safe_get(candidate_json, 'outputs', 'top5_hosts_error') or []
+    exp_top5 = safe_get(answer_key_json, 'outputs', 'top5_hosts_error') or []
+    s, m, r = score_topk_list(cand_top5, exp_top5, 5, 10, ('host','error_count'))
+    q_score += s
+    breakdown.append({
+        "section": "Queries & Analysis: top5_hosts_error",
+        "score": round(s,3),
+        "max_score": m,
+        "reasons": r
+    })
+    # hourly_errors_last24 (10)
+    s, m, r = score_hourly_buckets(safe_get(candidate_json, 'outputs', 'hourly_errors_last24') or [],
+                                   safe_get(answer_key_json, 'outputs', 'hourly_errors_last24') or [],
+                                   10)
+    q_score += s
+    breakdown.append({
+        "section": "Queries & Analysis: hourly_errors_last24",
+        "score": round(s,3),
+        "max_score": m,
+        "reasons": r
+    })
+    # avg_cpu_by_component (10)
+    s, m, r = score_avg_cpu_by_component(safe_get(candidate_json, 'outputs', 'avg_cpu_by_component') or [],
+                                         safe_get(answer_key_json, 'outputs', 'avg_cpu_by_component') or [],
+                                         10)
+    q_score += s
+    breakdown.append({
+        "section": "Queries & Analysis: avg_cpu_by_component",
+        "score": round(s,3),
+        "max_score": m,
+        "reasons": r
+    })
+    # top10_event_ids (5)
+    s, m, r = score_topk_event_ids(safe_get(candidate_json, 'outputs', 'top10_event_ids') or [],
+                                   safe_get(answer_key_json, 'outputs', 'top10_event_ids') or [],
+                                   5)
+    q_score += s
+    breakdown.append({
+        "section": "Queries & Analysis: top10_event_ids",
+        "score": round(s,3),
+        "max_score": m,
+        "reasons": r
+    })
+
+    # Append aggregate Queries & Analysis summary
+    breakdown.append({
+        "section": "Queries & Analysis: subtotal",
+        "score": round(q_score,3),
+        "max_score": 40,
+        "reasons": ["Aggregate of unique_hosts, top5, hourly, avg_cpu, top10"]
+    })
+
+    # 3) Exports & Reporting (15)
+    exp_reasons = []
+    exp_score = 0.0
+    # error_events_7days.csv sample (8)
+    s, m, r = score_error_csv_sample(safe_get(candidate_json, 'sample_error_csv_rows') or [],
+                                     safe_get(answer_key_json, 'sample_error_csv_rows') or [],
+                                     8)
+    exp_score += s
+    breakdown.append({
+        "section": "Exports & Reporting: error_events_7days.csv (sample)",
+        "score": round(s,3),
+        "max_score": m,
+        "reasons": r
+    })
+    # summary_report.json (7)
+    s, m, r = score_summary_report(candidate_json, answer_key_json, 7)
+    exp_score += s
+    breakdown.append({
+        "section": "Exports & Reporting: summary_report.json",
+        "score": round(s,3),
+        "max_score": m,
+        "reasons": r
+    })
+    breakdown.append({
+        "section": "Exports & Reporting: subtotal",
+        "score": round(exp_score,3),
+        "max_score": 15,
+        "reasons": ["Aggregate of CSV sample and summary JSON"]
+    })
+
+    # 4) Code quality & reproducibility (10)
+    cq_score, cq_max, cq_reasons = score_code_quality(candidate_json, answer_key_json, max_points=10)
+    breakdown.append({
+        "section": "Code quality & reproducibility",
+        "score": round(cq_score,3),
+        "max_score": cq_max,
+        "reasons": cq_reasons
+    })
+
+    # 5) Documentation & rationale (5)
+    doc_score, doc_max, doc_reasons = score_documentation(candidate_json, answer_key_json, max_points=5)
+    breakdown.append({
+        "section": "Documentation & rationale",
+        "score": round(doc_score,3),
+        "max_score": doc_max,
+        "reasons": doc_reasons
+    })
+
+    # Total up scores
+    total_awarded = 0.0
+    total_possible = 0.0
+    for b in breakdown:
+        total_awarded += float(b.get('score', 0.0))
+        total_possible += float(b.get('max_score', 0.0))
+    # Some breakdown entries include subtotals and per-sub items; ensure we don't double-count.
+    # We set total_possible to 100 explicitly for consistency with rubric.
+    total_possible = 100.0
+    # Sum of per-section may not equal 100 because we appended subtotals; compute overall by summing the main scoring components we intended:
+    # To avoid mis-sum due to subtotals, recompute overall_score by summing the intended pieces:
+    # Intended structure:
+    # - ingestion_score (30)
+    # - q_score (40)
+    # - exp_score (15)
+    # - cq_score (10)
+    # - doc_score (5)
+    total_awarded = round(ingestion_score + q_score + exp_score + cq_score + doc_score, 6)
+    overall_pct = (total_awarded / total_possible) * 100.0 if total_possible > 0 else 0.0
+
+    results = {
+        "breakdown": breakdown,
         "summary": {
-            "total_earned": results["total_points_earned"],
-            "total_possible": results["max_points"],
-            "percentage": results["percentage"]
-        }
+            "ingestion_and_storage": round(ingestion_score,3),
+            "queries_and_analysis": round(q_score,3),
+            "exports_and_reporting": round(exp_score,3),
+            "code_quality_and_reproducibility": round(cq_score,3),
+            "documentation_and_rationale": round(doc_score,3)
+        },
+        "total_awarded": round(total_awarded,3),
+        "total_possible": total_possible,
+        "percentage": round(overall_pct,3),
+        "overall_score": round(overall_pct,3)
     }
-
     return results
 
-# ---------- Main entry ----------
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
+# ----------------------
+# CLI entrypoint
+# ----------------------
+
+def main(argv):
+    if len(argv) != 3:
+        print("Usage: python3 task_evaluation.py <candidate_test_submission.json> <answer_key.json>")
         sys.exit(2)
-
-    submission_path = sys.argv[1]
-    answer_key_path = sys.argv[2]
-
-    # Resolve submission directory (where test_submission.json lives) for relative path checks
-    submission_dir = os.path.dirname(os.path.abspath(submission_path)) if os.path.exists(submission_path) else os.getcwd()
-
-    # Load JSON files
-    try:
-        submission = load_json_file(submission_path)
-    except Exception as e:
-        print(f"Error loading submission JSON: {e}")
+    cand_path = argv[1]
+    key_path = argv[2]
+    cand_json, err = load_json(cand_path)
+    if err:
+        print(err)
         sys.exit(1)
-    try:
-        answer_key = load_json_file(answer_key_path)
-    except Exception as e:
-        print(f"Error loading answer key JSON: {e}")
+    key_json, err = load_json(key_path)
+    if err:
+        print(err)
         sys.exit(1)
-
     # Grade
     try:
-        results = grade(submission, answer_key, submission_dir)
+        results = grade(cand_json, key_json)
     except Exception as e:
-        # catch-all to ensure deterministic output
-        tb_msg = f"Grading failed with exception: {e}"
+        print(f"Unexpected error during grading: {e}")
+        # produce a minimal error results file
         results = {
-            "error": tb_msg,
-            "overall_score": 0.0
+            "error": str(e)
         }
-
-    # Write results file to current working directory as test_results.json
-    out_path = os.path.join(os.getcwd(), "test_results.json")
+    # Write test_results.json next to this script (current working directory)
+    out_path = os.path.join(os.getcwd(), 'test_results.json')
     try:
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, sort_keys=False)
-        print(f"Grading completed. Results written to {out_path}")
+        save_json(results, out_path)
+        print(f"Grading complete. Results written to {out_path}")
     except Exception as e:
-        print(f"Failed to write results to '{out_path}': {e}")
+        print(f"Failed to write results to {out_path}: {e}")
         sys.exit(1)
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    main(sys.argv)
 ```
 
-What the script produces (test_results.json)
-- per_check: per-sub-check earned and possible points and messages
-- messages: human-readable summary lines for each check
-- breakdown: grouped scores for tasks and summary totals
-- total_points_earned, max_points, percentage, overall_score (numeric 0–100)
+How the script scores (high level)
+- Uses the rubric and weights from the exam overview.
+- Core deterministic outputs (unique_hosts, top lists, hourly buckets, avg cpu per component, top10 event_ids) are compared precisely; partial credit is given per-element match.
+- Exports and summary are validated via sample rows and the outputs arrays.
+- Ingestion/storage, code quality, and documentation are heuristically scored from provided metadata (files_produced, notes, run_command) since the grader in this assignment only receives JSON (no live DB).
+- The grader writes test_results.json with a detailed breakdown and overall_score (percentage 0–100).
 
-Notes and assumptions
-- The grader is tolerant of reasonable formatting differences for numbers (uses tolerances).
-- It tries to detect the presence of the created telemetry.db file by checking paths relative to the submission JSON and current working directory; if the file cannot be found it gives partial credit if a db_file path was provided.
-- Partial credit is implemented per the instructions and reasonable heuristics (e.g., if candidate reports rows_loaded+rows_skipped == 16, it's treated as consistent).
-- The grader is defensive: if the answer key lacks expected fields it awards partial credit rather than failing.
-
-If you want any adjustments to scoring weights, tolerances, or additional filesystem checks (e.g., inspect telemetry.db schema via sqlite3), tell me and I will update the script accordingly.
+If you want any tweaks to scoring sensitivity (e.g., stricter/hour-string tolerance), tell me which comparisons to adjust and I will update the script.

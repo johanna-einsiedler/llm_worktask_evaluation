@@ -1,190 +1,119 @@
 ### Exam Title
-Test planning practical — Basic level (90 minutes)
-
----
+Test Planning Practical — Basic (90-minute remote practical)
 
 ### Instructions for Candidate
+You have 90 minutes total. Use only the tools allowed: a spreadsheet application and a text editor. You may draft in a spreadsheet but your final submission must be a single JSON file named test_submission.json (see Submission Format below).
 
-Goal
-- Produce a realistic, time-boxed test schedule and short strategy that converts the provided project brief into an executable test plan the team can use to meet the fixed release date.
+Read the Project Brief (provided below) first (5 minutes). Then complete the three hands-on tasks and the short metadata/assumptions section. Recommended time split:
+- Read brief & assumptions — 5 minutes
+- Task 1: Test strategy / plan (text) — 30 minutes
+- Task 2: Test schedule & resourcing (spreadsheet-style tasks[]) — 40 minutes
+- Task 3: Risk prioritization + contingency + metrics — 15 minutes
 
-Time limit
-- 90 minutes total. You must record start and finish times in the submission_metadata (time_started / time_finished) and report time_taken_minutes.
+Do the tasks in this order. Keep answers concise and factual. Do not attach any files other than test_submission.json.
 
-Available tools
-- Spreadsheet software (recommended to build a Gantt-like schedule) and a plain text editor. No other resources are available.
+Tasks (practical, required)
+1. Metadata & Assumptions
+   - Provide candidate_name and exam_start (date/time).
+   - List 4–8 short assumptions you make beyond the brief (e.g., working hours, no additional hires, defect severity definitions).
+2. Produce a short Test Strategy text (300–800 characters)
+   - Must include: scope/objectives, key test types to be used, measurable entry and exit criteria, brief automation approach, and reporting metrics/cadence.
+3. Build a resource-aware Test Schedule (tasks array)
+   - Create concrete test tasks that cover the testing lifecycle required by the brief: environment setup, test design/case creation, functional/integration execution, regression (manual + automation), UAT support, reporting, and any automation development tasks needed.
+   - For each task include: ID (T1, T2, ...), short description, owner (exactly one of: "Tester A", "Tester B", "Automation"), type (choose from: "test-design", "env-setup", "test-execution", "automation", "regression", "UAT-support", "reporting"), estimate_hours (numeric), duration_days (calendar days used), earliest_start_offset (integer days from project_start_date; 0 = project start), dependencies (array of other task IDs), parallelizable (true/false).
+   - Respect the constraints in the brief (environment lead times, automation capacity, dev fix SLA, two testers only). Do not assign more than two owners or invent more testers.
+   - Use offsets relative to project_start_date; you may also include schedule_summary with resolved ISO dates (see Submission Format).
+   - Identify critical path tasks and include buffer days for defect cycles/environment risk.
+4. Risk-based prioritization & contingency
+   - Use the provided feature IDs (F1–F6). For each feature provide business_priority, a testing_priority (1–5; 1 = highest), tests_to_run (list of test types or specific focus), and a short note.
+   - Provide a concise contingency_plan describing what you will drop, reduce, or compress if testing slips by 1–3 days and if it slips by >3 days. Be specific (e.g., "defer F4 UI polish to post-release", or "reduce regression scope to smoke + high-risk scenarios only").
+5. Metrics, reporting, and final comments
+   - State what metrics you will report and the reporting cadence (e.g., daily: tests executed, pass/fail, open defects by severity). Provide final_comments summarizing any trade-offs.
 
-Step-by-step tasks and suggested time allocation
-1. Read the project brief (Provided Materials) — 5 minutes.
-2. State assumptions you make about anything unclear in the brief — 10 minutes.
-   - Deliverable: list of assumptions.
-3. Create a time-based test schedule (Gantt-like) showing tasks, start/end dates, durations, dependencies and resource assignments — 30 minutes.
-   - Use spreadsheet thinking: show concrete dates, respect environment windows, public holiday, code-freeze and release date.
-   - Assign tasks to the provided resources only (names given in brief).
-   - Use working days only; 1 working day = 8 hours. Public holiday days are non-working.
-4. Produce risk-based prioritisation and effort estimates — 30 minutes.
-   - For each feature from the brief, list required test types, priority (1–5), and estimated effort (hours) for: test_design, test_execution, automation_setup (if any), and regression.
-   - Provide a short (1–2 sentence) rationale for priority for the top 5 items.
-   - Propose two concrete contingency options (what to reduce or drop if schedule is too tight, expected quality impact, and brief justification).
-5. Produce a concise test strategy summary — 15 minutes.
-   - Include entry and exit criteria for phases (e.g., test design complete, system testing entry, release exit criteria), and identify the key open risks and mitigations.
-6. Finalize and assemble everything into a single JSON file named test_submission.json — remaining time.
-
-Notes while working
-- Be concrete. Dates must be in YYYY-MM-DD format and respect the environment availability and holiday in the brief.
-- Use only the resource names given in the brief. Respect availability_percent for capacity calculations.
-- Priorities: 1 = highest risk / highest priority, 5 = lowest.
-- 1 working day = 8 hours. Use this for converting durations ↔ hours.
-- You may optionally export or attach a CSV of your spreadsheet as a string inside optional_attachments, but the evaluator will primarily use the JSON.
-
----
+Keep the output objective and verifiable: concrete task durations, owners, dependencies, and priorities.
 
 ### Expected Outcome
+A single valid JSON file named test_submission.json that contains:
+- metadata: candidate_name, exam_start, project_start_date
+- assumptions: array of short strings
+- test_strategy: 300–800 character string
+- tasks: array of task objects (IDs T1, T2, ...)
+- schedule_summary: overall start/end, total_effort_hours, critical_path (array of task IDs), buffers_days
+- risk_prioritization: array mapping F1–F6 to priority, tests_to_run, note
+- contingency_plan: string
+- metrics_and_reporting: string
+- final_comments: short string
 
-By the end you must produce a single valid JSON file test_submission.json that contains:
+Your schedule must be executable within the constraints of the Project Brief (code freeze, release date, environment lead times, 2 testers, automation limits). If you cannot meet the release date without trade-offs, describe those trade-offs clearly in final_comments and the contingency_plan.
 
-- submission_metadata with your name, email, start/finish timestamps and minutes used.
-- assumptions array (≥3 recommended).
-- resources list (use provided resource names).
-- schedule array (concrete tasks with start/end dates, durations, dependencies and assigned resources).
-- test_scope array listing each feature (use feature IDs exactly as given in brief), complexity, required test types and a priority (1–5).
-- estimates array with estimated hours per feature-activity (activities limited to the set in the schema).
-- risk_prioritisation array with priority and short rationale.
-- contingency_options array with two options.
-- entry_exit_criteria object mapping phase names to arrays of entry and exit criteria.
-- strategy_summary string (max 500 words).
-- submission must be syntactically valid JSON and follow the schema exactly (see Submission Format below).
-
-Evaluator will check:
-- Schedule is feasible vs code freeze, release, environment windows and public holiday.
-- Resource assignments respect availability.
-- Estimates are consistent with schedule durations and available tester capacity.
-- Prioritisations and contingency options are risk-based and practical.
-- Entry/exit criteria are concrete and measurable (e.g., “no open critical defects”, “≥90% regression pass”).
-- Strategy summary ties schedule, risk and priorities together and contains a short communication plan for release day.
-
----
+You will be graded against objective rubrics: coverage of necessary tasks, realistic estimates, correct handling of dependencies and environment lead times, resource allocation respecting two testers, clear entry/exit criteria, and a concrete contingency plan.
 
 ### Provided Materials
+(Use only these; you are not given any other data.)
 
-You will be given the following single-page project brief (use these feature IDs exactly as shown):
+Project brief (use these inputs exactly)
+- Project name: "E-Comm Checkout v2"
+- project_start_date (assumed test start date): 2025-11-03 (Monday)
+- Release date: 2025-11-28 (Friday)
+- Code freeze: 2025-11-21 (Friday)
+- Team: 2 QA testers — "Tester A" and "Tester B". Automation work is represented by owner "Automation". No other testers available.
+- Environments:
+  - Dev test: available now (earliest_start_offset = 0)
+  - Integration QA env: available Day 3; provisioning takes 48 hours (so integration environment usable earliest_start_offset = 5)
+  - Pre-prod: available Day 20 (earliest_start_offset = 17 if provisioning takes 3 days; treat as available starting day 20)
+- Automation:
+  - Existing automation covers login and search.
+  - Automation team can add automation covering up to 40% of the regression scope during the sprint.
+  - Nightly regression automation execution takes 2 hours/day (owner = "Automation").
+- Dev defect turnaround: 2 business days per fix.
+- UAT: 3 business days scheduled in the last week before release; stakeholders available.
+- Features:
+  - F1: New Checkout Flow — Business-critical, high risk
+  - F2: Saved Addresses — Medium, medium risk
+  - F3: Promo Codes & Discounts — High, medium risk
+  - F4: Order History UI polish — Low, low risk
+  - F5: Payment Gateway Integration updates — High, high risk
+  - F6: Performance improvements — Medium, deferred to pre-prod
+- Suggested test types to consider: smoke, functional, integration, regression, performance (performance testing scheduled for pre-prod).
 
-Project brief (compact)
-- Fixed code freeze date: 2025-10-20 (no code changes accepted after this date).
-- Fixed release date: 2025-11-03 (release must occur on or before this date).
-- Working days: weekdays only. Public holiday (no testing or environment access): 2025-10-23.
-- Test environments:
-  - Test Environment A: available 2025-10-21 to 2025-10-30
-  - UAT Environment: available 2025-10-27 to 2025-11-01
-- Test team:
-  - Alice (Tester) — 100% availability (full-time)
-  - Bob (Tester) — 100% availability (full-time)
-  - Charlie (Automation Engineer) — 50% availability (part-time)
-- Existing automation coverage: 20% of regression tests currently automated.
-  - To reach 40% regression automation requires 8 full working days of automation_setup by Charlie (during which Charlie is not available for other tasks).
-- Non-functional requirements:
-  - Basic performance smoke test (1 day, during final regression).
-  - Security vulnerability scan (one run in Test Environment A before UAT).
-- High-level constraints and risks:
-  - Third-party payment API (Feature F5) has known instability risk near release.
-  - Limited test data: test data preparation may take 2 days (shared task).
-  - Release acceptance criterion: critical/major defects must be fixed before release; minor defects can be deferred with stakeholder sign-off.
-- Feature list (use these IDs exactly):
-  - F1 — User login & sessions (Low complexity)
-  - F2 — Payments (High complexity)
-  - F3 — Search & filtering (Medium)
-  - F4 — Reporting dashboard (Medium)
-  - F5 — Third-party API integration (High)
-  - F6 — Performance improvements (Medium)
+JSON schema (summary of required top-level keys)
+- The exact JSON schema will be used by the evaluator. Your submission must include these top-level keys and follow the data expectations described in the Expected Outcome section above. (You will be judged for both content accuracy and JSON validity.)
 
-Files you will receive
-- A plain-text copy of the above brief (you may re-copy it into your work).
-- No other data files are provided.
-
----
+Formatting and objective constraints
+- Task IDs: use T1, T2, T3, ...
+- Owners: use only "Tester A", "Tester B", or "Automation".
+- Feature IDs: use exactly F1–F6 when populating risk_prioritization.
+- Dates may be represented by earliest_start_offset (integer days) for tasks; schedule_summary must show calendar schedule_start and schedule_end as ISO dates (YYYY-MM-DD).
+- Estimates: provide estimate_hours for each task; total_effort_hours in schedule_summary must be the sum of estimate_hours.
+- Dependencies: refer only to other T# IDs present in your tasks array.
+- parallelizable must be true or false for each task.
+- test_strategy must be between 300 and 800 characters (approximate; be concise but meet requirement).
 
 ### Submission Format
+- File name: test_submission.json
+- Only this file will be accepted and evaluated.
+- Ensure the JSON is syntactically valid UTF-8 JSON.
+- Top-level keys to include (must be present):
+  - candidate_name (string)
+  - exam_start (ISO date/time or string)
+  - project_start_date (ISO date "2025-11-03")
+  - assumptions (array of strings)
+  - test_strategy (string, 300–800 chars)
+  - tasks (array of task objects with fields: id, description, owner, type, estimate_hours, duration_days, earliest_start_offset, dependencies, parallelizable)
+  - schedule_summary (object with: schedule_start (ISO date), schedule_end (ISO date), total_effort_hours (number), critical_path (array of task ids), buffers_days (number))
+  - risk_prioritization (array of objects with: feature_id (F1–F6), business_priority, testing_priority (1–5), tests_to_run (array of strings), note)
+  - contingency_plan (string)
+  - metrics_and_reporting (string)
+  - final_comments (string)
 
-You must submit a single file named test_submission.json containing an object that exactly follows the schema below. Field names and types must match.
+Submission rules (mandatory)
+- Submit within the 90-minute exam window.
+- Only test_submission.json will be evaluated. Do not submit spreadsheets or other files.
+- Ensure IDs, owners, and feature IDs match the exact strings above.
+- Assume working days are Monday–Friday when reasoning about developer 2-business-day fix SLA and UAT days.
 
-Top-level object keys (required)
-- submission_metadata: object
-  - candidate_name: string
-  - candidate_email: string
-  - time_started: string (ISO-like timestamp or YYYY-MM-DDTHH:MM — free-text but must be present)
-  - time_finished: string (same format)
-  - time_taken_minutes: integer (whole minutes)
-- assumptions: array of strings
-- resources: array of resource objects
-  - Each resource object:
-    - name: string (one of: "Alice", "Bob", "Charlie")
-    - role: string (e.g., "Tester" or "Automation Engineer")
-    - availability_percent: integer (e.g., 100 or 50)
-- schedule: array of schedule task objects
-  - Each task object:
-    - id: integer (unique, 1,2,3,...)
-    - name: string (short task name)
-    - start_date: string (YYYY-MM-DD)
-    - end_date: string (YYYY-MM-DD)
-    - duration_days: integer (working days)
-    - dependencies: array of integers (task ids that must finish before this starts; empty array if none)
-    - assigned: array of strings (resource names, choose only Alice/Bob/Charlie)
-  - Requirements:
-    - Dates must be weekdays and respect environment windows and holiday (2025-10-23 is non-working).
-    - duration_days must equal the number of working days between start_date and end_date inclusive.
-- test_scope: array of feature objects (one per feature in brief)
-  - Each feature object:
-    - feature_id: string (must be "F1","F2","F3","F4","F5","F6")
-    - name: string (use brief names)
-    - complexity: string ("L","M","H")
-    - required_test_types: array of strings chosen from: ["unit","integration","system","acceptance","regression","perf","security","exploratory"]
-    - priority: integer 1–5 (1 = highest)
-- estimates: array of estimate objects
-  - Each estimate object:
-    - feature_id: string (as above)
-    - activity: string (one of: "test_design","test_execution","automation_setup","regression","exploratory")
-    - estimated_hours: integer (hours; 1 working day = 8 hours)
-  - Notes:
-    - If an activity does not apply for a feature, omit it.
-    - Totals across estimates should be consistent with schedule durations and resource availability.
-- risk_prioritisation: array of objects
-  - Each object:
-    - feature_id_or_risk: string (feature id like "F2" or short risk name e.g., "Third-party API instability")
-    - priority: integer 1–5 (1 = highest)
-    - rationale: string (one or two short sentences)
-- contingency_options: array of two objects (exactly two)
-  - Each object:
-    - option_id: string (e.g., "C1", "C2")
-    - description: string (what will be removed/delayed)
-    - expected_quality_impact: string (brief)
-    - rationale: string (brief justification)
-- entry_exit_criteria: object mapping phase names to criteria objects
-  - Each phase key value:
-    - entry: array of strings (concrete conditions)
-    - exit: array of strings (concrete conditions, e.g., "No open critical defects", "Regression pass ≥ 90%")
-- strategy_summary: string (max 500 words)
-  - Must include a one-paragraph communication plan for release day: who will be notified and when (name(s) should be roles or resource names).
-- optional_attachments: string (optional). You may paste a CSV export of your spreadsheet here if you wish; evaluator will ignore if empty.
-
-Formatting, validation and objective checks
-- The JSON must parse cleanly. Keys must match exactly.
-- Dates must use YYYY-MM-DD.
-- Priorities and complexities must be within allowed values.
-- Use feature IDs exactly as provided in the brief.
-- Use only provided resource names for assigned fields.
-- The evaluator will verify that schedule dates respect:
-  - Code freeze 2025-10-20,
-  - Test Env A availability 2025-10-21 to 2025-10-30,
-  - UAT availability 2025-10-27 to 2025-11-01,
-  - Public holiday 2025-10-23 is non-working.
-
-Example minimal content (not exhaustive)
-- assumptions: ["Defect fix turnaround 2 working days unless critical"]
-- schedule: [{id:1, name:"Test design F1", start_date:"2025-10-21", end_date:"2025-10-22", duration_days:2, dependencies:[], assigned:["Alice"]}, ...]
-- test_scope: [{feature_id:"F1", name:"User login & sessions", complexity:"L", required_test_types:["integration","system","regression"], priority:1}, ...]
-
-Submission
-- Save your single JSON object to a file named test_submission.json and upload/submit that file.
-- Do not submit multiple files. If you include a CSV of the spreadsheet, paste it into optional_attachments as a string inside the JSON.
+Grading and objectivity
+- Your work will be scored on objective criteria: task coverage, realistic estimates, correct dependencies and environment lead times, resource allocation (no impossible parallel full-time work for the two testers), critical path identification, measurable entry/exit criteria, and explicit contingency trade-offs.
+- Avoid subjective language; provide clear, measurable, and verifiable entries.
 
 Good luck.

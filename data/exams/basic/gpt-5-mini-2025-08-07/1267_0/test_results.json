@@ -1,108 +1,137 @@
 {
-  "per_task": {
-    "Task1": {
-      "task_id": 1,
-      "max_points": 15,
-      "awarded_points": 15.0,
+  "candidate_name": "Examiner Answer Key",
+  "score_summary": {
+    "functional_correctness": {
+      "points_awarded": 60.0,
+      "points_possible": 60,
       "notes": [
-        "Task1: PASS detected in candidate's submitted outputs."
+        "Candidate passed the expected number of tests (5)."
       ]
     },
-    "Task2": {
-      "task_id": 2,
-      "max_points": 20,
-      "awarded_points": 20.0,
+    "explanation_quality": {
+      "points_awarded": 20.0,
+      "points_possible": 20,
       "notes": [
-        "Task2: PASS detected in candidate's submitted outputs."
+        "Task A: overlap=46/46 coverage=1.00 jaccard=1.00",
+        "Task B: overlap=37/37 coverage=1.00 jaccard=1.00",
+        "Task C: overlap=45/45 coverage=1.00 jaccard=1.00",
+        "Task D: overlap=41/41 coverage=1.00 jaccard=1.00"
       ]
     },
-    "Task3": {
-      "task_id": 3,
-      "max_points": 20,
-      "awarded_points": 20.0,
+    "code_hygiene": {
+      "points_awarded": 10.0,
+      "points_possible": 10,
       "notes": [
-        "Task3: PASS detected in candidate's submitted outputs."
+        "Expected files: 2, candidate modified matching files: 2, exact content matches: 2"
       ]
     },
-    "Task4": {
-      "task_id": 4,
-      "max_points": 15,
-      "awarded_points": 15.0,
+    "completeness_reproducibility": {
+      "points_awarded": 10,
+      "points_possible": 10,
       "notes": [
-        "Task4: PASS detected in candidate's submitted outputs."
+        "Candidate provided runtime output and passed tests count matches answer key."
       ]
     }
   },
-  "explanation_and_repro": {
-    "awarded_points": 20.0,
-    "max_points": 20,
-    "details": {
-      "per_task": {
-        "Task1": {
-          "explanation_points_awarded": 2.5,
-          "repro_points_awarded": 2.5,
-          "notes": [
-            "Both root_cause and change_summary present and sufficiently detailed.",
-            "how_tested includes run command and Task result lines."
-          ]
-        },
-        "Task2": {
-          "explanation_points_awarded": 2.5,
-          "repro_points_awarded": 2.5,
-          "notes": [
-            "Both root_cause and change_summary present and sufficiently detailed.",
-            "how_tested includes run command and Task result lines."
-          ]
-        },
-        "Task3": {
-          "explanation_points_awarded": 2.5,
-          "repro_points_awarded": 2.5,
-          "notes": [
-            "Both root_cause and change_summary present and sufficiently detailed.",
-            "how_tested includes run command and Task result lines."
-          ]
-        },
-        "Task4": {
-          "explanation_points_awarded": 2.5,
-          "repro_points_awarded": 2.5,
-          "notes": [
-            "Both root_cause and change_summary present and sufficiently detailed.",
-            "how_tested includes run command and Task result lines."
-          ]
+  "per_task_feedback": [
+    {
+      "id": "A",
+      "status_before_ok": true,
+      "status_after_ok": true,
+      "expected_modified_files": [
+        "app/calculations.py"
+      ],
+      "candidate_modified_files": [
+        "app/calculations.py"
+      ],
+      "expected_content_matches": [
+        {
+          "filename": "app/calculations.py",
+          "content_matches": true
         }
-      },
-      "summary": []
+      ]
+    },
+    {
+      "id": "B",
+      "status_before_ok": true,
+      "status_after_ok": true,
+      "expected_modified_files": [
+        "app/calculations.py"
+      ],
+      "candidate_modified_files": [
+        "app/calculations.py"
+      ],
+      "expected_content_matches": [
+        {
+          "filename": "app/calculations.py",
+          "content_matches": true
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "status_before_ok": true,
+      "status_after_ok": true,
+      "expected_modified_files": [
+        "app/utils.py"
+      ],
+      "candidate_modified_files": [
+        "app/utils.py"
+      ],
+      "expected_content_matches": [
+        {
+          "filename": "app/utils.py",
+          "content_matches": true
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "status_before_ok": true,
+      "status_after_ok": true,
+      "expected_modified_files": [],
+      "candidate_modified_files": [],
+      "expected_content_matches": []
     }
-  },
-  "hygiene": {
-    "awarded_points": 10.0,
-    "max_points": 10,
-    "notes": [
-      "Files changed are within expected set; awarded full hygiene points."
-    ],
-    "candidate_files_changed": [
-      "src/aggregator.py",
-      "src/formatter.py",
-      "src/parser.py"
-    ],
-    "expected_files": [
-      "src/aggregator.py",
-      "src/formatter.py",
-      "src/parser.py"
-    ]
-  },
-  "total_points": 100.0,
-  "max_points": 100.0,
+  ],
+  "total_points_awarded": 100.0,
+  "total_points_possible": 100,
   "percentage": 100.0,
   "overall_score": 100.0,
-  "messages": [
-    "Automated correctness subtotal: 70.0/70.",
-    "Explanation & reproducibility subtotal: 20.0/20.",
-    "Code hygiene subtotal: 10.0/10.",
-    "Total awarded: 100.0/100 -> 100.0%.",
-    "Candidate meets the passing threshold."
-  ],
-  "automated_subtotal": 70.0,
-  "automated_max": 70,
-  "recommendation": "PASS"
+  "messages": {
+    "functional": [
+      "Candidate passed the expected number of tests (5)."
+    ],
+    "explanation": [
+      "Task A: overlap=46/46 coverage=1.00 jaccard=1.00",
+      "Task B: overlap=37/37 coverage=1.00 jaccard=1.00",
+      "Task C: overlap=45/45 coverage=1.00 jaccard=1.00",
+      "Task D: overlap=41/41 coverage=1.00 jaccard=1.00"
+    ],
+    "hygiene": [
+      "Expected files: 2, candidate modified matching files: 2, exact content matches: 2"
+    ],
+    "completeness": [
+      "Candidate provided runtime output and passed tests count matches answer key."
+    ]
+  },
+  "final_test_summary_candidate": {
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "runtime_output": "============================= test session starts =============================\ncollected 5 items\n\n.....\n\n5 passed in 0.02s\n\nRUN_TESTS_COMPLETE\n\nPASSING_CRITERIA: All 5 tests must pass for full functional correctness (100% of provided tests)."
+  },
+  "final_test_summary_answer_key": {
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "runtime_output": "============================= test session starts =============================\ncollected 5 items\n\n.....\n\n5 passed in 0.02s\n\nRUN_TESTS_COMPLETE\n\nPASSING_CRITERIA: All 5 tests must pass for full functional correctness (100% of provided tests)."
+  },
+  "generated_at": "2025-10-12T14:29:39.496799Z",
+  "grading_notes": [
+    "Functional correctness scored proportionally to tests passed (60 pts).",
+    "Explanation quality used word-overlap heuristics against answer-key explanations (20 pts).",
+    "Code hygiene checks expected modified files and penalizes forbidden/test modifications (10 pts).",
+    "Completeness checks for runtime output and run commands (10 pts)."
+  ]
 }

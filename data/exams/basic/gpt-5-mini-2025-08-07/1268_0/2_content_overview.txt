@@ -1,163 +1,163 @@
 ### Exam Purpose
-To confirm the candidate can perform practical, end-to-end trial runs of programs and small software applications: execute them, validate that outputs are correct for given inputs, detect and diagnose problems, write simple automated checks or harnesses to reproduce test runs, apply minimal fixes or workarounds if required, and produce a concise, reproducible report showing the steps taken and the evidence that the program now produces the desired information. This validates real-world capability to verify software behavior before promotion or release.
+Confirm that the candidate can perform practical trial runs of programs and small software components to verify they produce the desired information and that the instructions (how to run/use them) are correct. In real-world terms: run provided code, reproduce expected outputs, design simple automated checks, diagnose failures, make minimal repairs or clarifications, and produce reproducible evidence of the steps taken.
 
-### Core Competencies
-- Correctly running command-line programs / small services and capturing output and exit status.
-- Designing and executing repeatable test scenarios (happy path + a few edge cases).
-- Writing a simple test harness or script (using only the available standard libraries) to automate trial runs and assert expected outputs.
-- Interpreting program output and logs to diagnose simple problems.
-- Applying a minimal, well-scoped code fix or a wrapper to produce the correct result (if permitted).
-- Producing reproducible evidence of tests (scripts, captured stdout/stderr, return codes) and a short rationale of decisions taken.
-- Clear, structured reporting in the required JSON format so evaluators can re-run everything deterministically.
+### Core Competencies to Be Tested
+- Environment setup and deterministic execution (run a program with given inputs and commands)
+- Reproducing and capturing expected outputs (console/text file outputs)
+- Designing and running simple automated tests (unit tests or small test harnesses)
+- Basic debugging and fixing of obvious faults (logic bug, off-by-one, parsing error)
+- Clear, reproducible reporting of steps and evidence (commands used, outputs, time spent)
+- Judgement about whether to change code vs. change instructions (and documenting that decision)
+- Minimal code hygiene for fixes (clear small patches, comments, and minimal error checks)
 
-### Recommended Structure
-- Total duration: 90 minutes (recommended time allocation is shown per task).
-- Number of tasks: 4 practical tasks (progressively building on each other). Each task has explicit deliverables that the candidate includes in test_submission.json.
-- Deliverable format: a single JSON file named test_submission.json that contains structured fields for each task (commands run, captured stdout/stderr, exit codes, test script contents, code diffs if modified, and concise rationales).
-- Scoring: total 100 points, pass threshold 80% for the basic exam.
+### Recommended Structure (Basic exam — entry level)
+Total time allowed: 90 minutes. Candidate submits a single JSON file named test_submission.json containing structured answers and embedded artifacts (see JSON schema below). Candidate may also include corrected source files as fields inside JSON.
 
-Suggested tasks and time allocation:
-1. Task 1 — Run & Verify (15 minutes, 20 points)
-   - Given a small command-line program (e.g., provided Python script `reporter.py`) and one sample input file, run the program, capture stdout/stderr and exit code, and verify the output matches the provided expected output file.
-   - Deliverable: captured command, stdout, stderr, exit code, a boolean "match" indicator, and short comment if mismatch.
-2. Task 2 — Create Repeatable Test Harness (25 minutes, 30 points)
-   - Write a simple test harness script (e.g., `run_tests.py` or shell script) that automates multiple runs of the program across 3 provided test inputs and asserts expected outputs (exact match or tolerant match for numeric tolerances).
-   - Deliverable: test harness source code (full), captured run log when harness is executed, and a summary of pass/fail per case.
-3. Task 3 — Diagnose & Propose Fix (25 minutes, 30 points)
-   - One of the test inputs is designed to fail (a small, intentional bug in the program or a malformed input). Diagnose cause via logs or program behavior. Either (A) implement a minimal code fix (if fixing is allowed) or (B) implement a wrapper that normalizes input before calling program. Provide the patch/wrapper and run the harness again to show success.
-   - Deliverable: diagnosis steps (commands run to investigate), the minimal code diff or wrapper, and captured output showing tests now pass. If a code change was made, include original and modified file contents or a unified diff.
-4. Task 4 — Short Test Report & Repro Steps (25 minutes, 20 points)
-   - Produce a concise test report (max 300 words) summarizing results, risk/limitations, and exact commands to reproduce the successful runs on a clean environment. Include any assumptions (language/version) and cleanup instructions.
-   - Deliverable: short text report included as a string field in JSON.
+Overview — 3 hands-on tasks, increasing complexity:
+1. Task 1 — Run & Reproduce (20 minutes)
+   - Objective: Run one small provided program/script with an included input file and reproduce the expected output (expected output provided).
+   - Deliverable: console output captured, exact commands used, whether output matched. If not matched, brief note of observed mismatch.
+2. Task 2 — Automated Checks (30 minutes)
+   - Objective: Create and run a small automated test harness (e.g., a few unit tests or a script that validates core outputs) that verifies key behaviors of the program.
+   - Deliverable: test files (source), test run logs (pass/fail for each test), commands used, and short explanation of test coverage.
+3. Task 3 — Diagnose & Fix (30 minutes)
+   - Objective: Find and fix a deliberate, small bug or ambiguity in the program or run instructions that prevents correct behavior for a small extra input case. Make a minimal patch and re-run Task 1 and Task 2 to show success.
+   - Deliverable: patched source (embedded in JSON), patch notes (what changed and why), re-run outputs and test logs, and brief commentary on alternative fixes if any.
 
-Note: some tasks overlap to allow for iterative testing and reproduceable evidence.
+Final packaging: A single JSON file test_submission.json containing:
+- candidate metadata (name, candidate_id, start_time, end_time)
+- per-task structured evidence (commands, outputs, files added/edited, time spent)
+- embedded corrected source files (text fields) and test files
+- optional short self-evaluation (areas confident vs. uncertain)
 
-### Practicality — How to make it hands-on
-- Provide the candidate with a small, self-contained application (single-file program in a standard language such as Python 3) and a set of small input files plus expected outputs. All resources must be bundled with the exam.
-- Require the candidate to run the program in the provided environment (no internet access, no external packages) and use only standard library tooling (python, bash, etc.).
-- Require creation of an executable test harness (script) that can be re-run by the evaluator to reproduce all test runs and outcomes automatically.
-- Force capture of raw outputs (stdout/stderr/exit codes) and include them in the JSON submission so the evaluator can verify claims without requiring additional materials.
-- Allow minimal code modification or wrapper usage to fix a controlled bug, to show the candidate can do practical diagnosis+remediation rather than only write theoretical test plans.
+Suggested time allocation:
+- Setup & Task 1: 20 min
+- Task 2 (tests): 30 min
+- Task 3 (fix + verification): 30 min
+- Finalize & create JSON: 10 min (this overlaps; ensure total ≤ 90)
 
-### Strategic Elements (distinguish doing vs knowing)
-Include these multi-step and decision-making features so the exam separates practical performers from theory-only candidates:
-- Multi-step dependency: Task 2 requires automation that runs Task 1 repeatedly; Task 3 requires interpreting failures from Task 2 to either patch the program or normalize inputs via a wrapper. This enforces iterative testing practices.
-- Data dependencies: Provide inputs that include normal data, numeric edge cases (e.g., floats vs integers), and malformed records (blank lines or missing fields). Candidate must choose which cases to test and how tolerant comparisons should be.
+### Practicality — Making it a hands-on assessment
+- Provide the candidate with a small codebase (single-file script or 2–3 files) and a small dataset (text/CSV/JSON) packaged for offline use.
+- Do not provide expected answers beyond one canonical expected output file for Task 1 and a short description of the extra-case behaviour for Task 3.
+- Candidate must run the code locally, capture real console logs and include them in the JSON; they cannot rely on conceptual descriptions.
+- Candidate must implement and run actual tests (not just explain what they would test).
+- Candidate must submit the actual corrected source and test files as part of the JSON so the evaluator can re-run them.
+
+Notes on technology choices (exam creator):
+- For a basic exam expect language = Python 3 (common availability); provide a requirements-free script (no external packages). If another language is used, provide a single Dockerfile or clear run commands, but prefer avoiding external dependencies to keep exam fair without internet access.
+
+### Strategic elements that distinguish practical skill
+- Multi-step verification:
+  - Require the candidate to first run the original program (unmodified) and show the result.
+  - Ask them to create an automated check that codifies the acceptance criteria so success can be re-run deterministically.
+  - Then require them to alter code or instructions minimally to address a failing case and show the tests now pass.
+- Data dependency:
+  - Include at least one small input dataset with an edge case that exposes a bug (e.g., trailing newline, empty field, or off-by-one boundary).
 - Decision points:
-  - Whether to change the code under test or write a wrapper. Candidate must justify choice (short explanation required in JSON).
-  - Whether to use exact-match verification or tolerate floating point rounding (and document chosen tolerance).
-- Require reproducibility metadata: commands used (with exact flags) and environment notes (python --version), so evaluator can rerun everything deterministically.
-- Require automated assertions rather than manual eyeballing (harness must exit nonzero on failure and print clear summary).
+  - Make one issue ambiguous so the candidate must decide to (a) modify the code to accommodate a reasonable interpretation, or (b) update the run instructions to state the precondition; require justification for their decision.
+- Monitor reproducibility:
+  - Candidate must include exact commands used and capture standard output and exit codes (or test runner output), so evaluator can repeat steps.
+- Minimal but meaningful debugging:
+  - Bugs should be fixable with small changes (1–15 lines), e.g., wrong operator, incorrect index, improper string split, integer division issue, or inadequate input validation.
 
-These features force candidates to demonstrate actual trial-running, debugging, and automation, not only knowledge of principles.
+### Evaluation Insights (what to look for and scoring)
+Scoring model (100 points total). Entry-level expected pass ≥ 80% for qualified candidates.
 
-### Required JSON Submission Schema (test_submission.json)
-To simplify evaluation, require this exact structure. All keys must be present; empty strings/arrays allowed but will lower scores.
+- Task 1 — Run & Reproduce (25 pts)
+  - 10 pts: Correct commands given and executed (including any environment commands).
+  - 10 pts: Captured outputs match the expected output exactly (or acceptable documented differences).
+  - 5 pts: Clear explanation if mismatch (observed vs expected).
+- Task 2 — Automated Checks (25 pts)
+  - 10 pts: Test harness exists and runs with a single command.
+  - 10 pts: Tests correctly assert the important behaviors (at least 2–3 meaningful tests).
+  - 5 pts: Test outputs/logs included and documented.
+- Task 3 — Diagnose & Fix (35 pts)
+  - 10 pts: Correct identification of root cause (bug or ambiguous instruction).
+  - 15 pts: Correct, minimal patch applied; code included and runnable.
+  - 10 pts: Re-run shows passing tests and expected outputs; explanation of trade-offs/alternatives.
+- Documentation & Reproducibility (15 pts)
+  - 5 pts: JSON is properly formatted, contains all requested fields and artifacts.
+  - 5 pts: Commands, timestamps, and time_spent entries are complete and plausible.
+  - 5 pts: Clear, concise patch notes and decision justification.
+
+Partial credit rules:
+- If tests were written but do not run due to syntax errors, award partial credit for intent and coverage.
+- If a candidate correctly diagnoses the issue but does an inferior fix (e.g., brittle workaround), award partial credit but deduct for maintainability concerns (noted in comments).
+
+Observable outputs that indicate competence
+- Exact console logs matching expected output file(s)
+- Test harness output showing PASS for all listed tests
+- Patched code embedded in JSON that is runnable and minimal
+- Clear sequence of commands that allow the evaluator to re-run the steps
+- Reasoned explanation for any decision to change instructions vs. code
+- Time_spent values consistent with 90-minute limit (majority of time spent on test/fix tasks)
+
+### Deliverable JSON schema (recommended fields)
+Provide this schema to candidates. The evaluator will rely on these fields.
 
 {
-  "candidate_name": "...",
-  "language_and_version": "...",          // e.g., "Python 3.10.6"
-  "task_1": {
-    "command_run": "...",                 // exact shell command(s)
-    "stdout": "...",
-    "stderr": "...",
-    "exit_code": 0,
-    "expected_output_match": true,
-    "comment": "..."                      // short note on observed result or mismatch
+  "candidate": {
+    "name": "string",
+    "candidate_id": "string",
+    "start_time": "ISO8601 timestamp",
+    "end_time": "ISO8601 timestamp"
   },
-  "task_2": {
-    "harness_filename": "run_tests.py",
-    "harness_source": "...",              // full file content as string
-    "harness_command_run": "...",
-    "harness_stdout": "...",
-    "harness_stderr": "...",
-    "harness_exit_code": 0,
-    "test_results": [                     // array of objects per test case
-      {
-        "input_filename": "...",
-        "expected_output_filename": "...",
-        "passed": true,
-        "notes": "..."
-      }
-    ]
-  },
-  "task_3": {
-    "investigation_commands": ["..."],    // array of commands issued during diagnosis
-    "diagnosis": "...",                   // short description: root cause
-    "fix_strategy": "patch" | "wrapper" | "other",
-    "fix_diff_or_wrapper": "...",         // unified diff or wrapper script content
-    "post_fix_harness_stdout": "...",
-    "post_fix_harness_exit_code": 0,
-    "post_fix_test_results": [ { ... } ]  // same structure as above
-  },
-  "task_4": {
-    "summary_report": "...",              // short summary (<=300 words)
-    "repro_commands": ["..."],            // exact minimal commands to reproduce success
-    "assumptions_and_limitations": "..."
-  },
-  "time_taken_minutes": 0,
-  "final_notes": "..."                    // any additional commentary
+  "tasks": [
+    {
+      "task_id": "T1",
+      "title": "Run & Reproduce",
+      "time_spent_minutes": number,
+      "commands_executed": ["string", "..."],
+      "raw_console_output": "string",
+      "expected_output_match": "yes|no|partial",
+      "difference_note": "string"
+    },
+    {
+      "task_id": "T2",
+      "title": "Automated Checks",
+      "time_spent_minutes": number,
+      "test_files": {
+        "filename1.py": "string contents",
+        "..."
+      },
+      "test_command": "string",
+      "test_output": "string",
+      "tests_passed": number,
+      "tests_failed": number,
+      "coverage_note": "string"
+    },
+    {
+      "task_id": "T3",
+      "title": "Diagnose & Fix",
+      "time_spent_minutes": number,
+      "root_cause": "short description",
+      "patch_files": {
+        "filename1.py": "string contents",
+        "..."
+      },
+      "patch_summary": "string",
+      "commands_exexecuted_after_patch": ["string"],
+      "post_patch_console_output": "string",
+      "post_patch_test_output": "string",
+      "final_status": "fixed|not_fixed|partially_fixed",
+      "decision_justification": "string"
+    }
+  ],
+  "self_evaluation": {
+    "confidence_level": "1-5",
+    "notes": "string"
+  }
 }
 
-Require the candidate to base64-encode binary artifacts if any (but ideally no binary files used).
+Evaluator instructions
+- Re-run the exact commands listed in commands_executed fields to verify outputs.
+- Save embedded source/test files to disk and run the declared test command.
+- Use the scoring rubric to assign points per task. Inspect patch size and quality for Task 3.
+- If any ambiguity remains, check whether the candidate documented a justification; give credit when the justification is reasonable.
 
-### Evaluation Insights — Observable indicators of competence
-Observable outputs and criteria to judge competency practically:
-
-1. Reproducibility (high priority)
-   - Evaluator can take candidate's harness/script and run it to reproduce the reported outputs and pass/fail statuses.
-   - Commands in JSON are exact and runnable; environment note matches candidate environment.
-
-2. Correctness of verification
-   - Task 1: exact pass/fail is demonstrable via stdout/exit code and expected output comparison.
-   - Task 2: harness enforces assertions programmatically (exits nonzero on failure). Tests cover happy path and simple edge cases.
-
-3. Automation and scripting ability
-   - Harness code is readable, minimal, and does not rely on external libraries.
-   - Proper handling of exit codes, deterministic comparisons, and clear pass/fail reporting.
-
-4. Diagnosis and pragmatic repair
-   - Candidate shows a logical investigation sequence (commands run, error messages examined).
-   - Fix is minimal and scoped; if patched, code diff is clear and explained. If wrapper chosen, justification is clear and acceptable.
-   - After fix or wrapper, harness shows failing case turned into passing case.
-
-5. Decision rationale & constraints
-   - Candidate justifies decisions (exact-match vs tolerance, patch vs wrapper, assumptions). This distinguishes those who can act practically from those relying on pure knowledge.
-
-6. Clean, structured reporting
-   - The JSON follows the schema exactly and contains the requested artifacts (scripts, outputs, diffs). Reports are concise and actionable.
-
-7. Time management and coverage
-   - Candidate completes core tasks within the 90-minute limit and allocates effort roughly as recommended. (Time fields help evaluators but do not strictly score unless incomplete.)
-
-### Scoring Rubric (basic)
-- Task 1 (20 pts)
-  - 10 pts — Reproducible run captured (command, stdout/stderr, exit code)
-  - 10 pts — Correct verification against expected output
-
-- Task 2 (30 pts)
-  - 10 pts — Harness runs and is runnable by evaluator
-  - 10 pts — Harness asserts and reports test results programmatically
-  - 10 pts — Includes at least three test cases including an edge case
-
-- Task 3 (30 pts)
-  - 10 pts — Clear diagnosis with evidence (commands/logs)
-  - 10 pts — Effective, minimal fix or wrapper implemented
-  - 10 pts — Demonstrated that failing test now passes; harness re-run shows success
-
-- Task 4 (20 pts)
-  - 10 pts — Concise reproduction steps and assumptions
-  - 10 pts — Clear summary and limitations, risk statement if any
-
-Partial credit allowed for partial evidence. Passing score: 80/100.
-
-### Notes for the Exam Creator / Evaluator
-- Provide exam materials as a single zip/tar with:
-  - the small app under test (single file),
-  - three input files and three expected output files (one designed to fail),
-  - a README that tells the candidate program usage and confirms allowed actions (whether editing original code is allowed).
-- Ensure program uses only standard language features so candidate can run with stock interpreter.
-- Prefer small, obvious-to-debug bugs for the basic exam (off-by-one, wrong rounding, ignoring blank lines).
-- During evaluation, prioritize reproducibility: re-run their harness; if it doesn't run, deduct heavily.
-
-This structure produces a hands-on, time-bounded, practical evaluation that confirms candidates can conduct trial runs, verify outputs, automate tests, and apply simple remediation — the key skills for entry-level programmers responsible for validating software behavior.
+### Final notes for exam creators
+- Keep the codebase small and dependency-free.
+- Seed one clear but non-trivial bug and one ambiguous instruction to evaluate judgment.
+- Make expected outputs precise (byte-for-byte) for Task 1 to force exact runs.
+- Ensure tests can be executed with a single command (e.g., python -m pytest or python run_tests.py).
+- Limit total work so a competent entry-level candidate can comfortably score >80% in 90 minutes.

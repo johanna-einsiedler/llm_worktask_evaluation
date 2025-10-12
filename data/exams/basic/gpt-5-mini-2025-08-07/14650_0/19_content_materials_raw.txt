@@ -1,0 +1,136 @@
+<MATERIALS_FOR_CANDIDATE>
+Repository layout (files and contents). Run command: pytest -q
+
+File: README.md
+---
+Run the test suite with:
+pytest -q
+
+Python requirement: Python 3.8 or higher. No external packages required.
+
+File: app.py
+---
+from datetime import date, datetime
+
+# Deterministic "today" used by application logic so tests are reproducible.
+TODAY = date(2025, 1, 15)
+
+def get_user_profile(user_id):
+    """
+    Returns a user profile dictionary.
+    Current API uses 'username' (lowercase) as the field name.
+    """
+    profiles = {
+        1: {'id': 1, 'username': 'alice', 'email': 'alice@example.com'},
+        2: {'id': 2, 'username': 'bob', 'email': 'bob@example.com'}
+    }
+    return profiles.get(user_id, {'id': user_id, 'username': 'unknown', 'email': ''})
+
+def render_login_button():
+    """
+    Returns an HTML fragment for the login button.
+    The button now includes a stable data-test-id and the visible label 'Log In'.
+    """
+    return '<button data-test-id="login-btn">Log In</button>'
+
+def is_subscription_active(expiry_date_str):
+    """
+    expiry_date_str: 'YYYY-MM-DD'
+    Returns True if expiry date is the same or after TODAY.
+    """
+    expiry = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+    return expiry >= TODAY
+
+File: tests/fixtures.py
+---
+# Test fixture data used by subscription tests.
+TEST_SUBSCRIPTION = {
+    'user_id': 1,
+    # This expiry_date is intentionally in the past relative to app.TODAY to create a failing test.
+    'expiry_date': '2024-06-30'
+}
+
+File: tests/helpers.py
+---
+# Helpful constants for tests. Tests should prefer these stable identifiers.
+LOGIN_BUTTON_TEST_ID = 'login-btn'
+
+File: tests/test_user_api.py
+---
+from app import get_user_profile
+
+def test_get_user_profile_username_key():
+    profile = get_user_profile(1)
+    # This test expects the older field name 'userName' (camelCase).
+    # The application now returns 'username' (lowercase).
+    assert profile['userName'] == 'alice'
+
+File: tests/test_ui.py
+---
+from app import render_login_button
+
+def test_login_button_label():
+    html = render_login_button()
+    # This test checks the visible label text 'Sign In', which was changed to 'Log In'.
+    assert 'Sign In' in html
+
+File: tests/test_subscription.py
+---
+from app import is_subscription_active
+from tests.fixtures import TEST_SUBSCRIPTION
+
+def test_subscription_is_active():
+    expiry = TEST_SUBSCRIPTION['expiry_date']
+    # The fixture expiry_date is '2024-06-30', which is before app.TODAY (2025-01-15).
+    # The test currently expects the subscription to be active.
+    assert is_subscription_active(expiry) is True
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How and why these materials were created
+- Purpose: Provide a small, deterministic repo where the application code reflects the updated/current behavior and tests intentionally reference the old behavior. The candidate must update only the test code (including fixtures/helpers) to make the tests reflect the current application surface.
+- Chosen language and runner: Python with pytest (no external dependencies) to keep setup minimal and deterministic.
+
+Patterns and relationships
+- app.get_user_profile returns a dict using key 'username' (lowercase). The test tests/test_user_api.py expects 'userName' (camelCase). This simulates an API field rename (common real-world cause of failing tests).
+- app.render_login_button returns HTML with a stable data attribute data-test-id="login-btn" and visible label 'Log In'. tests/test_ui.py asserts that the button contains text 'Sign In' (old label). This simulates a UI label change; candidate should prefer stable selectors (data-test-id) rather than brittle text checks.
+- tests/fixtures.py contains TEST_SUBSCRIPTION with expiry_date '2024-06-30', while app.is_subscription_active uses a deterministic TODAY = 2025-01-15. The test expects the subscription to be active, but the fixture date makes it expired. This simulates stale test data that needs updating.
+
+What correct fixes look like
+- Update tests/test_user_api.py to assert profile['username'] == 'alice' (or otherwise access the correct key).
+- Update tests/test_ui.py to assert the presence of the stable data-test-id (e.g., 'data-test-id="login-btn"') or use tests/helpers.LOGIN_BUTTON_TEST_ID constant; prefer selecting by data-test-id rather than matching visible label. Alternatively, if the candidate chooses to assert the new visible label 'Log In', that is acceptable but must be justified.
+- Update tests/fixtures.py expiry_date to a date >= app.TODAY (for example '2026-06-30'), so is_subscription_active returns True.
+
+Deterministic behavior
+- The application uses a fixed TODAY date (2025-01-15) to ensure subscription checks are deterministic and reproducible across candidates and time.
+- All identifiers are consistent:
+  - LOGIN_BUTTON_TEST_ID constant = 'login-btn' in tests/helpers.py
+  - TEST_SUBSCRIPTION key names are stable ('user_id', 'expiry_date')
+  - User IDs and usernames are deterministic.
+
+Traps, ambiguities, and common errors candidates might make
+- Modifying application code (app.py) instead of tests to make the tests pass. Rule: application code must not be changed.
+- Broadening assertions inappropriately (for example, replacing an assertion with "assert True" or removing assertions). Such changes are not allowed by exam rules.
+- Changing tests to accept both old and new values without justification (e.g., accepting either 'Sign In' or 'Log In')—this is permitted only with a reason explaining the trade-off.
+- Forgetting to include original_content when modifying tests in the submission JSON (candidate instructions require original content be preserved in submission).
+- Using brittle string matching for UI instead of stable data attributes. The repo includes the stable constant tests/helpers.LOGIN_BUTTON_TEST_ID to encourage best practice.
+
+How expected answers are verified
+- The initial run of pytest will show failing stack traces pointing to KeyError and failed assertions:
+  - KeyError: 'userName' or failing assertion in test_user_api.py.
+  - AssertionError for label text in test_ui.py.
+  - AssertionError for subscription test because expiry date < TODAY.
+- Correct fixes are limited to tests and fixtures/helpers and will produce a green pytest run: 3 passed.
+- Evaluator will check modified_files in candidate-submitted test_submission.json to ensure:
+  - Only test files or test helpers/fixtures were changed (no changes to app.py).
+  - Original and new contents are provided.
+  - Explanations link each failing symptom to the exact change made.
+  - Reproduce instructions use the single command pytest -q.
+
+Differentiating conceptual vs. practical skill
+- Conceptual understanding: candidate should identify root causes (renamed field, text change, stale fixture) from traces.
+- Practical skill: candidate must make minimal, correct edits to tests, prefer stable selectors/constants, update fixtures deterministically, and re-run tests to verify fixes.
+- The materials require both diagnosis from failing output and hands-on edits; incorrect but plausible approaches (changing app.py, removing assertions) are easy to spot in the submission.
+
+Evaluator note: The candidate should be able to finish within 90 minutes. Expect typical fixes to touch up to three files: tests/test_user_api.py, tests/test_ui.py (or tests/helpers.py), and tests/fixtures.py. Review for minimality, correctness, and clarity of explanations.
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

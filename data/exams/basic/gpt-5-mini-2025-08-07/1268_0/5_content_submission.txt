@@ -1,39 +1,52 @@
 ```json
 {
-  "candidate_name": "",
-  "language_and_version": "",
-  "task_1": {
-    "command_run": "",
-    "stdout": "",
-    "stderr": "",
-    "exit_code": null,
-    "expected_output_match": null,
-    "comment": ""
+  "candidate": {
+    "name": "",
+    "candidate_id": "",
+    "start_time": "",
+    "end_time": ""
   },
-  "task_2": {
-    "harness_filename": "run_tests.py",
-    "harness_source": "",
-    "harness_command_run": "",
-    "harness_stdout": "",
-    "harness_stderr": "",
-    "harness_exit_code": null,
-    "test_results": []
-  },
-  "task_3": {
-    "investigation_commands": [],
-    "diagnosis": "",
-    "fix_strategy": "",
-    "fix_diff_or_wrapper": "",
-    "post_fix_harness_stdout": "",
-    "post_fix_harness_exit_code": null,
-    "post_fix_test_results": []
-  },
-  "task_4": {
-    "summary_report": "",
-    "repro_commands": [],
-    "assumptions_and_limitations": ""
-  },
-  "time_taken_minutes": null,
-  "final_notes": ""
+  "tasks": [
+    {
+      "task_id": "T1",
+      "title": "Run & Reproduce",
+      "time_spent_minutes": null,
+      "commands_executed": [],
+      "raw_console_output": "",
+      "exit_code": null,
+      "expected_output_match": "",
+      "difference_note": ""
+    },
+    {
+      "task_id": "T2",
+      "title": "Automated Checks",
+      "time_spent_minutes": null,
+      "test_files": null,
+      "test_command": "",
+      "test_output": "",
+      "test_exit_code": null,
+      "tests_passed": null,
+      "tests_failed": null,
+      "coverage_note": ""
+    },
+    {
+      "task_id": "T3",
+      "title": "Diagnose & Fix",
+      "time_spent_minutes": null,
+      "root_cause": "",
+      "patch_files": null,
+      "patch_summary": "",
+      "commands_executed_after_patch": [],
+      "post_patch_console_output": "",
+      "post_patch_test_output": "",
+      "post_patch_exit_codes": null,
+      "final_status": "",
+      "decision_justification": ""
+    }
+  ],
+  "self_evaluation": {
+    "confidence_level": null,
+    "notes": ""
+  }
 }
 ```

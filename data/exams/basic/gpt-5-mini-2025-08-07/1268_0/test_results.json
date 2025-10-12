@@ -1,34 +1,52 @@
 {
-  "per_task": [
-    {
-      "task": "task_1",
-      "max_points": 20,
-      "awarded": 20,
-      "comments": []
+  "candidate_info": {
+    "name": "Answer Key, Ideal Candidate",
+    "candidate_id": "IDEAL-001",
+    "start_time": "2025-10-12T09:00:00Z",
+    "end_time": "2025-10-12T10:20:00Z"
+  },
+  "scores": {
+    "T1": {
+      "earned": 25,
+      "max": 25
     },
-    {
-      "task": "task_2",
-      "max_points": 30,
-      "awarded": 30,
-      "comments": []
+    "T2": {
+      "earned": 25,
+      "max": 25
     },
-    {
-      "task": "task_3",
-      "max_points": 30,
-      "awarded": 30,
-      "comments": []
+    "T3": {
+      "earned": 35,
+      "max": 35
     },
-    {
-      "task": "task_4",
-      "max_points": 20,
-      "awarded": 20,
-      "comments": []
+    "Documentation": {
+      "earned": 15,
+      "max": 15
     }
-  ],
-  "total_awarded": 100,
-  "total_max": 100,
-  "percentage": 100.0,
-  "overall_score": 100.0,
-  "detailed_comments": [],
-  "candidate_name": "Example Candidate"
+  },
+  "explanations": {
+    "T1": [
+      "T1: Exact output match and proper command found -> full Task1 credit."
+    ],
+    "T2": [
+      "T2: test_command provided and returned exit code 0 -> 10/10.",
+      "T2: At least 3 tests passed -> 10/10 for test coverage.",
+      "T2: test_output and test_exit_code present -> 5/5 for logs."
+    ],
+    "T3": [
+      "T3: Root cause description mentions parsing/blank lines/delimiter issues -> 10/10.",
+      "T3: program.py included in patch_files and contains robust parsing fixes -> 15/15.",
+      "T3: post-patch program run and tests indicate success -> 10/10."
+    ],
+    "Documentation": [
+      "DOC: Required top-level fields present -> 5/5.",
+      "DOC: Timestamps look ISO8601, commands present, and time_spent sum plausible -> 5/5.",
+      "DOC: Patch summary and decision justification present and descriptive -> 5/5."
+    ]
+  },
+  "total": {
+    "earned": 100,
+    "max": 100,
+    "percent": 100.0
+  },
+  "overall_score": 100.0
 }

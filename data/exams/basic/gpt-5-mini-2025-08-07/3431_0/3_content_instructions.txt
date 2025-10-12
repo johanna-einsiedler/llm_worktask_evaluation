@@ -1,134 +1,113 @@
 ### Exam Title
-Software Developer (Applications) — Practical Maintenance & Adaptation Test (Basic, 90 minutes)
+Practical Maintenance & Optimization — Basic (90-minute hands-on)
 
 ### Instructions for Candidate
-You have 90 minutes total to complete three sequential practical tasks (A → B → C) against the provided repository. Use only the local code execution environment and a text editor. No internet or external libraries are available.
+You have 90 minutes total. Use only the provided machine, the local code editor, and the included execution environment (no internet, no external libraries). All work is done in-place in the provided repository.
 
-Time recommendation (suggested):
-- Task A — Bug Fix: 40 minutes
-- Task B — Environment Adaptation: 20 minutes
-- Task C — Small Performance Improvement + measurements: 25 minutes
-- Packaging submission: 5 minutes
+1. Unpack the exam package and read README and any task notes (0–5 minutes).
+2. Run the provided “run_all” script to get the baseline:
+   - Try ./run_all.sh or python3 run_all.py (whichever exists). This script runs unit tests and a small benchmark and prints baseline numbers.
+   - Capture the full stdout/stderr and exit code.
+3. Task A — Bug Fix (35 minutes)
+   - Goal: Find and fix the functional defect(s) so that the unit tests pass.
+   - Steps:
+     - Run the test suite (the run_all script does this) and read failing tests and stack traces.
+     - Modify the code in src/ only as needed to fix the bug(s). Keep changes minimal and safe.
+     - Re-run the test suite until all unit tests pass.
+   - Deliverable for Task A: tests must pass; capture commands and outputs in your JSON submission.
+4. Task B — Hardware Adaptation (25 minutes)
+   - Goal: Modify the code so it produces the same correct results under a constrained hardware mode (simulated low-memory or no-parallelism).
+   - The repository includes a validation/alternate mode script or accepts a flag to run in constrained mode (examples: ./run_all.sh --low-mem or python3 run_all.py --low-mem). Locate the instructions in README; use the provided mechanism to validate low-memory mode.
+   - Typical acceptable adaptations (choose one sensible approach; do not try to implement everything):
+     - Convert an operation that reads an entire input file into a streaming approach (process line-by-line / chunked).
+     - Provide a sequential fallback if multiprocessing is not available.
+     - Replace unnecessary large in-memory data structures with smaller or streaming alternatives.
+   - Run the provided low-memory validation script or run_all with the low-memory flag and capture the output. The validation must complete successfully without errors and must produce the expected result (the provided script will indicate correctness).
+   - Deliverable for Task B: evidence that the low-memory/constrained mode runs to completion and yields correct output.
+5. Task C — Performance Improvement (25 minutes)
+   - Goal: Implement a focused performance improvement that measurably reduces runtime or memory usage for the provided dataset.
+   - Steps:
+     - Before making changes, capture the baseline benchmark (from step 2).
+     - Implement a targeted optimization (for example: improve algorithmic complexity from O(n^2) to O(n) by using a dict/set, reduce I/O by streaming or buffering, or avoid repeated expensive operations).
+     - Re-run the benchmark using the same command used for baseline and capture optimized runtime/memory numbers.
+     - Ensure all tests still pass after optimization.
+   - Deliverable for Task C: a measurable improvement (the benchmark outputs before and after), with tests still passing.
+6. Prepare submission (final 5 minutes)
+   - Create a single JSON file named test_submission.json in the repository root following the required schema (see Submission Format below).
+   - In the JSON include the commands you ran, captured stdout/stderr, exit codes, files you changed (relative paths), short explanations of root causes and fixes, and numeric evidence (test pass boolean, low-mem run boolean/notes, baseline and optimized times and improvement factor).
+   - You may optionally generate a unified diff and reference it in the JSON, but only test_submission.json will be used for automated/manual evaluation.
 
-General rules
-- Work in the provided repo. It contains a small Python 3 codebase, a test runner (run_tests.py), and a benchmark (bench.py). No external dependencies.
-- First run the test runner and the benchmark exactly as provided to capture pre-change outputs (you must include these raw outputs in your submission).
-- Make only the minimum changes needed to accomplish each task. Avoid unrelated edits.
-- If you can use git in the environment, produce a unified diff (git diff). If git is unavailable, include full updated file contents with clear file path headers.
-- Record exact commands you ran to produce outputs.
-- Collect all deliverables in a single file named test_submission.json (schema below). Also keep the modified files in the repo if possible.
-
-Task sequence (must be done in order)
-1. Task A — Bug Fix
-   - Reproduce the failing behavior: run the supplied test runner and capture the full console output.
-   - Locate the root cause in the code and modify the code to correct the defect so that the provided tests pass.
-   - Re-run the test runner and capture the post-fix console output.
-   - Provide a minimal patch/diff or updated file(s).
-   - Add or modify a small unit test only if the original tests did not cover the failing behaviour and adding a test is necessary to demonstrate the fix.
-   - In your JSON submission include a one- to three-paragraph explanation of root cause and why your fix is minimal and correct.
-
-2. Task B — Environment Adaptation
-   - The repo includes a short adaptation requirement (README or task note). Update code/configuration so the application runs in the changed runtime mode (e.g., accept stdin instead of file, or use streaming instead of full memory accumulation, or adapt to a simple helper signature change).
-   - Demonstrate the adapted mode running by capturing the exact console output of the app in the new mode.
-   - Provide the minimal patch/diff or updated file(s).
-   - In your JSON submission include a 1–3 paragraph explanation of what changed, why your change is safe, and any residual risks or limitations.
-
-3. Task C — Small Performance Improvement
-   - Run the supplied benchmark script on the provided deterministic input and capture baseline timing (exact command and full output).
-   - Propose and implement one small, safe optimization (e.g., avoid repeated work, replace an O(n^2) micro-inefficiency, use a more appropriate data structure, stream processing).
-   - Re-run the benchmark and capture the after-change timing.
-   - Provide the patch/diff or updated file(s).
-   - In your JSON submission include the benchmark numbers (in milliseconds), the exact benchmark command, and a brief explanation (1–3 short paragraphs) of what you changed and the trade-offs/risks.
-
-Important notes on outputs and evidence
-- Paste exact console outputs (pre- and post-fix) including stack traces and timing lines. Do not paraphrase or summarize them.
-- If you supply a unified diff, it must be in standard git unified-diff format. If not using git, include full updated file contents with clear headers like:
-  === file: src/example.py ===
-  <file contents>
-- Keep your code changes small and focused. Large unrelated refactors reduce credit.
-- Self-assess your confidence (1 low — 5 high) for Task A in the JSON.
-
-Time & honesty
-- Stop when 90 minutes is reached and package your results. Record your total time_taken_minutes honestly.
+Important rules
+- Maximum time: 90 minutes. Work beyond this is not considered.
+- Do not use external network resources or non-standard libraries.
+- Make code changes in the local repository only; do not add large external files.
+- The grader will re-run the included scripts to verify your reported outputs; do not paste manipulated or fake outputs.
 
 ### Expected Outcome
-By the end of the test you must produce:
-- A working test suite: run_tests.py should show that the failing test(s) identified in Task A are passing after your fix.
-- A working adaptation: the app runs correctly in the new environment/mode required in Task B and you show the run output.
-- A measured performance improvement: benchmark numbers before and after Task C showing measurable improvement (a modest target is ~15–30% improvement; smaller or no improvement is acceptable for partial credit if methodology and reasoning are sound).
-- One single file test_submission.json containing required metadata, diffs or updated file contents, run outputs and short explanations for each task (schema below).
-- All modified source files included alongside the JSON in the repo (if possible).
+By the end of the test you must provide:
+- A modified local repository where:
+  - All unit tests pass.
+  - The code includes a working low-memory (or no-parallelism) mode that produces correct results via the provided validation script or flag.
+  - The code contains a targeted performance improvement with a measurable improvement reported by the benchmark.
+- A single submission file test_submission.json (UTF-8 valid JSON) containing:
+  - Your name, email, time spent, environment string.
+  - Three task entries (A, B, C) listing modified files, commands executed, captured outputs and exit codes, short explanations (<~200 words each), and numeric evidence (tests_passed flag, low_mem_mode_ran flag and notes, baseline and optimized times and improvement factor).
+  - Optional: a unified diff string (optional_diff field) or other final notes.
 
-Deliverables checklist (must be included in test_submission.json)
-- candidate_name
-- time_taken_minutes
-- task_results — array with three objects for "A-bugfix", "B-adapt_env", "C-performance" containing specified fields (see schema)
-- any other_notes you wish to state
+Acceptance criteria (objective)
+- Task A: All provided unit tests pass (verifiable by rerunning the provided test command).
+- Task B: The provided low-memory validation script or mode runs to completion and indicates correct output (no crashes/OOM).
+- Task C: Benchmark shows a measurable improvement (baseline_time_s and optimized_time_s reported, improvement_factor = baseline/optimized > 1), and tests still pass.
+- test_submission.json is valid JSON and contains the required fields.
 
 ### Provided Materials
-You will find the following in the repository you were given:
-- src/ (source files, small codebase, ~150–400 LOC total)
-- tests/ (unit tests used by the test runner; at least one failing test for Task A)
-- run_tests.py (script that executes the test suite and prints PASS/FAIL and stack traces; must be run first for Task A)
-- bench.py (benchmark script with deterministic input used in Task C; prints timing in ms)
-- README.txt (short usage notes and the environment-adaptation requirement description)
-- (Optional) helper scripts to run the app in alternative modes (see README)
-
-Notes about materials
-- Code is plain Python 3, no external packages. All inputs for benchmark are deterministic and included in the repo.
-- The environment adaptation requirement is described in README.txt — read it before Task B.
+The exam package contains the following (all available locally after unpacking):
+- src/ — small application source code ( ~200–300 lines total).
+- tests/ — unit tests and small assertion scripts (some may fail initially).
+- scripts/ or top-level files:
+  - run_all.sh or run_all.py — runs tests and baseline benchmark and prints times.
+  - (and also) a provided low-memory validation invocation / example (either a flag to run_all or a script in scripts/).
+- data/ — sample input file(s) (a few MB) that the benchmark and tests use.
+- README.md — instructions and notes about how to run the provided scripts.
+You must only use these materials and the standard library of the runtime environment.
 
 ### Submission Format
-You must submit a single JSON file named test_submission.json at the repository root. It must be UTF-8 encoded and follow this schema exactly (all string fields must be plain strings; numeric fields must be numbers; arrays must be arrays):
+You must submit a single file named test_submission.json at the repository root. This is the only file that will be used for grading. The JSON must be valid UTF-8 and follow this schema exactly (field types and names):
 
+Top-level fields
+- name: string
+- email: string
+- time_spent_minutes: integer
+- environment: string (e.g., "Python 3.10.5 on Ubuntu 22.04")
+- tasks: array of three objects (one per task). Each task object must include:
+  - id: string — exactly one of "A-bugfix", "B-lowmem", "C-performance"
+  - status: string — one of "fixed", "partially_fixed", "not_fixed"
+  - files_changed: array of relative file paths (strings). If none, provide an empty array.
+  - commands_run: array of objects, each with:
+    - cmd: string (command you ran)
+    - stdout: string (captured stdout and stderr combined)
+    - exit_code: integer
+  - explanation: string (short summary of root cause and what you changed; keep under ~200 words)
+  - evidence: object (task-specific)
+    - For Task A: {"tests_passed": true/false}
+    - For Task B: {"low_mem_mode_ran": true/false, "notes": string}
+    - For Task C: {"baseline_time_s": number, "optimized_time_s": number, "improvement_factor": number}
+- optional_diff: string (optional unified diff text or empty string)
+- final_notes: string (optional)
+
+Example minimal task entry
 {
-  "candidate_name": "<Full name>",
-  "time_taken_minutes": <number>,
-  "task_results": [
-    {
-      "task_id": "A-bugfix",
-      "status": "fixed" | "not_fixed" | "partial",
-      "files_modified": ["src/file1.py", "src/file2.py"],
-      "patch_unified_diff": "<string containing unified diff OR 'N/A' if full file contents are provided elsewhere in this JSON>",
-      "pre_fix_test_output": "<exact console output from running run_tests.py before edits>",
-      "post_fix_test_output": "<exact console output from running run_tests.py after edits>",
-      "explanation": "<1–3 short paragraphs: root cause, why fix works, why minimal>",
-      "unit_tests_added_or_modified": ["tests/test_bugcase.py"] or [],
-      "self_assessed_confidence": "<1-5>"
-    },
-    {
-      "task_id": "B-adapt_env",
-      "status": "adapted" | "not_adapted" | "partial",
-      "files_modified": ["src/io_adapter.py"],
-      "patch_unified_diff": "<string>",
-      "run_output_after_adaptation": "<console output showing app running in new mode>",
-      "explanation": "<what changed in environment, what you changed in code, why safe>",
-      "risks_or_limitations": "<short note about residual issues>"
-    },
-    {
-      "task_id": "C-performance",
-      "status": "improved" | "no_change" | "regressed",
-      "files_modified": ["src/processor.py"],
-      "patch_unified_diff": "<string>",
-      "benchmark_before_ms": <number>,
-      "benchmark_after_ms": <number>,
-      "bench_command_run": "<command used to run bench>",
-      "explanation": "<brief explanation of what was optimized and trade-offs>"
-    }
+  "id": "A-bugfix",
+  "status": "fixed",
+  "files_changed": ["src/parser.py"],
+  "commands_run": [
+    {"cmd": "python3 -m pytest -q", "stdout": "...\n1 failed\n", "exit_code": 1},
+    {"cmd": "python3 -m pytest -q", "stdout": "...\nAll tests passed\n", "exit_code": 0}
   ],
-  "other_notes": "<optional: anything else you want to state>"
+  "explanation": "Fixed parsing of quoted CSV fields by adjusting split logic so commas inside quotes are ignored.",
+  "evidence": {"tests_passed": true}
 }
 
-Additional submission guidance
-- For any "patch_unified_diff" field: prefer a git-format unified diff. If you cannot produce a unified diff, set that field to "N/A" and instead include the full updated file contents inline in task_results.explanation or in other_notes using the same explicit file headers described above.
-- All console outputs must be verbatim copies (include newlines exactly).
-- Include the exact shell/commands you used to run tests and benchmarks (for example: python3 run_tests.py ; python3 bench.py --count 1000).
-- If a task fails or you run out of time, set the appropriate status ("not_fixed", "not_adapted", "no_change", etc.) and include partial evidence and explanation.
+Grading will be objective — the grader will re-run the commands you list to verify outputs. Ensure everything you paste into the JSON is authentic and reproducible in the repository.
 
-Grading is objective and reproducible: evaluators will apply your diffs and re-run the same run_tests.py and bench.py commands to verify your claims.
-
-Good luck. Start by running:
-python3 run_tests.py
-and
-python3 bench.py
-and collect your pre-change outputs before editing any files.
+Good luck. Manage your time: Task A (35m), Task B (25m), Task C (25m), finalization (5m).

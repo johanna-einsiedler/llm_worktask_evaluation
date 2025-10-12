@@ -1,366 +1,492 @@
-You are an expert exam designer. Your task is to define the **exact submission template** for a practical exam based on the provided overview, instructions, and candidate materials. 
-
+You are an expert exam designer. Your task is to define the exact submission template for a practical exam based on the provided overview, instructions, and candidate materials.
 
 ⚠️ Important: The candidate must submit only one JSON file as their entire response.
-All answers, calculations, explanations, and results must be entered directly into this JSON structure.
-No additional files, documents, or attachments will be accepted.
+All answers—including calculations, explanations, code, or any other content—must be entered directly into this JSON structure.
+No external files, attachments, or file paths will be accepted. For example, if Python code or scripts are required, there must be a dedicated field in the JSON to submit the code; candidates should not be asked to provide a .py file or any other file.
 
-⚠️ You are **not** creating the questions, answers, or providing any example values—only specifying the expected structure the candidate will fill in.
+⚠️ You are not creating the questions, answers, or providing any example values—only specifying the expected structure the candidate will fill in.
 
 ### Inputs
 
 Here is a brief explanation of the exam's purpose and structure for the evaluator:
 <examoverview>
 ### Exam Purpose
-Confirm that a candidate can independently perform the core end-to-end work needed to store, retrieve, and manipulate data for analysis of a system’s capabilities and requirements. Specifically, the exam verifies practical ability to:
-- ingest a small dataset (CSV/JSON text),
-- design a simple storage model (file-based or SQLite),
-- write correct queries / code to retrieve and transform data,
-- produce aggregated metrics and a reproducible output (JSON) that an evaluator can verify.
+Confirm that a candidate can practically store, retrieve, and manipulate data to support simple analysis of system capabilities and requirements in a realistic engineering context. The exam validates that the candidate can:
 
-This mimics real tasks such as logging ingestion, basic telemetry analysis, feature usage reporting, or requirements-capability mapping in a small application.
+- Design a minimal data model for a small dataset.
+- Ingest raw data into a local store.
+- Write correct queries to retrieve and aggregate data to answer practical questions.
+- Transform and export results for downstream analysis.
+- Produce reproducible, runnable artifacts (scripts/SQL) and a brief interpretation of results.
+
+This demonstrates the real-world capability to turn raw telemetry or simple system logs into structured information useful for requirements analysis, capacity planning, or feature validation.
 
 ---
 
-### Core Competencies
-The basic exam will test that a candidate can:
-- Perform data ingestion from plain text (CSV/JSON) into a persistent store (SQLite or local structured files).
-- Design a minimal, sensible schema or structured storage for the dataset.
-- Write correct, parameterized queries or programmatic filters to retrieve required information.
-- Implement common data manipulations: filtering, joins (if multiple tables), derived fields, grouping/aggregation, and simple transformations (normalization, type casting, handling missing data).
-- Produce a reproducible artifact (test_submission.json) containing required results and short justifications.
-- Write clear, runnable code (single script) that creates the outputs without external network access or non-standard libraries.
+### Core Competencies to be Tested
+- Data modelling: choosing tables/fields and types appropriate for the task.
+- Data ingestion: importing CSV/text into a local datastore (SQLite or plain CSV processing).
+- Querying: writing selection, filtering, grouping/aggregation, and simple joins.
+- Data transformation: derived columns, handling of missing/invalid values, simple normalization.
+- Exporting and reproducibility: producing exportable results (CSV/JSON) and supplying runnable scripts.
+- Communication: concise explanation of steps, assumptions, and actionable conclusions.
+- Basic code hygiene: runnable scripts, modular SQL, and clear comments.
 
 ---
 
 ### Recommended Structure
-Total allowed time: 90 minutes.
+Time budget: maximum 90 minutes total.
 
-Overall organization: 4 small, ordered tasks that form a pipeline (ingest → store → retrieve/transform → report). Each task has explicit deliverables and expected JSON fields in test_submission.json. Candidate should provide:
-- One runnable script (name recommended: run_exam.py or run_exam.<ext>) that, when run, produces test_submission.json.
-- The produced file test_submission.json (primary artifact for grading).
-- (Optional but recommended) small README.txt with the single run command and language/runtime used.
+Overall organization — 4 sequential tasks (deliverables packaged into one JSON file named test_submission.json):
 
-Tasks and recommended time allotment:
-1. Task 1 — Ingest & Store (20 minutes)
-   - Deliverable: a database file (or local data files) created by the script and an entry in test_submission.json with the schema definition and row counts.
-   - Action: parse the provided dataset (simple CSV or JSON provided inline in the exam prompt), create tables/files, insert data, and report the number of rows per table.
+1. Setup & Data Import (25 minutes)
+   - Deliverable:
+     - SQL CREATE TABLE statement(s) or a short ingestion script.
+     - Confirmation that data was loaded (row counts) and any data-cleaning actions.
+   - Goal: Candidate creates an appropriate schema and loads the provided CSV dataset into a local SQLite database (or ingests into memory via a script).
 
-2. Task 2 — Retrieve & Query (25 minutes)
-   - Deliverable: SQL queries or code snippets used and the numeric answers to 3–4 factual questions (e.g., total records, top N users by events, count by category).
-   - Action: Write and run queries/filters that answer the given questions. Include results in test_submission.json in specified keys.
+2. Core Retrieval Queries (30 minutes)
+   - Deliverable:
+     - 4–6 SQL queries (or equivalent code) that answer specific analytical questions supplied in the prompt (examples below).
+     - Each query should include the SQL code, the resulting output (as JSON array of rows), and a one-sentence explanation of what the result shows.
+   - Goal: Test basic SELECT, WHERE, GROUP BY, ORDER BY, aggregates (COUNT, SUM, AVG), and one join or derived column.
 
-3. Task 3 — Manipulate & Transform (25 minutes)
-   - Deliverable: a set of transformations producing derived columns and at least one joined/aggregated result (e.g., hourly counts, rate calculations). Output the transformed sample (first N rows) and the aggregate numbers in test_submission.json.
-   - Action: Implement required transformations (handle missing values, cast types, compute derived fields like duration, normalized names) and produce aggregated metrics.
+3. Data Transformation & Export (20 minutes)
+   - Deliverable:
+     - A short script or SQL statement that performs a simple transformation (e.g., normalize a field, bucket a metric, compute rates), exports the derived dataset (CSV or JSON contents included in the JSON submission), and explains why the transform is useful for analysis.
+   - Goal: Verify the candidate can create analysis-ready data and output it in a standard format.
 
-4. Task 4 — Report & Justify (20 minutes)
-   - Deliverable: produce a small JSON report (key metrics) and 1–3 short textual justifications (1–2 sentences each) about schema choice and one data-handling decision (e.g., how missing values were treated).
-   - Action: Export a final summary JSON object with specified keys and provide brief reasoning entries.
+4. Summary & Interpretation (15 minutes)
+   - Deliverable:
+     - A short conclusions section (3–6 bullet points) describing the key findings from the queries and any recommendations or assumptions.
+     - Self-report of time spent per step.
+   - Goal: Validate the candidate’s ability to interpret the data and communicate conclusions succinctly.
 
-Note: The tasks are cumulative — output of Task 1 is used in Tasks 2–4.
-
----
-
-### Practical Elements to Include
-To ensure the exam is genuinely hands-on (not a memory quiz), include:
-- An embedded small dataset in the exam prompt (e.g., 60–200 rows CSV or JSON snippet). Candidate must parse that text rather than relying on internet resources.
-- A requirement to persist the data (SQLite or local CSV/JSON created by script), not only in-memory structures.
-- A reproducibility requirement: script must run from an empty directory and produce the test_submission.json without external inputs.
-- Explicit prohibition of external packages (no pip/npm installs) — only standard library allowed (this keeps the environment consistent).
-- Input data with a few realistic “dirty” elements: missing values, inconsistent casing, numeric fields stored as strings, and a few duplicate records to force simple validation/cleaning.
-- Parameterized queries or prepared statements if using SQL (demonstrates safe query practice).
-- A small decision point: require the candidate to pick one simple schema normalization (e.g., extract a “user” table from events) or keep a denormalized table and justify the choice in 1–2 sentences.
-
-Example practical tasks to include (these will be part of the full prompt given to the candidate):
-- Create a table events(event_id, user_id, timestamp, event_type, value)
-- Populate events from the provided CSV text
-- Query: total events, unique users, top 3 event_types by count
-- Transform: compute events per user and produce average events per active user
-- Join: given a small second dataset of users (id, signup_date, plan), join to compute event rate by plan
-- Export: produce a JSON report with specified structure (see Evaluation Insights)
+Total recommended tasks: 4. The exam creator should provide a single input data file (CSV) with ~50–300 rows and 6–10 columns (include timestamps, categorical fields, numeric metrics), and 3–4 analytical questions to be answered by queries.
 
 ---
 
-### Strategic Elements (decision points that separate conceptual from practical capability)
-Use multi-step processes and dependencies so candidates must execute a pipeline:
-- Data dependencies: Task 2 and Task 3 must use the persistent store created in Task 1. Mistakes in ingestion will cascade and be visible — a practical test of end-to-end handling.
-- Validation step: require explicit detection and handling of at least one data anomaly (e.g., missing timestamp rows must be dropped or imputed — candidate chooses and notes why).
-- Schema decision: require a short choice between (A) normalizing user info into separate table or (B) keeping a single denormalized events table. Candidate must pick one and provide a 1–2 sentence justification. This reveals practical trade-off understanding.
-- Reproducibility / run script: requiring a single command to generate the JSON output forces candidates to write runnable code rather than only theoretical answers.
-- Minimal performance awareness: ask candidate to create an index on a column used by frequent queries (e.g., timestamp, user_id) and report whether the index exists (simple, but shows awareness).
+### Practicality — Ensuring Hands-on Assessment
+- Provide a single CSV file (attached to the exam) that must be imported. Do not allow internet access; candidate must do all work locally.
+- Allow use of any language/tool available locally (common expectation: sqlite3 command-line + Python or a language of choice).
+- Require runnable artifacts (SQL scripts or a small script) and their outputs included verbatim in test_submission.json so evaluators can reproduce results without additional files.
+- Make the tasks data-driven: answers must be produced by running queries against the provided dataset (not describing how they would do it).
 
-These elements reveal who can actually do the work (connect the steps, debug, and produce repeatable outputs).
+Example analytical questions (basic-level):
+- "Count events per day and report days with more than N events."
+- "Find top 5 components by average response time."
+- "Compute error rate (errors / total) per component and sort descending."
+- "Join the events data with a provided 'components' lookup to report human-readable names."
 
----
-
-### Evaluation Insights
-Primary artifact: test_submission.json. Evaluator will grade primarily from the JSON, and may optionally run the candidate’s script to reproduce it.
-
-Suggested JSON structure (template) — candidate must produce this top-level shape. The evaluator can expect these keys (fields and sample types):
-
-- candidate_name: string
-- language: string (e.g., "Python 3.9")
-- time_spent_minutes: integer (approx)
-- task1: {
-    schema: { table_name: { column: type, ... }, ... },
-    row_counts: { table_name: integer, ... }
-  }
-- task2: {
-    queries: { q1: "SQL or description", q2: "...", ... },
-    results: { q1: numeric or array, q2: numeric or array, ... }
-  }
-- task3: {
-    transformations: [ short descriptions ],
-    sample_transformed_rows: [ {col: value, ...}, ... ],
-    aggregates: { metric_name: numeric, ... }
-  }
-- task4: {
-    report: { metricA: numeric, metricB: numeric, ... },
-    design_decisions: [ "1-2 sentence justification", ... ]
-  }
-- run_command: string (exact command to run the script)
-- notes: optional string (if candidate had to make any assumptions)
-
-Grading rubric (basic exam, total 100 points):
-- Correctness of numeric/boolean outputs: 60 points
-  - Exact numeric matches to expected aggregates, counts, top-k lists.
-- Reproducibility (script + run_command produces test_submission.json): 15 points
-- Schema & data handling (schema sensible, row counts correct, handling of dirty data): 10 points
-- Code quality & safety (parameterized queries, no hard-coded paths, small README/run instructions): 10 points
-- Short justifications clarity (schema decision and missing-data choice): 5 points
-
-Pass threshold for basic exam: aim for 80% or higher to demonstrate “satisfactory” entry-level competence. The tasks should be tuned such that a competent junior developer (with typical bachelor-level training and practical exposure) can complete within 90 minutes and score ≥ 80.
-
-What to look for in submissions (observable signs of competence):
-- test_submission.json present and matches the required schema and keys.
-- Numeric results align with evaluator’s expected answers (within integer equality or clearly described tolerances).
-- The provided run_command runs without errors in a clean environment and reproduces the same JSON.
-- Schema is simple and logical (column types match content; if normalized, keys are used properly).
-- Transformations handle data anomalies (e.g., explicit drop or imputation for missing timestamps).
-- Use of parameterized queries or safe file handling demonstrates basic security awareness.
-- Short justifications are concise and indicate an applied understanding (not just textbook definitions).
-
-Common failure modes (to detect and penalize):
-- Submitting only conceptual answers (no script or JSON outputs).
-- Incorrect aggregates due to not persisting data (candidate operated on a hard-coded answer).
-- Incomplete JSON structure or missing keys.
-- Use of external dependencies not allowed in the environment.
-- No description or evidence of handling dirty data when anomalies are present in the provided dataset.
+These are simple, realistic operations that require actual execution.
 
 ---
 
-This structure ensures the exam is hands-on, reproducible in a remote environment with only a code runtime and editor, and discriminates between candidates who can actually perform end-to-end data storage/retrieval/manipulation and those who only understand the concepts.
+### Strategic Elements (to distinguish practical ability)
+Include elements that force candidates to implement steps rather than only explain them:
+- Data dependency: later queries rely on an earlier transformation (e.g., must normalize timestamps to UTC in Step 1 so Step 2 grouping by day is correct).
+- Edge-case handling: dataset contains a few rows with missing/invalid values in a metric column. Candidate must explicitly clean/handle those rows and explain choices (drop, impute, or treat as zero).
+- Decision point: allow candidate to pick between two ingestion methods (direct CSV into SQLite or processing via a script) but require a one-sentence justification in the submission for the chosen method. This separates conceptual knowledge (knowing options) from ability to execute and justify a practical choice.
+- Reproducibility requirement: candidate must include exact commands to recreate the DB (or to run the script). This demonstrates they can produce runnable deliverables.
+
+These elements ensure candidates who only conceptually understand workflows will fail to provide runnable, correct outputs.
+
+---
+
+### Evaluation Insights (what to look for and scoring)
+Scoring total: 100 points. Passing threshold: 80 points (basic exam target).
+
+Suggested rubric (weights & observable artifacts):
+
+1. Setup & Data Import — 20 points
+   - Schema is appropriate and justified (8 pts).
+   - Data successfully ingested; row counts match expectations; handling of obvious malformed rows (7 pts).
+   - Submission includes runnable commands/scripts to reproduce import (5 pts).
+
+2. Core Retrieval Queries — 40 points
+   - Correctness of query results relative to dataset and question (each query scored) (25 pts).
+   - SQL style/readability and comments (5 pts).
+   - Result outputs included in JSON and match what the SQL would return (10 pts).
+
+3. Data Transformation & Export — 20 points
+   - Transformation is correct and useful (10 pts).
+   - Exported results included and are in proper format (CSV/JSON) (5 pts).
+   - Explanation of why transformation was necessary/useful (5 pts).
+
+4. Summary & Interpretation — 10 points
+   - Clear, accurate, concise conclusions and recommendations (7 pts).
+   - Time log + explanation of choices and edge-case handling (3 pts).
+
+5. Reproducibility & Packaging — 10 points
+   - test_submission.json present, properly structured and complete; code snippets included verbatim (5 pts).
+   - Commands/steps are sufficient for an evaluator to rerun everything in <= 10 minutes (5 pts).
+
+Observables that indicate competence:
+- Submissions include SQL and/or script text that runs without modification on the provided dataset.
+- Query outputs in the JSON match executing the submitted SQL or script.
+- Candidate handled dirty data explicitly and justified the approach concisely.
+- Clear, actionable interpretation of results (not just restating numbers).
+
+Automated evaluation suggestions:
+- Evaluator can write a small harness to:
+  - Load candidate SQL/script from JSON.
+  - Run ingestion script and compare resulting table counts.
+  - Execute listed queries and compare actual output to the candidate's reported output in JSON.
+  - Check that exported data (embedded in JSON) matches what the script/queries would produce.
+
+---
+
+### Deliverable format: test_submission.json (required)
+To simplify evaluation, candidates must submit a single JSON file named test_submission.json. This file should be UTF-8 plain text and follow this required schema (fields described below must be present; empty optional fields allowed but flagged):
+
+Required top-level keys:
+- candidate: { name: string, email: string, language_used: string, environment: string (e.g., "sqlite3 + python3.9") }
+- time_spent_minutes: integer (total)
+- steps: array of step objects in sequence (see below)
+- summary: { key_findings: [string...], recommendations: [string...], assumptions: [string...] }
+- reproducibility: { commands: [string...], files_created: [string...] }
+- justification: { ingestion_choice: string }  // One-line reason for method chosen
+
+Each step object (in steps array) must include:
+- name: string (e.g., "Setup & Import")
+- time_spent_minutes: integer
+- artifacts: object containing:
+  - code: string (SQL or script text used; include comments)
+  - commands: [string...] (commands used to run code)
+  - outputs: JSON-serializable object (e.g., { "rows_inserted": 250 } or { "query_results": [ {col1: val, ...}, ... ] })
+  - short_explanation: string (1–3 sentences)
+
+Example minimal skeleton (content should be filled by candidate):
+
+{
+  "candidate": { "name":"", "email":"", "language_used":"python3", "environment":"sqlite3, python3.9" },
+  "time_spent_minutes": 85,
+  "steps": [
+    {
+      "name":"Setup & Import",
+      "time_spent_minutes": 20,
+      "artifacts": {
+        "code": "CREATE TABLE events (...); -- SQL",
+        "commands": ["sqlite3 data.db < create.sql", "sqlite3 data.db .tables"],
+        "outputs": { "rows_inserted": 120 },
+        "short_explanation":"Created events table and imported CSV; dropped 2 malformed rows."
+      }
+    },
+    {
+      "name":"Core Queries",
+      "time_spent_minutes": 35,
+      "artifacts": {
+        "code": "SELECT day, COUNT(*) as cnt FROM events GROUP BY day HAVING cnt > 50;",
+        "commands": ["sqlite3 data.db \"SELECT ...\""],
+        "outputs": { "query_1":[ {"day":"2025-01-01","cnt":72}, ... ], "query_2":[ ... ] },
+        "short_explanation":"Query 1 shows days with heavy load; Query 2 shows error rates per component."
+      }
+    },
+    {
+      "name":"Transformation & Export",
+      "time_spent_minutes": 20,
+      "artifacts": {
+        "code": "python3 transform.py  # included below",
+        "commands": ["python3 transform.py > transformed.json"],
+        "outputs": { "export_rows": 120, "export_sample": [ {"component":"A","error_rate":0.04}, ... ] },
+        "short_explanation":"Computed error rates and exported JSON for downstream analysis."
+      }
+    }
+  ],
+  "summary": {
+    "key_findings": ["Component X has the highest average response time (450ms)","Error rate spikes on 2025-01-10"],
+    "recommendations": ["Investigate component X", "Add monitoring on endpoint Y"],
+    "assumptions": ["Timestamps in dataset are in UTC", "Rows with missing response_time were dropped"]
+  },
+  "reproducibility": {
+    "commands": ["sqlite3 data.db < create.sql", "python3 queries.py"],
+    "files_created": ["data.db","transformed.json"]
+  },
+  "justification": { "ingestion_choice":"Used sqlite import for quick SQL querying and reproducibility" }
+}
+
+Notes for evaluators:
+- Require that the code strings be short (<= 2,000 characters each) and queries return at most 200 rows for inclusion (candidate can trim output or include only the top results). For larger exports, allow embedding a small sample and row count.
+- If candidate used a scripting language, they must paste the script as text in the appropriate step artifact.
+
+---
+
+### Practical Elements to Include (quick checklist for exam creator)
+- Attach a CSV dataset (50–300 rows) with:
+  - at least: id, timestamp, component_id, metric_value, status_code, optional message.
+  - a small number of malformed rows (e.g., empty metric_value, malformed timestamp) to force cleaning.
+- Provide 3–4 analytical questions to be answered by queries (listed in the exam prompt).
+- State allowed tools (sqlite3, python3, bash) and that internet access is disabled.
+- Provide an example test_submission.json skeleton in the prompt.
+- Timebox to 90 minutes and ask candidate to report minutes used per step.
+
+---
+
+This structure ensures the exam is hands-on (candidate must run code and produce outputs), practical (uses realistic dataset and questions), reproducible, and assessable by automated or manual graders. It keeps complexity appropriate for an entry-level Software Developers, Applications role while allowing clear separation between candidates who understand the workflow conceptually and those who can actually perform it.
 </examoverview>
 
 Here are the instructions provided to the candidate:
 <instructions>
 ### Exam Title
-Practical Exam — Store, Retrieve, and Manipulate Data for Analysis (Basic level)
+Practical Data Ingestion, Querying, Transformation, and Analysis (Basic level)
 
 ### Instructions for Candidate
-You have 90 minutes. Work from an empty directory. Use only the tools in your environment (code execution + text editor). Do not access the network or install third‑party libraries. Your submission must be fully reproducible by running a single command.
 
-Follow these steps exactly:
+You have 90 minutes to complete this practical exam. Work locally using only the tools available on your machine (a code execution environment and a text editor). Common acceptable tools: sqlite3 and/or Python 3. You may choose the method you prefer (direct CSV -> SQLite import, or a short Python ingestion script), but you must justify that choice in your submission.
 
-1. Setup and entry point
-   - Create a single runnable script that performs all work and produces the required JSON output file named test_submission.json.
-   - Recommended script name: run_exam.py (you may use another language; put the exact run command into the submission JSON).
-   - The script must run from an empty directory, create any files it needs (database, CSV, etc.), and produce test_submission.json without additional inputs.
+Follow these sequential tasks and deliverables exactly. Package everything into a single JSON file named test_submission.json (submission details below).
 
-2. Data ingestion & persistence (Task 1)
-   - Parse the provided plain-text datasets and persist them to disk as a structured store. You must choose one of:
-     - a local SQLite database file (recommended), or
-     - one or more local CSV/JSON files you create from the provided data.
-   - The store must be persistent (i.e., a file created in the working directory).
-   - Handle obvious data quality issues in the datasets:
-     - at least detect and handle duplicates (drop or deduplicate),
-     - at least detect and handle missing or malformed timestamps (choose to drop or to impute — you must state your choice in the report and implement it).
-   - Create an index on a frequently queried column (e.g., user_id or timestamp) if using SQLite and report its existence.
+Overall time budget (suggested; you must report actual minutes spent for each step in your submission):
+- Step 1 — Setup & Data Import: 25 minutes
+- Step 2 — Core Retrieval Queries: 30 minutes
+- Step 3 — Data Transformation & Export: 20 minutes
+- Step 4 — Summary & Interpretation: 15 minutes
+Total allowed time: 90 minutes
 
-   Deliverables (Task 1):
-   - The persistent store file(s) created by your script (e.g., data.db).
-   - In test_submission.json: the schema you created (table names and columns with types) and row counts per table after cleaning.
+Step 1 — Setup & Data Import (deliverable #1)
+- Create a minimal data model appropriate for the provided CSV and implement ingestion into a local store (SQLite database or in-memory via script).
+- Deliverables for this step (include in the JSON):
+  - The SQL CREATE TABLE statement(s), or the short ingestion script you ran (paste the code).
+  - Exact commands you ran to create/import (so an evaluator can re-run them).
+  - A concise report of row counts: total rows in the CSV, rows successfully loaded, and rows dropped/modified due to malformed data.
+  - One-line justification of your ingestion method choice (script vs direct SQLite import).
+  - One short sentence describing any data-cleaning decisions you made for malformed or missing values (drop, impute, or treat as zero).
 
-3. Retrieve & query (Task 2)
-   - Using the persistent store created in Task 1, run the following queries (SQL or equivalent programmatic filters). Include the query text used (or short description) and the result values in test_submission.json:
-     q1_total_events — total number of event rows after cleaning.
-     q2_unique_users — count of distinct users present in events.
-     q3_top3_event_types — top 3 event_type values by event count (return list of pairs: event_type and count, ordered by count desc).
-     q4_events_by_plan — counts of events grouped by user plan (requires joining events to users dataset); return mapping plan -> event_count (plans with zero events may be omitted).
+Step 2 — Core Retrieval Queries (deliverable #2)
+- Answer the analytical questions (below) by writing and running SQL queries (or equivalent code that operates on the loaded store).
+- Provide 4–6 queries that demonstrate SELECT, WHERE, GROUP BY, ORDER BY, aggregate functions (COUNT, SUM, AVG), and at least one join or derived column.
+- For each query include (in the JSON):
+  - The exact SQL (or script) text run.
+  - The exact command line used to run it.
+  - The result set produced (as a JSON array of row objects). If a query returns >200 rows, include only the top 200 rows plus the full row count.
+  - A one-sentence explanation of what the result shows.
+- The required analytical questions to answer:
+  1. Count events per day and report the days with more than N events. (Use N = 50.)
+  2. Find the top 5 components by average metric_value (descending), excluding rows with invalid or missing metric_value.
+  3. Compute error rate per component: fraction of events with status_code >= 500 divided by total events for that component. Sort descending and show components with at least 5 events.
+  4. For each component, compute average metric_value for successful events (status_code in 200..299) vs error events (status_code >= 500). Present component_id, avg_success, avg_error (use NULL where no events in a category).
+  5. (One join) If a components lookup table is provided with component_id and human-readable name, join it to produce the top-5 components (by avg metric_value) with human-readable names. If no lookup is provided, you may create one inline with at least three minimal mappings and note this in assumptions.
+- Note: later steps may rely on transformations you perform here (for example, normalized timestamps). Ensure any such transformations are recorded in Step 1 and used consistently.
 
-   Requirements:
-   - Use parameterized queries / prepared statements when interacting with SQL databases.
-   - Do not hard-code numeric answers; compute them programmatically from the persisted data.
+Step 3 — Data Transformation & Export (deliverable #3)
+- Create one derived, analysis-ready dataset and export it (CSV or JSON). Examples: normalize timestamps to UTC date, bucket metric_value into categories, compute rates per-minute, or compute per-component daily aggregates.
+- Deliverables (include in JSON):
+  - The script/SQL used to create the transformed dataset.
+  - The exact command(s) used to produce an export file (you may paste the exported contents into JSON; include full export if ≤200 rows, otherwise include a sample plus the total row count).
+  - A 1–2 sentence explanation of why the transformation is useful for downstream analysis.
+- The transformation must explicitly handle malformed or missing values (describe how you handled them).
 
-4. Manipulate & transform (Task 3)
-   - Produce transformed/derived data and aggregated metrics:
-     - Normalize event_type strings (trim whitespace and lowercase).
-     - Parse timestamps to a consistent ISO-8601 format (or UTC if timezone present).
-     - Add a derived column event_hour (0–23) extracted from the timestamp.
-     - Compute events_per_user (number of events per user) and the average_events_per_active_user (average over users with >=1 event).
-     - Join events with users to compute average events per user broken down by plan (mapping plan -> average_events_per_user_for_plan).
-   - Produce sample transformed rows: the first 10 transformed rows (after cleaning and normalization), in stable deterministic order (e.g., ordered by event_id or timestamp).
-   - Include aggregated numeric metrics (average_events_per_active_user, events per plan averages) in test_submission.json.
+Step 4 — Summary & Interpretation (deliverable #4)
+- Provide concise key findings and 2–3 actionable recommendations based on the data and queries.
+- Include short assumptions you made (timestamps timezone, meaning of status codes, rows dropped, synthetic lookup mappings, etc.)
+- Report actual time spent (minutes) on each step and total time.
 
-5. Report & justify (Task 4)
-   - Produce a compact JSON report object containing these metrics:
-     - total_events (numeric)
-     - unique_users (numeric)
-     - average_events_per_active_user (numeric)
-     - top3_event_types (array of {event_type, count})
-     - events_by_plan (mapping plan -> event_count)
-     - average_events_per_user_by_plan (mapping plan -> average_events_per_user)
-   - Provide exactly two short justifications (1–2 sentences each) in the JSON:
-     1) Schema decision: state whether you normalized into separate tables (users table + events table) or kept a single denormalized table, and why (1–2 sentences).
-     2) Missing/malformed timestamp handling: state your choice (drop or impute) and why (1–2 sentences).
-   - Report whether an index was created and on which column.
+Mandatory reproducibility elements (every step)
+- Include the exact commands to reproduce DB creation, ingestion, query execution, and export. These must be re-runnable given the original CSV file.
+- Paste the code/scripts used as text (not as attachments).
+- If you chose a scripting approach, paste the entire script (keep it concise).
 
-6. Reproducibility and safety requirements
-   - No external packages or network access. Use only the standard library for your language.
-   - The script must accept no interactive input (no prompts); it must run to completion non‑interactively.
-   - Use relative paths only; do not hard-code absolute file paths.
-   - Include the exact single command that runs your script in the submission JSON (run_command).
+Edge-case requirements
+- The provided CSV contains some malformed rows (e.g., empty metric_value or malformed timestamp). You must explicitly state how many rows were affected and how you handled them.
+- You must include a one-line justification for the ingestion approach chosen (SQLite import vs Python script).
 
-7. Optional (recommended)
-   - Include a small README.txt with the exact command required to run your script and the language/runtime used.
-
-Time management guideline (not enforced): Task1 ~20m, Task2 ~25m, Task3 ~25m, Task4 & polish ~20m (total 90m).
+Time management and constraints
+- You may trim query output in the JSON if the full result exceeds 200 rows—include top rows and the full row count.
+- Keep any single code or SQL string in the JSON reasonably short. If a script is long, include only the script file content (still paste complete script).
 
 ### Expected Outcome
-By the end of the test you must produce:
-- A runnable script that, when executed from an empty directory, creates any persistent files needed and outputs the JSON file test_submission.json.
-- The file test_submission.json conforming exactly to the required structure defined below (Submission Format).
-- (Optional) A small README.txt with one-line run instructions.
 
-Your answers must be programmatically derived from the provided datasets — do not hard-code expected numeric values.
+By the end of the test you must produce one file named test_submission.json that contains:
+- Candidate contact and environment info.
+- Total time spent and per-step time reports.
+- For each step (Setup & Import, Core Queries, Transformation & Export, Summary), the code, commands, outputs, brief explanations, and any export contents (or samples).
+- Query outputs for the five analytical questions above (as JSON arrays).
+- The exported transformed dataset (full if ≤200 rows; otherwise a sample plus count).
+- A concise summary of findings, recommendations, and any assumptions.
+- A one-line ingestion-method justification.
+
+Your submission must be self-contained: an evaluator should be able to run the listed commands (given the same CSV provided with the exam) and reproduce your reported outputs.
 
 ### Provided Materials
-You will be provided in the exam prompt with two plain text files (embedded or attached):
-- events.csv — event log. Contains fields such as event_id, user_id, timestamp (string), event_type, value (may contain dirty data: missing timestamps, inconsistent casing, numeric values as strings, and duplicate rows).
-- users.csv — user records. Contains fields such as user_id, signup_date, plan (e.g., free, pro, enterprise), and possibly some missing fields.
 
-These files are the only input data for the script. The exact file names and content will be available in the exam prompt; your script must read them (do not fetch from network).
+You will be given one CSV file named system_events.csv (50–300 rows) with the following columns:
+- id (string/integer)
+- timestamp (ISO-8601 string; a few rows have malformed timestamps)
+- component_id (string)
+- metric_value (numeric; a few rows empty or non-numeric)
+- status_code (integer)
+- message (optional text)
+
+Notes:
+- The CSV includes a small number (1–5) of malformed or missing metric_value rows and 1–3 malformed timestamp rows to force cleaning decisions.
+- A lookup CSV components_lookup.csv may or may not be provided. If it is provided, it contains component_id and name. If it is not, follow the Step 2 instruction to create a minimal mapping if needed.
+
+Allowed tools
+- Any language or tool available locally on your machine. Typical choices: sqlite3 command-line, Python 3 (standard library), bash. Internet access is disabled — do not attempt to download packages.
 
 ### Submission Format
-You must submit one file named exactly test_submission.json. This JSON must contain the following top-level keys and shapes (types must match):
 
-- candidate_name: string
-- language: string (e.g., "Python 3.9")
-- time_spent_minutes: integer (approximate)
-- task1: object {
-    schema: object { table_name: object { column_name: string_type, ... }, ... },
-    row_counts: object { table_name: integer, ... },
-    persistent_store_files: array of strings (filenames created, e.g., ["data.db"])
+You must submit a single file named test_submission.json (UTF-8 plain text). This will be the only file evaluated. Follow this required JSON schema exactly (fields must be present; empty optional fields are allowed but will be noted by evaluators):
+
+Top-level keys:
+- candidate: { name: string, email: string, language_used: string, environment: string }
+- time_spent_minutes: integer (total)
+- steps: array of step objects (order: Setup & Import, Core Queries, Transformation & Export, Summary)
+- summary: { key_findings: [string...], recommendations: [string...], assumptions: [string...] }
+- reproducibility: { commands: [string...], files_created: [string...] }
+- justification: { ingestion_choice: string }  // One-line reason for ingestion method
+
+Each step object must contain:
+- name: string (one of the four step names above)
+- time_spent_minutes: integer
+- artifacts: {
+    code: string,               // SQL or script text used (paste actual code)
+    commands: [string...],      // exact commands run
+    outputs: object,            // JSON-serializable: e.g., {"rows_inserted":120} or {"query_1":[{...},...] }
+    short_explanation: string   // 1–3 sentences
   }
 
-- task2: object {
-    queries: object {
-      q1_total_events: string (SQL or short description),
-      q2_unique_users: string,
-      q3_top3_event_types: string,
-      q4_events_by_plan: string
-    },
-    results: object {
-      q1_total_events: integer,
-      q2_unique_users: integer,
-      q3_top3_event_types: array of objects [{ "event_type": string, "count": integer }, ...] (length = 3),
-      q4_events_by_plan: object { plan_name: integer, ... }
-    }
-  }
+Specific expectations for Core Queries step:
+- artifacts.outputs must include keys: query_1, query_2, query_3, query_4, query_5 corresponding to the five analytical questions; each should be an array of row objects (or a sample + count as described above).
 
-- task3: object {
-    transformations: array of short strings (describe each transformation performed),
-    sample_transformed_rows: array of up to 10 objects (each object is a transformed row with consistent keys, e.g., {event_id, user_id, timestamp, event_type_normalized, event_hour, value, plan}),
-    aggregates: object {
-      average_events_per_active_user: number,
-      average_events_per_user_by_plan: object { plan_name: number, ... }
-    }
-  }
+Constraints and evaluator convenience:
+- If an output >200 rows, include only top 200 rows and add a field rows_total with the full count.
+- Keep code strings reasonably short. If a script exceeds 2,000 characters, it is acceptable but include a brief note in the step.artifacts.short_explanation pointing to where the evaluator should copy/paste it.
+- All SQL or code must be plain text in the JSON (no attachments).
+- You must include the exact commands necessary to (re)create the DB and run queries (for example: sqlite3 data.db < create.sql; sqlite3 data.db "SELECT ..." ; python3 ingest.py; etc.).
 
-- task4: object {
-    report: object {
-      total_events: integer,
-      unique_users: integer,
-      average_events_per_active_user: number,
-      top3_event_types: array of objects [{ "event_type": string, "count": integer }, ...],
-      events_by_plan: object { plan_name: integer, ... },
-      average_events_per_user_by_plan: object { plan_name: number, ... }
-    },
-    design_decisions: array of two strings [
-      "schema decision (1-2 sentences)",
-      "missing/malformed timestamp handling (1-2 sentences)"
-    ],
-    index_created: object { created: boolean, column: string or null }
-  }
+Example minimal skeleton (fill with your content):
 
-- run_command: string (exact single command to run your script, e.g., "python3 run_exam.py")
-- notes: optional string (any assumptions you made)
+{
+  "candidate": { "name":"...", "email":"...", "language_used":"python3", "environment":"sqlite3, python3.9" },
+  "time_spent_minutes": 85,
+  "steps": [
+    { "name":"Setup & Import", "time_spent_minutes": 20, "artifacts": { "code":"CREATE TABLE ...;", "commands":["..."], "outputs":{"rows_inserted":120,"rows_dropped":2}, "short_explanation":"..." } },
+    { "name":"Core Queries", "time_spent_minutes": 35, "artifacts": { "code":"-- SQL queries ...", "commands":["..."], "outputs": { "query_1":[...], "query_2":[...], "query_3":[...], "query_4":[...], "query_5":[...] }, "short_explanation":"..." } },
+    { "name":"Transformation & Export", "time_spent_minutes": 20, "artifacts": { "code":"-- transform", "commands":["..."], "outputs":{"export_rows":120,"export_sample":[...]} , "short_explanation":"..." } },
+    { "name":"Summary", "time_spent_minutes": 10, "artifacts": { "code":"", "commands":[], "outputs":{}, "short_explanation":"" } }
+  ],
+  "summary": { "key_findings":[...], "recommendations":[...], "assumptions":[...] },
+  "reproducibility": { "commands":[...], "files_created":[...] },
+  "justification": { "ingestion_choice":"Used sqlite import because..." }
+}
 
-Formatting and content requirements:
-- Numeric values must be numbers (integers or floats); do not provide numbers as strings.
-- Arrays and objects must match the shapes above; keys must be spelled exactly as specified.
-- The sample_transformed_rows must be deterministic (your script should produce the same first N rows each run).
+Important final notes
+- Only test_submission.json will be evaluated. Do not submit other files.
+- Be concise and exact. The evaluator will try to re-run the commands you provide against the provided CSV to verify your outputs.
+- Explicitly state how you handled malformed or missing values (which rows and what treatment).
+- Report actual minutes spent per step and total minutes. If you exceed 90 minutes, note this in the summary.
 
-Evaluation will be objective:
-- The grader will examine test_submission.json for required keys and numeric correctness derived from provided data.
-- The grader may run your run_command to reproduce the JSON.
-
-Good luck. Work clearly and programmatically — all numeric answers must come from your code operating on the provided files.
+Good luck.
 </instructions>
 
 Here are the materials provided to the candidate:
 <materials>
-CSV: `events.csv`
-event_id,user_id,timestamp,event_type,value
-E1,U1,2021-07-01T08:30:00Z,Click,"10"
-E2,U2,2021-07-01 09:15:00, view ,5
-E3,U1,2021-07-01T10:00:00Z,PURCHASE,"100"
-E4,U3,2021-07-01T11:05:00Z, Click,20
-E5,U2,,View,15
-E6,U4,2021-07-01T12:00:00Z,click,"0"
-E7,U1,2021-07-01T12:30:00Z,view,"2"
-E8,U5,not_a_timestamp,Click,1
-E9,U3,2021-07-01T13:00:00Z,purchase,"50"
-E10,U2,2021-07-01T14:00:00Z, CLICK ,"3"
-E11,U4,2021-07-01T15:00:00Z,View,4
-E12,U1,2021-07-01T16:00:00Z,click,"7"
-E13,U2,2021-07-01T17:00:00Z,view,"1"
-E3,U1,2021-07-01T10:00:00Z,PURCHASE,"100"
-E14,U5,2021-07-01T18:00:00Z,CLICK,"2"
+CSV file: system_events.csv
+Contents (UTF-8 plain text):
 
-CSV: `users.csv`
-user_id,signup_date,plan
-U1,2021-01-15,pro
-U2,2021-02-20,free
-U3,2021-03-10,pro
-U4,2021-04-05,enterprise
-U5,,free
-U6,2021-05-01,free
+id,timestamp,component_id,metric_value,status_code,message
+1,2025-01-10T00:00:00Z,comp_A,450,200,OK
+2,2025-01-10T00:01:00Z,comp_A,470,200,OK
+3,2025-01-10T00:02:00Z,comp_A,430,200,OK
+4,2025-01-10T00:03:00Z,comp_A,480,200,OK
+5,2025-01-10T00:04:00Z,comp_A,500,500,Internal error
+6,2025-01-10T00:05:00Z,comp_A,410,200,OK
+7,2025-01-10T00:06:00Z,comp_A,,200,missing metric
+8,2025-01-10T00:07:00Z,comp_A,455,200,OK
+9,2025-01-10T00:08:00Z,comp_A,440,200,OK
+10,2025-01-10T25:61:00Z,comp_A,460,200,bad timestamp
+11,2025-01-10T00:10:00Z,comp_A,445,201,OK
+12,2025-01-10T00:11:00Z,comp_A,420,503,Service unavailable
+13,2025-01-10T00:12:00Z,comp_A,435,200,OK
+14,2025-01-10T00:13:00Z,comp_A,425,200,OK
+15,2025-01-10T00:14:00Z,comp_A,410,200,OK
+16,2025-01-10T00:15:00Z,comp_A,460,200,OK
+17,2025-01-10T00:16:00Z,comp_A,455,200,OK
+18,2025-01-10T00:17:00Z,comp_A,NaN,200,non-numeric
+19,2025-01-10T00:18:00Z,comp_A,470,500,Internal error
+20,2025-01-10T00:19:00Z,comp_A,480,200,OK
+21,2025-01-10T00:20:00Z,comp_B,250,200,OK
+22,2025-01-10T00:21:00Z,comp_B,260,200,OK
+23,2025-01-10T00:22:00Z,comp_B,240,200,OK
+24,2025-01-10T00:23:00Z,comp_B,270,200,OK
+25,2025-01-10T00:24:00Z,comp_B,260,503,Service unavailable
+26,2025-01-10T00:25:00Z,comp_B,255,200,OK
+27,2025-01-10T00:26:00Z,comp_B,245,200,OK
+28,2025-01-10T00:27:00Z,comp_B,300,200,OK
+29,2025-01-10T00:28:00Z,comp_B,280,200,OK
+30,2025-01-10T00:29:00Z,comp_B,275,500,Internal error
+31,2025-01-10T00:30:00Z,comp_B,265,200,OK
+32,2025-01-10T00:31:00Z,comp_B,290,200,OK
+33,2025-01-10T00:32:00Z,comp_B,230,200,OK
+34,2025-01-10T00:33:00Z,comp_B,240,200,OK
+35,2025-01-10T00:34:00Z,comp_B,310,200,OK
+36,2025-01-10T00:35:00Z,comp_C,80,200,OK
+37,2025-01-10T00:36:00Z,comp_C,75,200,OK
+38,2025-01-10T00:37:00Z,comp_C,90,200,OK
+39,2025-01-10T00:38:00Z,comp_C,85,200,OK
+40,2025-01-10T00:39:00Z,comp_C,70,200,OK
+41,2025-01-10T00:40:00Z,comp_C,65,200,OK
+42,2025-01-10T00:41:00Z,comp_C,60,200,OK
+43,2025-01-10T00:42:00Z,comp_C,55,200,OK
+44,2025-01-10T00:43:00Z,comp_C,68,404,Not found
+45,2025-01-10T00:44:00Z,comp_C,72,200,OK
+46,2025-01-10T00:45:00Z,comp_D,180,200,OK
+47,2025-01-10T00:46:00Z,comp_D,190,200,OK
+48,2025-01-10T00:47:00Z,comp_D,175,200,OK
+49,2025-01-10T00:48:00Z,comp_D,210,500,Internal error
+50,2025-01-10T00:49:00Z,comp_D,205,200,OK
+51,2025-01-10T00:50:00Z,comp_D,160,200,OK
+52,2025-01-10T00:51:00Z,comp_D,170,200,OK
+53,2025-01-10T00:52:00Z,comp_D,185,200,OK
+54,2025-01-10T00:53:00Z,comp_E,15,200,OK
+55,2025-01-10T00:54:00Z,comp_E,abc,200,bad metric
+56,2025-01-10T00:55:00Z,comp_E,12,200,OK
+57,2025-01-10T00:56:00Z,comp_E,18,200,OK
+58,2025/01/11 12:00:00,comp_E,20,500,bad timestamp
+59,2025-01-11T12:01:00Z,comp_E,22,200,OK
+60,2025-01-11T12:02:00Z,comp_E,14,200,OK
+
+CSV file: components_lookup.csv
+Contents (UTF-8 plain text):
+
+component_id,name
+comp_A,Auth Service
+comp_B,Payment Service
+comp_C,Cache Service
+comp_D,Search Service
+comp_E,Notification Service
+
+Notes for candidate (included as plain text with materials):
+- Use the file system_events.csv and (optional) components_lookup.csv. Both are provided above.
+- system_events.csv contains 60 rows. There are exactly 3 rows with invalid/non-numeric metric_value (ids: 7, 18, 55) and exactly 2 rows with malformed timestamps (ids: 10, 58). You must explicitly state how you handle those in your submission.
+- Analytical questions you must answer (as per exam instructions) refer to N = 50 for the per-day count.
+- Allowed tools: sqlite3, python3 (standard library), bash. Internet access is disabled during the exam.
+
+End of materials.
 </materials>
 
-### Your assignment
+### Your Assignment
 
 1. Specify a fillable JSON submission template that the candidate will complete and submit.
-  - This JSON file will be the only deliverable for the exam.
-  - Include clear identifiers for each question or task.
-  - Include subquestions and nested objects where appropriate.
+   - This JSON file will be the only deliverable for the exam.
+   - Include clear identifiers for each question or task.
+   - Include subquestions and nested objects where appropriate.
+   - Include fields for any required code, formulas, or structured data, so that all responses are fully captured within the JSON.
 
 2. Use the following conventions for blank fields:
- - Use null for fields expecting numbers, objects, or lists.
- - Use "" for text responses.
- - Use empty arrays [] where lists of items are expected.
+   - Use null for fields expecting numbers, objects, or lists.
+   - Use "" for text responses.
+   - Use empty arrays [] where lists of items are expected.
 
-3. You may include short comments (in // or descriptive strings) to clarify the expected input type or content, but no example answers or placeholder values.
+3. You may include short comments (in // or descriptive strings) to clarify the expected input type or content, but do not include example answers or placeholder values.
 
 ### Output Requirements
 
 - Produce a single JSON object that fully defines the submission format.
 - This JSON represents the complete submission file the candidate will fill and return.
-- The template should be deterministic, complete, and ready for automated checking.
-- Wrap the JSON in triple backticks ```json ...``` for clarity.
-
-### Example
+- The template must be deterministic, complete, and suitable for automated checking.
+- Wrap the JSON in triple backticks for clarity:
 
 ```json
 {
@@ -369,8 +495,8 @@ U6,2021-05-01,free
     "subquestion_2": null
   },
   "task_2_result": {
-    "region_code": "",
-    "sales_numbers": []
+    "code_submission": "", // Python code, scripts, or formulas go here
+    "data_entries": []
   },
   "notes": ""
 }

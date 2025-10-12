@@ -1,51 +1,52 @@
 ```json
 {
   "candidate_name": "",
-  "task_results": [
+  "time_taken_minutes": null,
+  "tasks": [
     {
-      "task_id": 1,
-      "files_changed": [],
-      "change_summary": "",
-      "root_cause": "",
-      "how_tested": "",
-      "time_spent_minutes": null,
-      "confidence_level": "",
-      "notes": ""
+      "id": "A",
+      "status_before": "",
+      "status_after": "",
+      "modified_files": [],
+      "commands_run": [],
+      "explanation": "",
+      "time_spent_minutes": null
     },
     {
-      "task_id": 2,
-      "files_changed": [],
-      "change_summary": "",
-      "root_cause": "",
-      "how_tested": "",
-      "time_spent_minutes": null,
-      "confidence_level": "",
-      "notes": ""
+      "id": "B",
+      "status_before": "",
+      "status_after": "",
+      "modified_files": [],
+      "commands_run": [],
+      "explanation": "",
+      "time_spent_minutes": null
     },
     {
-      "task_id": 3,
-      "files_changed": [],
-      "change_summary": "",
-      "root_cause": "",
-      "how_tested": "",
-      "time_spent_minutes": null,
-      "confidence_level": "",
-      "notes": ""
+      "id": "C",
+      "status_before": "",
+      "status_after": "",
+      "modified_files": [],
+      "commands_run": [],
+      "explanation": "",
+      "time_spent_minutes": null
     },
     {
-      "task_id": 4,
-      "files_changed": [],
-      "change_summary": "",
-      "root_cause": "",
-      "how_tested": "",
-      "time_spent_minutes": null,
-      "confidence_level": "",
-      "notes": ""
+      "id": "D",
+      "status_before": "",
+      "status_after": "",
+      "modified_files": [],
+      "commands_run": [],
+      "explanation": "",
+      "time_spent_minutes": null
     }
   ],
-  "final_test_output": "",
-  "total_time_minutes": null,
-  "checksum_of_modified_files": {},
-  "final_score_self_assessment": null
+  "final_test_summary": {
+    "total_tests": null,
+    "passed": null,
+    "failed": null,
+    "runtime_output": ""
+  },
+  "signature": "",
+  "_notes": "Fill every field. Use empty arrays [] for lists, null for numeric fields, and empty string \"\" for textual fields. For each modified_files entry include objects of the form {\"filename\": \"relative/path.py\", \"content\": \"<full final file contents UTF-8>\"}. In commands_run include the exact commands you executed and the important pasted outputs (failing and passing runs). Ensure time_spent_minutes for tasks sum to <= time_taken_minutes."
 }
 ```

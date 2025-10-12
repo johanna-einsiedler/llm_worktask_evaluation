@@ -1,168 +1,211 @@
 <MATERIALS_FOR_CANDIDATE>
+Repository layout and file contents (all files are UTF-8 text). Use the provided repository as-is.
+
 README.md
 ---------
-Update an existing automated test suite so it is current, reliable, and maintainable.
+# Order Processor — Mini Spec (new behavior)
 
-Run tests:
-Make sure you are at the repository root and run the single command below to run the test suite:
+The SUT (app/orders.py) now uses the following behavior:
+- Order dates are stored in ISO format `YYYY-MM-DD` in testdata/orders.json and the API returns dates in that format.
+- Each order may now include an optional `status` field (e.g., `"processing"` or `"pending"`). If missing, it should be treated as `"pending"`.
+- `format_order_summary(order)` now includes the status text at the end of the summary string: "... on {date} [status: {status}]".
+- `calculate_total(order, include_discount=False)` returns the sum of (price * quantity) for items. If `include_discount=True`, subtract `order.get("discount", 0.0)` from the sum and round to 2 decimals.
 
-./run_tests.sh
+Your tasks:
+1. Run the test suite (command: `pytest -q`) and capture the failing output.
+2. Diagnose failing/brittle tests and decide edits (tests only).
+3. Update tests to match the new behavior and to be less brittle (no exact whole-dict equality, remove unnecessary sleeps, prefer contains/partial checks or key assertions).
+4. Add one new pytest test to verify `calculate_total(..., include_discount=True)` works correctly for order `O1001`.
+5. Re-run tests and produce a single `test_submission.json` as described in the exam instructions.
 
-SCENARIO.txt
-------------
-The web application changed in three small ways. Automated tests were not updated and now fail.
-- The login button ID changed to a new id and a data-test attribute was added.
-- The dashboard welcome loader is asynchronous; a helper function name changed and tests use a fixed sleep.
-- The backend API was updated from version v1 to v2 and tests still assert v1.
+Run command example:
+pytest -q
 
-Your task: run the provided test runner, inspect failures, update test scripts or helpers (minimally) so tests are reliable and pass, replace fragile sleeps with an explicit wait/poll, and document everything in test_submission.json.
-
-run_tests.sh
-------------
-#!/usr/bin/env bash
-python -m pytest -q tests/
-
-app/index.html
----------------
-<!doctype html>
-<html>
-<head><title>Demo App - Login</title></head>
-<body>
-  <h1>Demo App</h1>
-  <form id="login-form">
-    <input type="text" id="username" name="username" />
-    <input type="password" id="password" name="password" />
-    <!-- App change: id changed from "login-button" to "btn-login". A data-test attribute was added for stable selection. -->
-    <button id="btn-login" data-test="login-button">Log In</button>
-  </form>
-</body>
-</html>
-
-app/dashboard.html
-------------------
-<!doctype html>
-<html>
-<head><title>Demo App - Dashboard</title></head>
-<body>
-  <h1>Dashboard</h1>
-  <!-- This welcome div is produced by the app asynchronously; tests must wait for it deterministically. -->
-  <div id="welcome" data-test="welcome">Welcome, testuser!</div>
-</body>
-</html>
-
-config.py
----------
-# Configuration used by tests
-# Note: API version was updated in the app from v1 to v2.
-API_VERSION = "v2"
-
-tests/__init__.py
------------------
-# package init (empty)
-
-tests/helpers.py
+app/__init__.py
 ----------------
+# package marker for app
+
+app/orders.py
+-------------
+import json
+import os
+
+DATA_PATH_DEFAULT = os.path.join(os.path.dirname(__file__), '..', 'testdata', 'orders.json')
+
+def load_order(order_id, data_path=DATA_PATH_DEFAULT):
+    """Load an order dict by id from testdata/orders.json.
+    New behavior: date is stored as ISO 'YYYY-MM-DD'; 'status' may be present.
+    """
+    with open(data_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    for o in data.get('orders', []):
+        if o.get('id') == order_id:
+            # return order dict as-is (status might be missing; callers should default)
+            return o
+    raise KeyError(f"order {order_id} not found")
+
+def calculate_total(order, include_discount=False):
+    """Calculate total for an order. If include_discount is True, subtract order.get('discount', 0.0)."""
+    total = 0.0
+    for item in order.get('items', []):
+        total += item.get('price', 0.0) * item.get('quantity', 0)
+    if include_discount:
+        total -= order.get('discount', 0.0)
+    return round(total, 2)
+
+def format_order_summary(order):
+    """Return a one-line summary for an order.
+    New behavior: includes status at the end: [status: {status}]
+    """
+    order_id = order.get('id')
+    customer = order.get('customer')
+    date = order.get('date')  # ISO format YYYY-MM-DD in current data
+    total = calculate_total(order)
+    status = order.get('status', 'pending')
+    return f"Order {order_id} for {customer}: ${total:.2f} on {date} [status: {status}]"
+
+testdata/orders.json
+--------------------
+{
+  "orders": [
+    {
+      "id": "O1001",
+      "customer": "Alice",
+      "date": "2025-01-15",
+      "items": [
+        {"sku": "A1", "price": 15.0, "quantity": 2},
+        {"sku": "B2", "price": 7.5, "quantity": 1}
+      ],
+      "discount": 5.0,
+      "status": "processing"
+    },
+    {
+      "id": "O1002",
+      "customer": "Bob",
+      "date": "2025-02-20",
+      "items": [
+        {"sku": "C3", "price": 20.0, "quantity": 1}
+      ],
+      "discount": 0.0
+    }
+  ]
+}
+
+tests/test_orders.py
+--------------------
+# Tests provided intentionally include brittle/legacy assertions that will fail.
+# Your job: update tests (and add one new test file) to match README spec and SUT behavior.
 import time
-def get_welcome_message(file_path):
-    """
-    Read the dashboard HTML and return the inner text of the welcome div.
-    (This is a simple parser; tests import this helper.)
-    """
-    with open(file_path, 'r') as f:
-        html = f.read()
-    start = html.find('<div id="welcome"')
-    if start == -1:
-        return ""
-    start = html.find('>', start) + 1
-    end = html.find('</div>', start)
-    return html[start:end].strip()
+from app.orders import load_order, format_order_summary, calculate_total
 
-tests/test_login.py
--------------------
-def test_login_button_present():
-    """
-    Test expects a login button with id 'login-button'.
-    The app changed the id; update tests to use a more stable selector.
-    """
-    with open("app/index.html", "r") as f:
-        html = f.read()
-    # Original fragile assertion (will fail because id changed):
-    assert 'id="login-button"' in html, "Login button with id 'login-button' should be present"
+def test_load_order_strict_keys():
+    # legacy strict comparison expecting old date format and a 'processed_at' key that no longer exists
+    order = load_order("O1001")
+    expected = {
+        "id": "O1001",
+        "customer": "Alice",
+        "date": "01/15/2025",  # old MM/DD/YYYY format (legacy)
+        "items": [
+            {"sku": "A1", "price": 15.0, "quantity": 2},
+            {"sku": "B2", "price": 7.5, "quantity": 1}
+        ],
+        "discount": 5.0,
+        "processed_at": "01/16/2025"  # legacy field no longer produced
+    }
+    assert order == expected
 
-tests/test_dashboard.py
------------------------
-import time
-from tests.helpers import get_dashboard_message
+def test_format_summary_exact():
+    # brittle exact string expecting old date format and no status
+    order = load_order("O1001")
+    assert format_order_summary(order) == "Order O1001 for Alice: $37.50 on 01/15/2025"
 
-def test_welcome_message():
-    # Original test used a hard sleep to wait for dashboard load.
-    time.sleep(1)
-    msg = get_dashboard_message("app/dashboard.html")
-    assert "Welcome, testuser!" in msg
+def test_calculate_total_default():
+    order = load_order("O1001")
+    # discount should NOT be applied by default (include_discount False)
+    assert calculate_total(order) == 37.5
 
-tests/test_api.py
------------------
-import config
-def test_api_version():
-    # Test expects the API version to be v1 (out of date).
-    assert config.API_VERSION == "v1", "API version should be v1"
+def test_brittle_sleep():
+    # This test contains an unnecessary sleep and an exact string match
+    order = load_order("O1002")
+    time.sleep(0.05)  # unnecessary/wasteful in unit tests
+    assert format_order_summary(order) == "Order O1002 for Bob: $20.00 on 02/20/2025"
 
+def test_discount_missing_flag():
+    order = load_order("O1001")
+    # legacy check to confirm discount doesn't apply unless flag set
+    assert calculate_total(order) == 37.5
+
+tests/ (end)
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
-Overview of construction
-- Purpose: Provide a compact, deterministic repo with three failing tests that map to common, realistic causes:
-  1. Selector/id change (login button id changed; test expects old id).
-  2. Timing/flakiness + deprecated helper usage (test uses a hard sleep and imports a helper by an old name).
-  3. API/config mismatch (tests expect API v1 while config.py reflects v2).
+How materials were constructed and intended candidate tasks
+---------------------------------------------------------
+I created a small deterministic Python repository (pure stdlib) with a concise SUT and a pytest test-suite that intentionally contains tests which no longer match the SUT's current behavior. The goal is for the candidate to run pytest, observe failing traces, decide appropriate test edits, make those edits (tests only), add one new test per README, and re-run pytest to demonstrate a green suite.
 
-Why these files and relationships
-- app/index.html: includes a deliberate change: id="btn-login" and a stable data-test="login-button". The intended candidate action is to prefer the stable data-test attribute rather than brittle id or to adapt the test to the new id in a minimal, robust way.
-- app/dashboard.html: contains the welcome message; in the real world this message might be produced asynchronously. The tests simulate waiting by including a hard sleep; the helper has the canonical function name get_welcome_message while the test imports get_dashboard_message (nonexistent) causing an ImportError/NameError. The candidate must reconcile timing and the function name mismatch (either update the test import to the new function name and replace the hard sleep with an explicit wait/poll, or add an alias/wait inside the helper).
-- config.py: reflects an app-level API change (v2). tests/test_api.py still asserts v1. Candidate must update tests or update config to reflect current API; the exam expects the candidate to update the automated tests or test helpers to be current and maintainable.
+Key files and relationships
+- app/orders.py (SUT)
+  - load_order(order_id): reads testdata/orders.json and returns a dict (date is ISO YYYY-MM-DD; 'status' optional).
+  - calculate_total(order, include_discount=False): sums price*quantity; subtracts discount when include_discount True (rounded to 2 decimals).
+  - format_order_summary(order): returns "Order {id} for {customer}: ${total:.2f} on {date} [status: {status}]" (status defaults to "pending"). This is the "changed" behavior tests must accept.
 
-Deterministic behavior and verifiable outcomes
-- All files are static; test execution is deterministic (no randomness). The three tests will fail on first run with clear messages:
-  - test_login.py assertion failure shows missing id "login-button".
-  - tests/test_dashboard.py will fail due to ImportError or NameError for get_dashboard_message (depending on import resolution) and even if import succeeded the hard time.sleep is fragile; the candidate should remove the hard sleep and implement an explicit wait/poll.
-  - tests/test_api.py fails asserting config.API_VERSION == "v1".
+- testdata/orders.json
+  - Contains two deterministic orders, O1001 and O1002.
+  - O1001: items configured so non-discount total is 37.50 and include_discount=True yields 32.50.
 
-Expected correct fixes (one straightforward path)
-- Fix 1 (Selector): Update tests/test_login.py to assert presence of data-test="login-button" (stable selector) or to search for either id or data-test. This demonstrates using stable selectors.
-- Fix 2 (Timing / deprecation): Update tests/helpers.py to provide a compatibility alias get_dashboard_message that implements an explicit wait/poll (e.g., check file for welcome div in a loop with a short sleep interval and a timeout) and update tests/test_dashboard.py to remove the hard-coded time.sleep and rely on the helper. Or update the test to import get_welcome_message and implement an explicit wait that polls for message existence. Either approach shows diagnosing helper name mismatch and removing brittle fixed sleeps.
-- Fix 3 (Config/API): Update tests/test_api.py to assert current API version ("v2") or make the assertion robust (e.g., check it startswith 'v'). Minimal, just update expected value to "v2". This shows recognizing app version change and updating tests.
+- tests/test_orders.py (initial test package provided to candidate)
+  - Contains 5 tests. Several are intentionally brittle/legacy:
+    - test_load_order_strict_keys expects a legacy `processed_at` key and old date format; this will fail because SUT no longer returns that key and date is ISO.
+    - test_format_summary_exact expects the old date format and exact string without the new status suffix; fails due to date and extra status text.
+    - test_brittle_sleep includes an unnecessary time.sleep and an exact format match; it will fail for the same reasons as format_summary.
+    - test_calculate_total_default and test_discount_missing_flag assert totals (these should pass initially).
+  - The candidate must:
+    - Replace strict equality checks with focused key/assertions (e.g., verify essential keys exist, date has expected ISO value).
+    - Update string assertions to use partial contains or regex or split checks to tolerate the new "[status: ...]" suffix and ISO date format.
+    - Remove the sleep and any unnecessary delays.
+    - Add a new test to confirm calculate_total(..., include_discount=True) yields 32.50 for O1001 (per README new requirement).
 
-Traps and common candidate errors
-- Deleting tests or commenting out assertions: evaluator should mark down; candidate must not remove assertions.
-- Only changing config.py to lie about version (instead of updating tests) is acceptable in some contexts, but better practice is updating test expectations to match app. The evaluator should check rationale in submission.
-- Moving the hard sleep to a helper without making it condition-based (e.g., keeping a fixed time.sleep(2)) does not demonstrate improving robustness; the helper must implement polling with timeout to earn full credit.
-- Candidates might change tests to accept multiple values (v1 or v2). That's acceptable but they should justify it in rationale.
+What failures/diagnosis the candidate will see
+- Pytest failing tracebacks will point to:
+  - dict equality mismatch in test_load_order_strict_keys (expected keys differ).
+  - AssertionError comparing the exact strings in test_format_summary_exact and test_brittle_sleep.
+- Candidates should deduce from the SUT code (app/orders.py) and README that:
+  - Dates are ISO (YYYY-MM-DD) now.
+  - format_order_summary includes status suffix.
+  - calculate_total supports include_discount flag and should be tested when True.
 
-How this differentiates conceptual vs practical skill
-- Candidate must run tests and paste raw console output — shows they can reproduce failures.
-- Candidate must read test traces and find which lines lead to failures (practical debugging).
-- Candidate must edit code (tests or helpers) minimally and re-run tests to show the fixes worked (hands-on coding).
-- Correct solutions show awareness of maintainable testing practices: prefer stable selectors (data-test), use explicit waits/polling rather than fixed sleeps, and update test expectations for API changes with clear rationale.
+Traps, common mistakes, and evaluator cues
+- Common mistake: editing the SUT instead of tests to "revert" output to the old format. For the basic exam, tests should be updated, not SUT. If a candidate edits SUT, they must justify it; such edits should generally reduce score.
+- Another mistake: making tests pass by loosening assertions too much (e.g., asserting truthy values only). Evaluate whether edits still verify meaningful behavior (essential keys and numeric totals).
+- Candidates might forget to add the required new test verifying include_discount behavior. The README explicitly requires that added test.
+- Candidates might remove the sleep but fail to update the exact string checks; ensure final assertions accept the "[status: ...]" suffix and ISO date.
 
-Scoring guidance
-- Reproducing failures: initial pytest output should show three failing tests with clear assertion or import errors.
-- Selector fix: tests/test_login.py should be updated to use data-test or to check for both new id and data-test.
-- Timing/stability: tests/test_dashboard.py should not rely on time.sleep; either helper or test should implement a loop that polls for welcome text up to a timeout (e.g., 2 seconds) with short sleep intervals (e.g., 0.1s).
-- Config/API: tests/test_api.py should be updated to assert "v2" with a short rationale.
-- Changed files to be captured in test_submission.json: any of tests/test_login.py, tests/helpers.py, tests/test_dashboard.py, tests/test_api.py that the candidate edits. Evaluator should check original contents above against the candidate's original_content in the JSON.
+What correct/expected edits look like (high-level)
+- Replace test_load_order_strict_keys equality with checks like:
+  - assert order['id']=='O1001'
+  - assert order['customer']=='Alice'
+  - assert order['date']=='2025-01-15' (ISO)
+  - assert isinstance(order['items'], list)
+  - assert 'processed_at' not expected (do not assert its presence)
+- Update test_format_summary_exact to either:
+  - check that returned string contains "Order O1001 for Alice" and "2025-01-15" and "[status: processing]", or
+  - use startswith("Order O1001 for Alice: $37.50 on ") and endswith("]") and parse date substring.
+- Remove time.sleep and use direct assertions.
+- Add tests/test_discount_flag.py (or add to existing test file) with:
+  - order=load_order("O1001"); assert calculate_total(order, include_discount=True) == 32.5
 
-Files included checklist
-- README.md (run command)
-- run_tests.sh (single-run wrapper)
-- SCENARIO.txt (brief scenario)
-- app/index.html, app/dashboard.html (static app files)
-- config.py (API version)
-- tests/ package with:
-  - __init__.py
-  - helpers.py (original version with get_welcome_message)
-  - test_login.py (expects old id)
-  - test_dashboard.py (imports non-existent get_dashboard_message and uses time.sleep)
-  - test_api.py (expects v1)
+How these materials distinguish candidate skill levels
+- A junior/entry-level candidate should:
+  - Run pytest, read failures, inspect tests and SUT, and make straightforward edits to tests to match new behavior (partial string checks, key assertions), remove sleep, and add the discount test. They should be able to complete this within the 90-minute limit.
+- A more experienced candidate will also:
+  - Make minimal and focused changes that preserve test intent, not overly loosen checks.
+  - Add clear test names and simple refactors (e.g., small helper in tests for repeated load_order calls or parametrization).
+  - Provide a concise decision_log explaining choices and alternatives considered (edit tests vs. edit SUT).
 
-Use these to verify candidate's practical debugging and test-fixing abilities.
+Evaluation notes for the assessor
+- Before/after pytest traces are deterministic and should show failing tests before edits and all tests passing after edits (0 failed).
+- Verify the submission JSON includes full contents of modified and added test files.
+- Check decision_log entries: candidate should explain root causes (date format changed, status added, legacy processed_at removed, and removal of sleep).
+- Confirm added test asserts include_discount behavior with exact numeric assertion (32.5).
+- If SUT was edited by candidate, check the justification in modified_files.reason; prefer solutions limited to tests.
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

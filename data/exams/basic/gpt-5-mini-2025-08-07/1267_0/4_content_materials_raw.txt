@@ -1,345 +1,233 @@
 <MATERIALS_FOR_CANDIDATE>
-Repository root files and folder structure (all files below are provided as plain text files at the given paths).
+Repository structure and file contents (all files are UTF-8 text). Place files with the same relative paths.
 
 README.md
----------
-Debug & Fix: Practical Code Repair (Basic)
-=========================================
-Run tests with:
-  python3 run_tests.py
+--------
+Practical Debugging & Fixing — Basic Level (90-minute remote practical)
 
-You have 90 minutes. Use only the provided files and a text editor. Produce a file named test_submission.json in the repository root as described in the exam instructions.
+Repository contents:
+- app/calculations.py        (source; contains seeded syntax and logic bugs)
+- app/utils.py               (source; contains edge-case handling bug)
+- app/main.py                (source; integration entry point)
+- app/__init__.py
+- tests/test_taskA.py        (Task A)
+- tests/test_taskB.py        (Task B)
+- tests/test_taskC.py        (Task C)
+- tests/test_taskD.py        (Task D)
+- run_tests.sh               (runs pytest)
 
-This repository contains:
-- data/transactions.csv
-- data/transactions_edge.csv
-- expected_outputs/golden_report.json
-- src/parser.py        (contains an intentional bug for Task 1)
-- src/aggregator.py    (contains intentional logic bugs for Task 2 & 3)
-- src/formatter.py     (contains formatting bug for Task 4)
-- src/app.py           (orchestrates pipeline)
-- run_tests.py         (automated test runner that checks Tasks 1–4)
+Rules (do not change tests or run_tests.sh):
+- Fix only source files under app/*.py.
+- Do not modify tests/ files or run_tests.sh.
+- Use only the provided runtime and editor. No external libraries.
 
-Do not create or require any external dependencies. All tests are deterministic and fast.
+Run tests:
+- Run: ./run_tests.sh
+- Or run pytest directly: python -m pytest -q
 
-data/transactions.csv
----------------------
-Transaction_ID,Customer_ID,Product_Code,Quantity,Region
-T001,C001,P01,2,North
-T002,C002,P02,1,East
-T003,C001,P01,3,North
-T004,C003,P03,5,South
-T005,C004,P02,2,West
-T006,C005,P03,1,South
-T007,C006,P01,4,East
+Make a test_submission.json as described in the exam instructions and include final full file contents of any modified source files.
 
-data/transactions_edge.csv
---------------------------
-Transaction_ID,Customer_ID,Product_Code,Quantity,Region
-T001,C001,P01,2,North
-T002,C002,P02,1,East
-T003,C001,P01,3,North
-T004,C003,P03,5,South
-T005,C004,P02,2,West
-T006,C005,P03,1,South
-T007,C006,P01,4,East
-T008,C007,P02,,West
-
-expected_outputs/golden_report.json
-----------------------------------
-{
-  "products": {
-    "P01": 9,
-    "P02": 3,
-    "P03": 6
-  },
-  "top_product": "P01"
-}
-
-src/parser.py
--------------
-# parser.py
-# Responsible for reading CSV files into header + rows
-# Intentional bug present for Task 1 (syntax/typo to fix)
-
-def read_csv(path):
-    with open(path, 'r') as f
-        lines = f.readlines()
-    header = lines[0].strip().split(',')
-    rows = [line.strip().split(',') for line in lines[1:]]
-    return header, rows
-
-src/aggregator.py
------------------
-# aggregator.py
-# Responsible for producing totals per product.
-# Contains logic bugs for Task 2 (off-by-one) and Task 3 (no handling of empty quantities).
-
-def compute_totals(rows):
-    """
-    rows: list of lists, each row as [Transaction_ID,Customer_ID,Product_Code,Quantity,Region]
-    Returns: dict product_code -> total_quantity
-    """
-    totals = {}
-    # BUG: off-by-one: starts at index 1, skipping the first data row
-    for i in range(1, len(rows)):
-        row = rows[i]
-        product = row[2]
-        quantity = int(row[3])  # BUG: will raise if empty string
-        totals[product] = totals.get(product, 0) + quantity
-    return totals
-
-def find_top_product(totals):
-    """Return product code with highest total (string)."""
-    if not totals:
-        return None
-    top = max(totals, key=totals.get)
-    return top
-
-src/formatter.py
-----------------
-# formatter.py
-# Writes final report to a JSON file.
-# Contains a minor formatting bug for Task 4 (keys not guaranteed sorted).
-
-import json
-
-def write_report(report, path):
-    with open(path, 'w') as f:
-        # BUG: not using sort_keys, so ordering may differ from golden
-        f.write(json.dumps(report, indent=2))
-
-src/app.py
-----------
-# app.py
-# Simple orchestrator that ties parser -> aggregator -> formatter
-
-def run(input_path, output_path):
-    header, rows = read_csv(input_path)  # expects parser.read_csv to be available when loaded by run_tests
-    totals = compute_totals(rows)        # expects aggregator.compute_totals to be available
-    top = find_top_product(totals)       # expects aggregator.find_top_product to be available
-    report = {"products": totals, "top_product": top}
-    write_report(report, output_path)    # expects formatter.write_report to be available
-
-run_tests.py
+run_tests.sh
 ------------
-#!/usr/bin/env python3
-"""
-run_tests.py
+#!/bin/bash
+# Run the pytest test suite and print output to stdout.
+python -m pytest -q "$@"
+echo "RUN_TESTS_COMPLETE"
 
-Automated test runner for Tasks 1-4.
-Run: python3 run_tests.py
+app/__init__.py
+---------------
+# package initializer for app
+from . import calculations
+from . import utils
+from . import main
 
-This script loads modules from src/ (by file path) and executes small checks.
-It prints Task1..Task4 PASS/FAIL lines and exits with non-zero if any task failed.
-"""
+app/calculations.py
+-------------------
+# calculations.py
+# Provides small numeric utilities.
+# Note: This file contains seeded bugs for the exam.
 
-import sys
-import os
-import json
-import traceback
-import importlib.util
-from pathlib import Path
+def sum_numbers(nums)
+    # Return the sum of a list of numbers.
+    # BUG: missing colon in function definition (Task A)
+    return sum(nums)
 
-ROOT = Path(__file__).parent
-SRC = ROOT / 'src'
-DATA = ROOT / 'data'
-OUTPUT = ROOT / 'output'
-EXPECTED = ROOT / 'expected_outputs'
+def max_gap(nums):
+    """Return maximum difference between consecutive sorted numbers.
+    If list is empty or has one element, return 0.
+    """
+    if not nums or len(nums) < 2:
+        return 0
+    nums_sorted = sorted(nums)
+    # BUG: incorrect aggregation used (returns the minimum gap instead of the maximum) (Task B)
+    gaps = [nums_sorted[i+1] - nums_sorted[i] for i in range(len(nums_sorted)-1)]
+    return min(gaps)
 
-OUTPUT.mkdir(exist_ok=True)
+def average(nums):
+    """Return the average of a list of numbers. Return 0 for empty list."""
+    if not nums:
+        return 0
+    # This returns an integer due to int() conversion but tests expect a float in some contexts.
+    return int(sum(nums) / len(nums))
 
-def load_module(name, path):
-    spec = importlib.util.spec_from_file_location(name, str(path))
-    mod = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(mod)
-        return mod, None
-    except Exception as e:
-        return None, traceback.format_exc()
+app/utils.py
+------------
+# utils.py
+# Helper utilities for string processing.
 
-results = {}
+def normalize_names(names):
+    """Normalize a list of name values:
+    - strip whitespace
+    - convert to lower-case
+    - remove empty names
+    """
+    # BUG: This comprehension assumes every element is a string and calls strip()
+    # If an element is None this will raise AttributeError. (Task C)
+    return [n.strip().lower() for n in names if n.strip()]
 
-# Task 1: Parse header check
-parser_mod, parser_err = load_module('parser', SRC / 'parser.py')
-if parser_err:
-    print("Task1: FAIL")
-    print("  parser import error:")
-    print(parser_err.splitlines()[:5])
-    results[1] = False
-else:
-    try:
-        header, rows = parser_mod.read_csv(str(DATA / 'transactions.csv'))
-        expected_header = ['Transaction_ID','Customer_ID','Product_Code','Quantity','Region']
-        if header == expected_header:
-            print("Task1: PASS")
-            results[1] = True
-        else:
-            print("Task1: FAIL")
-            print("  header mismatch:")
-            print("    got:     {}".format(header))
-            print("    expected:{}".format(expected_header))
-            results[1] = False
-    except Exception as e:
-        print("Task1: FAIL")
-        print("  error during read_csv:")
-        traceback.print_exc(limit=2)
-        results[1] = False
+app/main.py
+-----------
+# main.py
+# Integration functions that use calculations and utils.
 
-# For Tasks 2-4 we require parser to be correct; if Task1 failed, mark dependent tasks as failed/skipped.
-if not results.get(1, False):
-    print("Task2: FAIL")
-    print("  skipped because Task1 failed (parser not available)")
-    print("Task3: FAIL")
-    print("  skipped because Task1 failed (parser not available)")
-    print("Task4: FAIL")
-    print("  skipped because Task1 failed (parser not available)")
-    sys.exit(2)
+from . import calculations
+from . import utils
 
-# Task 2: Aggregation logic check
-aggregator_mod, aggregator_err = load_module('aggregator', SRC / 'aggregator.py')
-if aggregator_err:
-    print("Task2: FAIL")
-    print("  aggregator import error:")
-    print(aggregator_err.splitlines()[:5])
-    results[2] = False
-else:
-    try:
-        totals = aggregator_mod.compute_totals(rows)
-        expected = {"P01": 9, "P02": 3, "P03": 6}
-        if totals == expected:
-            print("Task2: PASS")
-            results[2] = True
-        else:
-            print("Task2: FAIL")
-            print("  totals mismatch:")
-            print("    got:     {}".format(totals))
-            print("    expected:{}".format(expected))
-            results[2] = False
-    except Exception as e:
-        print("Task2: FAIL")
-        print("  error during compute_totals:")
-        traceback.print_exc(limit=2)
-        results[2] = False
+def generate_report(data):
+    """Given data with keys:
+       - 'numbers': list of numbers
+       - 'names': list of names (strings or empty/None)
+       Return a dict with keys 'total', 'max_gap', 'names'.
+    """
+    numbers = data.get('numbers', [])
+    names = data.get('names', [])
 
-# Task 3: Edge case handling (empty quantity field in transactions_edge.csv)
-try:
-    header_e, rows_e = parser_mod.read_csv(str(DATA / 'transactions_edge.csv'))
-except Exception:
-    print("Task3: FAIL")
-    print("  parser read_csv failed on edge file")
-    results[3] = False
-else:
-    if not results.get(2, False):
-        print("Task3: FAIL")
-        print("  skipped because Task2 failed (aggregation may be incorrect)")
-        results[3] = False
-    else:
-        try:
-            totals_e = aggregator_mod.compute_totals(rows_e)
-            # Expect same totals as before since empty quantity should be treated as 0
-            expected = {"P01": 9, "P02": 3, "P03": 6}
-            if totals_e == expected:
-                print("Task3: PASS")
-                results[3] = True
-            else:
-                print("Task3: FAIL")
-                print("  totals on edge file mismatch:")
-                print("    got:     {}".format(totals_e))
-                print("    expected:{}".format(expected))
-                results[3] = False
-        except Exception as e:
-            print("Task3: FAIL")
-            print("  error during compute_totals on edge file:")
-            traceback.print_exc(limit=2)
-            results[3] = False
+    total = calculations.sum_numbers(numbers)
+    gap = calculations.max_gap(numbers)
+    normalized = utils.normalize_names(names)
+    return {
+        'total': total,
+        'max_gap': gap,
+        'names': normalized
+    }
 
-# Task 4: Full pipeline & formatting: produce output/report.json and compare to expected_outputs/golden_report.json
-formatter_mod, formatter_err = load_module('formatter', SRC / 'formatter.py')
-if formatter_err:
-    print("Task4: FAIL")
-    print("  formatter import error:")
-    print(formatter_err.splitlines()[:5])
-    results[4] = False
-else:
-    try:
-        report = {"products": totals, "top_product": aggregator_mod.find_top_product(totals)}
-        outpath = OUTPUT / 'report.json'
-        formatter_mod.write_report(report, str(outpath))
-        with open(outpath, 'r') as f:
-            produced = json.load(f)
-        with open(EXPECTED / 'golden_report.json', 'r') as f:
-            expected = json.load(f)
-        if produced == expected:
-            print("Task4: PASS")
-            results[4] = True
-        else:
-            print("Task4: FAIL")
-            print("  produced report differs from golden:")
-            print("    produced: {}".format(json.dumps(produced, indent=2)))
-            print("    expected: {}".format(json.dumps(expected, indent=2)))
-            results[4] = False
-    except Exception as e:
-        print("Task4: FAIL")
-        print("  error during pipeline/formatting:")
-        traceback.print_exc(limit=2)
-        results[4] = False
+tests/test_taskA.py
+-------------------
+# Task A: quick import/run
+def test_import_calculations():
+    import app.calculations as calc
+    assert hasattr(calc, 'sum_numbers')
 
-# Summary and exit code
-all_pass = all(results.get(i, False) for i in (1,2,3,4))
-if all_pass:
-    print("\nAll tasks passed.")
-    sys.exit(0)
-else:
-    failed = [str(i) for i in (1,2,3,4) if not results.get(i, False)]
-    print("\nTasks failed: " + ", ".join(failed))
-    sys.exit(3)
+tests/test_taskB.py
+-------------------
+# Task B: logical bug in calculations.max_gap and confirm sum works
+import app.calculations as calc
+
+def test_sum_numbers():
+    assert calc.sum_numbers([1,2,3]) == 6
+
+def test_max_gap_two_numbers():
+    # gap between 1 and 5 is 4
+    assert calc.max_gap([1,5]) == 4
+
+tests/test_taskC.py
+-------------------
+# Task C: edge-case handling in normalize_names
+import app.utils as utils
+
+def test_normalize_names_mixed():
+    names = [" Alice ", "", None, "Bob"]
+    assert utils.normalize_names(names) == ["alice", "bob"]
+
+tests/test_taskD.py
+-------------------
+# Task D: integration across modules
+import app.main as main
+
+def test_generate_report_integration():
+    data = {'numbers': [1,8,0], 'names': [" Alice ", "Bob", ""]}
+    report = main.generate_report(data)
+    # total 1+8+0 = 9
+    assert report['total'] == 9
+    # sorted numbers [0,1,8] => gaps 1 and 7 => max_gap should be 7
+    assert report['max_gap'] == 7
+    # names normalized
+    assert report['names'] == ["alice", "bob"]
+
+Notes:
+- All tests are deterministic and small.
+- The seeded bugs are located in app/calculations.py and app/utils.py.
+- The candidate must fix only code under app/ and not modify tests or run_tests.sh.
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
-How and why the materials were created
-- The repository is a small, self-contained Python project that simulates a typical debugging workflow: reading CSV data, aggregating numeric values, and writing a JSON report. It is intentionally minimal so an entry-level candidate can complete it within 90 minutes.
-- Four tasks are embedded across three source modules (parser.py, aggregator.py, formatter.py). Each module contains one or more focused, realistic bugs:
-  - Task 1 (parser.py): syntax/typo that prevents parsing. This forces the candidate to reproduce the immediate failure and fix a trivial but blocking bug (a missing colon). This represents common real-world issues like accidental typo/syntax errors.
-  - Task 2 (aggregator.py): off-by-one logic error that causes incorrect aggregation (skips first data row). This tests understanding of indexing and basic loop logic.
-  - Task 3 (aggregator.py): missing handling of an edge case (empty quantity strings) that causes runtime exceptions when converting to int. This tests defensive coding and minimal, robust fixes (e.g., converting empty to 0 or using safe parsing).
-  - Task 4 (formatter.py): formatting/order issue where JSON output does not match the golden file because keys are not deterministically ordered. This tests awareness of output determinism and exact-match requirements.
-- The run_tests.py script exercises the modules sequentially and prints concise PASS/FAIL lines for each Task. It is intentionally dependent: Task2-4 will be skipped if Task1 fails. This simulates a real codebase dependency where early failures prevent downstream verification.
+Overview of construction
+- Goal: Provide a compact, deterministic codebase with four seed defects mapped to Tasks A–D that collectively test the candidate's ability to reproduce failures, perform targeted fixes, and validate with tests.
+- Language: Python (quick to run and edit).
+- Repository size: 3 source modules (calculations, utils, main) + 4 unit test files and a small run script. This keeps edit scope small and allows completion within 90 minutes.
 
-Data patterns and hidden relationships
-- The CSV data contains three product codes (P01, P02, P03) with explicit quantities such that the correct aggregated totals are:
-  - P01: 9
-  - P02: 3
-  - P03: 6
-  The top product is P01 (highest total).
-- transactions_edge.csv adds a record with an empty Quantity field for product P02. The intended behavior (documented by the tests) is to treat empty Quantity as 0 so totals remain unchanged.
-- The golden JSON file expects the products mapping to contain integer totals and the top_product string exactly as shown. The ordering of keys in the golden file is P01, P02, P03. The final formatting check requires exact structural equality (not just textual equality of pretty-printed JSON), so the produced JSON must match expected types and values; using sort_keys in json.dump ensures deterministic key order.
+Mapping of seeded defects to tasks
+- Task A (Quick run/compile failure):
+  - Seeded bug: app/calculations.py has a syntax error (missing colon in function def for sum_numbers).
+  - Observable symptom: pytest immediately fails during import with a SyntaxError pointing to calculations.py. This validates candidate can run tests and read the stack trace.
 
-Traps, ambiguities, and common errors a candidate might make
-- If the candidate fixes Task1 by removing the specific syntax error but adds unrelated changes (reformatting or wholesale rewrites), evaluators should note excessive edits. The exam expects minimal, well-reasoned edits.
-- For Task2, a common quick-but-wrong fix is to change the loop to another incorrect range (e.g., range(0, len(rows)-1)) introducing a different off-by-one. The correct fix is to ensure iteration includes all data rows (e.g., iterate directly over rows or use range(0, len(rows))).
-- For Task3, candidates may choose different but acceptable behaviors for malformed quantities: treating empty strings as 0, ignoring the row, or raising a specific error. The tests assert totals remain unchanged; therefore treating empty quantity as 0 is required by the test harness. The candidate should document this decision in test_submission.json notes.
-- For Task4, candidates might produce a JSON file that looks identical when printed but differs in key ordering or numeric types (e.g., quantities accidentally converted to strings). The test compares parsed JSON objects, so types must match (integers for totals) and keys must match exactly; using json.dump(..., sort_keys=True) and preserving integer types is the intended fix.
+- Task B (Single logical bug):
+  - Seeded bug: calculations.max_gap builds gaps correctly but returns min(gaps) instead of max(gaps).
+  - Observable symptom: test_max_gap_two_numbers (and integration test) assert a larger gap but current function returns the smallest gap. Candidate must locate the wrong aggregation and correct it (min -> max).
 
-What the correct or expected answers depend on
-- Correctness depends on:
-  - Fixing the syntax error in src/parser.py so read_csv returns header and rows exactly as the test expects.
-  - Fixing src/aggregator.py to iterate all rows and to defensively parse Quantity fields (treat empty as 0).
-  - Ensuring src/formatter.py writes deterministic JSON that structurally matches expected_outputs/golden_report.json (keys and value types).
-- The run_tests.py script is authoritative: it prints PASS/FAIL lines and compares produced data to the golden file strictly. The candidate's test_submission.json must include the exact lines printed by run_tests.py to show reproducible verification.
+- Task C (Edge-case / input validation):
+  - Seeded bug: utils.normalize_names assumes all list elements are strings and calls strip(); when an element is None it raises AttributeError.
+  - Observable symptom: test_normalize_names_mixed raises AttributeError during test. Candidate should add a safe check to skip non-string values or coerce safely.
 
-How these materials differentiate conceptual vs practical understanding
-- Conceptual knowledge alone (knowing what off-by-one means) is insufficient; the candidate must:
-  - Reproduce failures by running the provided test runner.
-  - Inspect and edit the actual source files to make minimal, targeted changes.
-  - Re-run tests to demonstrate fixes and avoid regressions.
-  - Document changes and testing evidence in the required JSON file.
-- Strong practical performers will make minimal edits with clear rationales, pass all tests, and include exact run output lines. Candidates who only understand concepts but cannot correctly locate or fix the specific code will leave tests failing or will over-modify files — both are detectable by the evaluator.
+- Task D (Integration/regression):
+  - Purpose: Ensure changes in calculations and utils integrate correctly through main.generate_report.
+  - The integration test expects numeric aggregation and normalized names. The earlier tasks' fixes must allow the integration test to pass; this probes cross-module interaction (data flow from tests -> main -> calculations/utils).
 
-Evaluator notes
-- The tasks are intentionally ordered and dependent; fix Task1 first to unlock Tasks 2–4.
-- Look at diffs for minimality: single-line fixes (syntax, loop bounds, try/except around int conversion, sort_keys flag) are expected.
-- For partial credit: if tests for a task still fail but the candidate correctly diagnoses the root cause and documents a reasonable partial fix, award partial points per rubric.
-- Use run_tests.py output lines included in the candidate's test_submission.json to cross-check claimed fixes.
+Design rationale and relationships
+- Tests are small and focused; each test exercises a clear behavior and pins expectations numerically or by exact string lists so fixes are verifiable.
+- Multi-step debugging chain: Task A prevents subsequent tests from running until it's fixed. After Task A, Task B's failing tests point to calculations.max_gap, but the failing test may be observed in Task D as well, requiring tracing from main -> calculations.
+- Data dependencies: main.generate_report composes functions from calculations and utils. The integration test in Task D ensures the candidate reasons about returned types and content across modules.
+- Decision point: For Task C (normalize_names), the candidate must choose whether to accept None values and coerce them, or to skip them. Tests assert that None and empty string are removed; therefore the expected fix is to ignore non-str or empty entries and return only normalized strings.
+- Minimal invasiveness: each seeded bug is fixable with a one-line or small multi-line change. Evaluators should prefer minimal edits.
 
+Common incorrect approaches / traps
+- Editing tests to make them pass. Tests must remain unchanged.
+- Overly broad changes: rewriting functions or returning different types (e.g., changing average to return int everywhere). Only minimal, targeted changes are expected.
+- For Task B: simply changing initialization of gaps or sorting may pass some cases but break others; the intended change is to use max(gaps).
+- For Task C: candidate might accidentally treat numeric values as strings; ensure the fix checks instance types.
+
+Expected fixes (concise)
+- app/calculations.py:
+  - Add missing colon to def sum_numbers(nums):
+  - Change return min(gaps) to return max(gaps)
+  - (Do not change average unless necessary — tests do not exercise average besides its existence.)
+- app/utils.py:
+  - Update normalize_names to skip None and non-str values, and ignore empty strings after strip.
+  - Example safe implementation: result = [n.strip().lower() for n in names if isinstance(n, str) and n.strip()]
+
+Evaluation signals
+- Primary evidence: final pytest run shows all tests passing. Candidate must paste the failing and passing outputs into test_submission.json.
+- Qualitative signals:
+  - Explanation clarity: candidate must state precise root cause and why the change fixes it.
+  - Minimal edits: expect very small diffs. Large rewrites reduce score.
+  - Use of test logs: expect the candidate to paste SyntaxError for Task A and AttributeError for Task C before fixes.
+  - Edge-case consideration: Candidate should not remove functionality or change public function contracts.
+
+Grading guidance
+- Functional correctness (tests passed): majority weight.
+- Explanation quality: does the candidate explain root cause and reasoning concisely?
+- Code hygiene: fixes are limited, readable, and contained.
+- Completeness/reproducibility: test_submission.json contains full final file contents and exact terminal outputs.
+
+Notes for the evaluator
+- All tests are deterministic and independent of external resources or time.
+- Total tests: 5 (one import test + two unit checks in Task B + one edge-case test + one integration test). Ensure that the candidate's run output includes the pytest summary lines.
+- If a candidate fixes Task A but not B/C, some tests will still fail; the command logs should show a clear progression.
+
+This material set is designed to separate candidates who can:
+- Run and reproduce failures quickly,
+- Read traces and locate the offending code,
+- Make small, correct fixes,
+- Re-run and verify results with tests,
+from those who cannot perform one or more of these practical steps.
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

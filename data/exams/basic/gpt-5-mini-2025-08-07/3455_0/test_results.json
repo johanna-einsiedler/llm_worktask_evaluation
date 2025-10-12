@@ -1,34 +1,108 @@
 {
-  "per_task": {
-    "task1": {
-      "points_awarded": 30,
-      "points_available": 30,
-      "messages": []
+  "breakdown": [
+    {
+      "section": "Ingestion & Storage",
+      "score": 30.0,
+      "max_score": 30,
+      "reasons": [
+        "system_logs.db present and non-empty.",
+        "Notes mention event_id uniqueness.",
+        "Candidate top10_event_ids shows unique counts indicating dedup applied.",
+        "Notes report malformed timestamps dropped = 2, matches answer key.",
+        "run_command provided and all required output files listed in files_produced."
+      ]
     },
-    "task2": {
-      "points_awarded": 40,
-      "points_available": 40,
-      "messages": []
+    {
+      "section": "Queries & Analysis: unique_hosts",
+      "score": 5,
+      "max_score": 5,
+      "reasons": [
+        "unique_hosts matches expected."
+      ]
     },
-    "task3": {
-      "points_awarded": 15,
-      "points_available": 15,
-      "messages": []
+    {
+      "section": "Queries & Analysis: top5_hosts_error",
+      "score": 10.0,
+      "max_score": 10,
+      "reasons": []
     },
-    "task4": {
-      "points_awarded": 10,
-      "points_available": 10,
-      "messages": []
+    {
+      "section": "Queries & Analysis: hourly_errors_last24",
+      "score": 10.0,
+      "max_score": 10,
+      "reasons": []
     },
-    "code_hygiene": {
-      "points_awarded": 5,
-      "points_available": 5,
-      "messages": []
+    {
+      "section": "Queries & Analysis: avg_cpu_by_component",
+      "score": 10.0,
+      "max_score": 10,
+      "reasons": []
+    },
+    {
+      "section": "Queries & Analysis: top10_event_ids",
+      "score": 5.0,
+      "max_score": 5,
+      "reasons": []
+    },
+    {
+      "section": "Queries & Analysis: subtotal",
+      "score": 40.0,
+      "max_score": 40,
+      "reasons": [
+        "Aggregate of unique_hosts, top5, hourly, avg_cpu, top10"
+      ]
+    },
+    {
+      "section": "Exports & Reporting: error_events_7days.csv (sample)",
+      "score": 8.0,
+      "max_score": 8,
+      "reasons": []
+    },
+    {
+      "section": "Exports & Reporting: summary_report.json",
+      "score": 7.0,
+      "max_score": 7,
+      "reasons": []
+    },
+    {
+      "section": "Exports & Reporting: subtotal",
+      "score": 15.0,
+      "max_score": 15,
+      "reasons": [
+        "Aggregate of CSV sample and summary JSON"
+      ]
+    },
+    {
+      "section": "Code quality & reproducibility",
+      "score": 10.0,
+      "max_score": 10,
+      "reasons": [
+        "run_command present.",
+        "test_submission.json listed in files_produced.",
+        "language field present: python3",
+        "notes provided with 62 words (<=200)."
+      ]
+    },
+    {
+      "section": "Documentation & rationale",
+      "score": 5.0,
+      "max_score": 5,
+      "reasons": [
+        "Notes mention 'duplicate'.",
+        "Notes mention 'event_id_earliest'.",
+        "Notes mention 'utc_timezone'."
+      ]
     }
+  ],
+  "summary": {
+    "ingestion_and_storage": 30.0,
+    "queries_and_analysis": 40.0,
+    "exports_and_reporting": 15.0,
+    "code_quality_and_reproducibility": 10.0,
+    "documentation_and_rationale": 5.0
   },
-  "total_points": 100,
-  "max_points": 100,
+  "total_awarded": 100.0,
+  "total_possible": 100.0,
   "percentage": 100.0,
-  "overall_score": 100.0,
-  "messages": []
+  "overall_score": 100.0
 }

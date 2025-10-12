@@ -1,152 +1,149 @@
 Here is the exam overview written by another exam designer:
 <examoverview>
 ### Exam Purpose
-To confirm that a candidate can take an existing automated test suite that has become out-of-date and, by inspecting failures and limited local resources, update the automated test scripts so they are current, reliable, and maintainable. In real work this means finding why tests fail after app changes (selectors, timing, API changes, config), fixing the tests (selectors/page objects, waits, assertions, config), re-running the suite and documenting the changes.
+Confirm that the candidate can take an existing automated test-suite, identify why tests are failing or brittle after changes to the application or requirements, and update the automated tests so they are correct, resilient, and maintainable. This mirrors the real-world skill of keeping automation current when the SUT (system under test) evolves.
 
-### Core Competencies to be Tested
-- Reproducing test failures by running an existing test suite in a local environment.
-- Diagnosing the root cause(s) of failing automated tests (selector changes, timing/flakiness, config/API changes, or test logic mismatches).
-- Making minimal, correct edits to automated test scripts so they pass and are more robust.
-- Replacing fragile constructs (hard sleeps, brittle selectors) with more reliable alternatives (explicit waits, stable selectors or page objects).
-- Documenting changes clearly and justifying trade-offs.
-- Producing reproducible evidence (test output/logs, before/after code snippets) that tests now pass.
+### Core Competencies
+- Running and interpreting automated test suites (pytest / test runner basics).
+- Diagnosing failing tests: reading stack traces, locating broken assertions, and identifying brittle test patterns.
+- Modifying automated test scripts to match updated application behavior or to increase robustness (selectors/inputs/assertions/fixture usage).
+- Adding a minimal, correctly structured automated test that follows project style and runs with the suite.
+- Clearly documenting what was changed and why so the change is reviewable and reproducible.
 
-### Recommended Structure (Basic exam — single-session, up to 90 minutes)
-Overview: Provide the candidate with a small zipped exam package (or repo) they can run locally; candidate completes a sequence of 4 hands-on tasks and submits a single JSON file named test_submission.json containing required elements (see submission schema below).
+These competencies combine technical test-editing ability, debugging, and communication — all critical to keep automation current.
 
-Time allocation (90 minutes total):
-- 0–5 minutes: Read instructions and examine repo layout and files.
-- 5–15 minutes: Run the test suite and capture failing test output (Task 1).
-- 15–55 minutes: Fix tests and re-run iteratively (Tasks 2, 3, 4).
-- 55–75 minutes: Add one small improvement (stabilize a flaky test or update a config variable) and re-run.
-- 75–90 minutes: Prepare test_submission.json and final notes.
+### Recommended Structure
+Total time: 90 minutes maximum.
 
-Number of tasks and logical sequence:
-- Task 1 (Reproduce): Run provided test runner. Capture failing tests and raw logs.
-- Task 2 (Diagnose & quick fix): Fix an obvious selector mismatch in one or two test files so a core test passes.
-- Task 3 (Stabilize): Replace a hard sleep with an explicit wait and/or update an assertion to be robust.
-- Task 4 (Config/API or deprecation fix): Update a broken config (base URL, new endpoint path) or replace a deprecated API call used in tests.
-- Optional small Task 5 (Bonus): Add one small test improvement (e.g., use a data-test attribute, refactor repeated selector into a page object or helper function).
+Number of tasks: 4 sequential, practical tasks that must be completed and documented in a single JSON submission file named test_submission.json.
 
-Expected deliverables (all must be embedded in test_submission.json):
-- Candidate metadata: name, start and end times, total minutes spent.
-- Commands run (exact commands used to run tests) and their raw console output before and after fixes.
-- A list of files changed; for each, include original content (as provided) and updated content (full file text).
-- A short written summary for each change: what was wrong, what you changed, why, and risk/trade-off notes.
-- Final pass/fail status of the test suite after fixes (explicit pass indication plus last run output).
-- Optional: one or two short suggestions for further improvements.
+High-level sequence and expected time allocation:
+1. Environment & baseline run — 10 minutes
+   - Start from a prepared exam repository (bundled with the exam). Run the test suite and capture the failing tests output.
+   - Deliverable: captured "before" test output.
 
-Naming requirement: The candidate sends one file named test_submission.json containing the structured submission.
+2. Diagnosis & plan — 10 minutes
+   - Inspect the failing tests and small SUT files provided. Note the root causes and decide which tests should be changed (not the product code).
+   - Deliverable: short decision log of planned changes.
 
-### How to make it a hands-on practical assessment (not a quiz)
-- Provide a runnable local test project (small web app or static HTML pages) plus automated tests that currently fail because of obvious but realistic changes:
-  - A test referencing an element whose id/class changed.
-  - A test including a hard-coded time.sleep or sleep-based retry causing flakiness.
-  - A test referencing a deprecated helper function or config variable that needs to be updated.
-- The candidate must run the tests in the provided environment, inspect console logs, modify test code, re-run tests, and produce evidence of corrections.
-- The exam package must be self-contained (no external downloads) so the candidate truly edits and runs code locally.
+3. Implement updates to automated tests — 45 minutes
+   - Make required changes so the test suite reflects the new, correct behavior and is more robust (as specified in provided README/spec).
+   - Make small refactors to remove obvious brittleness (e.g., replace hard-coded waits or fragile string matches with regex/contains; use fixtures for repeated setup).
+   - Add one new test for a small new requirement described in the repo README.
+   - Deliverable: modified/added test files (content included in the JSON), and the commands used.
 
-Suggested exam package contents (for exam creator to prepare):
-- README with instructions and the single command to run tests (e.g., ./run_tests.sh or python -m pytest tests/).
-- app/: a very small static app or mock server files (HTML/JS) used by tests.
-- tests/: failing automated tests written in a single familiar stack (recommended options for basic level):
-  - Option A (recommended): Python + pytest + Selenium WebDriver + local headless webdriver stub, OR
-  - Option B: Node.js + Playwright test scripts (if environment supports node).
-  Use one stack only. For the basic exam, Python + pytest is often the simplest.
-- run_tests.sh (or run_tests.bat) that runs tests and exits with the test run output.
-- A small "CHANGELOG.txt" or "SCENARIO.txt" that states: "The web app changed in three small ways; update the tests to match."
+4. Run, verify, and document — 25 minutes
+   - Run the full test suite, capture "after" output showing tests pass.
+   - Provide a concise explanation (per modified file) of what changed and why, and reproduction steps.
+   - Deliverable: test_submission.json with fields described below and any final notes.
 
-Important: Because candidates have no internet, include any required test runner or preinstalled environment, or instruct that the environment the candidate uses will already include required runtime dependencies.
+Expected final deliverables (all inside test_submission.json):
+- commands_run: list of commands the candidate executed
+- test_output_before: raw output (or first/last 40 lines) of the initial failing test run
+- test_output_after: raw output (or first/last 40 lines) after changes
+- modified_files: array of objects { path, reason, content }
+- added_files: array (if any) { path, reason, content }
+- succinct decision_log: step-by-step short rationale
+- reproduce_instructions: commands an evaluator can re-run to reproduce results
 
-### Practical Elements to Include (to separate practical skill from conceptual knowledge)
-- Multi-step debugging flow:
-  1. Run tests, find failing stack traces and assertion messages.
-  2. Inspect test files to map failures to test code.
-  3. Inspect the app under test (static files) to identify what changed (different id, missing element, changed text).
-  4. Decide whether to change test locator or test logic (e.g., do not change app content; tests should adapt).
-- Data dependencies:
-  - Provide a simple test data file (JSON) that tests read; require candidate to update a path/format if tests fail.
-- Decision points (distinctly observable):
-  - If a selector changed location or id, does candidate use a robust selector (data-test attribute) or just brittle xpath/class?
-  - For timing issues: does the candidate replace sleep/wait with an explicit condition-based wait?
-  - For deprecated API calls: does the candidate update test helper to new API usage or workaround with temporary fix?
-- Simulated time pressure: 90-minute timebox.
-- Evidence collection: candidate must include before/after logs and full file diffs (original and modified contents in JSON) so evaluator can verify what changed and why.
+Why this structure:
+- It forces a candidate to do a realistic diagnosis-edit-run loop.
+- It is simple enough to complete in 90 minutes but contains multiple decision points that separate junior vs. more practiced candidates.
 
-### Evaluation Insights — what to look for in candidate submissions
-Primary pass/fail indicators:
-- Test run evidence:
-  - Did the candidate run the initial tests and include the failing output? (Shows they can reproduce)
-  - After their edits, do the test-run logs show the targeted tests (at minimum the previously failing ones) now pass? (Shows successful fix)
-- Code edits:
-  - Are the edits minimal, targeted and reasonable? (Don't accept solutions that simply delete failing tests)
-  - Did the candidate improve robustness? Examples:
-    - Replaced brittle class-based selectors with more stable identifiers (e.g., data-test-id).
-    - Replaced sleep(3) with an explicit wait that polls for element visibility or state.
-    - Updated test helper usage to current API (if applicable).
-- Diagnosis quality:
-  - Does the candidate clearly explain root cause and why the chosen fix is appropriate?
-  - Does the candidate mention potential side effects or remaining risks?
-- Best practice awareness:
-  - Prefer changes that adhere to common test automation practice: use of page objects or helper functions (even minimal), explicit waits, clear assertions, not disabling assertions or removing tests.
-- Completeness and format:
-  - Submission follows the required JSON schema precisely (file named test_submission.json) and includes all required fields (commands & outputs, changed files with original and updated content, brief rationales).
-- Time management:
-  - Submission includes start and end times; finishing within 90 minutes is expected.
+### Practical Elements to Include
+To ensure this is a hands-on practical test (not a knowledge quiz), the exam package given to candidates must include:
+- A small self-contained SUT implemented in a language available in candidate environment (recommendation: Python module + simple CLI or functions). No external network or dependencies needed beyond the bundled venv or pure-Python code.
+- A pytest-based automated test suite that initially fails because the SUT has changed from the tests’ expectation. Typical realistic failure patterns:
+  - Output format changed (e.g., additional field in a printed JSON or a header change).
+  - Function signature slightly changed (optional parameter introduced/renamed) but business logic is similar.
+  - Tests using brittle assertions (exact timestamp match, strict full-string comparisons, fragile ordering) that need to be updated to robust checks.
+  - Tests relying on hard-coded test data that no longer apply.
+- A README/mini-spec describing:
+  - the intended new behavior (so candidate knows what tests should assert)
+  - one small new requirement to create a new automated test for (e.g., a new flag or an edge-case)
+- Inline comments in tests to hint at common fragility patterns (but not full solutions).
 
-Suggested scoring rubric (basic exam, pass threshold 80% for junior):
-- Task 1 (Reproduce & capture failures): 15 points
-  - Captured initial failing output and correctly identified failing test(s) (15). Partial capture or wrong identification (7). Missing (0).
-- Task 2 (Selector fix): 25 points
-  - Correct, minimal selector change that fixes the test and uses a stable approach (25). Fix works but is brittle (15). Incorrect or deletes test (0).
-- Task 3 (Timing/stability fix): 20 points
-  - Replaced sleep with explicit wait/poll and test becomes stable (20). Partial fix (10). No fix or disabled test (0).
-- Task 4 (Config/API fix): 20 points
-  - Correctly updated config or API usage and tests pass (20). Partial or risky fix (10). Missing/incorrect (0).
-- Documentation & submission quality: 10 points
-  - Proper JSON structure, before/after contents, clear rationales (10). Some missing elements (5). Missing or poor (0).
-- Bonus (up to 10 points): small refactor, added simple helpful test, or suggestions for improvements.
+Make it hands-on:
+- Candidate must run pytest locally, edit the test files, add one test, and re-run pytest to produce passing results.
+- No internet or external lookup required — all needed code & spec included.
 
-Minimum passing score: 80/100.
+### Strategic Elements (distinguish conceptual from capable)
+Design the tasks to require multi-step reasoning and small trade-offs:
+- Diagnosis step: Candidate must read stack trace and SUT code and decide whether to update test assertions or change setup fixtures. This reveals practical diagnostic skills.
+- Decision point: Should the candidate update the test to match the new spec, or make the test more tolerant (e.g., partial match / regex)? A sound candidate will prefer correctness and maintainability over brittle quick fixes.
+- Trade-offs in test design: e.g., update a test from checking full JSON equality to checking essential keys/values — this shows judgement.
+- Data dependencies: Provide a test-data file the tests depend on; SUT uses that file. Candidate may need to update the test-data or write the test to be independent (e.g., mock or parametrize). This distinguishes those who can reason about test isolation.
+- Small refactor: instruct candidate to remove an obvious anti-pattern (like time.sleep in tests) and replace with a synchronous or mocked approach. This tests their familiarity with best practices.
 
-### Required JSON submission format (test_submission.json)
-Provide this exact schema to candidates. All fields required unless marked optional.
+These elements require candidates to do more than apply rote edits; they must think about durability and maintainability of tests.
+
+### Evaluation Insights
+What to look for in the submission to indicate competence:
+
+1. Functional correctness (required)
+   - All tests pass after candidate updates: test_output_after shows pytest summary with 0 failures.
+   - Candidate included commands_run and reproduce_instructions that actually rerun tests.
+
+2. Evidence of correct diagnosis (required)
+   - test_output_before shows the failing tests and error messages.
+   - decision_log explains root cause for each failing test and why they chose the change they made.
+
+3. Quality of test updates (important)
+   - Changes are limited to test code (the SUT normally should not be edited for this basic exam). If SUT was edited, candidate must justify why.
+   - Assertions updated to check relevant behavior (contain/regex/key checks) rather than brittle full-string matches.
+   - Use of fixtures/parametrization where appropriate; no unnecessary duplication.
+
+4. Maintainability & best practice (important)
+   - No re-introduction of brittle constructs (e.g., sleeps). If timing issues exist, they used proper mocking or retries/timeouts when appropriate.
+   - Test naming and structure are clear and consistent with project style.
+   - New test added follows the same test conventions (naming, setup) and tests one clear behavior.
+
+5. Communication & reproducibility (important)
+   - Modified files are submitted as content in JSON with concise reason for each change.
+   - Reproduction instructions are exact and short (commands_run and any env setup).
+   - Decision_log lists alternatives considered and why they were not chosen (short bullet points are fine).
+
+Suggested scoring rubric for a basic-level exam (total 100 points):
+- Baseline execution (ran tests and captured before/after outputs) — 15 pts
+- All tests passing after changes — 25 pts
+- Correct diagnosis of failures (decision_log quality) — 15 pts
+- Quality of test edits (correctness of assertions, reduced brittleness) — 20 pts
+- Added test correctness & style — 10 pts
+- Documentation & reproducibility (clear commands, file contents, reasoning) — 15 pts
+
+Passing guideline for basic exam:
+- A competent junior/entry-level candidate should score >= 80/100.
+
+Minimum evaluator checks (fast pass/fail):
+- Verify that test_output_before shows failing tests and test_output_after shows all passing.
+- Check that modified_files and added_files in test_submission.json contain the updated test content.
+- Spot-check decision_log to ensure candidate understood root cause (1–3 short sentences per failing test is sufficient).
+
+### test_submission.json: required schema
+Require candidate to submit exactly one JSON file named test_submission.json with the following fields (strings should be escaped as appropriate):
 
 - candidate_name: string
-- start_time_utc: ISO 8601 string
-- end_time_utc: ISO 8601 string
-- total_minutes: integer
-- commands_run: array of objects { "command": string, "purpose": string }
-- initial_test_output: string (raw console output captured when first running the provided test run)
-- final_test_output: string (raw console output after candidate changes)
-- changed_files: array of objects:
-  - file_path: string
-  - original_content: string (full file text as provided)
-  - updated_content: string (full file text after candidate edits)
-  - short_rationale: string (what you changed and why in 1–3 sentences)
-- summary_of_changes: string (max 300 words — high-level summary)
-- risk_notes_and_next_steps: string (short list of remaining risks or improvements)
-- optional_bonus: string (optional short description if candidate did extra work)
+- time_spent_minutes: integer
+- commands_run: array[string] — exact shell commands used to run tests/build/run scripts
+- test_output_before: string — raw output or clipped top/bottom of pytest run before edits
+- test_output_after: string — raw output or clipped top/bottom of pytest run after edits
+- modified_files: array[ { path: string, reason: string, content: string } ]
+- added_files: array[ { path: string, reason: string, content: string } ] (empty array if none)
+- decision_log: array[ { step: string, decision: string, alternatives_considered: string (short) } ]
+- reproduce_instructions: string — minimal steps for evaluator to rerun (commands)
 
-Evaluator will:
-- Confirm the initial_test_output shows the original failures described in exam scenario.
-- Review changed_files to validate edits are minimal, sensible, and sufficient.
-- Run the final tests locally (or inspect final_test_output) to confirm passed tests.
-- Score using the rubric.
+Evaluator note: require that content entries contain the full text of modified/added test files so you can quickly inspect diffs without retrieving repository snapshots.
 
-### Practical grading tips for the evaluator
-- Re-run the candidate’s final code in a clean instance of the provided exam environment to verify the final_test_output reproducibility.
-- Check that candidate did not circumvent the intent (e.g., by removing assertions or deleting tests).
-- Prefer solutions that demonstrate stable test design rather than quick hacks.
-- For borderline cases, weigh the quality of reasoning in short_rationale and summary_of_changes heavily.
+### Final notes for exam creator
+- Provide a small, well-documented repository bundle (single ZIP) containing:
+  - SUT: small Python package or module + small test-data file(s)
+  - tests/: pytest tests that intentionally fail because the SUT behavior has changed
+  - README.md: describes the new behavior and a small new requirement to add a test for
+  - A single script or command to run tests (e.g., pytest -q)
+- Ensure the environment is truly self-contained (no external pip installs). Prefer pure-Python standard library or include a small virtualenv and instructions in README.
+- Keep the SUT small (20–200 LOC) and the test-suite small (5–12 tests) so the candidate can complete edits within the 90-minute limit.
 
-### Final notes for the exam creator
-- Choose a simple stack the candidate is likely to know; keep the app and tests concise (total lines of code small) so editing is quick.
-- Design the failing scenarios to be realistic but unambiguous (changed ID value, replaced a visible text string, introduced small timing delay).
-- Ensure no external network dependencies; pack any drivers or runtime bits in the environment candidate will use.
-- Provide clear instructions and the required run command in README so the candidate can spend time on fixing tests rather than setup.
-
-This basic exam should allow a qualified junior/entry-level SQA Engineer to demonstrate practical ability to update and stabilize automated tests within a 90-minute window and score 80% or higher when following good practices.
+This design yields a practical remote exam that verifies the candidate can update automated tests to keep them current, with clear deliverables and an objective, reproducible evaluation process.
 </examoverview>
 
 ### Your assignment:
@@ -159,7 +156,7 @@ Your instructions must include:
    - Do not prescribe methods or tools beyond what’s listed in the context.
 2. **Expected Outcome** – What the candidate must achieve or produce by the end of the test.
 3. **Provided Materials** – Briefly describe any materials or data files that will be given.
-4. **Submission Instructions** – Instrut candidates that they must submit results as `"test_submission.json"`.
+4. **Submission Instructions** – Instruct candidates that they must submit results as `"test_submission.json"` and that this will be the only file used for evaluation.
 
 ### Objectivity and Evaluation Constraints
 - Avoid tasks that require subjective interpretation.

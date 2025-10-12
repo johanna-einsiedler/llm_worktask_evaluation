@@ -1,0 +1,412 @@
+You are an expert exam designer. Your task is to define the exact submission template for a practical exam based on the provided overview, instructions, and candidate materials.
+
+⚠️ Important: The candidate must submit only one JSON file as their entire response.
+All answers—including calculations, explanations, code, or any other content—must be entered directly into this JSON structure.
+No external files, attachments, or file paths will be accepted. For example, if Python code or scripts are required, there must be a dedicated field in the JSON to submit the code; candidates should not be asked to provide a .py file or any other file.
+
+⚠️ You are not creating the questions, answers, or providing any example values—only specifying the expected structure the candidate will fill in.
+
+### Inputs
+
+Here is a brief explanation of the exam's purpose and structure for the evaluator:
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can keep automated tests current in a real-world setting: run an existing automated test suite, diagnose why tests fail after a small, realistic change in the application surface (API response, UI text/locator, or test data), update the automated tests (not the application code) so they become reliable and correct again, and document the changes so they are reproducible and reviewable.
+
+This verifies practical abilities needed on the job: reading and running tests, debugging failures, making minimal correct updates to test code, knowing good locator/assertion choices, and producing clear evidence of what was done.
+
+---
+
+### Core Competencies
+- Running an automated test suite and interpreting test runner output and stack traces.
+- Locating the single point(s) of failure in test code (e.g., outdated locators, assertions, test data).
+- Modifying test scripts to match a changed behavior or interface while following best practices (keep tests maintainable, use stable selectors/assertions).
+- Adding or adjusting test data / mocking stubs when required.
+- Producing a clear, reproducible submission describing changes and showing before/after results.
+- Keeping changes minimal and focused, avoiding changing application code or bypassing test intent.
+
+---
+
+### Recommended Structure
+Total time: 90 minutes maximum.
+
+High-level flow (3 tasks, sequential):
+1. Setup and Baseline (10–15 minutes)
+   - Candidate runs the provided test suite command (single command provided by exam creator).
+   - Capture and save the failing test output.
+   - Deliverable: initial_test_results (raw/tail) included in test_submission.json.
+
+2. Diagnose and Update Tests (50–60 minutes)
+   - Candidate inspects failing test(s) and test code to determine why they fail (changed API field name, UI label/locator changed, new required test data, flaky timing).
+   - Candidate updates only the automated test scripts and supporting test helpers/mocks as needed to make tests reflect the intended behavior and be robust.
+   - Candidate runs tests iteratively until green or clearly fixed.
+   - Deliverables:
+     - modified_files array (each entry: path, original content or diff, new content)
+     - explanation_of_changes (for each modified file: reason, what was changed, why)
+     - updated_test_results (raw/tail output after changes)
+
+3. Finalize and Submit (10–15 minutes)
+   - Package evidence into one file test_submission.json (schema below).
+   - Provide run/reproduce instructions and time spent estimate.
+   - Deliverable: single JSON file named test_submission.json containing everything needed to evaluate.
+
+Notes on number of tasks and difficulty:
+- Provide 3–6 failing assertions across 1–3 test files to keep scope small but realistic.
+- Changes should be in test code only; candidate should not modify application source
+- The base repo provided to the candidate should be self-contained and runnable offline.
+
+---
+
+### Practical Elements to Include
+(How to make it hands-on rather than a knowledge quiz)
+
+- Provide an actual runnable small test repo (preferably using a common test runner: pytest for Python or Jest/Mocha for Node). Include a short script/command that runs the test suite (e.g., `pytest -q` or `npm test`).
+- Ensure the repository includes:
+  - Working application logic (or mocked layer) so tests can run locally without network.
+  - A small set (4–8) of tests; 2–3 intentionally fail because the app interface changed.
+  - Clear README with the single run command and expected environment (e.g., Python 3.9).
+- Make the failing reasons realistic and limited in scope:
+  - Example scenarios:
+    - API shape changed: a response field renamed from userName → username.
+    - UI change: a button label text changed, and the test used label-based selector instead of stable data attribute.
+    - Flaky timing: a test uses a fixed sleep instead of waiting for an element; the app now takes longer occasionally.
+    - Test data expiry: sample date value in test data is now in the past.
+- Constrain allowed changes to test code and test helpers to force candidate to properly update tests rather than modify app code.
+- Require candidate to include both before and after test outputs and the full contents of modified files in the JSON submission — this makes the task fully hands-on and verifiable without access to a VCS.
+
+---
+
+### Strategic Elements (multi-step processes & decision points)
+These are the elements that separate someone who "knows the theory" from someone who can actually perform the task:
+
+- Repro Steps: Candidate must first run the tests and show failing output. This tests ability to operate the test environment.
+- Root-cause analysis: Candidate must read stack traces and test code to decide what to change. Decision points include:
+  - Update selectors vs. update application stubs? (Must update tests only)
+  - Make test more robust (use data-test-id/wait-for element) vs. change assertion to accept both old and new values (not recommended).
+  - Fix test data vs. change fixture code — choose minimal correct fix.
+- Minimal-change principle: Candidates should prefer minimal, targeted edits that restore the test's intent, not broad rewrites. This shows judgement.
+- Robustness trade-offs: If a test used fragile selectors, a stronger candidate will replace them with stable alternatives (data attributes) or restructure assertion. This shows maintenance-awareness.
+- Re-run and verify: Candidate must iterate — run tests, make small change, re-run — demonstrating debugging skills.
+- Documentation: Candidate must explain why each change was made and how to reproduce the passing run. This demonstrates traceability for reviewers.
+
+Include one explicit decision point in the task instructions: the candidate must explain any instance where they chose to broaden an assertion vs. tighten selectors and justify the choice.
+
+---
+
+### Expected Deliverables (structured as test_submission.json)
+Provide this single JSON with the following required fields (exam creator should enforce this structure):
+
+- candidate_name: string
+- time_started_iso: string (ISO8601)
+- time_finished_iso: string
+- time_spent_minutes: integer
+- initial_test_results: string (trimmed raw output showing failing tests)
+- updated_test_results: string (trimmed raw output after changes)
+- modified_files: array of objects:
+  - path: string (file path in repo)
+  - original_content: string (the original content as provided to candidate — optional if large; a diff can be provided)
+  - new_content: string (the file content after change)
+  - brief_diff: string (unified diff text or short description of change)
+- explanation_of_changes: array of objects:
+  - path: string
+  - why_changed: string (1–3 sentences; explain root cause)
+  - what_changed: string (1–3 sentences; what code was altered)
+  - risk_or_tradeoff: string (optional; one-sentence note on risks)
+- reproduce_instructions: string (one or two lines: exact command(s) to run tests and reproduce updated_test_results)
+- self_check: object:
+  - all_tests_passing: boolean
+  - number_of_tests_passed: integer
+  - number_of_tests_failed: integer
+- optional attachments field (string; base64) — only if the candidate must include larger logs.
+
+Exam creator note: Because candidate may not have the original content of modified files if they cannot include it, insist they include both original_content and new_content for each modified file (or at least a diff). This allows offline review.
+
+---
+
+### Evaluation Insights (how to judge competence)
+A suggested scoring rubric (basic, totals to 100):
+
+- Tests passing after changes: 50%
+  - All required tests green: full marks in this category.
+  - If some non-required tests remain failing or extra tests added fail: partial deduction.
+- Correctness and minimality of changes: 20%
+  - Changes only in test code and supporting fixtures/mocks, and focused edits rather than broad rewrites.
+  - Avoided modifying application logic.
+- Clarity of explanations and reproducibility: 15%
+  - Clear explanation_of_changes for each modified file.
+  - Reproduce instructions work and updated_test_results plausibly match what would run.
+- Test quality / maintainability improvements: 10%
+  - Use of stable selectors, proper waits, good assertions, removal of brittle sleeps, better fixture usage.
+- Time management and completeness: 5%
+  - Submitted within time and included all required fields in test_submission.json.
+
+Observable outputs to look for:
+- initial_test_results showing clear failing stack traces (confirms candidate actually ran baseline).
+- updated_test_results showing successful runs (or clear, justified partial fixes).
+- modified_files: diffs that demonstrate minimal, appropriate edits.
+- explanation_of_changes: shows reasoning and root cause analysis, not generic statements.
+- Repro instructions that match the commands a reviewer would run.
+
+Red flags that indicate lack of competence:
+- Candidate modifies application source rather than test code.
+- Candidate simply comments out failing assertions instead of fixing them.
+- Missing before/after test results or incomplete modified_files contents.
+- Large, unnecessary refactors with no justification.
+- Incorrect or unsafe fixes (e.g., changing test to assert nothing meaningful).
+
+---
+
+### Practical constraints and recommendations for exam creators
+- Provide the candidate with a small, self-contained repo (<= 50 files) and one-line test run command.
+- Prefer Python pytest or JavaScript Jest to keep setup minimal (include requirements.txt / package.json).
+- Make failing cases small and clearly documented in the README as “intended failures” so the candidate knows they are allowed to change tests.
+- Provide a strict time limit (90 minutes) and require the single JSON submission.
+- Provide an example test_submission.json skeleton in the exam instructions so candidates know formatting requirements.
+
+---
+
+This basic practical exam is intended to validate that a junior/entry-level QA engineer or tester can operate test suites, identify and fix outdated tests, and communicate changes — all within a short, realistic hands-on session. An entry-level candidate with practical experience should be able to complete it and score above 80% if they follow instructions and apply standard test-maintenance practices.
+</examoverview>
+
+Here are the instructions provided to the candidate:
+<instructions>
+### Exam Title
+Updating Automated Test Scripts to Ensure Currency — Basic Practical Exam
+
+### Instructions for Candidate
+
+Overview
+- Total time allowed: 90 minutes. Start a timer when you begin.
+- You have a local copy of a small, self-contained repository and a one-line test-run command (see repository README).
+- Your job: run the test suite, diagnose the failing test(s) caused by a small, realistic change in the application surface, update only the automated test scripts and test helpers/mocks so the tests are correct and robust again, and submit a single JSON file named test_submission.json containing all required evidence.
+
+Step-by-step instructions
+1. Start time
+   - Note the ISO8601 timestamp when you begin (time_started_iso).
+2. Run the test suite (10–15 minutes)
+   - Execute the single test-run command provided in the repo README (for example: pytest -q or npm test).
+   - Capture the failing test output (raw stdout/stderr). Save the relevant raw/tail text that shows the failing test names, stack traces, and assertions. This will be initial_test_results.
+3. Diagnose failures (10–20 minutes)
+   - Inspect the failing test files, test helpers/fixtures, and any included application stubs/mocks to find the single point(s) of failure (outdated locators, renamed response fields, changed labels, expired test data, timing issues).
+   - Do not modify application source code. You may only modify test code and test helpers/mocks.
+4. Update tests (30–40 minutes)
+   - Make the minimal, focused changes required to restore the tests’ intent and reliability. Examples of acceptable changes:
+     - Update an assertion to refer to a renamed API field used by the test.
+     - Replace a fragile selector with a stable test-specific selector from the test helper.
+     - Add or update mock/test fixture data so the test remains relevant.
+     - Replace fixed sleeps with appropriate waits in test helpers.
+   - Keep changes small, readable, and maintainable. Avoid broad refactors.
+   - Record every file you modify and preserve the original content (copy the original file contents before you edit).
+   - For any place where you decide to broaden an assertion (e.g., accept either old or new values) rather than tighten a selector, include a short justification in your explanation_of_changes.
+5. Re-run tests iteratively (until green or fixed)
+   - Re-run the test command after each change until the tests you intended to fix are passing or until you have made a clear, justified partial fix.
+   - Capture the final updated raw output (updated_test_results).
+6. Finalize submission (10–15 minutes)
+   - Note the end time (time_finished_iso) and compute time_spent_minutes (rounded to nearest whole minute).
+   - Prepare the required JSON file test_submission.json (schema described below). Include:
+     - initial_test_results (raw failing output)
+     - updated_test_results (raw output after your changes)
+     - modified_files with original_content and new_content for each file you altered
+     - explanation_of_changes for each modified file (why, what, risk/tradeoff)
+     - reproduce_instructions (exact command(s) to reproduce updated_test_results)
+     - self_check summary of tests passing/failed
+   - Submit only the single file named test_submission.json. No other files will be evaluated.
+
+Constraints / rules (must-follow)
+- Allowed changes: test files and test helpers/mocks only. Do NOT change application source code.
+- You must include the original content of every file you modify (original_content). If a file is large, include at least the parts you modified, but full file content is preferred.
+- Keep changes minimal and justified. Do not comment out or delete failing assertions without replacing with a meaningful check.
+- When you choose a design trade-off (e.g., broaden assertion vs tighten selector), explicitly justify it in explanation_of_changes.
+- Only the single JSON file test_submission.json will be accepted for evaluation.
+
+What to capture from test runs
+- Include the raw text that shows failing tests (names), stack traces and assertion messages. Trim only extraneous unrelated logs, but keep the parts needed to evaluate diagnosis and fixes.
+- Include the final full raw output of the test run after your changes (green or partially fixed).
+
+### Expected Outcome
+
+By the end of the exam you must produce a single JSON file test_submission.json that demonstrates:
+- You ran the provided test suite and recorded the initial failing output.
+- You diagnosed the reason(s) the tests failed.
+- You updated only test code (and supporting test helpers/mocks) so the tests reflect intended behavior and are more robust.
+- You re-ran tests and produced updated test output showing the results after your changes.
+- You documented every modified file with original and new contents, a brief diff description, and a clear explanation of why you changed it and what the change did.
+- You provided exact reproduce instructions and a self-check summary (number of tests passed/failed and whether all tests are passing).
+
+Minimum success criteria (objective)
+- You must not modify application source code.
+- You must provide initial_test_results and updated_test_results.
+- For every modified file you must include original_content and new_content.
+- Your updated_test_results should show the previously failing test(s) are now passing. If you could not make them all pass, provide justification and state which tests remain failing.
+- Your explanations must link the failing symptoms to the edits you made (root cause → change).
+
+### Provided Materials
+
+You will be given:
+- A self-contained repository (local folder) containing:
+  - A small working application layer or stubs/mocks (no network required).
+  - A test suite with a single test-run command documented in README.
+  - 4–8 tests in total, with 1–3 tests intentionally failing due to a realistic, small change (renamed field, changed UI text/locator, outdated test data, or timing).
+  - A README with the one-line command to run the test suite and the required runtime (for example Python 3.x or Node.js). Follow the README for environment/setup instructions included in the repo.
+- No internet access or external materials will be required; all dependencies are included locally.
+
+### Submission Format
+
+You must submit a single file named test_submission.json (UTF-8 encoded). This JSON must match the following schema exactly with these fields (order does not matter), and each field must be present as described:
+
+- candidate_name: string
+- time_started_iso: string (ISO8601)
+- time_finished_iso: string (ISO8601)
+- time_spent_minutes: integer
+- initial_test_results: string (raw text showing failing tests — include failing test names, stack traces, assertion messages)
+- updated_test_results: string (raw text after your changes)
+- modified_files: array of objects, each with:
+  - path: string (relative file path in the repo)
+  - original_content: string (full file content as provided before your edits; if large, include at least the full function(s) you changed)
+  - new_content: string (full file content after your edits)
+  - brief_diff: string (small unified diff or short description of what changed, e.g., "- assert foo == 'bar'\n+ assert foo == 'baz'")
+- explanation_of_changes: array of objects, each with:
+  - path: string
+  - why_changed: string (1–3 sentences explaining root cause)
+  - what_changed: string (1–3 sentences describing what was altered)
+  - risk_or_tradeoff: string (optional; one sentence describing any risk or tradeoff)
+  - assertion_design_decision: string (required if you broadened an assertion or loosened an assertion/selector; 1–2 sentences justifying the choice; otherwise set to an empty string)
+- reproduce_instructions: string (exact command(s) to run to reproduce updated_test_results; include any environment steps that are required and are available in the repo)
+- self_check: object with:
+  - all_tests_passing: boolean
+  - number_of_tests_passed: integer
+  - number_of_tests_failed: integer
+- optional_attachments: string (optional; base64-encoded large logs if necessary — otherwise omit or set to empty string)
+
+Important submission notes
+- Only test_submission.json will be evaluated. Do not submit any other files.
+- Ensure original_content is literally the content that was in the repo before you modified it (copy it before editing).
+- Be precise and objective in explanations; link failures to fixes.
+- If you intentionally left any failing tests, explain which and why in explanation_of_changes and in reproduce_instructions.
+
+Good luck. Start your timer, run the test command in the repo, and capture the initial failing output now.
+</instructions>
+
+Here are the materials provided to the candidate:
+<materials>
+Repository layout (files and contents). Run command: pytest -q
+
+File: README.md
+---
+Run the test suite with:
+pytest -q
+
+Python requirement: Python 3.8 or higher. No external packages required.
+
+File: app.py
+---
+from datetime import date, datetime
+
+# Deterministic "today" used by application logic so tests are reproducible.
+TODAY = date(2025, 1, 15)
+
+def get_user_profile(user_id):
+    """
+    Returns a user profile dictionary.
+    Current API uses 'username' (lowercase) as the field name.
+    """
+    profiles = {
+        1: {'id': 1, 'username': 'alice', 'email': 'alice@example.com'},
+        2: {'id': 2, 'username': 'bob', 'email': 'bob@example.com'}
+    }
+    return profiles.get(user_id, {'id': user_id, 'username': 'unknown', 'email': ''})
+
+def render_login_button():
+    """
+    Returns an HTML fragment for the login button.
+    The button now includes a stable data-test-id and the visible label 'Log In'.
+    """
+    return '<button data-test-id="login-btn">Log In</button>'
+
+def is_subscription_active(expiry_date_str):
+    """
+    expiry_date_str: 'YYYY-MM-DD'
+    Returns True if expiry date is the same or after TODAY.
+    """
+    expiry = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+    return expiry >= TODAY
+
+File: tests/fixtures.py
+---
+# Test fixture data used by subscription tests.
+TEST_SUBSCRIPTION = {
+    'user_id': 1,
+    # This expiry_date is intentionally in the past relative to app.TODAY to create a failing test.
+    'expiry_date': '2024-06-30'
+}
+
+File: tests/helpers.py
+---
+# Helpful constants for tests. Tests should prefer these stable identifiers.
+LOGIN_BUTTON_TEST_ID = 'login-btn'
+
+File: tests/test_user_api.py
+---
+from app import get_user_profile
+
+def test_get_user_profile_username_key():
+    profile = get_user_profile(1)
+    # This test expects the older field name 'userName' (camelCase).
+    # The application now returns 'username' (lowercase).
+    assert profile['userName'] == 'alice'
+
+File: tests/test_ui.py
+---
+from app import render_login_button
+
+def test_login_button_label():
+    html = render_login_button()
+    # This test checks the visible label text 'Sign In', which was changed to 'Log In'.
+    assert 'Sign In' in html
+
+File: tests/test_subscription.py
+---
+from app import is_subscription_active
+from tests.fixtures import TEST_SUBSCRIPTION
+
+def test_subscription_is_active():
+    expiry = TEST_SUBSCRIPTION['expiry_date']
+    # The fixture expiry_date is '2024-06-30', which is before app.TODAY (2025-01-15).
+    # The test currently expects the subscription to be active.
+    assert is_subscription_active(expiry) is True
+</materials>
+
+### Your Assignment
+
+1. Specify a fillable JSON submission template that the candidate will complete and submit.
+   - This JSON file will be the only deliverable for the exam.
+   - Include clear identifiers for each question or task.
+   - Include subquestions and nested objects where appropriate.
+   - Include fields for any required code, formulas, or structured data, so that all responses are fully captured within the JSON.
+
+2. Use the following conventions for blank fields:
+   - Use null for fields expecting numbers, objects, or lists.
+   - Use "" for text responses.
+   - Use empty arrays [] where lists of items are expected.
+
+3. You may include short comments (in // or descriptive strings) to clarify the expected input type or content, but do not include example answers or placeholder values.
+
+### Output Requirements
+
+- Produce a single JSON object that fully defines the submission format.
+- This JSON represents the complete submission file the candidate will fill and return.
+- The template must be deterministic, complete, and suitable for automated checking.
+- Wrap the JSON in triple backticks for clarity:
+
+```json
+{
+  "task_1_result": {
+    "subquestion_1": null,
+    "subquestion_2": null
+  },
+  "task_2_result": {
+    "code_submission": "", // Python code, scripts, or formulas go here
+    "data_entries": []
+  },
+  "notes": ""
+}

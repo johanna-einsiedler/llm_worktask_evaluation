@@ -1,0 +1,810 @@
+# task_evaluation.py
+import json
+import sys
+import os
+from math import isclose
+
+"""
+Automated grading script for the practical exam.
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Produces: test_results.json in the same directory as this script.
+
+Notes:
+- Uses a rubric based on the exam materials:
+  Setup & Import: 20
+  Core Retrieval Queries: 40
+  Transformation & Export: 20
+  Summary & Interpretation: 10
+  Reproducibility & Packaging: 10
+  Total: 100
+- Performs tolerant comparisons (numeric tolerance, whitespace-insensitive string compare).
+- Records detailed deductions/explanations.
+"""
+
+MAX_SCORES = {
+    "setup": 20,
+    "core_queries": 40,
+    "transformation": 20,
+    "summary": 10,
+    "reproducibility": 10,
+}
+TOTAL_MAX = sum(MAX_SCORES.values())
+
+# Small numeric tolerance for floating point comparisons
+NUM_TOL = 1e-4
+
+
+def load_json_path(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+
+
+def safe_get(dct, path, default=None):
+    """Safely navigate nested dict/list using a list of keys/indexes (path)."""
+    cur = dct
+    for p in path:
+        if cur is None:
+            return default
+        if isinstance(cur, dict):
+            cur = cur.get(p, default)
+        elif isinstance(cur, list):
+            try:
+                idx = int(p)
+                cur = cur[idx]
+            except Exception:
+                return default
+        else:
+            return default
+    return cur
+
+
+def normalize_val(v):
+    """Normalize values for comparison: numbers -> float, null-like -> None, strings trimmed lowercase."""
+    if v is None:
+        return None
+    # JSON null maps to None already
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        s = v.strip()
+        # treat empty strings as None only if content suggests null
+        if s == "":
+            return ""
+        # Try numeric coercion
+        try:
+            return float(s)
+        except Exception:
+            # Recognize 'null'/'none'/'nil'
+            if s.lower() in ("null", "none", "nil"):
+                return None
+            return s
+    return v
+
+
+def rows_match(a_row, b_row):
+    """
+    Compare two row dicts tolerant to numeric formatting and minor string differences.
+    Returns True if all keys present in expected (b_row) match candidate (a_row).
+    """
+    # If types are not dicts, compare normalized values
+    if not isinstance(a_row, dict) or not isinstance(b_row, dict):
+        return normalize_val(a_row) == normalize_val(b_row)
+
+    # For every key in expected, candidate must have matching value
+    for k, expected_v in b_row.items():
+        cand_v = a_row.get(k, None)
+        nexp = normalize_val(expected_v)
+        ncand = normalize_val(cand_v)
+        if nexp is None:
+            # Accept None or null-like values in candidate
+            if ncand is not None:
+                # If candidate has empty string, also accept as None only if expected None
+                if not (isinstance(ncand, str) and ncand.strip() == ""):
+                    return False
+            else:
+                continue
+        elif isinstance(nexp, float):
+            # candidate must be numeric and close
+            if ncand is None:
+                return False
+            if not isinstance(ncand, (int, float)):
+                # try to coerce
+                try:
+                    ncand = float(ncand)
+                except Exception:
+                    return False
+            if not isclose(float(nexp), float(ncand), rel_tol=0.0, abs_tol=NUM_TOL):
+                return False
+        else:
+            # string compare (case-insensitive, trimmed)
+            if ncand is None:
+                return False
+            if isinstance(ncand, (int, float)):
+                # different types, coerce expected to str and compare
+                if str(ncand).strip().lower() != str(nexp).strip().lower():
+                    return False
+            else:
+                if str(ncand).strip().lower() != str(nexp).strip().lower():
+                    return False
+    return True
+
+
+def compare_row_sets(candidate_rows, expected_rows):
+    """
+    Compare two lists of row dicts. Returns a tuple (match_count, expected_count).
+    Tries to match expected rows to candidate rows (order-insensitive).
+    """
+    if not isinstance(candidate_rows, list) or not isinstance(expected_rows, list):
+        return 0, len(expected_rows or [])
+    expected = expected_rows.copy()
+    cand = candidate_rows.copy()
+    match = 0
+    # For each expected row, look for a matching candidate row (first match removed).
+    for er in expected:
+        found_idx = None
+        for i, cr in enumerate(cand):
+            if rows_match(cr, er):
+                found_idx = i
+                break
+        if found_idx is not None:
+            match += 1
+            cand.pop(found_idx)
+    return match, len(expected)
+
+
+def grade_setup(candidate, answer_key, details):
+    """
+    Grade Setup & Import (20 pts total)
+    Subcomponents:
+      - schema appropriate (8)
+      - data ingested counts & malformed handling (7)
+      - reproducible commands/scripts included (5)
+    """
+    score = 0.0
+    reasons = []
+
+    step = None
+    try:
+        # find step by name
+        for s in candidate.get("steps", []):
+            if s.get("name", "").lower().startswith("setup"):
+                step = s
+                break
+        if not step:
+            reasons.append("Missing 'Setup & Import' step.")
+            return 0.0, reasons
+    except Exception:
+        reasons.append("Error locating 'Setup & Import' step.")
+        return 0.0, reasons
+
+    artifacts = step.get("artifacts", {})
+
+    code = artifacts.get("code", "") or ""
+    outputs = artifacts.get("outputs", {})
+
+    # Schema appropriate (8 pts)
+    schema_pts = 0
+    schema_reasons = []
+    # Heuristics: presence of CREATE TABLE, or mention of events and components, or create_table_statements in outputs
+    code_lower = code.lower()
+    created_tables = outputs.get("created_tables") or []
+    create_stmt = outputs.get("create_table_statements") or ""
+
+    if "create table" in code_lower or "create table" in create_stmt.lower():
+        # check for events table
+        if ("events" in code_lower) or ("events" in create_stmt.lower()) or ("events" in created_tables):
+            schema_pts += 5
+        else:
+            schema_reasons.append("No 'events' table detected in CREATE statements or code.")
+        # check for components table or lookup loading
+        if ("components" in code_lower) or ("components" in create_stmt.lower()) or ("components" in created_tables):
+            schema_pts += 3
+        else:
+            # partial credit if code inserts into events and components_lookup file used was noted
+            if "components_lookup" in code_lower or "components_lookup.csv" in str(candidate.get("reproducibility", {}).get("commands", "")):
+                schema_pts += 2
+            else:
+                schema_reasons.append("No 'components' table detected; components lookup may be missing.")
+    else:
+        # If candidate used ingestion script but not CREATE TABLE, check if they created DB via script
+        if "insert into events" in code_lower or "insert into events" in create_stmt.lower():
+            schema_pts += 5
+            # components?
+            if "insert into components" in code_lower or "components" in created_tables:
+                schema_pts += 3
+            else:
+                schema_pts += 1  # small credit
+        else:
+            schema_reasons.append("No CREATE TABLE or insertion of events/components found in code.")
+
+    score += schema_pts
+    if schema_reasons:
+        reasons.append("Schema issues: " + "; ".join(schema_reasons))
+
+    # Data ingestion counts & malformed handling (7 pts)
+    ingestion_pts = 0
+    ingestion_reasons = []
+    # Look for total_rows_in_csv, rows_loaded_into_store, malformed ids lists
+    total_rows = outputs.get("total_rows_in_csv")
+    rows_loaded = outputs.get("rows_loaded_into_store")
+    rows_dropped_list_metric = outputs.get("malformed_metric_row_ids") or outputs.get("malformed_metric_rows") or []
+    rows_dropped_list_ts = outputs.get("malformed_timestamp_row_ids") or outputs.get("malformed_timestamp_rows") or []
+    # If not in that outputs, look into reproducibility printed summaries or short_explanation
+    if total_rows is None or rows_loaded is None:
+        # Attempt to find in candidate top-level outputs
+        # Check for mention in short_explanation
+        se = artifacts.get("short_explanation", "") or ""
+        if "60" in str(se) or "total rows" in se.lower():
+            # give partial credit
+            total_rows = total_rows or 60
+    # Expected values (from answer key) if present
+    expected_setup_outputs = None
+    try:
+        # try to find setup outputs in answer_key too
+        for s in answer_key.get("steps", []):
+            if s.get("name", "").lower().startswith("setup"):
+                expected_setup_outputs = s.get("artifacts", {}).get("outputs", {})
+                break
+    except Exception:
+        expected_setup_outputs = None
+
+    # Evaluate totals if present
+    if isinstance(total_rows, int) and isinstance(rows_loaded, int) and expected_setup_outputs:
+        expected_total = expected_setup_outputs.get("total_rows_in_csv")
+        expected_loaded = expected_setup_outputs.get("rows_loaded_into_store")
+        if expected_total is not None and total_rows == expected_total:
+            ingestion_pts += 2
+        else:
+            ingestion_reasons.append(f"total_rows_in_csv expected {expected_total} but candidate reported {total_rows}.")
+        if expected_loaded is not None:
+            # Accept small off-by-one differences; otherwise partial credit proportional
+            if rows_loaded == expected_loaded:
+                ingestion_pts += 5
+            else:
+                # proportional points (max 5)
+                diff = abs(rows_loaded - expected_loaded)
+                frac = max(0.0, 1.0 - (diff / expected_loaded))
+                ingestion_pts += round(5 * frac, 2)
+                ingestion_reasons.append(f"rows_loaded_into_store expected {expected_loaded} but candidate reported {rows_loaded}.")
+        else:
+            ingestion_reasons.append("No expected loaded rows in answer key to compare.")
+    else:
+        # If missing, give partial credit if candidate at least reported something
+        if isinstance(total_rows, int) or isinstance(rows_loaded, int):
+            ingestion_pts += 3
+            if not isinstance(total_rows, int):
+                ingestion_reasons.append("total_rows_in_csv missing from outputs.")
+            if not isinstance(rows_loaded, int):
+                ingestion_reasons.append("rows_loaded_into_store missing from outputs.")
+        else:
+            ingestion_reasons.append("No row counts reported in Setup & Import outputs.")
+    score += ingestion_pts
+    if ingestion_reasons:
+        reasons.append("Ingestion issues: " + "; ".join(ingestion_reasons))
+
+    # Runnable commands/scripts included (5 pts)
+    commands = artifacts.get("commands") or []
+    cmd_pts = 0
+    cmd_reasons = []
+    if commands and isinstance(commands, list) and len(commands) > 0:
+        # look for typical ingestion commands mention
+        join_cmds = " ".join(commands).lower()
+        if ("sqlite3" in join_cmds) or ("python" in join_cmds) or ("ingest" in join_cmds) or ("create.sql" in join_cmds):
+            cmd_pts = 5
+        else:
+            cmd_pts = 3
+            cmd_reasons.append("Commands included but did not contain typical ingestion commands (sqlite3/python).")
+    else:
+        # Try reproducibility top-level commands
+        top_cmds = candidate.get("reproducibility", {}).get("commands") or []
+        if top_cmds:
+            cmd_pts = 4
+            cmd_reasons.append("No per-step commands, but reproducibility.commands found at top level.")
+        else:
+            cmd_reasons.append("No runnable commands provided for ingestion.")
+    score += cmd_pts
+    if cmd_reasons:
+        reasons.append("Commands: " + "; ".join(cmd_reasons))
+
+    # Cap at max
+    if score > MAX_SCORES["setup"]:
+        score = MAX_SCORES["setup"]
+
+    details["setup"] = {
+        "score": round(score, 2),
+        "max": MAX_SCORES["setup"],
+        "reasons": reasons
+    }
+    return score, reasons
+
+
+def grade_core_queries(candidate, answer_key, details):
+    """
+    Grade Core Retrieval Queries (40 pts)
+    Strategy: look for candidate.steps where name contains 'core' or 'queries'
+    Compare each query's outputs.query_1..query_5 result_rows to answer_key equivalent.
+    Each query is worth 8 points (5 * 8 = 40).
+    Partial credit proportional to matching expected rows.
+    """
+    score = 0.0
+    reasons = []
+    step = None
+    for s in candidate.get("steps", []):
+        if "core" in s.get("name", "").lower() or "query" in s.get("name", "").lower():
+            step = s
+            break
+    if not step:
+        reasons.append("Missing 'Core Queries' step.")
+        details["core_queries"] = {"score": 0.0, "max": MAX_SCORES["core_queries"], "reasons": reasons}
+        return 0.0, reasons
+
+    cand_outputs = step.get("artifacts", {}).get("outputs", {}) or {}
+    # Find expected outputs in answer_key
+    expected_step = None
+    for s in answer_key.get("steps", []):
+        if "core" in s.get("name", "").lower() or "query" in s.get("name", "").lower():
+            expected_step = s
+            break
+
+    expected_outputs = expected_step.get("artifacts", {}).get("outputs", {}) if expected_step else {}
+
+    # For queries 1..5
+    per_query_pts = MAX_SCORES["core_queries"] / 5.0  # 8.0
+    query_results = {}
+    for i in range(1, 6):
+        qkey = f"query_{i}"
+        candidate_q = cand_outputs.get(qkey)
+        expected_q = expected_outputs.get(qkey)
+        if candidate_q is None:
+            reasons.append(f"Query {i} missing from candidate outputs.")
+            query_results[qkey] = {
+                "score": 0.0,
+                "max": per_query_pts,
+                "reason": "Missing query output"
+            }
+            continue
+        # Extract result rows arrays
+        cand_rows = []
+        exp_rows = []
+
+        # Candidate may have wrapped info (sql, command, result_rows)
+        if isinstance(candidate_q, dict) and "result_rows" in candidate_q:
+            cand_rows = candidate_q.get("result_rows") or []
+        elif isinstance(candidate_q, list):
+            cand_rows = candidate_q
+        else:
+            # try if candidate provided directly as list
+            cand_rows = candidate_q
+
+        if isinstance(expected_q, dict) and "result_rows" in expected_q:
+            exp_rows = expected_q.get("result_rows") or []
+        elif isinstance(expected_q, list):
+            exp_rows = expected_q
+        else:
+            exp_rows = expected_q or []
+
+        # Normalize candidate rows: ensure list of dicts
+        if not isinstance(cand_rows, list):
+            cand_rows = []
+
+        if not isinstance(exp_rows, list):
+            exp_rows = []
+
+        match_count, expected_count = compare_row_sets(cand_rows, exp_rows)
+        # Fractional score
+        if expected_count == 0:
+            # If expected is empty and candidate also empty -> full points; else partial
+            if len(cand_rows) == 0:
+                qscore = per_query_pts
+            else:
+                qscore = max(0.0, per_query_pts * 0.5)
+                reasons.append(f"Query {i} expected empty result but candidate returned rows.")
+        else:
+            frac = match_count / expected_count
+            qscore = round(per_query_pts * frac, 4)
+            if frac < 1.0:
+                reasons.append(f"Query {i}: matched {match_count}/{expected_count} expected rows -> {round(frac*100,1)}% -> {qscore} pts.")
+        score += qscore
+        query_results[qkey] = {
+            "score": round(qscore, 4),
+            "max": per_query_pts,
+            "matched": match_count,
+            "expected": expected_count
+        }
+
+    # Cap
+    if score > MAX_SCORES["core_queries"]:
+        score = MAX_SCORES["core_queries"]
+
+    details["core_queries"] = {
+        "score": round(score, 4),
+        "max": MAX_SCORES["core_queries"],
+        "per_query": query_results,
+        "reasons": reasons
+    }
+    return score, reasons
+
+
+def grade_transformation(candidate, answer_key, details):
+    """
+    Grade Transformation & Export (20 pts)
+    Subcomponents:
+      - transformation correctness/usefulness (10)
+      - exported results included and proper format (5)
+      - explanation of malformed/missing handling (5)
+    """
+    score = 0.0
+    reasons = []
+
+    # Find transformation step (name contains 'transform' or 'export')
+    step = None
+    for s in candidate.get("steps", []):
+        n = s.get("name", "").lower()
+        if "transform" in n or "export" in n or "transformation" in n:
+            step = s
+            break
+    if not step:
+        reasons.append("Missing 'Transformation & Export' step.")
+        details["transformation"] = {"score": 0.0, "max": MAX_SCORES["transformation"], "reasons": reasons}
+        return 0.0, reasons
+
+    artifacts = step.get("artifacts", {}) or {}
+    outputs = artifacts.get("outputs", {}) or {}
+    code = artifacts.get("code", "") or ""
+    commands = artifacts.get("commands") or []
+
+    # 1) transformation correctness/usefulness (10 pts)
+    trans_pts = 0
+    trans_reasons = []
+    # Heuristics: code/commands include aggregate per-day or per-component; outputs include export rows and columns
+    has_sql = any(k in code.lower() for k in ("select", "group by", "avg(", "count(", "round("))
+    has_export_cmd = any("sqlite3" in (c.lower() if isinstance(c, str) else "") or ".csv" in (c.lower() if isinstance(c, str) else "") or "python" in (c.lower() if isinstance(c, str) else "") for c in commands)
+    if has_sql:
+        trans_pts += 6
+    else:
+        trans_reasons.append("Transformation code does not appear to contain SQL aggregation or transformation logic.")
+        trans_pts += 2  # small credit if code present but not obviously correct
+    if has_export_cmd:
+        trans_pts += 4
+    else:
+        trans_reasons.append("No clear export command (sqlite3 -csv or equivalent) found in commands.")
+    score += trans_pts
+    if trans_reasons:
+        reasons.append("Transformation issues: " + "; ".join(trans_reasons))
+
+    # 2) exported results included and format (5 pts)
+    export_pts = 0
+    export_reasons = []
+    export_format = outputs.get("export_format") or ""
+    export_rows = outputs.get("export_rows")
+    export_full = outputs.get("export_full_if_included") or []
+    export_sample = outputs.get("export_sample_if_large") or []
+
+    # Compare with expected transform in answer_key if present
+    expected_trans = None
+    for s in answer_key.get("steps", []):
+        if "transform" in s.get("name", "").lower() or "export" in s.get("name", "").lower():
+            expected_trans = s
+            break
+    expected_outputs = expected_trans.get("artifacts", {}).get("outputs", {}) if expected_trans else {}
+
+    # Give credit if export rows/format present and reasonable
+    if export_format.lower() in ("csv", "json"):
+        export_pts += 2
+    else:
+        export_reasons.append("Export format not specified or not csv/json.")
+    if isinstance(export_rows, int) and export_rows > 0:
+        export_pts += 2
+    else:
+        # If export_full included non-empty, give credit
+        if isinstance(export_full, list) and len(export_full) > 0:
+            export_pts += 2
+        else:
+            export_reasons.append("Export rows not reported or export appears empty.")
+    # If expected export rows present, compare small transform outputs
+    expected_count = expected_outputs.get("export_rows") if expected_outputs else None
+    if expected_count is not None:
+        # If counts equal, award full last point
+        if isinstance(export_rows, int) and export_rows == expected_count:
+            export_pts += 1
+        else:
+            export_reasons.append(f"Export row count expected {expected_count} but candidate reported {export_rows}.")
+            # partial credit if close
+            if isinstance(export_rows, int) and expected_count and expected_count > 0:
+                frac = max(0.0, 1.0 - (abs(export_rows - expected_count) / expected_count))
+                export_pts += round(1.0 * frac, 3)
+    else:
+        # no expected set: give remaining 1 pt if they included any export sample
+        if export_full or export_sample:
+            export_pts += 1
+
+    score += export_pts
+    if export_reasons:
+        reasons.append("Export issues: " + "; ".join(export_reasons))
+
+    # 3) explanation of malformed/missing handling (5 pts)
+    explain_pts = 0
+    explain_reasons = []
+    handling_text = outputs.get("how_malformed_or_missing_values_were_handled") or artifacts.get("short_explanation") or ""
+    handling_text = handling_text.lower() if isinstance(handling_text, str) else ""
+    expected_bad_metric_ids = safe_get(answer_key, ["steps", 0, "artifacts", "outputs", "malformed_metric_row_ids"], None)
+    expected_bad_ts_ids = safe_get(answer_key, ["steps", 0, "artifacts", "outputs", "malformed_timestamp_row_ids"], None)
+    # Relaxed check: must mention dropping/excluding or coercing and mention ids or counts
+    if any(kw in handling_text for kw in ("drop", "dropped", "exclude", "excluded", "impute", "coerce", "converted")):
+        explain_pts += 3
+        # If mentions specific malformed ids (7,18,55 or 10,58), give extra credit
+        mention_ids = False
+        for sid in (expected_bad_metric_ids or []):
+            if str(sid) in handling_text:
+                mention_ids = True
+                break
+        for sid in (expected_bad_ts_ids or []):
+            if str(sid) in handling_text:
+                mention_ids = True
+                break
+        if mention_ids:
+            explain_pts += 2
+        else:
+            explain_reasons.append("Handling described but specific malformed row ids not mentioned.")
+    else:
+        explain_reasons.append("No explicit description of how malformed/missing values were handled in transformation outputs.")
+    score += explain_pts
+    if explain_reasons:
+        reasons.append("Handling explanation: " + "; ".join(explain_reasons))
+
+    # Cap
+    if score > MAX_SCORES["transformation"]:
+        score = MAX_SCORES["transformation"]
+
+    details["transformation"] = {
+        "score": round(score, 3),
+        "max": MAX_SCORES["transformation"],
+        "components": {
+            "transformation_logic_pts": trans_pts,
+            "export_pts": export_pts,
+            "handling_pts": explain_pts
+        },
+        "reasons": reasons
+    }
+    return score, reasons
+
+
+def grade_summary(candidate, answer_key, details):
+    """
+    Grade Summary & Interpretation (10 pts)
+    Subcomponents:
+      - key findings & recommendations (7)
+      - time log, assumptions and concise communication (3)
+    """
+    score = 0.0
+    reasons = []
+
+    summary = candidate.get("summary") or {}
+    findings = summary.get("key_findings") or []
+    recs = summary.get("recommendations") or []
+    assumptions = summary.get("assumptions") or []
+    # Basic checks
+    if findings and isinstance(findings, list) and len(findings) >= 2:
+        # Check that at least one finding mentions the high-activity day (2025-01-10 or N>50) and one mentions comp_A high metric/error
+        joined = " ".join(findings).lower()
+        cond1 = ("2025-01-10" in joined) or ("> 50" in joined) or ("n=50" in joined) or ("more than n" in joined) or ("exceed" in joined)
+        cond2 = ("comp_a" in joined) or ("auth service" in joined) or ("auth" in joined) or ("highest" in joined)
+        if cond1 and cond2:
+            score += 5
+        else:
+            score += 3
+            reasons.append("Findings present but did not clearly mention high-activity day and/or comp_A issue.")
+    else:
+        reasons.append("Key findings are missing or insufficient.")
+    # Recommendations: expect actionable items
+    if recs and isinstance(recs, list) and len(recs) >= 1:
+        score += 2
+    else:
+        reasons.append("Recommendations missing or minimal.")
+
+    # Time log and assumptions (3 pts)
+    time_spent_total = candidate.get("time_spent_minutes")
+    steps = candidate.get("steps") or []
+    sum_steps = 0
+    for s in steps:
+        try:
+            t = int(s.get("time_spent_minutes") or 0)
+        except Exception:
+            t = 0
+        sum_steps += t
+    # If total matches sum of steps, good
+    if isinstance(time_spent_total, int) and (time_spent_total == sum_steps or abs(time_spent_total - sum_steps) <= 5):
+        score += 2
+    else:
+        # give 1 point if at least provided times
+        if isinstance(time_spent_total, int) or sum_steps > 0:
+            score += 1
+            reasons.append("Time log present but does not match sum of per-step times or is missing small discrepancy.")
+        else:
+            reasons.append("Time log missing.")
+
+    if assumptions and isinstance(assumptions, list) and len(assumptions) > 0:
+        score += 0  # assumptions considered above via findings; no extra pts beyond time/assumptions slot
+        # We'll consider assumptions presence as non-critical; already counted via prior points
+    else:
+        reasons.append("Assumptions not provided.")
+
+    # Cap
+    if score > MAX_SCORES["summary"]:
+        score = MAX_SCORES["summary"]
+
+    details["summary"] = {"score": round(score, 2), "max": MAX_SCORES["summary"], "reasons": reasons}
+    return score, reasons
+
+
+def grade_reproducibility(candidate, answer_key, details):
+    """
+    Grade Reproducibility & Packaging (10 pts)
+      - commands sufficient to recreate DB and run queries (5)
+      - files_created includes key outputs (5)
+    """
+    score = 0.0
+    reasons = []
+
+    repro = candidate.get("reproducibility") or {}
+    commands = repro.get("commands") or []
+    files = repro.get("files_created") or []
+
+    # Commands check (5 pts)
+    cmd_pts = 0
+    cmd_reasons = []
+    if commands and isinstance(commands, list) and len(commands) > 0:
+        join_cmds = " ".join(commands).lower()
+        # check for at least one ingestion or DB creation command and at least one query/export command
+        ingestion_keywords = ("sqlite3", "python", "ingest", "create.sql")
+        query_keywords = ("sqlite3", "select", "queries.py", "transform", "csv")
+        has_ingest = any(k in join_cmds for k in ingestion_keywords)
+        has_query = any(k in join_cmds for k in query_keywords)
+        if has_ingest and has_query:
+            cmd_pts = 5
+        elif has_ingest or has_query:
+            cmd_pts = 3
+            cmd_reasons.append("Commands include either ingestion or query/export but not clearly both.")
+        else:
+            cmd_reasons.append("Commands present but do not include recognizable ingestion or query commands.")
+    else:
+        cmd_reasons.append("No reproducibility.commands provided.")
+    score += cmd_pts
+    if cmd_reasons:
+        reasons.append("Reproducibility commands: " + "; ".join(cmd_reasons))
+
+    # Files created check (5 pts)
+    file_pts = 0
+    file_reasons = []
+    if files and isinstance(files, list) and len(files) > 0:
+        # Expect at least one DB file and one export (csv/json) OR a script file
+        join_files = " ".join([str(f).lower() for f in files])
+        has_db = any(x in join_files for x in (".db", "data.db", "cleaned.db"))
+        has_export = any(x in join_files for x in (".csv", ".json", "transformed"))
+        has_script = any(x in join_files for x in (".py", "ingest", "queries"))
+        if (has_db and has_export) or (has_db and has_script) or (has_export and has_script):
+            file_pts = 5
+        elif has_db or has_export or has_script:
+            file_pts = 3
+            file_reasons.append("Files list incomplete; includes some expected artifact(s) but not both DB and export/script.")
+        else:
+            file_reasons.append("Files list present but does not include expected artifact file types (.db, .csv, .py).")
+    else:
+        file_reasons.append("No files_created listed in reproducibility.")
+    score += file_pts
+    if file_reasons:
+        reasons.append("Files created: " + "; ".join(file_reasons))
+
+    # Cap
+    if score > MAX_SCORES["reproducibility"]:
+        score = MAX_SCORES["reproducibility"]
+
+    details["reproducibility"] = {"score": round(score, 2), "max": MAX_SCORES["reproducibility"], "reasons": reasons}
+    return score, reasons
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        sys.exit(2)
+
+    cand_path = sys.argv[1]
+    key_path = sys.argv[2]
+    # Prepare results structure
+    results = {
+        "per_category": {},
+        "deductions": [],
+        "total_points": 0.0,
+        "max_points": TOTAL_MAX,
+        "percentage": 0.0,
+        "overall_score": 0.0,
+    }
+
+    # Load JSONs with error handling
+    try:
+        candidate = load_json_path(cand_path)
+    except Exception as e:
+        print(f"Error loading candidate submission: {e}")
+        sys.exit(3)
+    try:
+        answer_key = load_json_path(key_path)
+    except Exception as e:
+        print(f"Error loading answer key: {e}")
+        sys.exit(4)
+
+    details = {}
+
+    # Grade each section and collect reasons
+    try:
+        s_score, s_reasons = grade_setup(candidate, answer_key, details)
+        results["per_category"]["setup"] = {"score": round(s_score, 2), "max": MAX_SCORES["setup"], "reasons": s_reasons}
+    except Exception as e:
+        results["per_category"]["setup"] = {"score": 0.0, "max": MAX_SCORES["setup"], "reasons": [f"Exception during grading setup: {e}"]}
+        s_score = 0.0
+
+    try:
+        c_score, c_reasons = grade_core_queries(candidate, answer_key, details)
+        results["per_category"]["core_queries"] = {"score": round(c_score, 4), "max": MAX_SCORES["core_queries"], "reasons": c_reasons}
+    except Exception as e:
+        results["per_category"]["core_queries"] = {"score": 0.0, "max": MAX_SCORES["core_queries"], "reasons": [f"Exception during grading core queries: {e}"]}
+        c_score = 0.0
+
+    try:
+        t_score, t_reasons = grade_transformation(candidate, answer_key, details)
+        results["per_category"]["transformation"] = {"score": round(t_score, 3), "max": MAX_SCORES["transformation"], "reasons": t_reasons}
+    except Exception as e:
+        results["per_category"]["transformation"] = {"score": 0.0, "max": MAX_SCORES["transformation"], "reasons": [f"Exception during grading transformation: {e}"]}
+        t_score = 0.0
+
+    try:
+        sum_score, sum_reasons = grade_summary(candidate, answer_key, details)
+        results["per_category"]["summary"] = {"score": round(sum_score, 2), "max": MAX_SCORES["summary"], "reasons": sum_reasons}
+    except Exception as e:
+        results["per_category"]["summary"] = {"score": 0.0, "max": MAX_SCORES["summary"], "reasons": [f"Exception during grading summary: {e}"]}
+        sum_score = 0.0
+
+    try:
+        rep_score, rep_reasons = grade_reproducibility(candidate, answer_key, details)
+        results["per_category"]["reproducibility"] = {"score": round(rep_score, 2), "max": MAX_SCORES["reproducibility"], "reasons": rep_reasons}
+    except Exception as e:
+        results["per_category"]["reproducibility"] = {"score": 0.0, "max": MAX_SCORES["reproducibility"], "reasons": [f"Exception during grading reproducibility: {e}"]}
+        rep_score = 0.0
+
+    total = s_score + c_score + t_score + sum_score + rep_score
+    if total < 0:
+        total = 0.0
+    results["total_points"] = round(total, 4)
+    results["max_points"] = TOTAL_MAX
+    percent = (total / TOTAL_MAX) * 100.0 if TOTAL_MAX > 0 else 0.0
+    results["percentage"] = round(percent, 2)
+    results["overall_score"] = round(percent, 2)
+
+    # Provide helpful diagnostics based on details (if available)
+    results["grading_details"] = details
+
+    # Collect some high-level deduction messages for quick human reading
+    deductions = []
+    for cat, info in results["per_category"].items():
+        if info["score"] < info["max"]:
+            deductions.append(f"{cat}: scored {info['score']}/{info['max']}. Reasons: {info.get('reasons') or 'See details.'}")
+    results["deductions"] = deductions
+
+    # Save to test_results.json (script directory)
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"Grading complete. Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}")
+        sys.exit(5)
+
+
+if __name__ == "__main__":
+    main()

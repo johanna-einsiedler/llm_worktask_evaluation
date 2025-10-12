@@ -1,133 +1,137 @@
 Here is the exam overview written by another exam designer:
 <examoverview>
 ### Exam Purpose
-Confirm that a candidate can read, run, diagnose, and modify an existing program to fix defects, add a small requirement, and improve efficiency — in other words: perform practical revision, repair, and modest expansion of working code to meet new requirements and improve operating efficiency. The exam verifies hands-on ability (not just theory) to navigate an unfamiliar codebase, produce correct and testable changes, and explain/justify those changes.
+Confirm that a candidate can practically perform maintenance and small-scale enhancement of existing programs: diagnose and fix defects, implement a new small requirement, and make a modest operational improvement (performance or robustness) while keeping changes minimal, tested, and reproducible. This is the core everyday capability for a junior/entry-level computer programmer tasked with revising, repairing, or extending code to meet new or changed requirements.
 
-### Core Competencies
-- Environment setup and reproducible runs: execute provided program and baseline tests.
-- Debugging and defect repair: identify root causes and implement correct fixes.
-- Small feature implementation: extend code to satisfy a realistic new requirement.
-- Basic performance reasoning and improvement: detect a performance hotspot and implement a measurable optimization.
-- Test-authoring and verification: run and/or add unit or integration tests that validate behavior.
-- Clear change artifacts and explanation: produce diffs/patches, short rationale, and reproduction steps so an evaluator can re-run and verify.
-- Code hygiene appropriate for entry-level: readable edits, modest refactoring, and inline comments where helpful.
+### Core Competencies to Be Tested
+- Reading and understanding an unfamiliar codebase quickly
+- Writing correct, minimal, well-structured code changes
+- Running and interpreting test harnesses and benchmarks
+- Debugging and fixing functional bugs so existing behavior/tests are satisfied
+- Implementing a small new requirement that integrates with the existing design
+- Making and validating a targeted performance or resource-use improvement
+- Producing reproducible artifacts (code changes, tests, instructions) and clear explanations of what was changed and why
+- Using only the provided local environment and standard libraries (no internet)
 
-### Recommended Structure
-Total time limit: 90 minutes. Deliverables must be submitted in one file named test_submission.json (schema specified below), and any modified files or diffs included in that JSON. Candidate has only the provided codebase, a code execution environment, and a text editor.
+### Recommended Structure (Basic exam, single session, <= 90 minutes)
+Overall: one practical repo + test harness provided to candidate. The exam contains 3 small, interrelated tasks. Candidate submits a single JSON file named test_submission.json (schema below) containing changed file contents, test outputs, and explanations. Evaluator runs the candidate’s submission to verify.
 
-Suggested task breakdown (one practical micro-project, 4 tasks):
-- Task 0 — Setup & Baseline (10–15 minutes)
-  - Run the provided program and included test suite / smoke script.
-  - Record baseline outputs and runtimes.
-  - Deliverable: baseline stdout and failing tests summary in JSON.
-- Task 1 — Repair: Fix two small but realistic bugs (30 minutes)
-  - Example: incorrect edge-case handling, wrong date parsing, off-by-one, poor error handling, or incorrect calculation.
-  - Required: All provided tests for these behaviors must pass after fixes.
-  - Deliverable: unified diffs (or file contents) and short explanations for each bug and fix.
-- Task 2 — Expand: Implement a small new feature (20 minutes)
-  - Example: add a filter option to a CLI, accept an extra input format, or export additional field.
-  - Required: Add one unit/integration test that asserts the new feature works.
-  - Deliverable: changed files, new test file, and explanation.
-- Task 3 — Improve Efficiency: Optimize a hotspot (15–20 minutes)
-  - Identify a clearly-marked slow function (provided with naive implementation); reduce runtime by a measurable amount (e.g., 3x or achieve a fixed target).
-  - Required: Run benchmark script before/after and include numbers.
-  - Deliverable: timing outputs, changed files or algorithm description, and justification.
-- Finalize & Submit (5–10 minutes)
-  - Package diffs/changes into test_submission.json, include how to reproduce verification steps and a short self-assessment.
+Suggested time allocation:
+- Task A — Bug Fix (30 minutes): fix 2–3 small but non-trivial failing tests or an obvious runtime exception.
+- Task B — Add Small Feature (30 minutes): implement one small, well-specified requirement (e.g., support an additional input case or a flag / option) plus one small unit test.
+- Task C — Modest Optimization or Robustness Improvement (20–25 minutes): improve performance or memory use of a hot function or make the program handle a large edge-case dataset; provide before/after timings or resource measurements and a short justification.
 
-Expected deliverables (all included in test_submission.json):
-- Candidate metadata (name, start/end times, environment).
-- For each task: status, short narrative of actions, and key outputs (test output, timing numbers).
-- Diffs or modified file contents (as unified diff strings or full new file contents).
-- New/modified test files (as text).
-- Exact commands to reproduce results and verification steps.
+Deliverables (all placed into test_submission.json):
+- metadata: candidate name, language, time_taken_minutes
+- for each task: status, list of modified files (full file contents or unified diffs), test results, run commands, any benchmark numbers, and a short explanation of changes and trade-offs
+- final reproducible commands and instructions to re-run tests/benchmarks
 
-### Practicality — How to keep it hands-on
-- Provide a small but realistic, self-contained codebase (no external network dependencies) that includes:
-  - A runnable CLI or small API with sample data files.
-  - A small test harness or script that demonstrates failures and contains at least one intentionally failing test tied to each bug/feature.
-  - A simple benchmark script to measure runtime on a supplied input (deterministic inputs).
-- Make the tasks interdependent: baseline must run first; some bug fixes are prerequisites for the feature to work or for the benchmark to be meaningful.
-- Require the candidate to both run the program and supply the changed code and test outputs — not only to describe what they'd do.
-- No internet access ensures candidate cannot copy-paste entire solutions; they must rely on skill and local tooling.
+Logical sequence
+1. Candidate clones or opens the provided baseline code (local package).
+2. Runs the provided test script to observe failing tests and baseline performance measurements.
+3. Task A: Fix failures until the tests indicated for Task A pass.
+4. Task B: Implement the new feature; add a test verifying it; ensure existing tests still pass.
+5. Task C: Profile/measure a targeted function, implement a small optimization or defensive change, and show measurable improvement or improved robustness.
+6. Package results into test_submission.json and submit.
 
-### Strategic Elements (to distinguish practical ability)
-- Multi-step dependency: e.g., the new feature relies on corrected parsing logic from Task 1; the benchmark input exercises the code paths changed in Task 2. This checks sequencing and integration thinking.
-- Decision points: give a performance hotspot with several valid optimization strategies (algorithmic improvement, caching, data structure change). Candidate must choose and justify one with tradeoffs (simplicity vs. best asymptotic).
-- Observable trade-offs: small refactor that increases clarity but may slightly change runtime; candidate should explain tradeoffs.
-- Fault isolation: include at least one non-obvious bug that requires reading code logic (not just surface syntax), e.g., incorrect assumptions about input format or edge-case branching.
-- Testing requirement: require at least one new automated test covering the bug or feature to prove the fix; this distinguishes those who patch vs. those who verify.
+Constraints to ensure fairness and reproducibility:
+- Only standard libraries available in the provided execution environment may be used (no external downloads).
+- A single command (documented in the exam package, e.g., ./run_all.sh or python -m pytest) must run all automated checks in the baseline; candidate must provide the command(s) that reproduce their final results.
 
-### Evaluation Insights — What to look for in submissions
-Score weighting (recommended for basic exam; passing threshold > 80%):
-- Correctness & completeness (50%): all required fixes pass tests; the new feature behaves as specified; no regressions in other tests.
-- Tests & reproducibility (15%): candidate ran baseline and new tests; provided clear reproduction steps; tests are meaningful and pass.
-- Performance improvement (15%): measured and reported before/after timings; improvement meets the target or is reasonably justified.
-- Code quality & clarity (10%): readable changes, small, focused refactors, comments where helpful, no unnecessary complexity.
-- Explanation & process (10%): succinct rationale for fixes, chosen optimization approach, and potential edge-cases remaining.
+### Practicality — Making it hands-on
+- Provide a runnable baseline repository (small: ~300–600 lines split across several files) with:
+  - A small set of unit tests that demonstrate expected behavior (some intentionally failing for Task A).
+  - A small dataset or input files for performance measurement for Task C.
+  - A single-run script to produce baseline test and timing outputs.
+- Require the candidate to run tests and bench locally and include actual outputs in JSON (not just claims).
+- Require the candidate to include the actual modified source files in the JSON (not just textual description).
+- Include at least one failing runtime or logic issue that only becomes apparent by running the code (so the assessment cannot be completed by purely answering questions).
+- Make Task B require integrating with existing interfaces (e.g., modifying a function used by other code) to test reading and integrating with code rather than creating isolated snippets.
 
-Observable outputs to verify competence:
-- Test outputs: initial failure logs and final passing logs (captured in JSON).
-- Diffs/modified file contents: allow the evaluator to inspect code and validate good fixes.
-- Benchmark/timing outputs: simple numeric comparison (median/mean of runs) demonstrating improvement.
-- Reproduction script: a short list of commands included in JSON which a grader can run to reproduce results in <10 minutes.
-- New test file content: shows candidate can write basic tests that validate behavior.
+Example minimal exam contents to provide the candidate:
+- code/
+  - main.py (or similar)
+  - utils.py
+  - processor.py
+- tests/
+  - test_task_a.py (initially failing)
+  - test_task_b_spec.py (describes feature; candidate expected to implement and add a test that passes)
+- data/
+  - sample_input_small.txt
+  - sample_input_large.txt (for Task C measurement)
+- run_all.sh (runs tests and baseline timing)
+- README.md with clear task descriptions and exact time limit notice
 
-Minimum passing behavior:
-- All existing tests that were passing before remain passing.
-- Bugs targeted by the tasks are fixed (tests pass).
-- New feature is implemented and validated by at least one automated test.
-- Performance benchmark shows improved runtime by a pre-defined modest factor (e.g., 2x) or meets an absolute time target provided in the test instructions.
-- Candidate supplies unified diffs or new file contents for every changed file, and a clear "how to run" sequence.
+### Strategic elements (how to distinguish competent doers)
+- Multi-step dependency: Task B builds on the same modules fixed in Task A (so candidates must understand and preserve earlier fixes). This prevents copy-paste toy answers and highlights comprehension of code interactions.
+- Decision points:
+  - For Task C, candidates must decide whether to optimize algorithmically, cache results, or reduce allocations. Ask them to justify their choice in the JSON explanation and to implement the chosen change.
+  - Ask candidates to choose trade-offs when implementing Task B (e.g., conservative change vs refactor). Their choice and justification reveal practical judgment.
+- Data dependency: provide small and larger sample inputs for performance checks. The “large” input should be big enough to reveal naive O(n^2) vs O(n log n) behavior in timing.
+- Failure modes: include an edge-case in tests that can be handled either by a small guard clause or by adjusting a central algorithm; candidates who understand the codebase will pick the minimal, maintainable fix.
 
-### Suggested JSON schema for test_submission.json
-Provide this exact JSON schema to candidates so submissions are uniform and easy to grade. All fields are strings unless noted.
+### Evaluation Insights (observable outputs / success criteria)
+Scoring (example weights to be used by evaluators; total 100):
+- Task A — Bug Fix correctness: 40 points
+  - 30 pts: All Task A tests pass in the candidate-submitted code
+  - 10 pts: Changes are minimal and well-scoped (no unrelated modifications); code style/readability acceptable
+- Task B — Feature & tests: 30 points
+  - 20 pts: The new feature works and its test(s) pass
+  - 10 pts: Integration with existing code is correct and the candidate added at least one unit test
+- Task C — Measurable improvement & justification: 25 points
+  - 15 pts: Demonstrable quantitative improvement (timings, memory) or improved robustness on supplied large input (candidate must include before/after numbers)
+  - 10 pts: Clear explanation of change, alternatives considered, and trade-offs
+- Submission quality & reproducibility: 5 points
+  - JSON is correctly formed per schema, includes full modified files or unified diffs, includes commands to reproduce test and benchmark results
 
-- candidate_name (string)
-- candidate_email (string)
-- start_time_utc (ISO 8601 string)
-- end_time_utc (ISO 8601 string)
-- environment (object) — e.g., { "os": "...", "language": "Python 3.10", "other": "..." }
-- tasks (array of objects) — each object:
-  - id (string, e.g., "T1")
-  - title (string)
-  - status (string; "done"/"partial"/"skipped")
-  - minutes_spent (number)
-  - short_summary (string) — 1–3 sentences describing what was done
-  - key_outputs (string) — paste of relevant stdout/stderr (trim to essential lines)
-  - files_changed (array of objects) — each with:
-    - filename (string)
-    - change_type (string; "modified"/"added"/"deleted")
-    - unified_diff (string) — unified diff text or entire new file content if diff unavailable
-- new_tests (array) — each object:
-  - filename (string)
-  - content (string)
-- performance (object) — include:
-  - benchmark_command (string)
-  - before_run_times (array of numbers in ms)
-  - after_run_times (array of numbers in ms)
-  - short_explanation (string)
-- how_to_reproduce (string) — exact commands a grader should run to verify baseline, tests, and benchmarks
-- final_notes (string) — any remaining issues, assumptions, or tradeoffs
-- self_assessed_percent_complete (number 0–100)
+Pass conditions for basic exam (goal: entry-level should score >80%):
+- Full credit on Task A and Task B and reasonable improvement on Task C (or clear partial progress with correct approach and explanations) should exceed 80 points. The tasks are sized so a competent entry-level candidate can complete them in 90 minutes.
 
-Evaluator instructions:
-- Reproduce steps in how_to_reproduce exactly in the provided environment; expect to run within 10 minutes.
-- Confirm that tests listed in key_outputs are passing.
-- Apply diffs (or replace files with provided content) and run checks.
-- Verify that reported performance numbers match or are near reported values (allow ~10% variation).
-- Score using the weighting above; require >=80% overall to pass for a junior/entry-level expectation.
+Observable outputs to collect and verify (automatable where possible)
+- Automated:
+  - Unit test run: which tests pass/fail (pytest/unittest output)
+  - Benchmark run: wall-clock times (e.g., using time module or simple wrappers) before and after changes
+- Manual/qualitative:
+  - Content of modified files (ensure changes are localized and correct)
+  - Clarity of written explanations in JSON: what was changed, why, and options considered
+  - Presence and quality of any new tests added by candidate
+  - Whether candidate preserved or improved error handling and edge cases
 
-### Example micro-projects you might provide for the basic exam
-(These are examples an exam creator can choose from; each should be small, self-contained, and runnable without external network.)
-- CSV deduplicator CLI (Python): Bugs in date parsing and duplicate detection; feature: add --since-date filter; performance: naive O(n^2) duplicate checking on 10k rows — optimize to O(n).
-- Simple JSON REST-ish CLI (Node/Python): Faulty error handling and incorrect ID assignment; feature: add pagination flag; performance: speed up JSON merge logic.
-- Small text-processing pipeline: incorrect tokenization and feature to support an extra format; performance: optimize repeated regex operations.
+Required format of test_submission.json (candidate must produce exactly this file name). Provide this schema to candidates and evaluators:
 
-These examples guide what the exam content should look like: small, focused, and realistic.
+- top-level keys:
+  - name (string)
+  - email (string, optional)
+  - language (string, e.g., "python")
+  - time_taken_minutes (integer)
+  - run_commands (array of strings) — exact commands to reproduce tests and benchmarks in order
+  - tasks (array of task-objects)
+- each task-object keys:
+  - id (string: "A" | "B" | "C")
+  - status (string: "completed" | "partial" | "not attempted")
+  - modified_files (object): map from filename -> full file content (string) [must include all files changed]
+  - diffs (optional string): unified diff text if candidate prefers to submit diffs
+  - test_output (string): raw stdout/stderr of test runs after candidate changes
+  - benchmark_before (optional number): baseline time (seconds) as observed before changes
+  - benchmark_after (optional number): time (seconds) after changes
+  - explanation (string): 3–6 sentences describing what was changed, why, and any trade-offs
+- final_notes (string): any other info or known issues
 
---- 
-This design yields a 90-minute, hands-on test that confirms a candidate can practically perform repair, revision, and modest expansion tasks on an existing codebase. It balances reproducibility for graders with realistic, integrative tasks that distinguish doing vs. describing.
+Example minimal validation checks for evaluator
+- Parse JSON; ensure required keys exist.
+- For each modified file in modified_files, write content to disk and run the provided run_commands to verify the candidate’s claimed test_output and benchmark numbers.
+- Ensure Task A tests pass fully for full Task A credit.
+- Ensure candidate’s new test for Task B is present and passing.
+- Verify improvement or reasonable justification for Task C.
+
+Notes and tips for exam creators and evaluators
+- Keep each task small and self-contained but connected: do not create a multitudes of hidden tricky corner cases that require deep domain knowledge.
+- Favor a small codebase with clear module boundaries and well-named functions to reduce time spent understanding irrelevant complexity.
+- For Task C, set measurable but modest targets (e.g., reduce runtime by ~30–50% on provided large input or reduce memory allocation that causes the baseline to fail). Make the target achievable with a clear local change.
+- Provide a short README with exact commands to run baseline tests and timers.
+- If language flexibility is offered, require candidate to declare language in JSON and provide the run commands needed so evaluator can reproduce results locally.
+
+This structure ensures a practical, hands-on assessment that exercises the typical day-to-day tasks of a programmer performing repair, revision, and small expansion of existing programs while remaining completable in a 90-minute window by an entry-level candidate.
 </examoverview>
 
 ### Your assignment:
@@ -140,7 +144,7 @@ Your instructions must include:
    - Do not prescribe methods or tools beyond what’s listed in the context.
 2. **Expected Outcome** – What the candidate must achieve or produce by the end of the test.
 3. **Provided Materials** – Briefly describe any materials or data files that will be given.
-4. **Submission Instructions** – Instrut candidates that they must submit results as `"test_submission.json"`.
+4. **Submission Instructions** – Instruct candidates that they must submit results as `"test_submission.json"` and that this will be the only file used for evaluation.
 
 ### Objectivity and Evaluation Constraints
 - Avoid tasks that require subjective interpretation.

@@ -1,71 +1,77 @@
 ```json
 {
-  "submission_metadata": {
-    "candidate_name": "",
-    "candidate_email": "",
-    "time_started": "",
-    "time_finished": "",
-    "time_taken_minutes": null
-  },
+  "schema_version": "1.0",
+  "candidate_name": "",
+  "exam_start": "",
+  "project_start_date": "2025-11-03",
   "assumptions": [],
-  "resources": [
-    {
-      "name": "Alice",
-      "role": "Tester",
-      "availability_percent": null
-    },
-    {
-      "name": "Bob",
-      "role": "Tester",
-      "availability_percent": null
-    },
-    {
-      "name": "Charlie",
-      "role": "Automation Engineer",
-      "availability_percent": null
-    }
-  ],
-  "schedule": [],
-  "test_scope": [],
-  "estimates": [],
-  "risk_prioritisation": [],
-  "contingency_options": [
-    {
-      "option_id": "",
-      "description": "",
-      "expected_quality_impact": "",
-      "rationale": ""
-    },
-    {
-      "option_id": "",
-      "description": "",
-      "expected_quality_impact": "",
-      "rationale": ""
-    }
-  ],
-  "entry_exit_criteria": {
-    "test_design": {
-      "entry": [],
-      "exit": []
-    },
-    "system_testing": {
-      "entry": [],
-      "exit": []
-    },
-    "uat_testing": {
-      "entry": [],
-      "exit": []
-    },
-    "regression": {
-      "entry": [],
-      "exit": []
-    },
-    "release": {
-      "entry": [],
-      "exit": []
-    }
+  "test_strategy": "",
+  "tasks": [],
+  "task_template": {
+    "id": "",
+    "description": "",
+    "owner": "",
+    "type": "",
+    "estimate_hours": null,
+    "duration_days": null,
+    "earliest_start_offset": null,
+    "dependencies": [],
+    "parallelizable": null
   },
-  "strategy_summary": "",
-  "optional_attachments": ""
+  "schedule_summary": {
+    "schedule_start": "",
+    "schedule_end": "",
+    "total_effort_hours": null,
+    "critical_path": [],
+    "buffers_days": null
+  },
+  "risk_prioritization": [
+    {
+      "feature_id": "F1",
+      "business_priority": "",
+      "testing_priority": null,
+      "tests_to_run": [],
+      "note": ""
+    },
+    {
+      "feature_id": "F2",
+      "business_priority": "",
+      "testing_priority": null,
+      "tests_to_run": [],
+      "note": ""
+    },
+    {
+      "feature_id": "F3",
+      "business_priority": "",
+      "testing_priority": null,
+      "tests_to_run": [],
+      "note": ""
+    },
+    {
+      "feature_id": "F4",
+      "business_priority": "",
+      "testing_priority": null,
+      "tests_to_run": [],
+      "note": ""
+    },
+    {
+      "feature_id": "F5",
+      "business_priority": "",
+      "testing_priority": null,
+      "tests_to_run": [],
+      "note": ""
+    },
+    {
+      "feature_id": "F6",
+      "business_priority": "",
+      "testing_priority": null,
+      "tests_to_run": [],
+      "note": ""
+    }
+  ],
+  "contingency_plan": "",
+  "metrics_and_reporting": "",
+  "final_comments": "",
+  "instructions": "Fill all top-level fields. Use only the allowed owner values: \"Tester A\", \"Tester B\", or \"Automation\". For tasks: push one entry per testing task into the tasks array. Use task IDs T1, T2, etc. For numeric or list fields use null (numbers/objects) or [] (arrays) as applicable. Do not add other top-level keys. Ensure total_effort_hours equals the sum of every task. Ensure schedule_start/schedule_end are ISO dates (YYYY-MM-DD). Ensure risk_prioritization contains entries for F1..F6 (already provided)."
 }
 ```

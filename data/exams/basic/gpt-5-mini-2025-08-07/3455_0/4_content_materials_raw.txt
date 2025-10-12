@@ -1,123 +1,158 @@
 <MATERIALS_FOR_CANDIDATE>
-File: telemetry.csv
-timestamp,host,cpu_percent,mem_mb,disk_io_kb,net_io_kb,event_type
-2024-03-01T00:00:00Z,host-01,10.5,1024,120,30,INFO
-2024-03-01T00:05:00Z,host-02,55.0,2048,500,80,INFO
-2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
-2024-03-01T01:00:00Z,host-02,60.0,2100,600,90,INFO
-2024-03-01T01:10:00Z,host-03,91.0,600,15,7,WARN
-2024-03-01T01:20:00Z,host-03,95.5,610,16,8,WARN
-2024-03-01T01:30:00Z,host-03,93.0,605,14,6,ERROR
-2024-03-01T02:00:00Z,host-01,20.0,1100,130,40,INFO
-2024-03-01T02:10:00Z,host-01,,2200,700,100,INFO
-2024-03-01T03:00:00Z,host-02,88.0,2150,650,95,INFO
-2024-03-01T04:00:00Z,host-01,15.0,1150,140,45,INFO
-2024-03-01T05:00:00Z,host-02,92.0,2300,800,110,WARN
-2024-03-01T06:00:00Z,host-02,93.0,2310,820,120,WARN
-2024-03-01T06:10:00Z,host-02,30.0,2000,300,60,INFO
-2024-03-01T25:00:00Z,host-01,50.0,1200,150,50,INFO
-2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
+CSV: system_logs.csv
+Columns: timestamp,host,component,level,event_id,metric_name,metric_value,message
 
-File: target_host.txt
-host-02
+timestamp,host,component,level,event_id,metric_name,metric_value,message
+2025-10-15T15:34:10+00:00,host-1,web,ERROR,E1001,cpu_usage,75.5,Out of memory
+2025-10-15T14:50:00+00:00,host-2,db,ERROR,E1002,cpu_usage,60,Connection lost
+2025-10-15T13:05:00,host-1,web,INFO,E1003,cpu_usage,20,Request handled
+2025-10-15T09:30:00+00:00,host-3,cache,ERROR,E1004,hit_rate,0.95,Cache miss high
+2025-10-14T15:59:59,host-4,web,ERROR,E1005,cpu_usage,88,Spike detected
+2025-10-14T16:00:00+00:00,host-2,web,ERROR,E1002,cpu_usage,55,Retry
+2025-10-13T12:00:00+00:00,host-5,db,WARN,E1006,cpu_usage,N/A,Metric not numeric
+2025-10-15T10:00:00-05:00,host-6,web,ERROR,E1007,cpu_usage,70,Timeout
+2025-10-15T15:34:10+00:00,host-1,web,ERROR,E1001,cpu_usage,75.5,Out of memory
+2025-10-15T25:00:00Z,host-7,api,ERROR,E1008,cpu_usage,30,Bad time
+bad-timestamp,host-8,auth,ERROR,E10099,cpu_usage,45,Malformed
+2025-10-14T18:15:00+00:00,host-1,web,ERROR,E1009,cpu_usage,90,High CPU
+2025-10-12T08:00:00+00:00,host-9,db,ERROR,E1010,cpu_usage,10,Old error
+2025-10-15T15:00:00+00:00,host-10,auth,ERROR,E1011,cpu_usage,,Missing metric
+2025-10-15T14:00:00+00:00,host-2,db,ERROR,E1012,cpu_usage,65,DB overload
+2025-10-14T16:00:00+00:00,host-2,db,ERROR,E1013,cpu_usage,66,Edge hour
 
-File: insert_record.json
+Text: README.txt
+README:
+- Time limit: 90 minutes.
+- Allowed languages/tools: Python 3 (recommended) using only the standard library (sqlite3 is allowed). Other languages OK if they require no external packages.
+- Required output filenames (exact):
+  - system_logs.db
+  - error_events_7days.csv
+  - summary_report.json
+  - test_submission.json
+- Single-command run: your pipeline must run end-to-end from the working directory with one one-line command (e.g., "python3 run.py" or "./run.sh"). Provide that command in test_submission.json "run_command".
+- Parsing rules (must be implemented by candidate):
+  - Timestamps that include a timezone offset must be converted to UTC.
+  - Timestamps without timezone are interpreted as UTC.
+  - Malformed timestamps that cannot be parsed must be dropped.
+  - metric_value should be coerced to numeric where possible; non-numeric strings become NULL.
+  - Exact duplicate CSV rows (identical across all CSV fields) must be removed.
+  - If multiple non-identical rows share the same event_id, keep the row with the earliest timestamp and drop others (deterministic).
+  - Ensure event_id is unique in the final table.
+- Deliverables:
+  - ingestion + analysis script(s) and system_logs.db
+  - error_events_7days.csv (columns: timestamp, host, component, event_id, message, metric_value)
+  - summary_report.json (keys: top_hosts, hourly_errors)
+  - test_submission.json (see instructions for exact JSON schema)
+- Example run command expected in test_submission.json: "python3 run.py"
+- No network access; do not import third-party libraries.
+
+File: test_submission_template.json (for candidate to copy/use)
 {
-  "timestamp": "2024-03-01T06:30:00Z",
-  "host": "host-02",
-  "cpu_percent": 100.0,
-  "mem_mb": 2400,
-  "disk_io_kb": 900,
-  "net_io_kb": 130,
-  "event_type": "INFO"
+  "candidate_name": "<your name>",
+  "language": "python3",
+  "run_command": "python3 run.py",
+  "runtime_seconds": 0,
+  "outputs": {
+    "unique_hosts": 0,
+    "top5_hosts_error": [],
+    "hourly_errors_last24": [],
+    "avg_cpu_by_component": [],
+    "top10_event_ids": []
+  },
+  "sample_error_csv_rows": [],
+  "files_produced": [],
+  "notes": ""
 }
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
-How these materials were constructed and intended grading assumptions
+Construction rationale and evaluator guidance:
 
 Overview
-- Provided three deterministic files the candidate will use:
-  - telemetry.csv (16 data lines + header) — realistic telemetry columns and a few controlled edge cases.
-  - target_host.txt — the host name the candidate must use for Task 2 Q3 and Task 3.
-  - insert_record.json — the single telemetry record the candidate must insert in Task 3.
+- The dataset (system_logs.csv) contains 16 rows with realistic system telemetry fields and deliberate edge cases to validate ingestion, cleaning, and analysis logic.
+- The rows include exact duplicate rows, malformed timestamps, timestamp values with and without timezone offsets, non-numeric metric_value strings, empty metric_value, and an event_id collision to force deterministic conflict resolution.
 
-Controlled edge cases and intended handling (deterministic grading assumptions)
-1. Malformed timestamp
-   - Line: 2024-03-01T25:00:00Z,... — this timestamp is invalid and should be considered malformed.
-   - Expected grader rule: skip rows with malformed timestamps (count them in rows_skipped). This is the single malformed row.
+Key deterministic patterns
+- Max timestamp (after cleaning) is 2025-10-15T15:34:10+00:00 (from event E1001). H0 (floor to hour) = 2025-10-15T15:00:00.
+- Two rows have malformed timestamps and must be dropped:
+  - "2025-10-15T25:00:00Z" (invalid hour)
+  - "bad-timestamp"
+- One exact duplicate row exists (the second copy of E1001). The ingestion must remove the exact duplicate, keeping one.
+- Event_id collision: E1002 appears twice with different timestamps:
+  - 2025-10-15T14:50:00+00:00 and 2025-10-14T16:00:00+00:00
+  - Deterministic rule: keep the earliest timestamp (2025-10-14T16:00:00) and drop the later one.
+- Timezone handling test: 2025-10-15T10:00:00-05:00 (E1007) converts to 2025-10-15T15:00:00+00:00.
+- Timestamps without timezone (e.g., 2025-10-15T13:05:00) must be treated as UTC per instructions.
 
-2. Duplicate row
-   - The final CSV line is an exact duplicate of the row at timestamp 2024-03-01T00:10:00Z for host-03.
-   - Expected grader rule: treat exact duplicate rows (identical values across all columns) as duplicates and skip inserting the duplicate (count as skipped). This is one duplicate row.
+Expected cleaned DB facts (for automated validation)
+- Rows dropped due to malformed timestamps: 2
+- Exact duplicate rows removed: 1 (one copy of E1001 removed)
+- Event_id collisions resolved: E1002 — later occurrence dropped (row with 2025-10-15T14:50:00 dropped)
+- Final rows count in DB: 12
 
-3. Missing numeric (cpu_percent)
-   - The row at 2024-03-01T02:10:00Z for host-01 has an empty cpu_percent field.
-   - Expected grader rule: coerce empty numeric fields to NULL and insert the row (do not skip it). Averages and aggregations that depend on cpu should be computed over non-NULL cpu values.
+Deterministic expected aggregates (use to validate candidate outputs)
+1) unique_hosts: 8
+   (host-1, host-2, host-3, host-4, host-5, host-6, host-9, host-10)
 
-Summary of expected ingestion counts (deterministic)
-- Total CSV data lines: 16
-- Expected skipped rows: 2 (1 malformed timestamp row + 1 duplicate row)
-- Expected rows_loaded inserted into DB: 14
+2) top5_hosts_error (host, error_count), ordered by error_count desc then host asc:
+   - host-2 : 3
+   - host-1 : 2
+   - host-3 : 1
+   - host-4 : 1
+   - host-6 : 1
 
-Important deterministic aggregation rules (used to compute expected numeric results)
-- Average CPU (avg_cpu) is computed excluding NULL cpu_percent values.
-- Hourly buckets use the hour-start truncated to the top of the hour in UTC (e.g., 2024-03-01T00:00:00Z).
-- Only hours that contain at least one record for the target host should be returned (chronological order, up to the most recent 24 hours).
-- Consecutive-sample CPU spikes: samples for a given host are ordered by timestamp; a spike period is any contiguous sequence of at least 3 successive samples for that host where each sample has cpu_percent > 90 (NULLs or cpu <= 90 break a sequence).
-- Duplicate detection for skipping during ingest is exact-row equality.
+3) hourly_errors_last24:
+   - H0 = 2025-10-15T15:00:00
+   - 24 hourly buckets from 2025-10-14T16:00:00 (oldest) to 2025-10-15T15:00:00 (latest).
+   - Counts per hour (oldest → newest):
+     2025-10-14T16:00:00 : 2
+     2025-10-14T17:00:00 : 0
+     2025-10-14T18:00:00 : 1
+     2025-10-14T19:00:00 : 0
+     2025-10-14T20:00:00 : 0
+     2025-10-14T21:00:00 : 0
+     2025-10-14T22:00:00 : 0
+     2025-10-14T23:00:00 : 0
+     2025-10-15T00:00:00 : 0
+     2025-10-15T01:00:00 : 0
+     2025-10-15T02:00:00 : 0
+     2025-10-15T03:00:00 : 0
+     2025-10-15T04:00:00 : 0
+     2025-10-15T05:00:00 : 0
+     2025-10-15T06:00:00 : 0
+     2025-10-15T07:00:00 : 0
+     2025-10-15T08:00:00 : 0
+     2025-10-15T09:00:00 : 1
+     2025-10-15T10:00:00 : 0
+     2025-10-15T11:00:00 : 0
+     2025-10-15T12:00:00 : 0
+     2025-10-15T13:00:00 : 0
+     2025-10-15T14:00:00 : 1
+     2025-10-15T15:00:00 : 3
 
-Precomputed expected values (so evaluator can validate automatic grading)
-- Ingestion:
-  - rows_loaded: 14
-  - rows_skipped: 2
-  - note: "Skipped 1 malformed timestamp and 1 duplicate row; inserted one row with NULL cpu_percent."
+4) avg_cpu_by_component (only include components that have at least one non-NULL cpu_usage), sorted by component ascending:
+   - component: "db", avg_cpu: 47.0   (values: 10, 65, 66)
+   - component: "web", avg_cpu: 66.41666666666667   (values: 75.5,20,88,55,70,90)
 
-- Total rows in DB after ingest (results.total_rows): 14
+5) top10_event_ids (after cleaning; counts will be 1 for each because final table enforces unique event_id). Order: by count desc then event_id asc. First 10 event_ids (asc) among final set:
+   - E1001 : 1
+   - E1002 : 1
+   - E1003 : 1
+   - E1004 : 1
+   - E1005 : 1
+   - E1006 : 1
+   - E1007 : 1
+   - E1009 : 1
+   - E1010 : 1
+   - E1011 : 1
 
-- Top 3 hosts by average CPU (results.top_hosts_by_avg_cpu), computed over non-NULL cpu values and rounded to two decimals:
-  1. host-03 — average cpu = (12.0 + 91.0 + 95.5 + 93.0) / 4 = 72.875 → 72.88
-  2. host-02 — average cpu = (55.0 + 60.0 + 88.0 + 92.0 + 93.0 + 30.0) / 6 = 69.6666667 → 69.67
-  3. host-01 — average cpu = (10.5 + 20.0 + 15.0) / 3 = 15.1666667 → 15.17
+Traps and common errors to watch for
+- Off-by-one errors on the hourly window: ensure you floor max_t to the hour (H0) and create 24 buckets inclusive of H0 and H0 - 23 hours.
+- Timezone conversion: the -05:00 timestamp must become 2025-10-15T15:00:00+00:00; failure to convert will misplace it in buckets and host counts.
+- Duplicate vs. event_id collision: exact duplicate rows should be dropped (one copy kept). Non-identical rows sharing event_id require keeping the earliest timestamp — many candidates mistakenly keep the latest.
+- metric_value parsing: strings like "N/A" should become NULL; empty field should be NULL.
+- avg_cpu_by_component: only include rows where metric_name == "cpu_usage" and metric_value is numeric; exclude others (e.g., hit_rate).
 
-- Hourly aggregates for the target host (target_host.txt contains "host-02")
-  - The most recent timestamp in the loaded dataset for host-02 is 2024-03-01T06:10:00Z, so include up to the last 24 hours (here all buckets).
-  - For host-02 the hour-buckets with data (chronological):
-    1. 2024-03-01T00:00:00Z → avg_cpu 55.00, max_mem_mb 2048
-    2. 2024-03-01T01:00:00Z → avg_cpu 60.00, max_mem_mb 2100
-    3. 2024-03-01T03:00:00Z → avg_cpu 88.00, max_mem_mb 2150
-    4. 2024-03-01T05:00:00Z → avg_cpu 92.00, max_mem_mb 2300
-    5. 2024-03-01T06:00:00Z → avg_cpu (93.0 + 30.0)/2 = 61.5 → 61.50, max_mem_mb = max(2310,2000) = 2310
-
-  - Note: hour 02:00 has no host-02 records after removing the malformed/duplicate rows and so is omitted.
-
-- CPU spike detection (results.cpu_spike_periods)
-  - host-03 has three consecutive samples >90 at:
-    - start_ts: 2024-03-01T01:10:00Z
-    - end_ts:   2024-03-01T01:30:00Z
-  - No other host meets the ">=3 consecutive samples >90" requirement.
-
-- Insert record (insert_record.json)
-  - Provided record inserts for host-02 at 2024-03-01T06:30:00Z with cpu_percent = 100.0
-  - After insertion, updated average for host-02:
-    - previous sum (non-null cpus) = 418.0 over 6 values
-    - after insert sum = 418.0 + 100.0 = 518.0 over 7 values
-    - updated_avg_cpu_for_host = 518.0 / 7 = 74.0 (report as 74.00 or 74.0)
-
-Potential traps and common candidate errors
-- Treating the malformed timestamp as valid rather than skipping it will change rows_loaded and aggregates. The timestamp 2024-03-01T25:00:00Z is intentionally invalid (hour 25).
-- Not deduplicating the exact duplicate row will cause host-03 averages to change; the duplicate is identical to an earlier row and must be skipped per expected grader rule.
-- Averaging with NULL values: candidates might include NULL as zero if they coerce missing cpu_percent to 0 — the grader expects NULLs to be excluded from averages.
-- Hour bucketing off-by-one: ensure hour_start is the top-of-hour truncation in UTC (e.g., 06:10 belongs to 06:00 hour_start).
-- Spike detection requires per-host ordering by timestamp and detecting contiguous sequences of samples >90; counting samples across hosts or unordered data will produce false results.
-
-How these materials differentiate practical skill levels
-- Parsing & validation: the malformed timestamp and missing cpu_percent test practical robustness.
-- Data modeling: a sensible flat table with appropriate types and an index on (host, timestamp) will let candidates perform the required queries quickly.
-- Querying & time windows: hourly aggregation and consecutive-sample detection test SQL/windowing and/or procedural grouping skills.
-- Reproducibility: the insert_record.json was chosen to yield a clean, round updated average (74.0) so graders can easily verify the post-insert calculation.
-
-Evaluator note
-- Use the precomputed expected values above to compare candidate test_submission.json numeric outputs.
-- If a candidate documents a different, consistent ingestion policy (e.g., they chose to keep duplicates or to skip rows with NULL cpu_percent), allow partial credit but flag differences; the automated grader should expect the scores above unless the candidate explicitly documents and follows a different ingestion rule in schema_description and the reported ingestion.rows_loaded/rows_skipped reflect that choice.
+How these materials separate practical from conceptual skills
+- The dataset forces implementation of parsing, type coercion, deduplication, deterministic conflict resolution, timezone normalization, SQL storage, and correct SQL aggregations (group-by, joins not required here, but normalization choice is open). The evaluator can recompute aggregates directly against the cleaned DB for automated scoring and can inspect exported CSV/JSON outputs for compliance with formatting rules.
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

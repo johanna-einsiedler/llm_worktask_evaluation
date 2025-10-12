@@ -1,0 +1,614 @@
+# task_evaluation.py
+"""
+Automated grader for the "Systems Telemetry: Ingest, Store, Query, and Analyze (Basic Practical)" exam.
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Output:
+    Writes test_results.json to the current working directory with a detailed breakdown,
+    and prints a short summary to stdout.
+
+Implementation notes:
+- Uses only Python standard library.
+- Performs tolerant comparisons for SQL (whitespace/case), numeric comparisons (epsilon),
+  and checks for documented data-handling decisions via keyword presence.
+- Produces partial credit according to the exam rubric described in the answer key materials.
+
+Author: automated grader
+"""
+import json
+import os
+import sys
+import math
+
+# Constants / tolerances
+EPSILON = 1e-6
+
+# Scoring weights (must sum to 100)
+WEIGHTS = {
+    "ingestion_schema": 35,    # further subdivided
+    "queries": 40,             # subdivided
+    "analysis_recommend": 20,  # subdivided
+    "reproducibility": 5
+}
+
+# Detailed sub-weights for ingestion_schema (total 35)
+INGEST_SUB = {
+    "schema_design": 15,
+    "parsing_and_handling": 10,
+    "indexes": 5,
+    "readability": 5
+}
+
+# Detailed sub-weights for queries (total 40)
+QUERIES_SUB = {
+    "per_query": 28,    # 4 queries * 7 points
+    "result_rows": 8,
+    "sql_style": 4
+}
+
+# Detailed sub-weights for analysis_recommend (total 20)
+ANALYSIS_SUB = {
+    "identify_capacity": 10,
+    "recommendation": 7,
+    "risk_note": 3
+}
+
+# Helper functions
+def load_json(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+
+def safe_get(d, key, default=None):
+    return d.get(key, default) if isinstance(d, dict) else default
+
+def normalize_sql(s):
+    """Normalize SQL text: collapse whitespace, lowercase, strip."""
+    if s is None:
+        return ""
+    return " ".join(s.lower().split())
+
+def float_equal(a, b, eps=EPSILON):
+    if a is None or b is None:
+        return False
+    try:
+        return abs(float(a) - float(b)) <= eps
+    except Exception:
+        return False
+
+def is_number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+def match_numeric(candidate, expected):
+    # Accept ints/floats; compare with epsilon
+    if candidate is None or expected is None:
+        return candidate == expected
+    try:
+        return abs(float(candidate) - float(expected)) <= EPSILON
+    except Exception:
+        return False
+
+def contains_any(text, keywords):
+    if not text:
+        return False
+    tl = text.lower()
+    return any(k in tl for k in keywords)
+
+def compare_schema(candidate_schema_lines, expected_schema_lines):
+    """
+    Compare schema dumps heuristically: check how many expected lines appear in candidate lines.
+    Return matched_count, total_expected.
+    """
+    if not isinstance(candidate_schema_lines, list):
+        candidate_schema_lines = []
+    cand_joined = "\n".join(candidate_schema_lines).lower()
+    matched = 0
+    for line in expected_schema_lines:
+        if line.strip() == "":
+            continue
+        if line.lower() in cand_joined:
+            matched += 1
+    total = len([l for l in expected_schema_lines if l.strip() != ""])
+    return matched, total
+
+def compare_queries(candidate_queries, answer_queries):
+    """
+    Compare SQL and result_rows for each expected query (Q1..Q4).
+    Returns dict with per-query results and aggregated scoring numbers.
+    """
+    results = {}
+    # Map answer queries by id
+    answer_by_id = {q['id']: q for q in answer_queries}
+    candidate_by_id = {}
+    if isinstance(candidate_queries, list):
+        for q in candidate_queries:
+            if isinstance(q, dict) and 'id' in q:
+                candidate_by_id[q['id']] = q
+
+    per_query_total = 0.0
+    per_query_max = 28.0  # 4 * 7
+    per_query_details = {}
+    # Evaluate each expected query id
+    for qid, ans_q in answer_by_id.items():
+        detail = {"id": qid, "sql_match": False, "sql_score": 0.0, "result_match_count": 0,
+                  "result_total_expected": 0, "result_score": 0.0, "comments": []}
+        cand_q = candidate_by_id.get(qid)
+        # Check SQL
+        ans_sql_norm = normalize_sql(ans_q.get('sql', ''))
+        cand_sql_text = cand_q.get('sql') if cand_q else ""
+        cand_sql_norm = normalize_sql(cand_sql_text)
+        if cand_sql_norm == ans_sql_norm and cand_sql_norm != "":
+            detail['sql_match'] = True
+            detail['sql_score'] = 7.0  # full for this query
+        else:
+            # Partial heuristics per query to award partial points (4 max)
+            # Look for key keywords depending on Q id
+            keywords = []
+            if qid == "Q1":
+                keywords = ['avg', 'cpu', 'between', 'group by', 'order by', 'limit']
+            elif qid == "Q2":
+                keywords = ['avg', 'mem', 'max', 'group by']
+            elif qid == "Q3":
+                keywords = ['inventory', 'memory_gb', '<', 'where']
+            elif qid == "Q4":
+                keywords = ['count', 'between', 'group by', 'union', 'telemetry']
+            # Count matches
+            found = sum(1 for kw in keywords if kw in cand_sql_norm)
+            if found >= len(keywords):
+                detail['sql_score'] = 6.0
+            elif found >= max(1, len(keywords)//2):
+                detail['sql_score'] = 4.0
+            elif found >= 1:
+                detail['sql_score'] = 2.0
+            else:
+                detail['sql_score'] = 0.0
+            if cand_sql_text:
+                detail['comments'].append("SQL did not exactly match expected; heuristics applied.")
+            else:
+                detail['comments'].append("Missing SQL for this query.")
+        per_query_total += detail['sql_score']
+        # Check result_rows
+        ans_rows = ans_q.get('result_rows', [])
+        detail['result_total_expected'] = len(ans_rows)
+        cand_rows = cand_q.get('result_rows', []) if cand_q else []
+        # Represent candidate rows as dict keyed by first column (hostname) for matching flexibility
+        expected_by_key = {}
+        expected_keys_order = []
+        for row in ans_rows:
+            if len(row) >= 1:
+                key = str(row[0])
+                expected_by_key[key] = row
+                expected_keys_order.append(key)
+        candidate_by_key = {}
+        for row in cand_rows:
+            if len(row) >= 1:
+                key = str(row[0])
+                candidate_by_key[key] = row
+        # Compare expected rows: count how many expected rows have matching candidate rows (with numeric tolerance)
+        match_count = 0
+        for k, exp_row in expected_by_key.items():
+            cand_row = candidate_by_key.get(k)
+            if not cand_row:
+                # If ordering differs but rows exist, attempt fuzzy match searching all candidate rows
+                found_match = False
+                for crow in cand_rows:
+                    if len(crow) != len(exp_row):
+                        continue
+                    all_ok = True
+                    for i in range(1, len(exp_row)):
+                        e = exp_row[i]
+                        c = crow[i]
+                        if isinstance(e, (int, float)) and isinstance(c, (int, float)):
+                            if not match_numeric(c, e):
+                                all_ok = False
+                                break
+                        else:
+                            # string compare tolerant
+                            if str(e) != str(c):
+                                all_ok = False
+                                break
+                    if all_ok:
+                        found_match = True
+                        break
+                if found_match:
+                    match_count += 1
+                else:
+                    # no match found
+                    pass
+            else:
+                # direct comparison element-wise
+                if len(cand_row) != len(exp_row):
+                    # consider mismatch
+                    pass
+                else:
+                    all_ok = True
+                    for i in range(1, len(exp_row)):
+                        e = exp_row[i]
+                        c = cand_row[i]
+                        if isinstance(e, (int, float)) and isinstance(c, (int, float)):
+                            if not match_numeric(c, e):
+                                all_ok = False
+                                break
+                        else:
+                            if str(e) != str(c):
+                                all_ok = False
+                                break
+                    if all_ok:
+                        match_count += 1
+        detail['result_match_count'] = match_count
+        # Score for result rows proportional to correct matches
+        if detail['result_total_expected'] == 0:
+            detail['result_score'] = 0.0
+        else:
+            detail['result_score'] = (match_count / detail['result_total_expected']) * (QUERIES_SUB['result_rows'])
+        per_query_total += detail['result_score']
+        # Record per-query detail
+        per_query_details[qid] = detail
+        results[qid] = detail
+
+    # SQL style scoring: check if candidate SQLs include aggregates and appropriate functions.
+    # Award full QUERIES_SUB['sql_style'] if majority of queries include 'avg'/'max'/'count' as appropriate.
+    sql_style_score = 0.0
+    total_queries = len(answer_by_id)
+    style_good = 0
+    for qid, ans_q in answer_by_id.items():
+        cand_q = candidate_by_id.get(qid, {})
+        cand_sql = cand_q.get('sql', '') or ''
+        cand_sql_norm = normalize_sql(cand_sql)
+        if qid == "Q1":
+            needed = ['avg', 'cpu']
+        elif qid == "Q2":
+            needed = ['avg', 'max', 'mem']
+        elif qid == "Q3":
+            needed = ['memory_gb', '<']
+        elif qid == "Q4":
+            needed = ['count', 'between']
+        else:
+            needed = []
+        if all(k in cand_sql_norm for k in needed):
+            style_good += 1
+    # proportion
+    sql_style_score = (style_good / total_queries) * QUERIES_SUB['sql_style']
+    # Clamp
+    if sql_style_score > QUERIES_SUB['sql_style']:
+        sql_style_score = QUERIES_SUB['sql_style']
+
+    # Aggregate per-query scores: per_query_total currently includes per-query sql_score + row score for all queries
+    # We need to ensure total for per_query scoring does not exceed per_query_max + result_rows maximum
+    # per_query_total already sums sql_score (max 28) and result_scores (max 8)
+    # Now add sql_style_score
+    total_queries_score = per_query_total + sql_style_score
+
+    return {
+        "per_query_details": per_query_details,
+        "per_query_sql_style_score": sql_style_score,
+        "total_queries_score": total_queries_score,
+        "max_possible": QUERIES_SUB['per_query'] + QUERIES_SUB['result_rows'] + QUERIES_SUB['sql_style']
+    }
+
+def compare_analysis(candidate_metrics, answer_metrics, candidate_recs, candidate_notes):
+    """
+    Compare capacity-constrained hosts and recommendations.
+    Returns scores for identification, recommendation, and risk_note.
+    """
+    scores = {"identify_capacity_score": 0.0, "recommendation_score": 0.0, "risk_note_score": 0.0}
+    # Identification: compare hosts_capacity_issues list
+    ans_hosts = answer_metrics.get('hosts_capacity_issues', [])
+    cand_hosts = candidate_metrics.get('hosts_capacity_issues', [])
+    # Build map by hostname
+    ans_map = {h['hostname']: h for h in ans_hosts if 'hostname' in h}
+    cand_map = {h['hostname']: h for h in cand_hosts if 'hostname' in h}
+    matched = 0
+    total_expected = len(ans_map)
+    for hn, ans_h in ans_map.items():
+        cand_h = cand_map.get(hn)
+        if not cand_h:
+            continue
+        # compare numeric fields: avg_cpu_24h, avg_mem_7d, memory_gb
+        ok = True
+        for fld in ('avg_cpu_24h', 'avg_mem_7d', 'memory_gb'):
+            a_val = ans_h.get(fld)
+            c_val = cand_h.get(fld)
+            if a_val is None and c_val is None:
+                continue
+            # If answer has numeric and candidate also numeric, allow epsilon
+            if isinstance(a_val, (int, float)) and isinstance(c_val, (int, float)):
+                if not match_numeric(c_val, a_val):
+                    ok = False
+                    break
+            else:
+                # Accept if both None or str-equal
+                if a_val != c_val:
+                    ok = False
+                    break
+        if ok:
+            matched += 1
+    if total_expected == 0:
+        scores['identify_capacity_score'] = 0.0
+    else:
+        scores['identify_capacity_score'] = (matched / total_expected) * ANALYSIS_SUB['identify_capacity']
+    # Recommendation scoring: heuristic checks
+    rec_score = 0.0
+    rec_text_ok = False
+    if isinstance(candidate_recs, list) and len(candidate_recs) > 0:
+        # require at least one recommendation with non-empty text
+        for rec in candidate_recs:
+            text = rec.get('text', '') if isinstance(rec, dict) else (rec if isinstance(rec, str) else '')
+            if text and len(text.strip()) > 10:
+                # Check that text references a numeric metric or concrete change (digits or 'GB'/'cores'/'sampling')
+                if any(ch.isdigit() for ch in text) or contains_any(text, ['gb', 'cores', 'sampling', 'minute', 'increase', 'raise', 'upgrade', 'scale', 'provision']):
+                    rec_text_ok = True
+                    break
+    if rec_text_ok:
+        rec_score = ANALYSIS_SUB['recommendation']
+    else:
+        # partial credit if text present but no numeric reference
+        if isinstance(candidate_recs, list) and len(candidate_recs) > 0:
+            # check presence of any non-empty text
+            for rec in candidate_recs:
+                text = rec.get('text', '') if isinstance(rec, dict) else (rec if isinstance(rec, str) else '')
+                if text and len(text.strip()) > 0:
+                    rec_score = ANALYSIS_SUB['recommendation'] * 0.5
+                    break
+    scores['recommendation_score'] = rec_score
+    # Risk/note: check candidate_notes contains 'assum' or 'dedup' or 'null' or 'timestamp' or 'utc'
+    notes_ok = False
+    if isinstance(candidate_notes, str) and contains_any(candidate_notes, ['assum', 'dedup', 'duplicate', 'null', 'timestamp', 'utc', 'missing', 'impute']):
+        notes_ok = True
+    scores['risk_note_score'] = ANALYSIS_SUB['risk_note'] if notes_ok else 0.0
+    return scores
+
+def compare_reproducibility(candidate_readme, candidate_scripts_present):
+    """
+    Check README reproducibility: presence of exact commands to run ingest and queries.
+    Award full 5 if it contains 'python' and both 'ingest.py' and 'queries.py'.
+    Partial credit if some elements present.
+    """
+    score = 0.0
+    comments = []
+    if not candidate_readme or not isinstance(candidate_readme, str):
+        return 0.0, ["Missing README"]
+    rd = candidate_readme.lower()
+    has_python = 'python' in rd or 'python3' in rd
+    has_ingest = 'ingest.py' in rd
+    has_queries = 'queries.py' in rd
+    if has_python and has_ingest and has_queries:
+        score = WEIGHTS['reproducibility']
+        comments.append("README includes python and both ingest.py and queries.py commands.")
+    else:
+        # partial
+        parts = [has_python, has_ingest, has_queries]
+        score = WEIGHTS['reproducibility'] * (sum(parts) / 3.0)
+        missing = []
+        if not has_python:
+            missing.append("python command")
+        if not has_ingest:
+            missing.append("ingest.py mention")
+        if not has_queries:
+            missing.append("queries.py mention")
+        comments.append("README missing: " + ", ".join(missing))
+    return score, comments
+
+def grade_submission(candidate_path, answer_path):
+    # Load files
+    try:
+        candidate = load_json(candidate_path)
+    except Exception as e:
+        return {"error": str(e)}
+    try:
+        answer = load_json(answer_path)
+    except Exception as e:
+        return {"error": str(e)}
+    # Prepare result structure
+    results = {
+        "candidate_file": os.path.abspath(candidate_path),
+        "answer_key_file": os.path.abspath(answer_path),
+        "scores_breakdown": {},
+        "deductions": [],
+        "overall_score": 0.0,
+        "total_points": 100.0,
+        "max_points": 100.0
+    }
+    total_score = 0.0
+    comments = []
+
+    # -------------------------
+    # 1) Ingestion and schema (35 points)
+    # -------------------------
+    ingestion_score = 0.0
+    ingestion_details = {}
+    # schema comparison
+    cand_schema = candidate.get('schema_dump', [])
+    ans_schema = answer.get('schema_dump', [])
+    matched, total_expected = compare_schema(cand_schema, ans_schema)
+    if total_expected == 0:
+        schema_score = 0.0
+        ingestion_details['schema_comment'] = "Answer key schema empty or missing."
+    else:
+        schema_score = (matched / total_expected) * INGEST_SUB['schema_design']
+        ingestion_details['schema_matched_lines'] = matched
+        ingestion_details['schema_total_expected_lines'] = total_expected
+        ingestion_details['schema_score'] = round(schema_score, 3)
+    ingestion_score += schema_score
+
+    # parsing & handling (10) - inspect ingestion_script and notes for documentation
+    parse_score = 0.0
+    ingest_script = candidate.get('ingestion_script', '') or candidate.get('ingest_script', '') or ""
+    notes_text = candidate.get('notes', '') or ""
+    # check for three things: missing values handling, timestamp normalization, deduplication
+    # assign points: 4,4,2 respectively
+    pv = 4.0  # missing values
+    pt = 4.0  # timestamp
+    pd = 2.0  # dedup
+    got_pv = False
+    got_pt = False
+    got_pd = False
+    # Check both ingestion_script and notes_text for keywords
+    text_to_search = (ingest_script + "\n" + notes_text).lower()
+    if contains_any(text_to_search, ['null', 'none', 'insert null', 'store null', 'impute', 'skip', 'skip row']):
+        got_pv = True
+    if contains_any(text_to_search, ['utc', 'timestamp', 'fromisoformat', 'z', '+00:00', 'normalize', 'timezone', 'astimezone', 'convert to utc']):
+        got_pt = True
+    if contains_any(text_to_search, ['dedup', 'deduplicate', 'duplicate', 'seen set', 'keep first', 'keep last', 'remove duplicate']):
+        got_pd = True
+    parse_score += (pv if got_pv else 0.0) + (pt if got_pt else 0.0) + (pd if got_pd else 0.0)
+    ingestion_details['parsing_handling'] = {
+        "missing_values_documented": got_pv,
+        "timestamp_normalization_documented": got_pt,
+        "deduplication_documented": got_pd,
+        "parse_score": round(parse_score, 3)
+    }
+    ingestion_score += parse_score
+
+    # indexes (5): check schema_dump or ingestion_script mentions 'index' or 'create index' or 'idx_telemetry'
+    idx_present = False
+    cand_schema_text = "\n".join(cand_schema).lower() if isinstance(cand_schema, list) else ""
+    if 'create index' in cand_schema_text or 'idx_telemetry' in cand_schema_text:
+        idx_present = True
+    elif ingest_script and 'create index' in ingest_script.lower():
+        idx_present = True
+    idx_score = INGEST_SUB['indexes'] if idx_present else 0.0
+    ingestion_details['index_present'] = idx_present
+    ingestion_details['index_score'] = idx_score
+    ingestion_score += idx_score
+
+    # readability (5): simple heuristic: comments present and script not empty
+    readability_score = 0.0
+    if ingest_script and (len(ingest_script) > 100) and ('#' in ingest_script or '"""' in ingest_script or "'''" in ingest_script):
+        readability_score = INGEST_SUB['readability']
+    ingestion_details['readability_score'] = readability_score
+    ingestion_details['ingest_script_length'] = len(ingest_script) if ingest_script else 0
+    ingestion_score += readability_score
+
+    # Cap ingestion_score
+    if ingestion_score > WEIGHTS['ingestion_schema']:
+        ingestion_score = WEIGHTS['ingestion_schema']
+    results['scores_breakdown']['ingestion_schema'] = {
+        "score": round(ingestion_score, 3),
+        "max": WEIGHTS['ingestion_schema'],
+        "details": ingestion_details
+    }
+    total_score += ingestion_score
+
+    # -------------------------
+    # 2) Queries (40 points)
+    # -------------------------
+    candidate_queries = candidate.get('queries', [])
+    answer_queries = answer.get('queries', [])
+    q_compare = compare_queries(candidate_queries, answer_queries)
+    queries_score = q_compare['total_queries_score']
+    # Cap to max
+    max_queries = QUERIES_SUB['per_query'] + QUERIES_SUB['result_rows'] + QUERIES_SUB['sql_style']
+    if queries_score > WEIGHTS['queries']:
+        queries_score = WEIGHTS['queries']
+    results['scores_breakdown']['queries'] = {
+        "score": round(queries_score, 3),
+        "max": WEIGHTS['queries'],
+        "details": q_compare
+    }
+    total_score += queries_score
+
+    # -------------------------
+    # 3) Analysis & recommendations (20 points)
+    # -------------------------
+    candidate_metrics = candidate.get('metrics', {})
+    answer_metrics = answer.get('metrics', {})
+    candidate_recs = candidate.get('recommendations', [])
+    candidate_notes = candidate.get('notes', '')
+    analysis_scores = compare_analysis(candidate_metrics, answer_metrics, candidate_recs, candidate_notes)
+    analysis_total = analysis_scores['identify_capacity_score'] + analysis_scores['recommendation_score'] + analysis_scores['risk_note_score']
+    if analysis_total > WEIGHTS['analysis_recommend']:
+        analysis_total = WEIGHTS['analysis_recommend']
+    results['scores_breakdown']['analysis_recommendations'] = {
+        "score": round(analysis_total, 3),
+        "max": WEIGHTS['analysis_recommend'],
+        "details": analysis_scores
+    }
+    total_score += analysis_total
+
+    # -------------------------
+    # 4) Reproducibility & packaging (5 points)
+    # -------------------------
+    candidate_readme = candidate.get('README', '') or candidate.get('readme', '')
+    reproducibility_score, repro_comments = compare_reproducibility(candidate_readme, {
+        'ingest_present': bool(ingest_script),
+        'queries_present': bool(candidate.get('query_script', '') or candidate.get('queries_script', ''))
+    })
+    results['scores_breakdown']['reproducibility'] = {
+        "score": round(reproducibility_score, 3),
+        "max": WEIGHTS['reproducibility'],
+        "comments": repro_comments
+    }
+    total_score += reproducibility_score
+
+    # -------------------------
+    # Basic validation checks and deductions/comments
+    # -------------------------
+    # Required fields check
+    required_fields = ['candidate', 'environment', 'ingestion_script', 'query_script', 'schema_dump', 'queries',
+                       'metrics', 'recommendations', 'README', 'notes']
+    missing_required = []
+    for f in required_fields:
+        if f not in candidate:
+            missing_required.append(f)
+    if missing_required:
+        msg = f"Missing required submission fields: {', '.join(missing_required)}"
+        results['deductions'] = results.get('deductions', []) + [msg]
+        # Deduct a small penalty (up to 10 points) for missing required top-level fields
+        penalty = min(10.0, 2.0 * len(missing_required))
+        total_score -= penalty
+        results['deductions'].append({"missing_fields_penalty": penalty, "missing_fields": missing_required})
+    # Ensure non-negative
+    if total_score < 0:
+        total_score = 0.0
+    # Round overall score to two decimals
+    overall_percent = round((total_score / results['max_points']) * 100.0, 3)
+    results['overall_score'] = overall_percent
+    results['total_points_earned'] = round(total_score, 3)
+    results['max_points'] = results['max_points']
+    # Add short human readable summary
+    summary_lines = []
+    summary_lines.append(f"Total score: {results['total_points_earned']} / {results['max_points']} ({results['overall_score']}%)")
+    passing = results['overall_score'] >= 80.0
+    summary_lines.append("PASS" if passing else "FAIL")
+    results['summary'] = "\n".join(summary_lines)
+
+    # Include candidate and environment info if present
+    results['candidate_info'] = candidate.get('candidate', {})
+    results['environment_info'] = candidate.get('environment', {})
+
+    # Save test_results.json in same directory as script execution cwd
+    out_path = os.path.join(os.getcwd(), "test_results.json")
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}", file=sys.stderr)
+        return results
+    # Print brief summary
+    print("Grading complete.")
+    print(results['summary'])
+    print(f"Detailed results written to {out_path}")
+    return results
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>", file=sys.stderr)
+        sys.exit(2)
+    candidate_path = sys.argv[1]
+    answer_path = sys.argv[2]
+    try:
+        res = grade_submission(candidate_path, answer_path)
+        # If grade_submission returned an error dict, notify
+        if isinstance(res, dict) and res.get('error'):
+            print("Error during grading:", res['error'], file=sys.stderr)
+            sys.exit(1)
+        else:
+            sys.exit(0)
+    except Exception as e:
+        print("Unhandled error during grading:", str(e), file=sys.stderr)
+        sys.exit(1)

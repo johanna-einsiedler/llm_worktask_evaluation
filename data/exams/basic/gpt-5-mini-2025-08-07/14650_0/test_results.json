@@ -1,47 +1,84 @@
 {
-  "scores": {
-    "task1_reproduce": {
+  "generated_at": "2025-10-12T18:54:42.187258Z",
+  "candidate_path": "answer_key.json",
+  "answer_key_path": "answer_key.json",
+  "categories": [
+    {
+      "name": "Tests passing after changes",
+      "earned": 50,
+      "max": 50,
+      "details": {
+        "initial_failed": 3,
+        "updated_failed": 0,
+        "reasons": [
+          "Fixed 3 of 3 previously failing tests -> 100.0% of 50 points = 50.0 points.",
+          "All previously failing tests are now passing -> full credit for this category."
+        ]
+      }
+    },
+    {
+      "name": "Correctness and minimality of changes",
+      "earned": 20.0,
+      "max": 20,
+      "details": {
+        "reasons": [
+          "Modified 3 files (<= expected 3) -> full/minimal changes -> base score 20.0."
+        ],
+        "fatal": false
+      }
+    },
+    {
+      "name": "Clarity of explanations and reproducibility",
       "earned": 15,
-      "possible": 15
+      "max": 15,
+      "details": {
+        "reasons": []
+      }
     },
-    "task2_selector": {
-      "earned": 15,
-      "possible": 15
+    {
+      "name": "Test quality / maintainability improvements",
+      "earned": 10.0,
+      "max": 10,
+      "details": {
+        "checks_passed": 3,
+        "total_checks": 3,
+        "reasons": [
+          "User API test updated to use 'username' (lowercase).",
+          "UI test updated to use stable data-test-id / helper constant.",
+          "Fixture expiry_date updated to be after app.TODAY (>=2025)."
+        ]
+      }
     },
-    "task2_helper": {
-      "earned": 10,
-      "possible": 10
-    },
-    "task3_timing": {
-      "earned": 20,
-      "possible": 20
-    },
-    "task4_config": {
-      "earned": 20,
-      "possible": 20
-    },
-    "documentation": {
-      "earned": 10,
-      "possible": 10
-    },
-    "bonus": {
-      "earned": 0,
-      "possible": 10
+    {
+      "name": "Time management and completeness",
+      "earned": 5.0,
+      "max": 5,
+      "details": {
+        "reasons": [
+          "time_spent_minutes = 45 within allowed 90 minutes -> full credit for time management."
+        ]
+      }
     }
-  },
-  "deductions": [],
-  "notes": [
-    "Task1: All expected failure signatures present in initial_test_output.",
-    "Documentation: all required high-level fields present."
   ],
-  "total_points_earned": 90,
-  "total_points_possible": 100,
-  "overall_score": 90.0,
-  "summary": {
-    "max_points": 100,
-    "points_earned": 90,
-    "percentage": 90.0,
-    "pass_threshold_percent": 80.0,
-    "passed": true
+  "deductions": [
+    "time_spent_minutes = 45 within allowed 90 minutes -> full credit for time management.",
+    "All previously failing tests appear to have been fixed."
+  ],
+  "fatal_fail": false,
+  "total_earned": 100.0,
+  "total_max": 100.0,
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "parsed_initial": {
+    "collected": 3,
+    "passed": 0,
+    "failed": 3,
+    "other": {}
+  },
+  "parsed_updated": {
+    "collected": 3,
+    "passed": 3,
+    "failed": 0,
+    "other": {}
   }
 }

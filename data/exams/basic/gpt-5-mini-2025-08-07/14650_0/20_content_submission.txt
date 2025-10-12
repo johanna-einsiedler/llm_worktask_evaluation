@@ -1,0 +1,19 @@
+```json
+{
+  "candidate_name": "",
+  "time_started_iso": "",
+  "time_finished_iso": "",
+  "time_spent_minutes": null,
+  "initial_test_results": "",
+  "updated_test_results": "",
+  "modified_files": [],
+  "explanation_of_changes": [],
+  "reproduce_instructions": "",
+  "self_check": {
+    "all_tests_passing": null,
+    "number_of_tests_passed": null,
+    "number_of_tests_failed": null
+  },
+  "optional_attachments": ""
+}
+```

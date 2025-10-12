@@ -1,0 +1,583 @@
+Here's the requested automated grading script. Save this as task_evaluation.py and run:
+
+python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+
+What it does (brief)
+- Loads candidate submission JSON and an answer key JSON.
+- Applies an automated grading routine based on the rubric in the exam materials.
+- Produces test_results.json in the same directory as the script with a breakdown of points, explanations for deductions, total points, maximum possible, and a numeric overall_score (percentage).
+- Is tolerant of minor numeric differences and missing keys; records clear messages for any problems.
+
+Script: task_evaluation.py
+
+```python
+#!/usr/bin/env python3
+"""
+Automated grading script for the practical exam.
+
+Usage:
+    python task_evaluation.py test_submission.json answer_key.json
+
+Produces:
+    test_results.json in the same directory as this script.
+
+Implementation notes:
+- Uses only standard library modules.
+- Attempts to be tolerant to formatting differences and minor numeric rounding.
+- Detailed messages are provided for graders/candidates about mismatches.
+"""
+import json
+import sys
+import os
+import math
+from typing import Any, Dict, List, Tuple
+
+# ---------- Utility helpers ----------
+
+def load_json(path: str) -> Any:
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+
+def safe_get(d: Dict, *keys, default=None):
+    cur = d
+    for k in keys:
+        if not isinstance(cur, dict) or k not in cur:
+            return default
+        cur = cur[k]
+    return cur
+
+def as_number(v):
+    # Try to coerce to float or int if sensible; otherwise return None
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        s = v.strip()
+        if s == "":
+            return None
+        # remove commas
+        s2 = s.replace(',', '')
+        try:
+            return float(s2)
+        except:
+            return None
+    return None
+
+def numbers_close(a, b, rel_tol=1e-4, abs_tol=1e-6):
+    if a is None or b is None:
+        return False
+    try:
+        return math.isclose(float(a), float(b), rel_tol=rel_tol, abs_tol=abs_tol)
+    except:
+        return False
+
+def row_matches(expected: Dict, actual: Dict) -> bool:
+    # For each key in expected row, require that actual has same key and value matches
+    for k, v_expected in expected.items():
+        if k not in actual:
+            return False
+        v_actual = actual[k]
+        # If both numeric-like, compare numerically
+        num_expected = as_number(v_expected)
+        num_actual = as_number(v_actual)
+        if num_expected is not None and num_actual is not None:
+            if not numbers_close(num_expected, num_actual):
+                return False
+        else:
+            # Compare as strings, case-insensitive strip
+            se = "" if v_expected is None else str(v_expected).strip()
+            sa = "" if v_actual is None else str(v_actual).strip()
+            if se.lower() != sa.lower():
+                return False
+    return True
+
+def list_of_rows_match(expected_rows: List[Dict], actual_rows: List[Dict]) -> Tuple[bool, List[str]]:
+    """
+    For each expected row, try to find a matching actual row.
+    Returns (matched_all_expected, list_of_messages)
+    Allows actual_rows to have extra rows.
+    """
+    msgs = []
+    if expected_rows is None:
+        msgs.append("Expected rows is missing; cannot compare.")
+        return False, msgs
+    if actual_rows is None:
+        msgs.append("Actual rows is missing; cannot compare.")
+        return False, msgs
+
+    unmatched_expected = []
+    actual_unmatched_flags = [True] * len(actual_rows)
+    for er in expected_rows:
+        found_index = None
+        for i, ar in enumerate(actual_rows):
+            if actual_unmatched_flags[i] and row_matches(er, ar):
+                found_index = i
+                break
+        if found_index is None:
+            unmatched_expected.append(er)
+        else:
+            actual_unmatched_flags[found_index] = False
+
+    if not unmatched_expected:
+        msgs.append(f"All {len(expected_rows)} expected rows matched (actual contained at least these).")
+        return True, msgs
+    else:
+        msgs.append(f"{len(unmatched_expected)} expected rows did not match any actual rows.")
+        # provide diffs (sample up to 5)
+        for i, ur in enumerate(unmatched_expected[:5]):
+            msgs.append(f"  Unmatched expected row sample {i+1}: {ur}")
+        return False, msgs
+
+# ---------- Grading logic ----------
+
+def grade_setup_import(candidate: Dict, answer: Dict) -> Tuple[int, int, List[str]]:
+    """
+    Grade Setup & Import step.
+    Max points: 20
+    Sub-allocations (automated checks):
+      - code present (5)
+      - commands present (5)
+      - total_rows_in_csv matches expected (5)
+      - malformed metric/timestamp ids mention and match (3)
+      - data_cleaning_decision_one_line presence (2)
+    """
+    max_points = 20
+    points = 0
+    notes = []
+
+    steps = candidate.get('steps', [])
+    # find the step by name
+    step = next((s for s in steps if s.get('name', '').lower().startswith('setup')), None)
+    if not step:
+        notes.append("Setup & Import step not found in candidate submission.")
+        return 0, max_points, notes
+
+    artifacts = step.get('artifacts', {})
+    code = artifacts.get('code', '')
+    commands = artifacts.get('commands', [])
+    outputs = artifacts.get('outputs', {})
+
+    # code present
+    if isinstance(code, str) and code.strip():
+        points += 5
+        notes.append("Setup code present.")
+    else:
+        notes.append("Setup code is missing or empty. (-5)")
+
+    # commands present
+    if isinstance(commands, list) and len(commands) > 0:
+        points += 5
+        notes.append("Setup commands provided.")
+    else:
+        notes.append("No setup/import commands provided. (-5)")
+
+    # total rows comparison
+    expected_total = safe_get(answer, 'steps')
+    # try to fetch expected total_rows_in_csv from answer key steps
+    exp_total = None
+    try:
+        # find setup step in answer
+        ans_steps = answer.get('steps', [])
+        ans_setup = next((s for s in ans_steps if s.get('name', '').lower().startswith('setup')), None)
+        if ans_setup:
+            exp_total = safe_get(ans_setup, 'artifacts', 'outputs', 'total_rows_in_csv')
+    except Exception:
+        exp_total = None
+
+    cand_total = outputs.get('total_rows_in_csv', None)
+    if exp_total is not None:
+        if cand_total == exp_total:
+            points += 5
+            notes.append(f"total_rows_in_csv matches expected ({exp_total}).")
+        else:
+            # allow string/integer mismatch
+            if as_number(cand_total) is not None and as_number(exp_total) is not None and numbers_close(as_number(cand_total), as_number(exp_total)):
+                points += 5
+                notes.append(f"total_rows_in_csv matches expected numerically ({cand_total}).")
+            else:
+                notes.append(f"total_rows_in_csv mismatch: expected {exp_total}, found {cand_total}. (-5)")
+    else:
+        notes.append("Answer key does not include expected total_rows_in_csv to compare against. (0)")
+
+    # malformed ids lists
+    exp_malformed_metric = safe_get(ans_setup, 'artifacts', 'outputs', 'malformed_metric_row_ids')
+    exp_malformed_ts = safe_get(ans_setup, 'artifacts', 'outputs', 'malformed_timestamp_row_ids')
+    cand_malformed_metric = outputs.get('malformed_metric_row_ids', None)
+    cand_malformed_ts = outputs.get('malformed_timestamp_row_ids', None)
+    malformed_points = 0
+    if exp_malformed_metric is not None:
+        if isinstance(cand_malformed_metric, list) and sorted([int(x) for x in cand_malformed_metric]) == sorted([int(x) for x in exp_malformed_metric]):
+            malformed_points += 2
+            notes.append("Malformed metric row ids match expected.")
+        else:
+            notes.append(f"Malformed metric row ids differ. Expected {exp_malformed_metric}, got {cand_malformed_metric}. (-1)")
+    else:
+        notes.append("No expected malformed metric list in answer key to compare against.")
+
+    if exp_malformed_ts is not None:
+        if isinstance(cand_malformed_ts, list) and sorted([int(x) for x in cand_malformed_ts]) == sorted([int(x) for x in exp_malformed_ts]):
+            malformed_points += 1
+            notes.append("Malformed timestamp row ids match expected.")
+        else:
+            notes.append(f"Malformed timestamp ids differ. Expected {exp_malformed_ts}, got {cand_malformed_ts}. (-2)")
+    else:
+        notes.append("No expected malformed timestamp list in answer key to compare against.")
+
+    # allocate up to 3 points
+    points += malformed_points  # 0..3
+    # data cleaning decision line presence
+    data_cleaning_decision = outputs.get('data_cleaning_decision_one_line', '') or artifacts.get('outputs', {}).get('data_cleaning_decision_one_line', '')
+    if isinstance(data_cleaning_decision, str) and data_cleaning_decision.strip():
+        points += 2
+        notes.append("One-line data-cleaning decision present.")
+    else:
+        notes.append("Data-cleaning decision one-liner missing. (-2)")
+
+    return int(points), max_points, notes
+
+def grade_core_queries(candidate: Dict, answer: Dict) -> Tuple[int, int, List[str]]:
+    """
+    Grade Core Queries.
+    Max points: 40
+    Sub-allocations:
+      - 5 points per query correctness (5 queries) = 25
+      - SQL code present/readable = 5
+      - outputs included and matching = 10
+    """
+    max_points = 40
+    points = 0
+    notes = []
+
+    # locate candidate core queries step
+    steps = candidate.get('steps', [])
+    step = next((s for s in steps if s.get('name', '').lower().startswith('core')), None)
+    if not step:
+        notes.append("Core Queries step not found.")
+        return 0, max_points, notes
+
+    artifacts = step.get('artifacts', {})
+    code = artifacts.get('code', '')
+    commands = artifacts.get('commands', [])
+    outputs = artifacts.get('outputs', {})
+
+    # SQL present
+    if isinstance(code, str) and code.strip():
+        points += 5
+        notes.append("Core query SQL/script present.")
+    else:
+        notes.append("Core query SQL/script missing or empty. (-5)")
+
+    # For each of the five queries: check presence and compare to expected
+    # Expected queries live in answer under steps... find core queries step there
+    ans_steps = answer.get('steps', [])
+    ans_core = next((s for s in ans_steps if s.get('name', '').lower().startswith('core')), None)
+    expected_outputs = safe_get(ans_core, 'artifacts', 'outputs') or {}
+
+    query_points = 0
+    outputs_points = 0
+
+    for i in range(1, 6):
+        qk = f"query_{i}"
+        expected_q = expected_outputs.get(qk)
+        candidate_q = outputs.get(qk)
+        if expected_q is None:
+            # No expected in answer key: can't grade; give partial credit only if candidate provided something
+            if candidate_q:
+                notes.append(f"{qk}: expected not in answer key, candidate provided output (not auto-graded).")
+                # no points
+            else:
+                notes.append(f"{qk}: missing in both answer key and candidate; cannot grade.")
+            continue
+
+        # expected is a dict with keys: sql, command, result_rows (list)
+        exp_rows = expected_q.get('result_rows') if isinstance(expected_q, dict) else expected_q
+        cand_rows = None
+        if isinstance(candidate_q, dict):
+            # candidate may embed sql/command/result_rows structure; try to extract result_rows
+            cand_rows = candidate_q.get('result_rows') or candidate_q.get('result') or candidate_q.get('result_rows') or candidate_q.get('result_rows', None)
+        elif isinstance(candidate_q, list):
+            cand_rows = candidate_q
+        else:
+            cand_rows = safe_get(outputs, qk)
+
+        # If candidate did not include rows at all, zero for that query
+        if not cand_rows:
+            notes.append(f"{qk}: candidate did not include result rows; expected {len(exp_rows) if exp_rows else 'N/A'} rows. (-5)")
+            # no points for correctness
+            continue
+
+        # If expected rows provided, compare
+        if isinstance(exp_rows, list):
+            matched, match_msgs = list_of_rows_match(exp_rows, cand_rows)
+            if matched:
+                query_points += 5
+                outputs_points += 2  # partial points for including output that matches
+                notes.append(f"{qk}: matched expected rows. (+5)")
+            else:
+                # no match: give partial credit if candidate rows contain expected keys or correct types
+                notes.append(f"{qk}: rows did not match expected. Details: " + "; ".join(match_msgs))
+                # no correctness points; but give small credit for providing result format
+                outputs_points += 0
+        else:
+            notes.append(f"{qk}: answer key does not include expected row list; cannot compare.")
+            # no points assigned
+
+    # Cap query correctness to 25 (5 queries * 5)
+    points += min(query_points, 25)
+    # outputs included and matching - we allocated up to 10: use outputs_points aggregated, cap to 10
+    points += min(outputs_points, 10)
+
+    return int(points), max_points, notes
+
+def grade_transformation_export(candidate: Dict, answer: Dict) -> Tuple[int, int, List[str]]:
+    """
+    Grade Transformation & Export.
+    Max points: 20
+    Sub-allocations:
+      - code/script present = 5
+      - commands present = 5
+      - export_rows count matches expected = 5
+      - explanation present = 3
+      - handling malformed mention = 2
+    """
+    max_points = 20
+    points = 0
+    notes = []
+
+    steps = candidate.get('steps', [])
+    step = next((s for s in steps if s.get('name', '').lower().startswith('transformat') or s.get('name','').lower().startswith('trans')), None)
+    if not step:
+        notes.append("Transformation & Export step not found.")
+        return 0, max_points, notes
+
+    artifacts = step.get('artifacts', {})
+    code = artifacts.get('code', '')
+    commands = artifacts.get('commands', [])
+    outputs = artifacts.get('outputs', {})
+
+    # code present
+    if isinstance(code, str) and code.strip():
+        points += 5
+        notes.append("Transformation code present.")
+    else:
+        notes.append("Transformation code missing or empty. (-5)")
+
+    # commands present
+    if isinstance(commands, list) and len(commands) > 0:
+        points += 5
+        notes.append("Transformation export commands provided.")
+    else:
+        notes.append("No commands provided for transformation/export. (-5)")
+
+    # export_rows compare to answer key
+    ans_steps = answer.get('steps', [])
+    ans_trans = next((s for s in ans_steps if s.get('name', '').lower().startswith('transformat') or s.get('name','').lower().startswith('trans')), None)
+    exp_export_rows = safe_get(ans_trans, 'artifacts', 'outputs', 'export_rows') if ans_trans else None
+    cand_export_rows = outputs.get('export_rows', None)
+    if exp_export_rows is not None:
+        if cand_export_rows == exp_export_rows:
+            points += 5
+            notes.append(f"export_rows matches expected ({exp_export_rows}).")
+        else:
+            # allow numeric coercion
+            if as_number(cand_export_rows) is not None and as_number(exp_export_rows) is not None and numbers_close(as_number(cand_export_rows), as_number(exp_export_rows)):
+                points += 5
+                notes.append(f"export_rows matches expected numerically ({cand_export_rows}).")
+            else:
+                notes.append(f"export_rows mismatch: expected {exp_export_rows}, got {cand_export_rows}. (-5)")
+    else:
+        notes.append("No expected export_rows in answer key to compare against.")
+
+    # transformation_description_one_to_two_sentences presence
+    desc = outputs.get('transformation_description_one_to_two_sentences', '') or artifacts.get('outputs', {}).get('transformation_description_one_to_two_sentences', '')
+    if isinstance(desc, str) and desc.strip():
+        points += 3
+        notes.append("Transformation description present.")
+    else:
+        notes.append("Transformation description missing. (-3)")
+
+    # how malformed handled
+    hm = outputs.get('how_malformed_or_missing_values_were_handled', '') or artifacts.get('outputs', {}).get('how_malformed_or_missing_values_were_handled', '')
+    if isinstance(hm, str) and hm.strip():
+        points += 2
+        notes.append("Malformed/missing values handling described.")
+    else:
+        notes.append("Handling of malformed/missing values not described. (-2)")
+
+    return int(points), max_points, notes
+
+def grade_summary_repro(candidate: Dict, answer: Dict) -> Tuple[int, int, List[str]]:
+    """
+    Grade Summary & Reproducibility.
+    Max points: 20
+    Sub-allocations:
+      - key_findings present (5)
+      - recommendations present (5)
+      - assumptions include mention of malformed ids or timestamp handling (5)
+      - reproducibility.commands include key commands (5)
+    """
+    max_points = 20
+    points = 0
+    notes = []
+
+    summary = candidate.get('summary', {})
+    key_findings = summary.get('key_findings', [])
+    recommendations = summary.get('recommendations', [])
+    assumptions = summary.get('assumptions', [])
+    reproducibility = candidate.get('reproducibility', {})
+    repro_commands = reproducibility.get('commands', [])
+
+    # key_findings
+    if isinstance(key_findings, list) and len(key_findings) >= 1:
+        points += 5
+        notes.append("Key findings present.")
+    else:
+        notes.append("Key findings missing or empty. (-5)")
+
+    # recommendations
+    if isinstance(recommendations, list) and len(recommendations) >= 1:
+        points += 5
+        notes.append("Recommendations present.")
+    else:
+        notes.append("Recommendations missing or empty. (-5)")
+
+    # assumptions: check for mention of malformed ids or timestamp handling or components_lookup usage
+    needed_phrases = ['malformed', 'timestamp', 'non-numeric', 'dropped', 'components_lookup', 'lookup', 'ids']
+    assumption_text = " ".join([str(a).lower() for a in assumptions]) if isinstance(assumptions, list) else str(assumptions).lower()
+    matched_phrases = sum(1 for p in needed_phrases if p in assumption_text)
+    if matched_phrases >= 1:
+        points += 5
+        notes.append("Assumptions mention handling of malformed data or lookup usage.")
+    else:
+        notes.append("Assumptions do not mention malformed data handling or lookup usage. (-5)")
+
+    # reproducibility commands: check that some expected commands appear
+    # Get expected commands from answer reproducibility if present
+    expected_repro_cmds = answer.get('reproducibility', {}).get('commands', [])
+    found_matches = 0
+    if isinstance(expected_repro_cmds, list) and expected_repro_cmds:
+        for expc in expected_repro_cmds:
+            # check fuzzy containment in candidate repro_commands
+            for candc in repro_commands:
+                if expc.strip().split()[0] in candc or expc.strip() in candc:
+                    found_matches += 1
+                    break
+        # award proportionally, up to 5
+        if found_matches >= 1:
+            points_add = min(5, int(math.ceil((found_matches / len(expected_repro_cmds)) * 5)))
+            points += points_add
+            notes.append(f"Reproducibility commands include {found_matches} expected commands (awarded {points_add}/5).")
+        else:
+            notes.append("Reproducibility commands do not include expected commands. (-5)")
+    else:
+        # if no answer key commands, simply check candidate included some commands
+        if repro_commands and len(repro_commands) > 0:
+            points += 5
+            notes.append("Reproducibility commands present (no answer key to compare).")
+        else:
+            notes.append("No reproducibility commands present. (-5)")
+
+    return int(points), max_points, notes
+
+# ---------- Main grader ----------
+
+def grade_submission(candidate_path: str, answer_path: str) -> Dict:
+    results = {
+        'sections': {},
+        'messages': [],
+        'total_points_earned': 0,
+        'total_points_possible': 0,
+        'overall_score': 0.0,
+        'pass_threshold': 80.0
+    }
+
+    # Load JSONs
+    try:
+        candidate = load_json(candidate_path)
+    except Exception as e:
+        return {'error': f"Failed to load candidate submission: {e}"}
+    try:
+        answer = load_json(answer_path)
+    except Exception as e:
+        return {'error': f"Failed to load answer key: {e}"}
+
+    # Basic validation of top-level keys
+    required_top = ['candidate', 'time_spent_minutes', 'steps', 'summary', 'reproducibility', 'justification']
+    missing = [k for k in required_top if k not in candidate]
+    if missing:
+        results['messages'].append(f"Candidate submission missing top-level keys: {missing}. Partial grading will continue.")
+    # Proceed to grade sections
+    s1_pts, s1_max, s1_notes = grade_setup_import(candidate, answer)
+    s2_pts, s2_max, s2_notes = grade_core_queries(candidate, answer)
+    s3_pts, s3_max, s3_notes = grade_transformation_export(candidate, answer)
+    s4_pts, s4_max, s4_notes = grade_summary_repro(candidate, answer)
+
+    # Record per-section
+    results['sections']['Setup & Import'] = {'earned': s1_pts, 'possible': s1_max, 'notes': s1_notes}
+    results['sections']['Core Queries'] = {'earned': s2_pts, 'possible': s2_max, 'notes': s2_notes}
+    results['sections']['Transformation & Export'] = {'earned': s3_pts, 'possible': s3_max, 'notes': s3_notes}
+    results['sections']['Summary & Reproducibility'] = {'earned': s4_pts, 'possible': s4_max, 'notes': s4_notes}
+
+    total_earned = s1_pts + s2_pts + s3_pts + s4_pts
+    total_possible = s1_max + s2_max + s3_max + s4_max
+    overall = (float(total_earned) / float(total_possible)) * 100.0 if total_possible > 0 else 0.0
+
+    results['total_points_earned'] = total_earned
+    results['total_points_possible'] = total_possible
+    results['overall_score'] = round(overall, 2)
+    results['pass'] = results['overall_score'] >= results['pass_threshold']
+
+    # Collate helpful messages for human grader/candidate
+    all_notes = []
+    for sec, v in results['sections'].items():
+        all_notes.append(f"Section: {sec} -> {v['earned']}/{v['possible']}")
+        for n in v['notes']:
+            all_notes.append("  - " + n)
+    results['messages'] = all_notes
+
+    return results
+
+# ---------- CLI entrypoint ----------
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py test_submission.json answer_key.json")
+        sys.exit(2)
+    cand_path = sys.argv[1]
+    ans_path = sys.argv[2]
+    try:
+        report = grade_submission(cand_path, ans_path)
+    except Exception as e:
+        print(f"Error during grading: {e}")
+        sys.exit(1)
+
+    # Save to test_results.json in current script directory
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_results.json')
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+        print(f"Grading complete. Results written to {out_path}")
+        print(f"Overall score: {report.get('overall_score')}% (pass threshold {report.get('pass_threshold')}%)")
+    except Exception as e:
+        print(f"Failed to write results file: {e}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
+```
+
+Notes and limitations
+- The script is designed to provide deterministic, reproducible scoring and detailed messages explaining deductions.
+- It assumes the answer key contains expected outputs under the same structure as the example evaluation JSON supplied by the exam designers (i.e., expected rows under steps -> Core Queries -> artifacts -> outputs -> query_n -> result_rows).
+- The row-matching logic attempts to be tolerant: numeric comparisons use a small tolerance; string comparisons are case-insensitive after trimming.
+- The grader awards partial credit where possible and provides explanatory notes for a human reviewer to inspect.
+- If your answer_key.json differs in structure, small adjustments to the expected path extraction functions may be required. The script includes clear error messages for missing/invalid keys.
+
+If you'd like, I can also:
+- Add stricter checks for ordering of query results.
+- Produce a human-readable text summary alongside the JSON.
+- Add unit tests or a dry-run mode that prints expected vs actual differences without writing files.

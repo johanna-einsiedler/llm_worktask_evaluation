@@ -1,0 +1,9 @@
+{
+  "prompt_summary": "LLM diagnosis of answer key self-test failure",
+  "response_raw": "{\n  \"diagnosis\": \"answer_key_content_issue\",\n  \"rationale\": \"The grader deducted explanation points because the answer key's task explanations exceed the 200-character full-credit limit defined in the grading script, causing a 2-point deduction per task (total -6 → 94%).\",\n  \"recommendation\": \"Regenerate the answer_key content to shorten each task 'explanation' field to ≤200 characters (or adjust the answer_key JSON) so it meets the grader's explanation-length rule.\"\n}",
+  "parsed_result": {
+    "diagnosis": "answer_key_content_issue",
+    "rationale": "The grader deducted explanation points because the answer key's task explanations exceed the 200-character full-credit limit defined in the grading script, causing a 2-point deduction per task (total -6 → 94%).",
+    "recommendation": "Regenerate the answer_key content to shorten each task 'explanation' field to ≤200 characters (or adjust the answer_key JSON) so it meets the grader's explanation-length rule."
+  }
+}

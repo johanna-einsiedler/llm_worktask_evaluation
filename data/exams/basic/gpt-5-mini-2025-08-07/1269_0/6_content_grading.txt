@@ -1,629 +1,502 @@
-```python
 # task_evaluation.py
+#!/usr/bin/env python3
 """
-Automated grader for the CSV Summarizer Basic Practical Exam.
+Automated grader for the "sales_agg" basic practical exam.
 
 Usage:
-    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
 
-Output:
-    Writes test_results.json into the same directory as this script.
+The script reads the candidate submission and the answer key, compares test outputs,
+and grades the submission according to the evaluator rules described in the exam.
+It writes results to test_results.json in the current working directory.
+
+Output (test_results.json) contains:
+- overall_score (numeric percentage 0-100)
+- total_points_earned, total_points_possible
+- breakdown per category with earned/max and comments
+- detailed test comparisons and deduction reasons
+
+Implementation notes:
+- Uses only standard library modules.
+- Attempts to be tolerant of minor whitespace differences when comparing outputs.
+- Provides clear explanations for deductions.
 """
 
 import json
 import os
-import re
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Dict, Any, List, Tuple
 
-# Numeric tolerance for float comparisons
-FLOAT_TOL = 1e-6
-
-# Scoring weights (total 100)
-WEIGHTS = {
-    "functional": 60,   # primary (40) + revision (20)
-    "readability": 20,
-    "documentation": 15,
-    "packaging": 5
-}
-# Sub-weights inside functional
-FUNC_SUB = {"primary": 40, "revision": 20}
-
-
-def load_json_safe(path: str) -> Any:
-    """Load JSON file and handle errors."""
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+def load_json(path: str) -> Any:
+    """Load JSON from path with error handling."""
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        raise
-    except Exception as e:
-        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+        raise FileNotFoundError(f"File not found: {path}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {path}: {e}")
 
-
-def find_file_entry(files_list: List[Dict[str, Any]], path: str) -> Dict[str, Any]:
-    """Find file entry in submission 'files' array by relative path."""
-    for ent in files_list:
-        if ent.get("path") == path:
-            return ent
-    return None
-
-
-def normalize_whitespace(s: str) -> str:
-    """Remove all whitespace characters to do strict string comparison tolerant of spacing."""
-    return re.sub(r"\s+", "", s)
-
-
-def parse_json_text(s: str) -> Tuple[bool, Any]:
-    """Try parsing a JSON text. Return (success, parsed_object_or_error)."""
-    try:
-        return True, json.loads(s)
-    except Exception as e:
-        return False, str(e)
-
-
-def compare_numbers(a: Any, b: Any) -> bool:
-    """Compare two JSON numbers with tolerance."""
-    try:
-        # If either is not a number, fallback to exact equality
-        if a is None or b is None:
-            return a is None and b is None
-        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
-            return abs(float(a) - float(b)) <= FLOAT_TOL
-        return a == b
-    except Exception:
-        return a == b
-
-
-def compare_json_struct(a: Any, b: Any) -> bool:
-    """Recursively compare JSON structures allowing numeric tolerance and ignoring ordering of dict keys."""
-    if type(a) != type(b):
-        # allow int vs float comparison
-        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
-            return compare_numbers(a, b)
-        return False
-    if isinstance(a, dict):
-        if set(a.keys()) != set(b.keys()):
-            return False
-        for k in a.keys():
-            if not compare_json_struct(a[k], b[k]):
-                return False
-        return True
-    if isinstance(a, list):
-        if len(a) != len(b):
-            return False
-        # Compare sequentially (order matters for lists)
-        for ai, bi in zip(a, b):
-            if not compare_json_struct(ai, bi):
-                return False
-        return True
-    if isinstance(a, (int, float)):
-        return compare_numbers(a, b)
-    return a == b
-
-
-def score_functional(candidate: Dict[str, Any], answer: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
+def normalize_output(s: str) -> str:
     """
-    Grade functional correctness and reproducibility (60 points):
-      - Primary (out_initial.json) exact match => 40 pts
-        partial (numeric-equal) => 20 pts
-      - Revision (out_groupby.json) exact match => 20 pts
-        partial (numeric-equal) => 10 pts
-    We compare candidate.captured_outputs entries to answer.captured_outputs entries.
+    Normalize stdout/stderr strings to reduce false mismatches:
+    - Strip leading/trailing whitespace
+    - Normalize line endings
+    - Trim trailing spaces on each line
     """
-    details = {"primary": {}, "revision": {}}
-    total = 0.0
+    if s is None:
+        return ""
+    # Ensure it's a string
+    if not isinstance(s, str):
+        s = str(s)
+    # Normalize line endings and strip leading/trailing whitespace
+    lines = s.replace('\r\n', '\n').replace('\r', '\n').strip().split('\n')
+    # Trim trailing/leading spaces from each line
+    norm_lines = [ln.rstrip() for ln in lines if ln is not None]
+    # Remove possible empty strings at start/end produced after strip
+    return "\n".join(norm_lines).strip()
 
-    # Build lookup by name for candidate and answer captured_outputs
-    cand_caps = {c.get("name"): c for c in candidate.get("captured_outputs", [])}
-    ans_caps = {c.get("name"): c for c in answer.get("captured_outputs", [])}
-
-    # Primary
-    primary_name = "out_initial.json"
-    if primary_name not in ans_caps:
-        details["primary"]["error"] = "Answer key missing primary captured output."
-    else:
-        expected_text = ans_caps[primary_name].get("content", "")
-        cand_entry = cand_caps.get(primary_name)
-        if not cand_entry:
-            details["primary"]["score"] = 0.0
-            details["primary"]["reason"] = "Candidate missing out_initial.json in captured_outputs."
-        else:
-            cand_text = cand_entry.get("content", "")
-            # Strict string comparison ignoring whitespace
-            if normalize_whitespace(cand_text) == normalize_whitespace(expected_text):
-                details["primary"]["score"] = FUNC_SUB["primary"]
-                details["primary"]["reason"] = "Exact match (whitespace-insensitive)."
-                total += FUNC_SUB["primary"]
-            else:
-                # Try numeric-tolerant JSON comparison
-                ok_expected, parsed_expected = parse_json_text(expected_text)
-                ok_cand, parsed_cand = parse_json_text(cand_text)
-                if ok_expected and ok_cand and compare_json_struct(parsed_cand, parsed_expected):
-                    details["primary"]["score"] = FUNC_SUB["primary"] / 2  # partial
-                    details["primary"]["reason"] = "Numeric-equal JSON but formatting/ordering differs."
-                    total += FUNC_SUB["primary"] / 2
-                else:
-                    # Provide diagnostics
-                    details["primary"]["score"] = 0.0
-                    reasons = []
-                    if not ok_cand:
-                        reasons.append(f"Candidate out_initial.json is not valid JSON: {parsed_cand}")
-                    if ok_cand and ok_expected:
-                        # Compare structural keys
-                        try:
-                            if isinstance(parsed_expected, dict) and isinstance(parsed_cand, dict):
-                                reasons.append(f"Top-level keys expected: {list(parsed_expected.keys())}, got: {list(parsed_cand.keys())}")
-                        except Exception:
-                            pass
-                    details["primary"]["reason"] = "; ".join(reasons) if reasons else "Mismatch between expected and candidate primary output."
-
-    # Revision
-    revision_name = "out_groupby.json"
-    if revision_name not in ans_caps:
-        details["revision"]["error"] = "Answer key missing revision captured output."
-    else:
-        expected_text = ans_caps[revision_name].get("content", "")
-        cand_entry = cand_caps.get(revision_name)
-        if not cand_entry:
-            details["revision"]["score"] = 0.0
-            details["revision"]["reason"] = "Candidate missing out_groupby.json in captured_outputs."
-        else:
-            cand_text = cand_entry.get("content", "")
-            if normalize_whitespace(cand_text) == normalize_whitespace(expected_text):
-                details["revision"]["score"] = FUNC_SUB["revision"]
-                details["revision"]["reason"] = "Exact match (whitespace-insensitive)."
-                total += FUNC_SUB["revision"]
-            else:
-                ok_expected, parsed_expected = parse_json_text(expected_text)
-                ok_cand, parsed_cand = parse_json_text(cand_text)
-                if ok_expected and ok_cand and compare_json_struct(parsed_cand, parsed_expected):
-                    details["revision"]["score"] = FUNC_SUB["revision"] / 2  # partial
-                    details["revision"]["reason"] = "Numeric-equal JSON but formatting/ordering differs."
-                    total += FUNC_SUB["revision"] / 2
-                else:
-                    details["revision"]["score"] = 0.0
-                    reasons = []
-                    if not ok_cand:
-                        reasons.append(f"Candidate out_groupby.json is not valid JSON: {parsed_cand}")
-                    if ok_cand and ok_expected:
-                        try:
-                            if isinstance(parsed_expected, dict) and isinstance(parsed_cand, dict):
-                                reasons.append(f"Top-level keys expected: {list(parsed_expected.keys())}, got: {list(parsed_cand.keys())}")
-                        except Exception:
-                            pass
-                    details["revision"]["reason"] = "; ".join(reasons) if reasons else "Mismatch between expected and candidate group-by output."
-
-    return total, details
-
-
-def analyze_readability(candidate: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
+def find_matching_candidate_test(candidate_tests: List[Dict[str, Any]],
+                                 answer_test: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
     """
-    Heuristic scoring for code readability and comments (20 points):
-      - Top-of-file header comment present: 5 pts
-      - Docstrings for functions (>=50% functions have docstring): 10 pts
-      - Inline comments presence (# or /* */): 5 pts
-    Works on the chosen language source file only.
+    Try to locate a matching test in candidate_tests for a given answer_test.
+    Matching strategy:
+      1. Match by test_name (exact, case-insensitive)
+      2. Match by command (exact)
+      3. Match by command tokens presence (e.g., sample_sales.csv, malformed_sales.csv)
+    Returns index and test dict if found, otherwise (-1, {}).
     """
-    details = {}
-    score = 0.0
-    language = candidate.get("language", "")
-    files = candidate.get("files", [])
-    # Map language to expected source path
-    lang_to_path = {"Python": "summarizer.py", "Java": "Summarizer.java", "C": "summarizer.c"}
-    src_path = lang_to_path.get(language)
-    src_entry = find_file_entry(files, src_path) if src_path else None
-    if not src_entry:
-        details["error"] = f"Source file for chosen language not found ({src_path})."
-        return score, details
+    # 1) by name
+    ans_name = (answer_test.get('test_name') or "").strip().lower()
+    ans_cmd = (answer_test.get('command') or "").strip()
+    if ans_name:
+        for idx, t in enumerate(candidate_tests):
+            if (t.get('test_name') or "").strip().lower() == ans_name:
+                return idx, t
+    # 2) by exact command
+    if ans_cmd:
+        for idx, t in enumerate(candidate_tests):
+            if (t.get('command') or "").strip() == ans_cmd:
+                return idx, t
+    # 3) by partial command tokens
+    tokens = []
+    if 'sample_sales.csv' in ans_cmd:
+        tokens.append('sample_sales.csv')
+    if 'malformed_sales.csv' in ans_cmd:
+        tokens.append('malformed_sales.csv')
+    if '--min-revenue' in ans_cmd or '-m' in ans_cmd:
+        tokens.append('--min-revenue')
+    if not tokens:
+        # Fall back to matching by expected_output length or name
+        for idx, t in enumerate(candidate_tests):
+            if (t.get('test_name') or "").strip().lower() == ans_name:
+                return idx, t
+        return -1, {}
+    for idx, t in enumerate(candidate_tests):
+        cmd = (t.get('command') or "").strip()
+        if all(tok in cmd for tok in tokens):
+            return idx, t
+    return -1, {}
 
-    content = src_entry.get("content", "")
-    # Top-of-file header: for Python check if starting with triple-quoted string or several comment lines
-    top_header = False
-    lines = content.splitlines()
-    if not lines:
-        details["header"] = "Source file empty."
-    else:
-        # Detect header comment heuristics
-        first_nonblank = next((ln for ln in lines if ln.strip() != ""), "")
-        if language == "Python":
-            if first_nonblank.startswith('"""') or first_nonblank.startswith("'''"):
-                top_header = True
-            else:
-                # If first few lines start with '#'
-                first_lines = lines[:6]
-                if any(ln.strip().startswith("#") for ln in first_lines):
-                    top_header = True
-        else:
-            # For Java/C look for /* ... */ or // comment at top
-            if first_nonblank.startswith("/*") or first_nonblank.startswith("//"):
-                top_header = True
-        if top_header:
-            details["header"] = "Top-of-file header comment detected."
-            score += 5.0
-        else:
-            details["header"] = "No clear top-of-file header comment detected."
+def safe_get(d: Dict[str, Any], key: str, default=None):
+    return d.get(key, default) if isinstance(d, dict) else default
 
-    # Docstring/function comments: heuristic per language
-    func_defs = []
-    funcs_with_doc = 0
-    if language == "Python":
-        # Find 'def ' occurrences; for each, check following non-blank line for triple-quoted string
-        for idx, ln in enumerate(lines):
-            if re.match(r"\s*def\s+\w+\s*\(", ln):
-                func_defs.append(idx)
-        for idx in func_defs:
-            # Look at subsequent lines for a docstring
-            doc_found = False
-            j = idx + 1
-            # Skip decorators/blank lines/comments
-            while j < len(lines) and lines[j].strip() == "":
-                j += 1
-            if j < len(lines) and re.match(r"\s*[ruRU]*[\"']{3}", lines[j]):
-                doc_found = True
-            if doc_found:
-                funcs_with_doc += 1
-        details["functions_found"] = len(func_defs)
-        details["functions_with_docstring"] = funcs_with_doc
-        if func_defs:
-            ratio = funcs_with_doc / len(func_defs)
-            if ratio >= 0.5:
-                score += 10.0
-                details["docstring_reason"] = f"{funcs_with_doc}/{len(func_defs)} functions have docstrings (>=50%)."
-            elif funcs_with_doc > 0:
-                partial = 10.0 * (ratio / 0.5)  # linear partial
-                score += partial
-                details["docstring_reason"] = f"{funcs_with_doc}/{len(func_defs)} functions have docstrings (<50%). Partial credit."
-            else:
-                details["docstring_reason"] = "No function docstrings found."
-        else:
-            # No functions: expect module-level docstring counts as header already scored
-            details["docstring_reason"] = "No functions detected; relied on top-of-file header."
-
-    else:
-        # For Java/C: look for function return types + name pattern and check preceding comment block
-        # This is a rough heuristic: look for lines like 'int func(' or 'void func(' or type name '('
-        for idx, ln in enumerate(lines):
-            if re.match(r"\s*(public\s+|private\s+|protected\s+)?(static\s+)?[A-Za-z_][\w<>]+\s+\w+\s*\(", ln):
-                func_defs.append(idx)
-            elif re.match(r"\s*[A-Za-z_][\w\s\*]+\s+\w+\s*\([^;]*\)\s*{', ln):
-                func_defs.append(idx)
-        for idx in func_defs:
-            # check previous few lines for comment block
-            doc_found = False
-            for j in range(max(0, idx - 3), idx):
-                if lines[j].strip().startswith("/*") or lines[j].strip().startswith("//"):
-                    doc_found = True
-                    break
-            if doc_found:
-                funcs_with_doc += 1
-        details["functions_found"] = len(func_defs)
-        details["functions_with_doc"] = funcs_with_doc
-        if func_defs:
-            ratio = funcs_with_doc / len(func_defs)
-            if ratio >= 0.5:
-                score += 10.0
-                details["docstring_reason"] = f"{funcs_with_doc}/{len(func_defs)} functions have preceding comments (>=50%)."
-            elif funcs_with_doc > 0:
-                partial = 10.0 * (ratio / 0.5)
-                score += partial
-                details["docstring_reason"] = f"{funcs_with_doc}/{len(func_defs)} functions have preceding comments (<50%). Partial credit."
-            else:
-                details["docstring_reason"] = "No function comments found."
-        else:
-            details["docstring_reason"] = "No functions detected; top-of-file header scored."
-
-    # Inline comments: count occurrences of '#' for Python or '//' or '/*' for Java/C
-    if language == "Python":
-        inline_count = sum(1 for ln in lines if "#" in ln and not ln.strip().startswith("#"))
-    else:
-        inline_count = sum(1 for ln in lines if ("//" in ln or "/*" in ln) and not ln.strip().startswith(("//", "/*")))
-    details["inline_comment_count"] = inline_count
-    # Scoring: at least 3 inline comments => full 5, 1-2 => partial 2.5, 0 => 0
-    if inline_count >= 3:
-        score += 5.0
-        details["inline_reason"] = "Sufficient inline comments found."
-    elif inline_count >= 1:
-        score += 2.5
-        details["inline_reason"] = "Some inline comments found. Partial credit."
-    else:
-        details["inline_reason"] = "No inline comments detected."
-
-    # Cap score at readability weight
-    score = min(score, WEIGHTS["readability"])
-    details["score"] = score
-    return score, details
-
-
-def analyze_documentation(candidate: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
+# -----------------------------------------------------------------------------
+# Grading logic
+# -----------------------------------------------------------------------------
+def grade(candidate: Dict[str, Any], answer_key: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Grade documentation & changelog (15 points):
-      - README contains project purpose, exact run commands for both tasks, assumptions, and numeric formatting mention: 10 pts
-      - CHANGELOG contains at least two entries (initial and revision): 5 pts
-    Uses both README field and files array to verify presence and equivalence.
+    Compute grading results based on candidate submission and answer key.
+    Returns a detailed results dict to be serialized to JSON.
     """
-    details = {}
-    score = 0.0
-    files = candidate.get("files", [])
-    readme_field = candidate.get("README", "")
-    changelog_field = candidate.get("changelog", "")
-
-    readme_entry = find_file_entry(files, "README.md")
-    changelog_entry = find_file_entry(files, "CHANGELOG.md")
-
-    # Check README presence and equivalence
-    if not readme_field and not readme_entry:
-        details["readme"] = "README missing from both top-level field and files."
-    else:
-        # Prefer file content if present
-        readme_text = readme_entry.get("content", "") if readme_entry else readme_field
-        details["readme_present"] = True
-        # Heuristics: length, presence of run commands, numeric formatting mention, assumptions
-        length_ok = len(readme_text.strip()) >= 50
-        has_taskA = False
-        has_taskB = False
-        # Look for python/java/c exact commands (common patterns). Also use candidate.primary_run_command if present.
-        pr_cmd = candidate.get("primary_run_command", "")
-        rev_cmd = candidate.get("revision_run_command", "")
-        if pr_cmd and pr_cmd in readme_text:
-            has_taskA = True
-        else:
-            # try to find patterns for any language commands in README
-            if "python3 summarizer.py data.csv --output out_initial.json" in readme_text:
-                has_taskA = True
-            if "java Summarizer data.csv --output out_initial.json" in readme_text or "javac Summarizer.java" in readme_text:
-                has_taskA = True
-            if "./summarizer data.csv --output out_initial.json" in readme_text or "gcc summarizer.c" in readme_text:
-                has_taskA = True
-        if rev_cmd and rev_cmd in readme_text:
-            has_taskB = True
-        else:
-            if "python3 summarizer.py data.csv --group-by group --output out_groupby.json" in readme_text:
-                has_taskB = True
-            if "java Summarizer data.csv --group-by group --output out_groupby.json" in readme_text:
-                has_taskB = True
-            if "./summarizer data.csv --group-by group --output out_groupby.json" in readme_text:
-                has_taskB = True
-
-        mentions_two_decimal = bool(re.search(r"two\s+decimal|2\s+decimal|two\s+decimals", readme_text, flags=re.IGNORECASE))
-        mentions_assumptions = "assum" in readme_text.lower()  # simple heuristic
-
-        details["readme_length_ok"] = length_ok
-        details["readme_has_taskA_cmd"] = has_taskA
-        details["readme_has_taskB_cmd"] = has_taskB
-        details["readme_mentions_two_decimal"] = mentions_two_decimal
-        details["readme_mentions_assumptions"] = mentions_assumptions
-
-        # Scoring: require both commands + numeric formatting mention to award full 10
-        if has_taskA and has_taskB and mentions_two_decimal:
-            score += 10.0
-            details["readme_reason"] = "README includes both run commands and numeric formatting note."
-        else:
-            # partial credit: each satisfied item contributes
-            partial = 0.0
-            partial += 4.0 if has_taskA else 0.0
-            partial += 4.0 if has_taskB else 0.0
-            partial += 2.0 if mentions_two_decimal else 0.0
-            score += partial
-            details["readme_reason"] = f"Partial README coverage: taskA={has_taskA}, taskB={has_taskB}, two_decimal={mentions_two_decimal}."
-
-    # CHANGELOG check: look for at least two dated/entry lines or presence of words 'Initial' and 'Revision' or two '-' bullets
-    if not changelog_field and not changelog_entry:
-        details["changelog"] = "CHANGELOG missing from both top-level field and files."
-    else:
-        changelog_text = changelog_entry.get("content", "") if changelog_entry else changelog_field
-        # Count lines that look like entries: lines with '-' at start or lines containing 'Initial'/'Revision' keywords
-        lines = [ln.strip() for ln in changelog_text.splitlines() if ln.strip()]
-        entries = [ln for ln in lines if ln.startswith("-") or re.search(r"\binitial\b", ln, flags=re.IGNORECASE) or re.search(r"\brevision\b", ln, flags=re.IGNORECASE) or re.search(r"\badded\b|\badd\b", ln, flags=re.IGNORECASE)]
-        if len(entries) >= 2:
-            score += 5.0
-            details["changelog_reason"] = f"CHANGELOG contains {len(entries)} entries (>=2)."
-        else:
-            details["changelog_reason"] = f"CHANGELOG entries found: {len(entries)} (<2). Partial or missing."
-            if len(entries) == 1:
-                score += 2.5
-
-    # Cap at documentation weight
-    score = min(score, WEIGHTS["documentation"])
-    details["score"] = score
-    return score, details
-
-
-def analyze_packaging(candidate: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
-    """
-    Grade packaging and reproducibility artifact (5 points):
-      - test_submission.json follows schema and includes required files:
-        source file, data.csv, out_initial.json, out_groupby.json, README.md, CHANGELOG.md
-      - README and CHANGELOG top-level fields match their files entries
-      - primary_run_command and revision_run_command present
-    """
-    details = {}
-    score = 0.0
-    files = candidate.get("files", [])
-    file_paths = {ent.get("path") for ent in files}
-
-    required = {"data.csv", "README.md", "CHANGELOG.md", "out_initial.json", "out_groupby.json"}
-    language = candidate.get("language", "")
-    lang_to_path = {"Python": "summarizer.py", "Java": "Summarizer.java", "C": "summarizer.c"}
-    src_path = lang_to_path.get(language)
-    if src_path:
-        required.add(src_path)
-    else:
-        details["language_error"] = "Candidate 'language' field missing or invalid."
-
-    missing = sorted(list(required - file_paths))
-    if not missing:
-        score += 3.0  # partial for having required files
-        details["files_check"] = "All required files present in files array."
-    else:
-        details["files_check"] = f"Missing required files: {missing}"
-        # no file presence -> 0 here, but still might award points for other packaging aspects
-
-    # Check README and changelog top-level fields match files content if present
-    readme_field = candidate.get("README", "")
-    changelog_field = candidate.get("changelog", "")
-    readme_entry = find_file_entry(files, "README.md")
-    changelog_entry = find_file_entry(files, "CHANGELOG.md")
-    readme_match = False
-    changelog_match = False
-    if readme_entry:
-        if readme_field and readme_field.strip() == readme_entry.get("content", "").strip():
-            readme_match = True
-    # if README exists only in files and not in top-level field, still acceptable but no match
-    if changelog_entry:
-        if changelog_field and changelog_field.strip() == changelog_entry.get("content", "").strip():
-            changelog_match = True
-
-    if readme_match and changelog_match:
-        score += 1.0
-        details["readme_changelog_match"] = "Top-level README and CHANGELOG fields match files."
-    else:
-        details["readme_changelog_match"] = f"README match: {readme_match}, CHANGELOG match: {changelog_match}"
-
-    # Check captured_outputs entries exist and correspond to files entries
-    caps = candidate.get("captured_outputs", [])
-    cap_names = {c.get("name"): c for c in caps}
-    ok_caps = True
-    reasons = []
-    for cap_name in ("out_initial.json", "out_groupby.json"):
-        cap = cap_names.get(cap_name)
-        file_ent = find_file_entry(files, cap_name)
-        if not cap:
-            ok_caps = False
-            reasons.append(f"captured_outputs missing {cap_name}")
-        else:
-            if not file_ent:
-                ok_caps = False
-                reasons.append(f"files array missing {cap_name} but captured_outputs has it")
-            else:
-                # Check contents match
-                if cap.get("content", "").strip() != file_ent.get("content", "").strip():
-                    ok_caps = False
-                    reasons.append(f"captured output content mismatch for {cap_name} between captured_outputs and files entry")
-
-    if ok_caps:
-        score += 1.0
-        details["captured_outputs"] = "Captured outputs present and match files."
-    else:
-        details["captured_outputs"] = "; ".join(reasons)
-
-    # Check primary_run_command and revision_run_command presence
-    pr_cmd = candidate.get("primary_run_command", "")
-    rev_cmd = candidate.get("revision_run_command", "")
-    if pr_cmd and rev_cmd:
-        score += 0.0  # presence acknowledged but packaging has small weight; we give no extra since earlier points cover reproducibility
-        details["run_commands"] = "Run commands present."
-    else:
-        details["run_commands"] = f"Missing run commands: primary_present={bool(pr_cmd)}, revision_present={bool(rev_cmd)}"
-
-    # Final packaging score: we want up to 5 points. We already allocated 4 max (3+1).
-    # Give a 5th point if there were no missing required files and captured outputs matched.
-    if not missing and ok_caps:
-        score += 1.0
-
-    score = min(score, WEIGHTS["packaging"])
-    details["score"] = score
-    return score, details
-
-
-def compute_overall(candidate: Dict[str, Any], answer: Dict[str, Any]) -> Dict[str, Any]:
-    """Compute full grading breakdown and overall score. Return a results dict."""
-    results = {"breakdown": {}, "total_points": 0.0, "max_points": 100.0}
-
-    # Functional
-    func_score, func_details = score_functional(candidate, answer)
-    results["breakdown"]["functional_correctness_reproducibility"] = {
-        "score": round(func_score, 2),
-        "max": WEIGHTS["functional"],
-        "details": func_details
+    results = {
+        "total_points_possible": 100.0,
+        "total_points_earned": 0.0,
+        "breakdown": [],
+        "test_details": [],
+        "issues": [],
     }
 
-    # Readability
-    read_score, read_details = analyze_readability(candidate)
-    results["breakdown"]["code_readability_and_commenting"] = {
-        "score": round(read_score, 2),
-        "max": WEIGHTS["readability"],
-        "details": read_details
-    }
+    # Validate presence of top-level required fields in candidate submission
+    required_fields = [
+        "candidate_name", "language", "time_spent_minutes", "source_files",
+        "build_instructions", "readme", "changelog", "tests",
+        "run_output_summary", "assumptions", "comments_coverage",
+        "self_score_estimate", "signature"
+    ]
+    missing_fields = [f for f in required_fields if f not in candidate]
+    if missing_fields:
+        results['issues'].append(f"Missing required fields in submission: {missing_fields}")
 
-    # Documentation
-    doc_score, doc_details = analyze_documentation(candidate)
-    results["breakdown"]["documentation_and_changelog"] = {
-        "score": round(doc_score, 2),
-        "max": WEIGHTS["documentation"],
-        "details": doc_details
-    }
+    # Extract candidate tests and answer_key tests
+    cand_tests = candidate.get('tests', []) if isinstance(candidate.get('tests'), list) else []
+    ans_tests = answer_key.get('tests', []) if isinstance(answer_key.get('tests'), list) else []
 
-    # Packaging
-    pack_score, pack_details = analyze_packaging(candidate)
-    results["breakdown"]["packaging_and_reproducibility_artifact"] = {
-        "score": round(pack_score, 2),
-        "max": WEIGHTS["packaging"],
-        "details": pack_details
+    # --- Category 1: Correctness (50 points) ---
+    correctness_max = 50.0
+    correctness_score = 0.0
+    correctness_comments = []
+    # Distribute points: normal_sample 20, malformed_sample 20, min_revenue_filter 10
+    per_test_weight = {
+        "normal_sample": 20.0,
+        "malformed_sample": 20.0,
+        "min_revenue_filter": 10.0
     }
+    # Build a lookup in answer key by test_name
+    answer_tests_by_name = { (t.get('test_name') or '').strip(): t for t in ans_tests }
 
-    # Sum totals
-    total = func_score + read_score + doc_score + pack_score
-    results["total_points"] = round(total, 2)
-    results["max_points"] = 100.0
-    percent = (total / 100.0) * 100.0
-    # percent is just total, but keep formula
-    results["percentage"] = round(percent, 2)
-    results["overall_score"] = results["percentage"]
-    # Provide pass/fail based on >=80%
-    results["pass"] = results["overall_score"] >= 80.0
+    for key_name, pts in per_test_weight.items():
+        ans_test = answer_tests_by_name.get(key_name)
+        if not ans_test:
+            # If answer key lacks this test, cannot award points; log issue
+            correctness_comments.append(f"Answer key missing expected test '{key_name}'; cannot grade this subtask.")
+            continue
+        idx, cand_test = find_matching_candidate_test(cand_tests, ans_test)
+        if idx == -1:
+            correctness_comments.append(f"Candidate missing test '{key_name}' (expected command: '{ans_test.get('command')}'). 0/{pts} points.")
+            continue
+        # Compare outputs
+        expected = normalize_output(ans_test.get('expected_output', ''))
+        actual = normalize_output(cand_test.get('actual_output', ''))
+        passed_flag = bool(cand_test.get('passed') is True)
+        # Primary check: compare normalized outputs exactly
+        if expected == actual:
+            correctness_score += pts
+            correctness_comments.append(f"Test '{key_name}': PASS ({pts}/{pts})")
+        else:
+            # If outputs differ but candidate claimed passed, still record mismatch
+            # Allow tolerance: whitespace normalization already done. No fuzzy numeric tolerance applied.
+            correctness_comments.append(f"Test '{key_name}': FAIL (0/{pts}). Expected vs Actual differ.")
+            correctness_comments.append({
+                "test_name": key_name,
+                "expected": expected,
+                "actual": actual
+            })
+        # Record per-test detail
+        results['test_details'].append({
+            "test_name": key_name,
+            "expected_output": expected,
+            "actual_output": actual,
+            "passed_flag": passed_flag,
+            "points_awarded": pts if expected == actual else 0.0,
+            "points_possible": pts
+        })
+
+    results['breakdown'].append({
+        "category": "Correctness",
+        "earned": round(correctness_score, 2),
+        "max": correctness_max,
+        "comments": correctness_comments
+    })
+    results['total_points_earned'] += correctness_score
+
+    # --- Category 2: Documentation (20 points) ---
+    doc_max = 20.0
+    doc_score = 0.0
+    doc_comments = []
+
+    # Sub-allocations:
+    # README with usage and assumptions: 8
+    # build_instructions includes three commands / sample filenames and --min-revenue: 6
+    # changelog present and includes at least 1 entry: 3
+    # assumptions present non-empty: 3
+
+    # README check
+    readme = candidate.get('readme', '')
+    if isinstance(readme, str) and readme.strip():
+        lower = readme.lower()
+        if 'sample_sales.csv' in lower or 'how to run' in lower or 'usage' in lower or 'run the script' in lower:
+            doc_score += 8.0
+            doc_comments.append("README: contains usage/sample info (8/8).")
+        else:
+            doc_score += 4.0
+            doc_comments.append("README: present but missing explicit usage/sample info (4/8).")
+    else:
+        doc_comments.append("README missing or empty (0/8).")
+
+    # build_instructions check
+    build_instr = candidate.get('build_instructions', '')
+    if isinstance(build_instr, str) and build_instr.strip():
+        tokens = ['sample_sales.csv', 'malformed_sales.csv', '--min-revenue']
+        found = [tok for tok in tokens if tok in build_instr]
+        if len(found) == 3:
+            doc_score += 6.0
+            doc_comments.append("build_instructions: includes sample, malformed, and --min-revenue commands (6/6).")
+        elif len(found) >= 1:
+            doc_score += 3.0
+            doc_comments.append(f"build_instructions: partial coverage (found tokens: {found}) (3/6).")
+        else:
+            doc_comments.append("build_instructions present but did not include required tokens (0/6).")
+    else:
+        doc_comments.append("build_instructions missing or empty (0/6).")
+
+    # changelog check
+    changelog = candidate.get('changelog', [])
+    if isinstance(changelog, list) and len(changelog) >= 1:
+        # Prefer to see at least two entries and mention of revision (but award partial if one)
+        if any(('min-revenue' in json.dumps(entry).lower() or 'filter' in json.dumps(entry).lower() or '-m' in json.dumps(entry).lower()) for entry in changelog):
+            doc_score += 3.0
+            doc_comments.append("changelog: present and documents revision/feature (3/3).")
+        else:
+            doc_score += 2.0
+            doc_comments.append("changelog: present but no explicit mention of revision/filter (2/3).")
+    else:
+        doc_comments.append("changelog missing or empty (0/3).")
+
+    # assumptions check
+    assumptions = candidate.get('assumptions', [])
+    if isinstance(assumptions, list) and len(assumptions) >= 1:
+        doc_score += 3.0
+        doc_comments.append("assumptions: provided (3/3).")
+    else:
+        doc_comments.append("assumptions missing or empty (0/3).")
+
+    results['breakdown'].append({
+        "category": "Documentation",
+        "earned": round(doc_score, 2),
+        "max": doc_max,
+        "comments": doc_comments
+    })
+    results['total_points_earned'] += doc_score
+
+    # --- Category 3: Code comments & clarity (15 points) ---
+    comments_max = 15.0
+    comments_score = 0.0
+    comments_notes = []
+
+    # Check comments_coverage field
+    comments_coverage = (candidate.get('comments_coverage') or "")
+    if isinstance(comments_coverage, str) and comments_coverage.strip():
+        comments_score += 5.0
+        comments_notes.append("comments_coverage: self-assessment provided (5/5).")
+    else:
+        comments_notes.append("comments_coverage missing or empty (0/5).")
+
+    # Check source_files presence and comment markers in source content
+    source_files = candidate.get('source_files', [])
+    if isinstance(source_files, list) and len(source_files) >= 1:
+        # Look for comment markers in source content based on language heuristics
+        found_comment = False
+        total_comment_count = 0
+        for sf in source_files:
+            content = sf.get('content', '') or ''
+            lang = (sf.get('language') or '').lower()
+            if not content:
+                continue
+            # Heuristics: for Python look for '#' or triple quotes; for others look for '//' or '/*'
+            if lang.startswith('py') or sf.get('filename', '').endswith('.py'):
+                count_hash = content.count('#')
+                count_doc = content.count('"""') + content.count("'''")
+                total_comment_count += count_hash + count_doc
+                if count_hash + count_doc > 0:
+                    found_comment = True
+            else:
+                # generic search
+                if ('//' in content) or ('/*' in content) or ('#' in content):
+                    total_comment_count += content.count('//') + content.count('/*') + content.count('#')
+                    found_comment = True
+        if found_comment and total_comment_count >= 3:
+            comments_score += 10.0
+            comments_notes.append(f"source_files: found {total_comment_count} comment markers (10/10).")
+        elif found_comment:
+            comments_score += 5.0
+            comments_notes.append(f"source_files: comments present but sparse ({total_comment_count} markers) (5/10).")
+        else:
+            comments_notes.append("source_files: no comment markers found (0/10).")
+    else:
+        comments_notes.append("source_files missing or empty (0/10).")
+
+    results['breakdown'].append({
+        "category": "Code comments & clarity",
+        "earned": round(comments_score, 2),
+        "max": comments_max,
+        "comments": comments_notes
+    })
+    results['total_points_earned'] += comments_score
+
+    # --- Category 4: Tests and evidence of execution (10 points) ---
+    tests_max = 10.0
+    tests_score = 0.0
+    tests_comments = []
+
+    # At least two tests executed (normal + malformed) -> 3 points
+    if isinstance(cand_tests, list) and len(cand_tests) >= 2:
+        tests_score += 3.0
+        tests_comments.append("At least two test runs present (3/3).")
+    else:
+        tests_comments.append("Fewer than two test runs provided (0/3).")
+
+    # Inclusion of three specific tests (presence of commands or names) -> 3 points
+    required_test_names = ['normal_sample', 'malformed_sample', 'min_revenue_filter']
+    found_required = []
+    for rt in required_test_names:
+        # Try to find by name or by command containing expected file/token
+        match_idx, _ = find_matching_candidate_test(cand_tests, {"test_name": rt, "command": ""})
+        if match_idx != -1:
+            found_required.append(rt)
+    if len(found_required) == 3:
+        tests_score += 3.0
+        tests_comments.append("All three required tests present (normal, malformed, min-revenue) (3/3).")
+    elif len(found_required) >= 1:
+        tests_score += 1.5
+        tests_comments.append(f"Partial required tests present: {found_required} (1.5/3).")
+    else:
+        tests_comments.append("Required tests not found (0/3).")
+
+    # actual_output included for each found test -> 2 points
+    actuals_present = 0
+    for t in cand_tests:
+        ao = t.get('actual_output')
+        if ao is not None and str(ao).strip() != '':
+            actuals_present += 1
+    if actuals_present >= 3:
+        tests_score += 2.0
+        tests_comments.append("Actual outputs captured for >=3 tests (2/2).")
+    elif actuals_present >= 1:
+        tests_score += 1.0
+        tests_comments.append(f"Actual outputs captured for {actuals_present} tests (1/2).")
+    else:
+        tests_comments.append("No actual outputs captured (0/2).")
+
+    # passed booleans true for the required tests -> 2 points
+    passed_count = 0
+    for rt in required_test_names:
+        ans_test = answer_tests_by_name.get(rt)
+        if not ans_test:
+            continue
+        idx, ct = find_matching_candidate_test(cand_tests, ans_test)
+        if idx != -1:
+            if bool(ct.get('passed') is True):
+                passed_count += 1
+    if passed_count == 3:
+        tests_score += 2.0
+        tests_comments.append("Candidate marked all required tests as passed (2/2).")
+    elif passed_count >= 1:
+        tests_score += 1.0
+        tests_comments.append(f"Candidate marked {passed_count} required tests as passed (1/2).")
+    else:
+        tests_comments.append("Candidate did not mark required tests as passed (0/2).")
+
+    results['breakdown'].append({
+        "category": "Tests and evidence of execution",
+        "earned": round(tests_score, 2),
+        "max": tests_max,
+        "comments": tests_comments
+    })
+    results['total_points_earned'] += tests_score
+
+    # --- Category 5: Minor revision implemented & documented (5 points) ---
+    revision_max = 5.0
+    revision_score = 0.0
+    revision_comments = []
+
+    # Check changelog for mention of min-revenue or filter or -m
+    changelog_text = ""
+    if isinstance(changelog, list):
+        # Join changelog entries into a single string for searching
+        try:
+            changelog_text = " ".join(json.dumps(entry).lower() for entry in changelog)
+        except Exception:
+            changelog_text = " ".join(str(entry).lower() for entry in changelog)
+    if any(tok in changelog_text for tok in ['min-revenue', '--min-revenue', '-m', 'filter']):
+        revision_score += revision_max
+        revision_comments.append("Changelog documents the --min-revenue revision (5/5).")
+    else:
+        revision_comments.append("Changelog does not explicitly mention the --min-revenue revision (0/5).")
+
+    results['breakdown'].append({
+        "category": "Minor revision implemented & documented",
+        "earned": round(revision_score, 2),
+        "max": revision_max,
+        "comments": revision_comments
+    })
+    results['total_points_earned'] += revision_score
+
+    # Finalize totals and overall score
+    results['total_points_possible'] = 100.0
+    # Protect against floating small fractions
+    total_earned = round(results['total_points_earned'], 2)
+    results['total_points_earned'] = total_earned
+    overall_score = round((total_earned / results['total_points_possible']) * 100.0, 2) if results['total_points_possible'] > 0 else 0.0
+    results['overall_score'] = overall_score
+    results['pass'] = overall_score >= 80.0
+
+    # Provide summary messages and highlight mismatches from correctness
+    if correctness_score < correctness_max:
+        results['issues'].append("One or more required tests did not match expected outputs exactly. See test_details for diffs.")
+    if doc_score < doc_max:
+        results['issues'].append("Documentation incomplete or missing elements (README, build_instructions, changelog, assumptions).")
+    if comments_score < comments_max:
+        results['issues'].append("Code comments coverage appears insufficient based on submission metadata and source files.")
+    if revision_score < revision_max:
+        results['issues'].append("Revision (--min-revenue) not clearly documented in changelog; ensure you document follow-up changes.")
+
+    # Attach candidate metadata for convenience
+    results['candidate_summary'] = {
+        "candidate_name": candidate.get('candidate_name'),
+        "language": candidate.get('language'),
+        "time_spent_minutes": candidate.get('time_spent_minutes'),
+        "signature": candidate.get('signature')
+    }
 
     return results
 
-
+# -----------------------------------------------------------------------------
+# Main entry
+# -----------------------------------------------------------------------------
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
         sys.exit(2)
 
-    cand_path = sys.argv[1]
-    ans_path = sys.argv[2]
+    candidate_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
 
-    # Load JSONs with error handling
+    # Load files
     try:
-        candidate = load_json_safe(cand_path)
-    except FileNotFoundError:
-        print(f"Candidate submission file not found: {cand_path}")
-        sys.exit(1)
+        candidate = load_json(candidate_path)
     except Exception as e:
-        print(f"Error loading candidate submission: {e}")
-        sys.exit(1)
+        print(f"Error loading candidate submission: {e}", file=sys.stderr)
+        sys.exit(2)
 
     try:
-        answer = load_json_safe(ans_path)
-    except FileNotFoundError:
-        print(f"Answer key file not found: {ans_path}")
-        sys.exit(1)
+        answer_key = load_json(answer_key_path)
     except Exception as e:
-        print(f"Error loading answer key: {e}")
-        sys.exit(1)
+        print(f"Error loading answer key: {e}", file=sys.stderr)
+        sys.exit(2)
 
-    # Basic validation of expected fields in candidate
-    required_top = ["candidate_name", "language", "time_minutes_used", "primary_run_command", "revision_run_command", "files", "captured_outputs", "README", "changelog"]
-    missing_keys = [k for k in required_top if k not in candidate]
-    if missing_keys:
-        # Not fatal, but record in results
-        print(f"Warning: candidate submission missing top-level keys: {missing_keys}")
-
-    # Compute grading
-    results = compute_overall(candidate, answer)
-
-    # Save results to test_results.json in same directory as this script
-    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results.json")
+    # Grade
     try:
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2)
-        print(f"Grading completed. Results written to {out_path}")
+        results = grade(candidate, answer_key)
     except Exception as e:
-        print(f"Failed to write results to {out_path}: {e}")
-        sys.exit(1)
+        # Catch unexpected grading errors and write a minimal results file
+        tb_msg = f"Grading error: {e}"
+        results = {
+            "total_points_possible": 100.0,
+            "total_points_earned": 0.0,
+            "overall_score": 0.0,
+            "breakdown": [],
+            "issues": [tb_msg],
+            "candidate_summary": {
+                "candidate_name": candidate.get('candidate_name') if isinstance(candidate, dict) else None
+            }
+        }
+        print(f"Error during grading: {e}", file=sys.stderr)
 
+    # Save results to test_results.json in current directory (same directory as script)
+    out_path = os.path.join(os.getcwd(), "test_results.json")
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        # Also print summary to stdout
+        print(f"Grading complete. Overall score: {results.get('overall_score')}%")
+        print(f"Detailed results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results file: {e}", file=sys.stderr)
+        sys.exit(2)
 
 if __name__ == "__main__":
     main()
-```

@@ -1,128 +1,47 @@
 <MATERIALS_FOR_CANDIDATE>
-File: seed_items.json
-Content (valid JSON array; 5 items):
-
-[
-  {
-    "sku": "SKU001",
-    "name": "Alpha Widget",
-    "qty": 10,
-    "price": 12.50,
-    "description": "Standard alpha model"
-  },
-  {
-    "sku": "SKU002",
-    "name": "Beta Widget",
-    "qty": 5,
-    "price": 15.00,
-    "description": "Beta variant with improved durability"
-  },
-  {
-    "sku": "SKU003",
-    "name": "Gamma Gadget",
-    "qty": 20,
-    "price": 7.25,
-    "description": "Small gadget used in assemblies"
-  },
-  {
-    "sku": "SKU004",
-    "name": "Delta Tool",
-    "qty": 2,
-    "price": 55.00,
-    "description": "Heavy-duty hand tool"
-  },
-  {
-    "sku": "SKU005",
-    "name": "Epsilon Part",
-    "qty": 0,
-    "price": 3.99,
-    "description": "Spare part; currently out of stock"
-  }
-]
-
-File: import_extra.csv
-Content (CSV with header; 3 rows; deliberate cases to exercise validation)
-
-sku,name,qty,price,description
-SKU003,Gamma Gadget Duplicate,5,7.25,Duplicate SKU003 to test duplicate-rejection
-SKU006,Zeta Accessory,8,4.50,New accessory item for import
-SKU007,Theta Component,-5,9.99,Invalid negative quantity to test validation
-
-File: scenario_instructions.txt
-Content (plain text; deterministic suggested sequence the candidate may use when demonstrating persistence; these are suggestions only — you may choose a different persistence filename in your implementation):
-
-Suggested deterministic demonstration sequence (use to record runs in test_submission.json):
-1) Start with a fresh workspace (no persistence file present).
-2) Add three items (use add command): SKU001, SKU002, SKU006 (or add new SKUs).
-   Example:
-     <entry_point> add --sku SKU001 --name "Alpha Widget" --qty 10 --price 12.50
-     <entry_point> add --sku SKU002 --name "Beta Widget" --qty 5 --price 15.00
-     <entry_point> add --sku SKU006 --name "Zeta Accessory" --qty 8 --price 4.50
-3) List items in JSON format to capture state:
-     <entry_point> list --format json
-4) Update one item's quantity (absolute or relative):
-     <entry_point> update --sku SKU001 --qty 12
-   or
-     <entry_point> update --sku SKU002 --change +3
-5) Delete one item:
-     <entry_point> delete --sku SKU005
-6) Find by SKU and by name substring:
-     <entry_point> find --sku SKU003 --format json
-     <entry_point> find --name "Widget" --format json
-7) Restart (run a new invocation) and list to demonstrate persistence:
-     (exit and run) <entry_point> list --format json
-8) Optional: attempt to add SKU003 again to confirm duplicate-SKU rejection:
-     <entry_point> add --sku SKU003 --name "Gamma Gadget Duplicate" --qty 5
-
-Notes:
-- Replace <entry_point> with your program command (e.g., python3 inventory.py).
-- When recording outputs in test_submission.json, include stdout JSON for list/find commands and any stderr messages for invalid operations.
-- If you choose to implement CSV import, you may use import_extra.csv as a deterministic input file.
-
-End of supplied materials.
+CSV: `import.csv`
+id,name,quantity,price
+I102,Pliers,5,3.25
+I100,ScrewdriverDuplicate,10,5.50
+I104,Chisel,abc,4.00
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
 How and why these materials were created
-- Purpose: provide a minimal, deterministic dataset and a small CSV with targeted edge cases so the candidate has concrete, coherent data to use during implementation and demonstration within a 90-minute window.
-- seed_items.json contains 5 distinct, valid inventory records covering normal, zero-quantity, and low-stock cases. Fields match the required data model: sku (unique string), name (string), qty (integer >= 0), price (decimal), description (string).
-- import_extra.csv supplies three rows designed to test candidate validation logic: one row duplicates an existing SKU (SKU003) to exercise duplicate-rejection logic; one is a valid new item (SKU006); one has a negative qty (SKU007) to test rejection of invalid quantities.
+- Purpose: Provide the single external data dependency required by the exam: an import CSV with three deterministic rows that exercise normal import, duplicate-id handling, and malformed-row handling.
+- Composition: The file `import.csv` contains four comma-separated columns in this exact order: id,name,quantity,price. The header row is included to make column positions explicit and unambiguous.
 
 Data patterns and relationships
-- SKU pattern: "SKU" followed by a three-digit numeric suffix (SKU001 .. SKU007). This consistent SKU naming makes validation straightforward and machine-checkable.
-- Names include keywords ("Widget", "Gadget", "Tool", "Accessory", "Part") so substring searches (find --name) are deterministic.
-- Quantities intentionally include: positive (>0), zero (SKU005), and negative (SKU007 in CSV) to separate valid and invalid cases.
-- Prices are decimals with two fractional digits to test parsing/serialization of numeric types.
+- IDs used in the demo sequence are: I100, I101, I102, I104.
+  - I100 and I101 are created during the demo runner steps before import. Therefore the CSV row with id I100 is a deliberate duplicate of an existing item at import time.
+  - I102 is a new, valid item intended to be added by import.
+  - I104 has an invalid quantity field ("abc") to represent a malformed row.
+- The CSV rows:
+  1. I102,Pliers,5,3.25  — valid new item (integer quantity, numeric price).
+  2. I100,ScrewdriverDuplicate,10,5.50 — duplicate id (duplicate of I100 created earlier in demo).
+  3. I104,Chisel,abc,4.00 — malformed row: non-integer quantity ("abc").
 
-What to check / expected evaluator actions
-- Verify seed_items.json is valid JSON and contains the five items. If the candidate chooses to load this file into their program at startup (optional), the initial state should reflect these items.
-- When grader runs the candidate's CLI commands (as recorded in test_submission.json), check:
-  - add/list/update/delete/find behave per spec.
-  - list and find produce valid JSON when invoked with --format json.
-  - Error operations (e.g., adding duplicate SKU, adding negative qty) write to stderr and return non-zero exit codes.
-  - Persistence: after adding items and exiting, a subsequent run of list must show previously added items. Inspect the persistence file named in test_submission.json to confirm saved records.
-- If the candidate implemented CSV import, importing import_extra.csv should:
-  - Reject the row with SKU003 (duplicate) or report the duplicate and continue/abort depending on implementation; the grader should accept either behavior provided it is deterministic and reported.
-  - Reject the row with SKU007 (negative qty) with an appropriate error message and non-zero exit code or skip it with a clear report, depending on the candidate's chosen behavior; grader should ensure there is clear validation.
+Traps, ambiguities, and common errors candidates might make
+- Numeric parsing: candidates may parse quantity or price as floats or fail to validate integer requirement for quantity. The quantity must be an integer >= 0.
+- Duplicate handling: the CSV intentionally contains a duplicate for I100. Candidates must choose and document a consistent duplicate-import policy (overwrite, skip, or abort). Common incorrect behavior: silently overwrite without documenting, or crash without informative error.
+- Malformed rows: candidates must decide whether to skip malformed rows with a warning or abort the whole import; either is acceptable if documented and implemented consistently. A frequent mistake is failing with an unhandled exception.
+- Header handling: the file includes a header row. Candidates must either handle an optional header or explicitly parse all rows and ignore the header. Failing to accommodate the header may lead to treating the header as a data row.
+- Whitespace and quoting: commas separate fields exactly; no quoted fields are used. Candidates should trim whitespace and handle basic CSV parsing using the language standard library CSV handling to avoid splitting errors.
 
-Common pitfalls and traps to watch for
-- Treating numeric qty as string: candidate must ensure qty is parsed and validated as an integer >= 0. Expect failure points if they forget to validate or accept negative values.
-- Not returning non-zero exit codes on errors: graders should assert exit_code != 0 for invalid operations.
-- Writing persistence unsafely: simple write-to-file is acceptable for this basic exam, but candidates who implement atomic write (temp file + rename) earn bonus credit. Check persistence file integrity (valid JSON).
-- Case-sensitive vs case-insensitive find: specification did not mandate case sensitivity; accept either but require the candidate to document behavior in short_description and known_issues.
-- Inconsistent CLI flags: commands and flags must match the instruction list (add, list, update, delete, find and their flags). If flag names differ, deduct points for determinism/scriptability.
+What correct/expected answers depend on
+- The candidate’s documented import-duplicate policy and malformed-row policy in README.md. The final inventory produced by the demo depends on those choices:
+  - If duplicates are skipped and malformed rows are skipped: final inventory should include I100 (as updated earlier in the demo) and I102 added from CSV.
+  - If duplicates overwrite: I100’s stored fields may be replaced by the CSV row for I100.
+  - If malformed rows abort import: the import may fail and the final inventory may remain unchanged depending on implementation.
+- The evaluator should verify that the candidate’s README documents the chosen behavior and that the implementation follows it.
 
 How these materials differentiate conceptual vs practical skill
-- The materials are concretely usable (valid JSON and CSV) so an implementer must write code to parse, validate, persist, and produce deterministic JSON output. A candidate who only knows theory cannot produce the correct program output or a valid persistence file matching the dataset.
-- The CSV contains edge cases (duplicate SKU, negative qty) that force implementation of validation, error reporting, and exit codes—practical tasks that reveal attention to detail and error handling.
-- The SKU/name patterns let evaluators write short automated checks for presence/absence, quantity updates, and find behavior—making functional verification straightforward.
+- The three-row CSV is small but forces candidates to implement real parsing, validation, error handling, and a documented policy for conflicting inputs.
+- Correct handling requires working code (not just pseudo-code): parsing CSV, validating numeric types and ranges, enforcing unique IDs, and producing reproducible, automated outputs (demo and tests).
+- The malformed row ensures candidates demonstrate graceful failure modes rather than only the happy path.
 
-Evaluator quick-check list (recommended)
-1. Confirm candidate provided test_submission.json and the name of persistence file.
-2. Run the candidate's entry_point for the sequences recorded in test_submission.json and verify stdout/stderr/exit codes match.
-3. Inspect the persistence file for the expected records (SKUs listed in commands_run before restart).
-4. Verify list/find --format json output is valid JSON and contains expected objects.
-5. Ensure error cases (duplicate SKU, negative qty, missing flags) produce stderr output and non-zero exit codes.
-
-This material set is intentionally small (8 SKUs across two files) and deterministic so the candidate can complete the practical exam within 90 minutes and evaluators can reproduce and verify results quickly.
+Evaluator notes
+- The file must be provided to the candidate exactly as shown (filename `import.csv`).
+- When reproducing the demo, the evaluator should observe the candidate’s chosen behavior for the duplicate (I100) and malformed (I104) rows and compare it to the README documentation included by the candidate.
+- Accept any consistent, documented policy (skip/overwrite/abort) implemented by the candidate; deduct for mismatches between README and implementation or for crashes/unhandled exceptions.
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

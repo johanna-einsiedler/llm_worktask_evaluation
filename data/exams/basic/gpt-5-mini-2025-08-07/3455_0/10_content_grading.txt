@@ -1,0 +1,642 @@
+Here's the requested automated grading script. Save it as task_evaluation.py and run it like:
+
+python task_evaluation.py test_submission.json answer_key.json
+
+The script loads the candidate submission and an answer key JSON, applies the grading rubric described in the exam materials, and writes a detailed test_results.json file in the current directory.
+
+Notes:
+- The grader attempts reasonable, deterministic partial-credit heuristics (schema fragment matching, presence of documented handling, numeric tolerance for float comparisons, SQL token checks, etc.).
+- The script uses only Python standard library modules.
+- It includes robust error handling for missing keys or invalid JSON.
+
+task_evaluation.py:
+
+```python
+#!/usr/bin/env python3
+"""
+task_evaluation.py
+
+Usage:
+    python task_evaluation.py <submission_json> <answer_key_json>
+
+Produces:
+    test_results.json in the current working directory with detailed scoring breakdown.
+
+This grader implements the scoring rubric described in the exam's evaluation materials.
+It is deterministic and uses only Python standard libraries.
+"""
+
+import json
+import sys
+import os
+import math
+
+# Tolerance for floating point comparisons
+FLOAT_EPS = 1e-6
+
+# Maximum points per rubric section
+MAX_POINTS = {
+    "ingestion_schema": 15,
+    "ingestion_parsing": 10,
+    "ingestion_index": 5,
+    "ingestion_docs": 5,
+    "queries_each_base": 7,   # per query structural points
+    "queries_each_result": 2, # per query result correctness points (4 queries => 8 pts)
+    "queries_each_style": 1,  # per query sql-style points (4 queries => 4 pts)
+    "analysis_capacity": 10,
+    "analysis_recommendation": 7,
+    "analysis_notes": 3,
+    "repro_readme": 5
+}
+
+# Derived totals
+TOTAL_POINTS = (
+    MAX_POINTS["ingestion_schema"]
+    + MAX_POINTS["ingestion_parsing"]
+    + MAX_POINTS["ingestion_index"]
+    + MAX_POINTS["ingestion_docs"]
+    + 4 * (MAX_POINTS["queries_each_base"] + MAX_POINTS["queries_each_result"] + MAX_POINTS["queries_each_style"])
+    + MAX_POINTS["analysis_capacity"]
+    + MAX_POINTS["analysis_recommendation"]
+    + MAX_POINTS["analysis_notes"]
+    + MAX_POINTS["repro_readme"]
+)
+
+
+def load_json_file(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+
+
+def float_eq(a, b, eps=FLOAT_EPS):
+    try:
+        return abs(float(a) - float(b)) <= eps
+    except Exception:
+        return False
+
+
+def row_eq(expected_row, candidate_row):
+    # Compares two rows element-wise; handles numeric tolerance
+    if len(expected_row) != len(candidate_row):
+        return False
+    for e, c in zip(expected_row, candidate_row):
+        # If expected is number (int/float) and candidate is number-like, compare numerically
+        if isinstance(e, (int, float)) and isinstance(c, (int, float)):
+            if not float_eq(e, c):
+                return False
+        else:
+            # Allow numeric strings to match numeric expected values
+            try:
+                # attempt numeric compare if possible
+                if isinstance(e, (int, float)) and (isinstance(c, str) and c.strip() != ""):
+                    if float_eq(e, float(c)):
+                        continue
+                if isinstance(c, (int, float)) and (isinstance(e, str) and e.strip() != ""):
+                    if float_eq(float(e), c):
+                        continue
+            except Exception:
+                pass
+            # Else compare as strings ignoring surrounding whitespace
+            if str(e).strip() != str(c).strip():
+                return False
+    return True
+
+
+def compare_result_rows(expected_rows, candidate_rows):
+    """
+    Compare lists of rows. Returns (matched_count, total_expected, detailed_matches_bool)
+    We try matching rows in order first; if that fails we match as unordered multiset.
+    """
+    # quick checks
+    if not isinstance(expected_rows, list) or not isinstance(candidate_rows, list):
+        return 0, len(expected_rows) if expected_rows else 0, False
+
+    # Try ordered match
+    ordered_matches = 0
+    for ex, ca in zip(expected_rows, candidate_rows):
+        if row_eq(ex, ca):
+            ordered_matches += 1
+    if ordered_matches == len(expected_rows) and len(candidate_rows) >= len(expected_rows):
+        return ordered_matches, len(expected_rows), True
+
+    # Try unordered matching with marking matched candidate rows
+    matched = 0
+    used = [False] * len(candidate_rows)
+    for ex in expected_rows:
+        found = False
+        for idx, ca in enumerate(candidate_rows):
+            if not used[idx] and row_eq(ex, ca):
+                used[idx] = True
+                matched += 1
+                found = True
+                break
+    return matched, len(expected_rows), False
+
+
+def safe_get(dct, key, default=None):
+    return dct.get(key, default) if isinstance(dct, dict) else default
+
+
+def score_ingestion_and_schema(candidate, answer_key, notes):
+    """
+    Scores the ingestion/schema section (35 points broken down).
+    Returns dict with points and messages.
+    """
+    messages = []
+    points = {
+        "ingestion_schema": 0.0,
+        "ingestion_parsing": 0.0,
+        "ingestion_index": 0.0,
+        "ingestion_docs": 0.0
+    }
+
+    # Schema: compare candidate['schema_dump'] against expected schema fragments
+    expected_schema_fragments = [
+        "CREATE TABLE inventory",
+        "hostname TEXT PRIMARY KEY",
+        "CREATE TABLE telemetry",
+        "CREATE INDEX"  # we'll check telemetry index with host+timestamp
+    ]
+    cand_schema = safe_get(candidate, "schema_dump", [])
+    if not isinstance(cand_schema, list):
+        cand_schema = []
+
+    # Count matched fragments
+    matched_count = 0
+    found_fragments = []
+    for frag in expected_schema_fragments:
+        for line in cand_schema:
+            if frag.lower() in line.lower():
+                # For index, ensure telemetry and hostname/timestamp presence
+                if frag == "CREATE INDEX":
+                    if "telemetry" in line.lower() and ("hostname" in line.lower() or "timestamp" in line.lower() or "host" in line.lower()):
+                        matched_count += 1
+                        found_fragments.append(frag)
+                        break
+                else:
+                    matched_count += 1
+                    found_fragments.append(frag)
+                    break
+
+    # Award schema points proportionally
+    points["ingestion_schema"] = MAX_POINTS["ingestion_schema"] * (matched_count / len(expected_schema_fragments))
+    if matched_count == len(expected_schema_fragments):
+        messages.append("Schema: all expected fragments found.")
+    else:
+        messages.append(f"Schema: matched {matched_count}/{len(expected_schema_fragments)} expected fragments ({found_fragments}).")
+
+    # Parsing and insertion handling (10 points) - look for documented handling in ingestion_script or notes
+    ingestion_script = safe_get(candidate, "ingestion_script", "")
+    doc_text = " ".join([ingestion_script or "", safe_get(candidate, "notes", "") or ""]).lower()
+
+    # Criteria:
+    # - handling missing cpu/mem (store NULL or skip): 3 pts
+    # - timestamp normalization to UTC: 3 pts
+    # - deduplication of duplicate telemetry: 2 pts
+    # - hosts-in-telemetry vs inventory policy documented: 2 pts
+    parsing_score = 0.0
+    if any(k in doc_text for k in ["null", "store null", "insert null", "missing", "missing cpu", "missing mem", "mem_percent is null", "cpu_percent is null"]):
+        parsing_score += 3.0
+    else:
+        messages.append("Parsing: missing cpu/mem handling not documented clearly; expected storing NULL or documented policy.")
+
+    if any(k in doc_text for k in ["utc", "timezone", "normalize", "fromisoformat", "convert to utc", "astimezone", "z", "+00:00", "offset"]):
+        parsing_score += 3.0
+    else:
+        messages.append("Parsing: timestamp normalization to UTC not documented or not found in ingestion script/notes.")
+
+    if any(k in doc_text for k in ["dedup", "duplicate", "deduplicate", "keep first", "keep last", "seen ="]):
+        parsing_score += 2.0
+    else:
+        messages.append("Parsing: duplicate telemetry handling (deduplication) not documented or found.")
+
+    if any(k in doc_text for k in ["telemetry-only", "telemetry only", "placeholder", "insert placeholder", "no placeholder", "inventory-only", "telemetry hosts", "hosts in telemetry", "inventory hosts"]):
+        parsing_score += 2.0
+    else:
+        messages.append("Parsing: policy for telemetry rows with hosts not in inventory not documented.")
+
+    points["ingestion_parsing"] = min(parsing_score, MAX_POINTS["ingestion_parsing"])
+
+    # Index detection (5 points)
+    index_found = False
+    for line in cand_schema:
+        l = line.lower()
+        if "create index" in l and "telemetry" in l and ("hostname" in l or "host" in l) and ("timestamp" in l):
+            index_found = True
+            break
+        if "idx_telemetry" in l:
+            index_found = True
+            break
+    if index_found:
+        points["ingestion_index"] = MAX_POINTS["ingestion_index"]
+        messages.append("Index: telemetry host+timestamp index found.")
+    else:
+        messages.append("Index: telemetry host+timestamp index not found in schema_dump.")
+
+    # Readability/documentation (5 points) - look for docstring or comments and reasonable length
+    docs_score = 0.0
+    if isinstance(ingestion_script, str):
+        if '"""' in ingestion_script or "'''" in ingestion_script or ingestion_script.strip().startswith("#"):
+            docs_score = MAX_POINTS["ingestion_docs"]
+            messages.append("Ingestion script: docstring or comments present.")
+        else:
+            # partial credit if script present and reasonably long
+            if len(ingestion_script) > 200:
+                docs_score = MAX_POINTS["ingestion_docs"] * 0.6
+                messages.append("Ingestion script: no docstring but long script found; partial docs credit.")
+            elif len(ingestion_script) > 50:
+                docs_score = MAX_POINTS["ingestion_docs"] * 0.3
+                messages.append("Ingestion script: short script found; low docs credit.")
+            else:
+                messages.append("Ingestion script: missing documentation.")
+    else:
+        messages.append("Ingestion script: missing or not a string.")
+
+    points["ingestion_docs"] = docs_score
+
+    # Sum and return
+    section_points = sum(points.values())
+    return points, section_points, messages
+
+
+def score_queries(candidate, answer_key):
+    """
+    Scores Q1..Q4. Returns detailed breakdown and messages.
+    Query scoring per query:
+      - base structural points: 7 (presence + basic token checks)
+      - result correctness: 2
+      - sql style: 1
+    """
+    messages = []
+    total_awarded = 0.0
+    per_query_details = {}
+
+    expected_queries = safe_get(answer_key, "queries", [])
+    cand_queries = safe_get(candidate, "queries", [])
+
+    # Build mapping by id for both
+    expected_map = {q.get("id"): q for q in expected_queries if isinstance(q, dict)}
+    cand_map = {q.get("id"): q for q in cand_queries if isinstance(q, dict)}
+
+    for qid in ["Q1", "Q2", "Q3", "Q4"]:
+        detail = {"id": qid, "awarded": 0.0, "max": MAX_POINTS["queries_each_base"] + MAX_POINTS["queries_each_result"] + MAX_POINTS["queries_each_style"], "notes": []}
+        exp_q = expected_map.get(qid)
+        cand_q = cand_map.get(qid)
+        # Base structural points (7): split into presence (3.5) and tokens (3.5)
+        base_awarded = 0.0
+        if cand_q and isinstance(cand_q.get("sql"), str) and cand_q.get("sql").strip():
+            base_awarded += MAX_POINTS["queries_each_base"] * 0.5  # presence
+            sql_text = cand_q.get("sql", "").lower()
+            # Required tokens per query
+            tokens_ok = False
+            if qid == "Q1":
+                tokens_needed = ["avg(", "cpu_percent", "between", "group by", "order by"]
+            elif qid == "Q2":
+                tokens_needed = ["avg(", "max(", "mem_percent", "between", "group by"]
+            elif qid == "Q3":
+                tokens_needed = ["inventory", "memory_gb", "select", "where"]
+            elif qid == "Q4":
+                # Q4 expected to compute counts and completeness over last 24h using union/left join or similar
+                tokens_needed = ["union", "count(", "telemetry", "between"]
+            else:
+                tokens_needed = []
+
+            found_tokens = [t for t in tokens_needed if t in sql_text]
+            # award proportional of the second half
+            token_score = MAX_POINTS["queries_each_base"] * 0.5 * (len(found_tokens) / max(1, len(tokens_needed)))
+            base_awarded += token_score
+            if len(found_tokens) == len(tokens_needed):
+                detail["notes"].append("SQL tokens: all expected tokens present.")
+            else:
+                detail["notes"].append(f"SQL tokens: found {len(found_tokens)}/{len(tokens_needed)} expected tokens: {found_tokens}.")
+        else:
+            detail["notes"].append("SQL missing for query; no base points awarded.")
+
+        # Result correctness (2 points)
+        result_awarded = 0.0
+        if exp_q and cand_q and "result_rows" in exp_q:
+            exp_rows = exp_q.get("result_rows", [])
+            cand_rows = cand_q.get("result_rows", [])
+            matched, total_expected, ordered_flag = compare_result_rows(exp_rows, cand_rows)
+            if total_expected == 0:
+                # nothing expected; award full
+                result_awarded = MAX_POINTS["queries_each_result"]
+            else:
+                # proportion of matched rows
+                result_awarded = MAX_POINTS["queries_each_result"] * (matched / total_expected)
+                if matched == total_expected:
+                    detail["notes"].append("Query results: all expected rows matched.")
+                else:
+                    detail["notes"].append(f"Query results: matched {matched}/{total_expected} expected rows; ordered_match={ordered_flag}.")
+        else:
+            detail["notes"].append("No expected or candidate result_rows available; result correctness not awarded.")
+
+        # SQL style (1 point) - look for good SQL idioms in candidate SQL
+        style_awarded = 0.0
+        if cand_q and isinstance(cand_q.get("sql"), str):
+            sql_text = cand_q.get("sql", "").lower()
+            style_checks = 0
+            style_total = 3  # heuristics: use aggregate funcs, use where/between, use group by/order by appropriately
+            if any(k in sql_text for k in ["avg(", "max(", "count("]):
+                style_checks += 1
+            if "between" in sql_text or "where" in sql_text:
+                style_checks += 1
+            if "group by" in sql_text or "order by" in sql_text or "join" in sql_text:
+                style_checks += 1
+            style_awarded = MAX_POINTS["queries_each_style"] * (style_checks / style_total)
+            detail["notes"].append(f"SQL style: matched {style_checks}/{style_total} heuristics.")
+        else:
+            detail["notes"].append("SQL style: candidate SQL missing.")
+
+        # Sum for this query
+        query_total = base_awarded + result_awarded + style_awarded
+        detail["awarded"] = query_total
+        detail["breakdown"] = {
+            "base_awarded": base_awarded,
+            "result_awarded": result_awarded,
+            "style_awarded": style_awarded
+        }
+
+        per_query_details[qid] = detail
+        total_awarded += query_total
+
+    return per_query_details, total_awarded
+
+
+def score_analysis_and_recommendations(candidate, answer_key):
+    """
+    Scores analysis (capacity-constrained hosts) and recommendations.
+    Returns dict with points and messages.
+    """
+    messages = []
+    points_awarded = {
+        "analysis_capacity": 0.0,
+        "analysis_recommendation": 0.0,
+        "analysis_notes": 0.0
+    }
+
+    expected_metrics = safe_get(answer_key, "metrics", {})
+    expected_capacity_hosts = [h.get("hostname") for h in expected_metrics.get("hosts_capacity_issues", []) if isinstance(h, dict)]
+    expected_capacity_set = set(expected_capacity_hosts)
+
+    cand_metrics = safe_get(candidate, "metrics", {})
+    cand_capacity = cand_metrics.get("hosts_capacity_issues", [])
+    cand_capacity_set = set()
+    # ensure list of hostnames from candidate
+    if isinstance(cand_capacity, list):
+        for el in cand_capacity:
+            if isinstance(el, dict) and "hostname" in el:
+                cand_capacity_set.add(el["hostname"])
+
+    # Capacity identification scoring (10 points)
+    if expected_capacity_set:
+        matched = len(expected_capacity_set.intersection(cand_capacity_set))
+        # partial credit proportional to matched expected hosts
+        points_awarded["analysis_capacity"] = MAX_POINTS["analysis_capacity"] * (matched / len(expected_capacity_set))
+        messages.append(f"Capacity: matched {matched}/{len(expected_capacity_set)} expected capacity-constrained hosts.")
+    else:
+        # If no expected, give full credit if candidate likewise empty
+        if not cand_capacity_set:
+            points_awarded["analysis_capacity"] = MAX_POINTS["analysis_capacity"]
+            messages.append("Capacity: no expected capacity hosts and candidate also none; full credit.")
+        else:
+            messages.append("Capacity: no expected hosts in key; manual review needed.")
+
+    # Recommendation (7 points) - check existence and if it references numeric metrics or specific hosts
+    recs = safe_get(candidate, "recommendations", [])
+    rec_awarded = 0.0
+    if isinstance(recs, list) and len(recs) > 0:
+        # take first recommendation primarily
+        rec0 = recs[0]
+        rec_text = safe_get(rec0, "text", "")
+        if isinstance(rec_text, str) and rec_text.strip():
+            # Check for presence of numeric mentions or keywords e.g., GB, cores, sampling, %, hosts
+            keywords = ["gb", "cores", "cpu", "memory", "sampling", "sample", "increase", "reduce", "raise", "plan", "monitor", "upgrade"]
+            found_kw = any(k in rec_text.lower() for k in keywords)
+            found_num = any(ch.isdigit() for ch in rec_text)
+            # award based on presence of numbers and keywords and mention of expected hosts
+            score = 0.0
+            if found_kw:
+                score += 3.0
+            if found_num:
+                score += 3.0
+            # mention of one of the expected capacity hosts adds confidence
+            if any(h.lower() in rec_text.lower() for h in expected_capacity_set):
+                score += 1.0
+            rec_awarded = min(score, MAX_POINTS["analysis_recommendation"])
+            messages.append(f"Recommendation: keywords_found={found_kw}, digits_found={found_num}, matched_expected_host={'yes' if any(h.lower() in rec_text.lower() for h in expected_capacity_set) else 'no'}.")
+        else:
+            messages.append("Recommendation: present but empty text.")
+    else:
+        messages.append("Recommendation: missing; no credit for recommendation.")
+
+    points_awarded["analysis_recommendation"] = rec_awarded
+
+    # Simple risk/assumption or next-step note (3 points) - check 'notes' field or recommendation includes 'monitor'/'assume'/'next' etc.
+    notes_text = safe_get(candidate, "notes", "")
+    notes_awarded = 0.0
+    if isinstance(notes_text, str) and notes_text.strip():
+        lower = notes_text.lower()
+        if any(k in lower for k in ["assume", "assumption", "monitor", "next", "risk", "tradeoff", "note", "recommend"]):
+            notes_awarded = MAX_POINTS["analysis_notes"]
+            messages.append("Notes: found risk/assumption/next-step text.")
+        else:
+            # partial credit if any sentence present
+            notes_awarded = MAX_POINTS["analysis_notes"] * 0.5
+            messages.append("Notes: present but did not include typical risk/assumption/next-step keywords; partial credit.")
+    else:
+        messages.append("Notes: missing or empty; no credit.")
+
+    points_awarded["analysis_notes"] = notes_awarded
+
+    total = sum(points_awarded.values())
+    return points_awarded, total, messages
+
+
+def score_reproducibility(candidate):
+    """
+    Scores README and presence of scripts (5 points).
+    """
+    messages = []
+    awarded = 0.0
+    readme = safe_get(candidate, "README", "")
+    ingestion_script = safe_get(candidate, "ingestion_script", "")
+    query_script = safe_get(candidate, "query_script", "")
+
+    # Check scripts presence
+    scripts_present = isinstance(ingestion_script, str) and ingestion_script.strip() and isinstance(query_script, str) and query_script.strip()
+    if not scripts_present:
+        messages.append("Scripts: ingest.py and/or queries.py source missing from submission fields.")
+        return 0.0, messages
+
+    # README presence and contains expected commands
+    if isinstance(readme, str) and readme.strip():
+        lower = readme.lower()
+        if ("python3 ingest.py" in lower or "python ingest.py" in lower) and ("python3 queries.py" in lower or "python queries.py" in lower):
+            awarded = MAX_POINTS["repro_readme"]
+            messages.append("README: contains exact commands to run ingestion and queries.")
+        else:
+            # partial credit if includes at least one of them
+            if ("python3 ingest.py" in lower or "python ingest.py" in lower) or ("python3 queries.py" in lower or "python queries.py" in lower):
+                awarded = MAX_POINTS["repro_readme"] * 0.5
+                messages.append("README: contains one of the required commands; partial credit.")
+            else:
+                messages.append("README: does not contain required commands exactly; no credit.")
+    else:
+        messages.append("README: missing or empty; no credit.")
+
+    return awarded, messages
+
+
+def assemble_results(breakdowns, total_points_awarded, notes):
+    """
+    Build the final results JSON structure.
+    """
+    percent = (100.0 * total_points_awarded / TOTAL_POINTS) if TOTAL_POINTS > 0 else 0.0
+    results = {
+        "scores": {
+            "sections": breakdowns,
+            "total_awarded_points": total_points_awarded,
+            "total_possible_points": TOTAL_POINTS,
+            "percentage_score": percent,
+            "overall_score": percent
+        },
+        "messages": notes
+    }
+    return results
+
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <submission_json> <answer_key_json>")
+        sys.exit(2)
+
+    submission_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+
+    # Load JSON files
+    try:
+        candidate = load_json_file(submission_path)
+    except Exception as e:
+        print(f"Error loading submission JSON: {e}")
+        sys.exit(1)
+
+    try:
+        answer_key = load_json_file(answer_key_path)
+    except Exception as e:
+        print(f"Error loading answer key JSON: {e}")
+        sys.exit(1)
+
+    all_messages = []
+
+    # 1) Ingestion & Schema scoring
+    try:
+        ingestion_points_breakdown, ingestion_total, ingestion_msgs = score_ingestion_and_schema(candidate, answer_key, candidate.get("notes", ""))
+        all_messages.extend(ingestion_msgs)
+    except Exception as e:
+        ingestion_points_breakdown = {}
+        ingestion_total = 0.0
+        all_messages.append(f"Ingestion scoring error: {e}")
+
+    # 2) Queries scoring
+    try:
+        per_query_details, queries_total = score_queries(candidate, answer_key)
+        # Flatten per query details into readable dict
+    except Exception as e:
+        per_query_details = {}
+        queries_total = 0.0
+        all_messages.append(f"Queries scoring error: {e}")
+
+    # 3) Analysis & recommendations scoring
+    try:
+        analysis_points_breakdown, analysis_total, analysis_msgs = score_analysis_and_recommendations(candidate, answer_key)
+        all_messages.extend(analysis_msgs)
+    except Exception as e:
+        analysis_points_breakdown = {}
+        analysis_total = 0.0
+        all_messages.append(f"Analysis scoring error: {e}")
+
+    # 4) Reproducibility & packaging scoring
+    try:
+        repro_awarded, repro_msgs = score_reproducibility(candidate)
+        all_messages.extend(repro_msgs)
+    except Exception as e:
+        repro_awarded = 0.0
+        all_messages.append(f"Reproducibility scoring error: {e}")
+
+    # Aggregate breakdown
+    breakdowns = {
+        "ingestion": {
+            "schema_points_awarded": ingestion_points_breakdown.get("ingestion_schema", 0.0),
+            "schema_points_max": MAX_POINTS["ingestion_schema"],
+            "parsing_points_awarded": ingestion_points_breakdown.get("ingestion_parsing", 0.0),
+            "parsing_points_max": MAX_POINTS["ingestion_parsing"],
+            "index_points_awarded": ingestion_points_breakdown.get("ingestion_index", 0.0),
+            "index_points_max": MAX_POINTS["ingestion_index"],
+            "docs_points_awarded": ingestion_points_breakdown.get("ingestion_docs", 0.0),
+            "docs_points_max": MAX_POINTS["ingestion_docs"],
+            "subtotal_awarded": ingestion_total,
+            "subtotal_max": (MAX_POINTS["ingestion_schema"] + MAX_POINTS["ingestion_parsing"] + MAX_POINTS["ingestion_index"] + MAX_POINTS["ingestion_docs"])
+        },
+        "queries": {
+            "per_query": per_query_details,
+            "subtotal_awarded": queries_total,
+            "subtotal_max": 4 * (MAX_POINTS["queries_each_base"] + MAX_POINTS["queries_each_result"] + MAX_POINTS["queries_each_style"])
+        },
+        "analysis": {
+            "capacity_points_awarded": analysis_points_breakdown.get("analysis_capacity", 0.0),
+            "capacity_points_max": MAX_POINTS["analysis_capacity"],
+            "recommendation_points_awarded": analysis_points_breakdown.get("analysis_recommendation", 0.0),
+            "recommendation_points_max": MAX_POINTS["analysis_recommendation"],
+            "notes_points_awarded": analysis_points_breakdown.get("analysis_notes", 0.0),
+            "notes_points_max": MAX_POINTS["analysis_notes"],
+            "subtotal_awarded": analysis_total,
+            "subtotal_max": (MAX_POINTS["analysis_capacity"] + MAX_POINTS["analysis_recommendation"] + MAX_POINTS["analysis_notes"])
+        },
+        "reproducibility": {
+            "readme_points_awarded": repro_awarded,
+            "readme_points_max": MAX_POINTS["repro_readme"]
+        }
+    }
+
+    # Sum totals
+    total_awarded = (
+        ingestion_total
+        + queries_total
+        + analysis_total
+        + repro_awarded
+    )
+
+    # Final sanity clamp
+    total_awarded = max(0.0, min(total_awarded, TOTAL_POINTS))
+
+    # Build final results
+    final_results = assemble_results(breakdowns, total_awarded, all_messages)
+
+    # Save to test_results.json
+    out_path = os.path.join(os.getcwd(), "test_results.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(final_results, f, indent=2)
+        print(f"Grading complete. Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+What the output contains (test_results.json):
+- scores.sections: per-section breakdown with awarded and max points
+- scores.total_awarded_points, total_possible_points, percentage_score, overall_score
+- messages: human-readable list of reasons, deductions, and notes to help manual review
+
+If you'd like, I can:
+- adjust tolerance thresholds,
+- make stricter or more lenient matching rules,
+- or extend automatic semantic checks (e.g., validate numeric values inside candidate metrics against expected numeric tolerances).

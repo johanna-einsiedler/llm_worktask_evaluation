@@ -1,171 +1,169 @@
 Here is the exam overview written by another exam designer:
 <examoverview>
 ### Exam Purpose
-Confirm that a candidate can take an existing, runnable program that produces incorrect or failing results, identify the root cause(s), apply appropriate code changes, re-run the program/tests, and deliver clear evidence that the fixes produce the desired results. This validates a core real-world skill: debugging, implementing minimal correct changes, and verifying outcomes — not just theoretical knowledge.
+Verify that a candidate can take a working codebase that produces incorrect or incomplete results, identify and correct defects in the code, re-run the program and tests, and demonstrate with clear evidence that the desired results are now produced. The exam confirms a real-world capability: fixing real bugs in a small codebase and validating fixes with automated or reproducible checks — the essential behaviour of a programmer responsible for maintaining and improving existing software.
 
 ### Core Competencies
-- Basic debugging workflow: reproduce failure, formulate hypothesis, make minimal change, re-run and verify.
-- Reading and understanding unfamiliar code structure and test harnesses.
-- Fixing common bug classes: syntax/typo, off-by-one, incorrect condition/logic, wrong data handling, incorrect use of API/standard library, resource/exception handling.
-- Writing/adjusting small tests or using existing tests to verify fixes.
-- Clear, concise reporting of changes and rationale.
-- Use of local tooling only (editor + runtime) to iterate and validate fixes.
+- Debugging fundamentals: reproduce failures, read stack traces/logs, locate root cause.
+- Corrective coding: make minimal, correct source changes (syntax, logic, boundary cases).
+- Validation: re-run the program or test-suite, interpret results, and iterate until passing.
+- Reasoning and justification: explain why the change fixes the problem and any trade-offs.
+- Code hygiene and minimal invasiveness: prefer clear, maintainable fixes and avoid unnecessary changes.
+- Use of available tools (editor, runtime, unit test runner, stdout/stderr) to perform the work under time constraints.
 
 ### Recommended Structure
-Time limit: 90 minutes total. Basic exam should have 4 tasks of increasing complexity but all solvable by an entry-level candidate within the time.
+Time limit: 90 minutes.
 
-High-level organization:
-- Single project repository packaged for the candidate (no internet required).
-- The repo includes: buggy source code, a README with test/run instructions, an automated test script (e.g., run_tests.sh or run_tests.py), and input/output sample files.
-- Candidate completes all tasks in one repository, submits a single JSON file test_submission.json describing changes and test results, plus the modified source files.
+Number of tasks: 4 focused, progressive tasks (30–40 minute total for solving; remainder for write-up and final verification). Each task is small enough to complete within 15–30 minutes and covers different bug classes.
 
-Task breakdown (suggested):
-1. Task 1 — Quick fix (15 minutes, 15 points)
-   - Reproduce a trivial failing case: syntax/typo or incorrect constant causes program to crash or produce an obviously wrong result.
-   - Deliverable: Fixed file(s); test runner shows pass for this case.
-2. Task 2 — Logic bug (25 minutes, 30 points)
-   - Off-by-one or wrong conditional that causes incorrect output on a provided test case.
-   - Deliverable: Fixed code; tests show expected output for included inputs.
-3. Task 3 — Data handling / edge case (30 minutes, 35 points)
-   - Program fails for an edge case (e.g., empty input, null values, unexpected format), causing runtime exception or wrong behavior on larger sample.
-   - Deliverable: Robust fix with minimal changes; tests pass including edge cases.
-4. Task 4 — Small integration / regression check (20 minutes, 20 points)
-   - After prior fixes, a regression or performance/formatting spec remains (e.g., output formatting or an additional test) that requires combining knowledge of previous fixes.
-   - Deliverable: All tests pass; final run produces expected outputs/files.
+Sequence and rationale:
+1. Task A — Quick compile/run failure (5–10 minutes)
+   - Purpose: verify the candidate can reproduce an immediate failure (syntax, missing import).
+   - Deliverable: modified source that runs; short explanation.
 
-Total points: 100. Passing threshold for basic exam: 80 points.
+2. Task B — Single logical bug (15–20 minutes)
+   - Purpose: fix an incorrect algorithm or wrong conditional causing incorrect result.
+   - Deliverable: code change + demonstration (unit test passes or sample input/output matches) + brief explanation.
 
-Expected deliverables from candidate:
-- A single file named test_submission.json in repository root with prescribed fields (see "Submission format" below).
-- All modified source files (committed or simply provided in repo — commit history optional depending on host).
-- Optional short README note if needed to explain how to run tests (should be redundant with provided test runner).
+3. Task C — Edge-case / off-by-one / input validation (20–25 minutes)
+   - Purpose: fix correctness for edge inputs and improve robustness (nulls, empty data, negative numbers).
+   - Deliverable: code change + unit tests added or existing tests updated to cover edge cases (see constraints below) + explanation.
 
-### Practicality — how this is hands-on
-- Candidates must run the provided test harness locally, see failing test output, edit code, re-run tests.
-- No multiple-choice or paper answers — success is measured by tests/program output.
-- All necessary data and tests are included so the candidate does not need external references.
-- The tasks represent typical debugging jobs in production/maintenance code: small, localized fixes that must be validated.
+4. Task D — Small integration/behavior bug or regression (20–25 minutes)
+   - Purpose: fix a bug that requires reasoning across two modules or a small refactor (e.g., API contract mismatch, wrong data format).
+   - Deliverable: code change + passing integration test or sample script run + explanation of root cause and fix.
 
-### Strategic Elements to Include (distinguishing real performers)
-- Multi-step dependency: later tasks assume earlier tasks are fixed (simulates an ongoing codebase). Candidate must recognize dependencies and run the whole test suite.
-- Confusing, but deterministic failing output: failures may be caused by a cascade of small issues; candidate must find root cause, not just patch symptoms.
-- Ambiguous requirement/edge-case: require candidate to make a decision (e.g., how to handle malformed input). Good candidates will choose a reasonable behavior and document it in JSON.
-- Minimal-change expectation: evaluate whether the candidate made targeted fixes vs. large rewrites. Prefer minimal, well-justified changes.
-- Include tests that require both correctness and simple formatting (e.g., exact whitespace, JSON structure), forcing the candidate to be precise.
+Mandatory rule for candidate: Do not change the provided test harness files (if any) unless explicitly permitted. Fix only source modules. The test harness is the oracle.
+
+Expected deliverables:
+- test_submission.json (exact JSON format described below)
+- Modified source files (as provided in their workspace); candidate will include contents in the JSON.
+- Terminal log(s) showing failing and passing runs (before/after).
+- Short written explanations (per task) that justify each change.
+
+Time allocation recommendation:
+- Tasks A–D: ~60 minutes total
+- Write-up, packaging, final verification: ~20–30 minutes
+
+### Practicality — How this is hands-on (not a knowledge quiz)
+- Candidate must run code, reproduce failures, open files, edit source, and re-run tests — actions, not theoretical answers.
+- Tests and sample inputs are provided so the candidate can quickly observe failing behavior and confirm fixes.
+- Candidate cannot access external web resources; they must use local debugging, reasoning, and language runtime knowledge.
+- The exam includes multiple bug types mirroring real maintenance tasks: syntax, logic, boundary cases, and integration/regression.
+
+### Strategic Elements that Differentiate Real Performers
+Include these features in tasks to separate those who can do the job from those who only know theory:
+
+- Multi-step debugging chains: a failing test may reveal a symptom, but the root cause lives in a different module. Fix requires tracing data flow (file A -> B -> C).
+- Data dependencies: use small sample data files where a transformation is applied in stages; the bug could be a mismatch in expected format between stages.
+- Decision points: provide one task where the candidate must choose whether to:
+  - change the code to accept an ill-formed input, or
+  - harden the input validation and return an error.
+  The preferred solution (for this basic exam) should be to enforce correct behavior and document assumptions — but acceptance criteria are in the task description.
+- Limited refactoring window: candidate should apply minimal, targeted changes rather than rewrite; this reveals pragmatic judgement.
+- Tests as forensic tools: supply failing unit tests and a test runner; a competent candidate will use the tests to find and confirm fixes rather than guess.
+
+Example defects to seed (basic level):
+- Syntax/typo (easily reproducible quickly).
+- Off-by-one in loops or slice boundaries.
+- Incorrect boolean condition or order of operations.
+- Incorrect handling of empty list/None/zero values.
+- Wrong type conversion (string vs number).
+- Misuse of API or incorrect assumptions about a helper function return value.
+- Missing error handling causing crash on edge input.
 
 ### Practical Elements to Include (for exam creator)
-- Language: choose one common language for which environment is easy to provide (recommend Python 3.9+ or Node.js). For a basic exam prefer Python.
-- Provide an automated test runner script (single command) that returns non-zero exit code on failure and prints concise failure messages.
-- Include clear README with:
-  - exact command(s) to run tests,
-  - brief description of tasks embedded in code comments (not detailed solutions),
-  - time limit reminder and submission instructions (where to place test_submission.json).
-- Provide small unit tests or assert-style checks for each task (e.g., pytest, unittest, or custom script). Tests should be deterministic, small, and quick to run.
-- Include sample input/output and a “golden” reference output file. Test harness should compare actual vs expected output.
-- Ensure no external dependencies required (avoid packages not in standard library) so candidate need not install add-ons.
+- Small repository (2–6 source files) in a single language (recommend Python for speed or JavaScript/Node). Keep codebase small so edits are quick.
+- A test harness with 6–10 unit tests:
+  - 2 trivial tests (Task A)
+  - 2–3 functional tests failing for Task B and C
+  - 2 integration/regression tests failing for Task D
+- A helper script run_tests.sh (or run_tests.bat) that runs the test suite and outputs machine-parseable results (e.g., JSON or a clear stdout summary). Candidate must include the test output in their submission.
+- A README that explains the constraints (no internet, do not modify tests, time limit, submission format).
+- Seed a few clear comments in code like "# BUG: off-by-one" to reduce time-wasted guessing while still requiring actual fixes (this is optional — for basic exam you may include 1 comment hint).
+- Provide sample inputs/outputs for the expected behavior so the candidate can confirm fixes manually if they prefer.
 
-### Submission format (test_submission.json)
-Require the candidate to submit a single JSON file named test_submission.json with the following schema (all fields required unless noted optional):
+### Submission format (what the candidate must produce)
+The candidate must create a file named test_submission.json at the root of their workspace. This file must be valid JSON and follow this schema exactly:
 
-- candidate_name (string)
-- task_results (array of 4 objects, ordered tasks 1–4). Each object:
-  - task_id (integer) — 1..4
-  - files_changed (array of strings) — paths of files changed
-  - change_summary (string) — up to ~200 words explaining the change
-  - root_cause (string) — short explanation of what caused the failure
-  - how_tested (string) — commands run and results (include exact test runner output lines that show pass/fail)
-  - time_spent_minutes (integer)
-  - confidence_level (string) — one of: "high", "medium", "low"
-  - notes (string, optional) — any assumptions or trade-offs made
-- final_test_output (string) — full output of the final run of the test runner (paste as-is)
-- total_time_minutes (integer)
-- checksum_of_modified_files (object) — mapping filename -> SHA256 hex digest (optional but recommended)
-- final_score_self_assessment (integer 0..100) — candidate's self assessment of correctness
+- candidate_name: string
+- time_taken_minutes: number
+- tasks: array of task entries, one per provided task (A–D). Each task entry:
+  - id: string (e.g., "A")
+  - status_before: string (short summary of failing behavior captured by running the harness, include failing test names or error messages)
+  - status_after: string (summary after fixes; include passing test names or final program output)
+  - modified_files: array of objects { filename: string, content: string } — content should be the final file contents (UTF-8 string).
+  - commands_run: array of strings (exact commands executed and their important outputs; include run_tests output snippets)
+  - explanation: string (2–6 sentences explaining root cause and the fix chosen)
+  - time_spent_minutes: number
+- final_test_summary:
+  - total_tests: number
+  - passed: number
+  - failed: number
+  - runtime_output: string (complete final run_tests output)
+- signature: string (one-liner signed by candidate)
 
-Example minimal test_submission.json (not code-block formatted here — to be created by candidate):
+Provide one small example JSON skeleton (for the examiner) inside the instructions (not required by the candidate) so they know the format.
+
+Example skeleton (for exam creator / evaluator):
 {
   "candidate_name": "Alice Example",
-  "task_results": [
+  "time_taken_minutes": 62,
+  "tasks": [
     {
-      "task_id": 1,
-      "files_changed": ["app/utils.py"],
-      "change_summary": "Fixed typo: used 'len(items) > 0' instead of 'len(items) >= 0'.",
-      "root_cause": "Incorrect conditional always true causing incorrect path.",
-      "how_tested": "ran ./run_tests.py; Task1: PASS",
-      "time_spent_minutes": 12,
-      "confidence_level": "high",
-      "notes": ""
+      "id": "A",
+      "status_before": "SyntaxError at line 12: invalid syntax",
+      "status_after": "Program runs; unit test 'test_init' passes",
+      "modified_files": [
+        {"filename":"app.py","content":"<full file contents>"}
+      ],
+      "commands_run": ["python -m pytest -q", "Output: ..."],
+      "explanation": "Fixed a missing colon in function definition.",
+      "time_spent_minutes": 8
     },
-    ... tasks 2-4 ...
+    ...
   ],
-  "final_test_output": "All tests passed\n",
-  "total_time_minutes": 78,
-  "checksum_of_modified_files": {"app/utils.py": "abc123..."},
-  "final_score_self_assessment": 92
+  "final_test_summary": {
+    "total_tests": 8,
+    "passed": 8,
+    "failed": 0,
+    "runtime_output": "pytest output here..."
+  },
+  "signature": "Alice Example"
 }
 
-Make it explicit in README that this file name and structure are required; evaluator can parse this file automatically.
+Make sure the test harness prints its summary to stdout so the candidate can paste it into the JSON.
 
-### Evaluation Insights — what to look for
-Primary observable outputs:
-- Passing automated tests (all tasks): objective evidence the candidate produced the desired results.
-- test_submission.json content: demonstrates candidate’s reasoning and reproducibility.
-- Changes are minimal and well-targeted (diff review).
+### Evaluation Insights — Observable outputs and criteria
+Primary pass/fail evidence:
+- Passing tests or program output: the strongest evidence is that the provided test harness or sample runs all succeed. For each task, tests that previously failed now pass.
+- Reproducible command log: candidate supplies the exact commands and outputs that demonstrate failure before and success after fixes.
 
-Scoring rubric (suggested):
-- Task correctness (automated): 70 points total
-  - Task 1: 15
-  - Task 2: 20
-  - Task 3: 20
-  - Task 4: 15
-  (Automated tests yield full points per task when passing.)
-- Explanation & reproducibility: 20 points
-  - Clear root cause & change_summary for each task (10 points)
-  - test runner output included & steps to reproduce (10 points)
-- Code hygiene & minimality: 10 points
-  - No unnecessary changes, appropriate in-file comments, reasonable naming (10 points)
+Qualitative signals (score these to complement test results):
+- Explanation quality (20%): does the candidate clearly state root cause, why their change fixes it, and any assumptions or trade-offs? Look for concise reasoning — not just "I changed X to Y".
+- Minimal and appropriate code change (15%): prefer limited, well-scoped changes. Penalize unnecessary widespread rewrites. Look for small diffs and clear intent.
+- Correctness across edge-cases (15%): candidate should show they considered edge inputs (especially for the edge-case task). Passing additional tests for boundary conditions is a plus.
+- Use of tests/logs to localize bugs (10%): candidate must show they used test output and stack traces to guide the fix (visible in commands_run and status_before).
+- Clean submission (10%): JSON validity, inclusion of modified files, and reproducible commands.
 
-Partial-credit rules:
-- If tests for a task still fail, award partial points for a correct root cause and a reasonable, partially-working change documented in change_summary (up to 50% of that task’s points).
-- If candidate fixed code but introduced regressions (other tests fail), deduct points from code hygiene/minimality and task points of failing tests.
-- If candidate’s fix is functionally correct but implemented as a large rewrite, award correctness points but deduct up to 50% of the code hygiene points.
+Suggested numeric scoring (basic exam; target pass >= 80%):
+- Functional correctness (tests passed): 60 points (all-or-most based on how many required tests pass)
+- Explanation quality: 20 points
+- Code hygiene/minimal changes: 10 points
+- Completeness and reproducibility of submission (JSON correctness, logs): 10 points
 
-Red flags (reduce score or require follow-up):
-- test_submission.json missing or incomplete.
-- No explanation of root cause or how tests were run.
-- Massive unrelated changes (e.g., reformat whole repo without justification).
-- Tests pass but change comments are incorrect / clearly copied (if evaluator suspects plagiarism).
+Example pass threshold:
+- Candidate who fixes all seeded failures and provides the required JSON with clear explanations should score > 80/100.
+- A candidate who only fixes obvious syntax errors but fails logical and edge-case tasks typically scores < 50.
 
-Sample evaluator workflow:
-1. Clone candidate repo (or unzip submission).
-2. Run test runner exactly as README instructs.
-3. Verify test_submission.json exists and parse it.
-4. Cross-check tests claimed to be run vs actual test output.
-5. Inspect diffs/modified files for correctness and minimal changes.
-6. Apply scoring rubric and provide feedback.
+### Practical tips for the exam creator / evaluator
+- Keep the repository and tests small and deterministic (no network, time-dependent behaviour, or randomness without seed).
+- Make the failing behaviour unambiguous: tests should fail with clear messages. Avoid tests that can pass with multiple ambiguous fixes unless the task explicitly allows design choices.
+- For fairness, clearly document what files the candidate may modify and the rule about not editing tests.
+- Include at least one test that demonstrates an edge-case to force candidates to think about inputs/validation.
+- Provide an example passing run in the evaluator docs (not visible to candidates) to validate the scoring script.
 
-### Time allocation guidance (for candidate)
-- Read README + run tests initially: 5–10 minutes
-- Task 1: 15 minutes
-- Task 2: 25 minutes
-- Task 3: 30 minutes
-- Task 4 + final regression run + prepare submission JSON: 10–15 minutes
-Total: 85–95 minutes (aim to keep under 90).
-
-### Sample bug types to include (for exam creator)
-- Wrong operator or off-by-one (easy to spot).
-- Incorrect handling of empty input or missing file (exception).
-- Logic error in loop or conditional causing incorrect aggregation.
-- String formatting/serialization mismatch vs expected golden output.
-- Minor performance pitfall (e.g., O(n^2) vs expected O(n)) — only if it affects test in time-limit.
-
-### Final notes for exam creators and evaluators
-- Keep tasks realistic but self-contained so they test debugging ability, not domain expertise.
-- Make tests deterministic and fast.
-- Ensure no external internet access is required.
-- Use the test_submission.json as the primary artifact for automated and manual scoring.
-
-This design will allow a remote, hands-on verification that a candidate can correct errors, make appropriate changes, and recheck the program to ensure the desired results are produced — the practical competence required for an entry-level Computer Programmer role.
+This design produces a compact, hands-on remote exam suited to assess an entry-level programmer’s ability to locate, fix, and validate code defects within 90 minutes, with a clear, machine-checkable submission format (test_submission.json) to simplify grading and reproducibility.
 </examoverview>
 
 ### Your assignment:
@@ -178,7 +176,7 @@ Your instructions must include:
    - Do not prescribe methods or tools beyond what’s listed in the context.
 2. **Expected Outcome** – What the candidate must achieve or produce by the end of the test.
 3. **Provided Materials** – Briefly describe any materials or data files that will be given.
-4. **Submission Instructions** – Instrut candidates that they must submit results as `"test_submission.json"`.
+4. **Submission Instructions** – Instruct candidates that they must submit results as `"test_submission.json"` and that this will be the only file used for evaluation.
 
 ### Objectivity and Evaluation Constraints
 - Avoid tasks that require subjective interpretation.

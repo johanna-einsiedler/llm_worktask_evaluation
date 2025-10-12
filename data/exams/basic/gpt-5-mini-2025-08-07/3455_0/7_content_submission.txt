@@ -1,0 +1,47 @@
+```json
+{
+  "candidate": {
+    "name": "",
+    "email": ""
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": ""
+  },
+  "ingestion_script": "",
+  "query_script": "",
+  "schema_dump": [],
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "",
+      "result_rows": []
+    },
+    {
+      "id": "Q2",
+      "sql": "",
+      "result_rows": []
+    },
+    {
+      "id": "Q3",
+      "sql": "",
+      "result_rows": []
+    },
+    {
+      "id": "Q4",
+      "sql": "",
+      "result_rows": []
+    }
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [],
+    "counts": {
+      "total_hosts_inventory": null,
+      "hosts_with_low_samples": null
+    }
+  },
+  "recommendations": [],
+  "README": "",
+  "notes": ""
+}
+```

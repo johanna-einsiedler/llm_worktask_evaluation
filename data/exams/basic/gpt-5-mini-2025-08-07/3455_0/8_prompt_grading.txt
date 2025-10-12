@@ -1,0 +1,770 @@
+You are an expert exam systems engineer. Your task is to write a Python grading script that automatically evaluates a candidate’s submission against the official answer key for a practical exam.
+Inputs
+Below is the contextual information you have access to:
+- Exam overview (for evaluator context):
+<examoverview>
+### Exam Purpose
+Confirm that the candidate can, in a realistic systems-software context, perform the end-to-end work of (1) ingesting operational system data, (2) storing it in a local data store suitable for analysis, (3) retrieving and manipulating it to produce metrics that support system capability and requirements analysis, and (4) produce reproducible outputs and brief recommendations. The exam verifies practical ability, not just conceptual knowledge.
+
+Intended real-world capability demonstrated:
+- Turning raw system telemetry / inventory / logs into a usable analytic dataset.
+- Designing a minimal data model and implementing it.
+- Writing reproducible ingestion and query code.
+- Producing metrics and a short analysis that can be used to inform design/requirements decisions.
+
+### Core Competencies
+The basic exam tests whether the candidate can reliably do the following at an entry level:
+- Parse and validate typical system data (CSV/JSON/text logs).
+- Create and populate a lightweight local data store (SQLite) using a practical schema.
+- Write correct SQL queries to retrieve aggregates and filtered results for analysis.
+- Compute aggregate metrics (counts, averages, percentiles, time-window summaries).
+- Handle common data issues (missing values, inconsistent timestamps, duplicates).
+- Produce reproducible scripts and a small, clear results artifact (JSON summary + brief recommendations).
+- Provide brief, clear documentation of how to reproduce their work.
+
+### Recommended Structure
+Total time: 90 minutes maximum.
+
+Overview: 3 sequential hands-on tasks (ingest → query → analyze) plus packaging/README. Candidate submits a single JSON file "test_submission.json" (format specified below) containing code, outputs, and brief explanations. The exam creator will provide sample input files (small, representative dataset, see Practical Elements).
+
+Task 1 — Data ingestion and storage (30 minutes, 35%):
+- Provided: two small files:
+  - systems.csv — inventory of hosts (hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at)
+  - metrics.log — timestamped telemetry lines (hostname, timestamp, cpu_percent, mem_percent, io_wait_ms)
+- Candidate must:
+  - Design a reasonable SQLite schema to store both inventory and time-series telemetry.
+  - Write a short ingestion script (Python 3 recommended) that parses the provided files and populates an SQLite DB file named systems_metrics.db.
+- Deliverable: ingestion script source included in test_submission.json and evidence that the DB contains expected tables (a schema dump or PRAGMA output).
+
+Task 2 — Retrieval and basic analysis queries (30 minutes, 40%):
+- Candidate must write and run a small set of specified SQL queries against the created DB and include their results:
+  1. List top 5 hosts by average CPU usage over the last 24 hours.
+  2. Compute per-host average and peak memory usage for the last 7 days.
+  3. Identify hosts where current inventory memory_gb < recommended_minimum (simple provided constant, e.g., 8 GB).
+  4. Count telemetry samples per host and flag hosts with < 95% of expected samples (expected sampling rate provided).
+- Deliverable: SQL text for each query and the exact row results as arrays in test_submission.json.
+
+Task 3 — Simple manipulations to inform requirements (20 minutes, 20%):
+- Using query results or in code, compute:
+  - A short list of hosts that are capacity-constrained (e.g., average CPU > 75% OR memory usage > 80% with small memory_gb).
+  - One suggested concrete requirement change (e.g., raise minimum memory to X GB, or increase sampling cadence, or plan for N additional cores) justified by metrics.
+- Deliverable: JSON object with computed metric values and a one-paragraph recommendation per suggested change.
+
+Packaging and reproducibility (10 minutes, 5%):
+- Include a README field that lists the exact command(s) to run ingestion and queries locally to reproduce the DB and results (e.g., python ingest.py && python queries.py).
+
+Total scoring weight: 100% (breakdown above). Passing cutoff for basic exam: ≥ 80%.
+
+Notes about language/tools:
+- Allowed: Python 3 (recommended), SQLite (sqlite3). Candidate may use standard library only (no external packages). The exam environment will provide Python and sqlite3.
+- All work should be reproducible locally without network access.
+
+### Practical Elements to Include
+To ensure the exam is hands-on and realistic, include these elements:
+
+Datasets provided by the examiner (small, e.g., 100–1000 telemetry rows total):
+- systems.csv (inventory). Example columns: hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at.
+- metrics.log (line-delimited JSON or CSV with timestamps). Example columns: hostname, timestamp (ISO 8601), cpu_percent (0–100), mem_percent (0–100), io_wait_ms.
+
+Parsing & data quality issues to require hands-on decisions:
+- Some telemetry rows missing mem_percent or cpu_percent.
+- Inconsistent timestamp formats for a small fraction (e.g., different timezone or missing seconds).
+- Duplicate telemetry records for the same timestamp+host.
+- A few hosts present in telemetry but not in inventory (and vice versa).
+
+Schema design decisions:
+- Candidate must choose to store telemetry in a normalized table with appropriate types, and create indexes for typical queries (e.g., host + timestamp index).
+- Candidate must decide how to treat missing values (skip, default, or insert NULL), and how to deduplicate.
+
+Reproducibility requirement:
+- Candidate provides scripts and a README with the exact commands to recreate DB and run queries.
+- Candidate includes the SQL used for result extraction (to make evaluation simple and auditable).
+
+Submission format (test_submission.json)
+- To simplify evaluation, candidate should submit one JSON file exactly named test_submission.json with the following fields:
+
+{
+  "candidate": {
+    "name": "<full name>",
+    "email": "<email>"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "<sqlite3 version used>"
+  },
+  "ingestion_script": "<string with full source code of ingestion script>",
+  "schema_dump": ["<line1>", "<line2>", ...],         // e.g., output of .schema or PRAGMA table_info
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "<SELECT ...>",
+      "result_rows": [
+        ["host1", 72.3],
+        ["host2", 68.1],
+        ...
+      ]
+    },
+    ...
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {"hostname": "host1", "avg_cpu": 82.1, "avg_mem_percent": 65.4, "memory_gb": 4}
+    ],
+    "counts": {
+      "total_hosts": 42,
+      "hosts_with_low_samples": 2
+    }
+  },
+  "recommendations": [
+    {"id": "R1", "text": "Raise minimum memory to 8 GB for new hosts because N hosts have avg_mem_percent>80 and memory_gb<8."}
+  ],
+  "README": "exact commands to run to reproduce (single string)"
+}
+
+Important: all scripts should be included as string values (not as attachments) so the single JSON is self-contained. All query results must be exact numeric values/strings; timestamp formatting used in results must be consistent ISO-8601.
+
+Why JSON? It makes automated scoring and manual review straightforward.
+
+### Strategic Elements (to distinguish real ability)
+Multi-step dependencies and decision points that separate doers from knowers:
+- Schema design affects query simplicity and performance. A candidate who can map analytics needs to a schema will produce simpler, correct SQL; someone who only knows theory may create a poor schema and struggle with queries.
+- Handling missing/duplicate data: candidates must choose how to treat these and document their approach. Real practitioners will pick reasonable strategies and explain tradeoffs.
+- Index choices: minimal but correct use (e.g., index on hostname+timestamp) indicates practical performance awareness.
+- Reproducibility and packaging: someone who can perform the task will provide clear commands and include the exact SQL; someone who knows only conceptually may not make it trivially reproducible.
+- Trade-off judgement: when asked to recommend a requirement change (e.g., raise minimum memory), the candidate should justify with specific metrics and a small cost/benefit rationale.
+
+Edge cases to include (small but present so they can be resolved quickly):
+- A few telemetry timestamps outside the expected window (should be ignored or flagged).
+- Hosts present in telemetry but missing from inventory — candidate must decide to ignore, insert a placeholder inventory row, or flag as unknown.
+- Slight timestamp format variance — requires parsing with tolerant code.
+
+These elements force the candidate to make real decisions and implement them.
+
+### Evaluation Insights (observable outputs and criteria)
+Primary observable outputs:
+- ingestion_script (source) — should be readable, documented with brief comments, and runnable without internet.
+- systems_metrics.db (not required as file; the schema_dump and query results suffice) — schema consistency and use of types and indexes.
+- queries (SQL) and result_rows — must correctly answer the specified questions with accurate values.
+- metrics object and recommendations — concise, specific, justified by computed metrics.
+- README — clear reproducible commands (one or two shell lines).
+
+Scoring rubric (basic exam, total 100 points)
+- Data ingestion and schema (35 points)
+  - Correct schema design and types: 15
+  - Correct parsing and insertion into DB (handles missing values and duplicates reasonably): 10
+  - Indexes or pragmatic performance choices: 5
+  - Readability and documentation of ingestion script: 5
+- Retrieval queries and correctness (40 points)
+  - Each of 4 required queries: 7 points each (28)
+  - Correctness and formatting of returned result_rows: 8
+  - Reasonable SQL style and use of appropriate functions (window/aggregates): 4
+- Analysis & recommendations (20 points)
+  - Correct identification of capacity-constrained hosts: 10
+  - Recommendation is concrete and justified by metrics: 7
+  - Simple risk/assumption note or next-step suggested: 3
+- Reproducibility & packaging (5 points)
+  - README with exact commands + including scripts in JSON: 5
+
+Pass threshold: ≥ 80/100.
+
+Qualitative evaluation notes:
+- Full credit requires both correct outputs and code that a reviewer can run locally to reproduce.
+- Partial credit if scripts run but some results are off due to minor parsing errors or timezone mistakes; major mistakes in core logic lose heavy points.
+- Style matters but is secondary to correctness: clear variable names and short comments expected.
+
+### How to keep it practical and fast
+- Provide small but representative datasets so ingestion and queries run in seconds.
+- Require only Python standard library and SQLite to avoid dependency installation.
+- Keep number of tasks limited (3) and focused so an entry-level candidate can complete them within 90 minutes.
+- Use JSON submission to make automated and manual review straightforward.
+
+### Example examiner checklist for quick grading
+- test_submission.json present and parsable.
+- ingestion_script runs and creates tables consistent with schema_dump.
+- Q1–Q4 SQL provided and result_rows match expected values produced by running against DB.
+- metrics lists capacity issues and includes numeric thresholds and values.
+- recommendations are specific and reference the computed metrics.
+- README contains exact command lines to reproduce.
+
+This design ensures the exam is hands-on, time-boxed, and discriminating between candidates who can perform real ingestion/analysis tasks and those who only conceptually understand them.
+</examoverview>
+
+- Full exam content:
+<exam>
+### Exam Title
+Systems Telemetry: Ingest, Store, Query, and Analyze (Basic Practical)
+
+### Instructions for Candidate
+
+Overview and time limit
+- Total time: 90 minutes maximum.
+- You must work only with the local tools available (Python 3, sqlite3, a text editor and code execution). No network access or external Python packages are allowed.
+- Deliverables must be submitted in a single JSON file named exactly test_submission.json (structure required below).
+
+Task summary (3 hands-on tasks + packaging)
+- Task 1 — Data ingestion & storage (≈30 minutes)
+  - Write a Python 3 script named ingest.py that:
+    - Parses the supplied files systems.csv and metrics.log.
+    - Creates (or replaces) a SQLite database file named systems_metrics.db.
+    - Creates a reasonable schema that stores:
+      - Inventory rows (systems.csv).
+      - Time-series telemetry (metrics.log).
+    - Populates the database with parsed data.
+    - Handles data quality issues in a reasonable way (you must document your chosen handling in-code comments and in README):
+      - Missing cpu_percent or mem_percent (acceptable choices: insert NULL, impute, or skip — you must choose and justify).
+      - Inconsistent timestamp formats (your parser must tolerate the small variations in the provided data).
+      - Duplicate telemetry records (same hostname + timestamp) — deduplicate by your chosen rule (keep first/last); document it.
+      - Telemetry rows for hosts not in inventory — choose whether to insert a placeholder inventory row or leave telemetry with NULL foreign key; document your approach.
+    - Create at least one index appropriate for querying typical telemetry by host and time (e.g., host + timestamp).
+  - The script must use only Python standard library modules (e.g., csv, json, datetime, sqlite3, re, etc.).
+  - The script must produce a SQLite DB file named systems_metrics.db in the current directory.
+
+- Task 2 — Retrieval & analysis queries (≈30 minutes)
+  - Write a script named queries.py (Python 3) that opens systems_metrics.db and runs the following SQL queries. Include the SQL text and exact results in your JSON submission.
+    - Q1: Top 5 hosts by average cpu_percent over the last 24 hours.
+    - Q2: Per-host average and peak (maximum) mem_percent for the last 7 days.
+    - Q3: Inventory hosts where memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB (constant below).
+    - Q4: Count telemetry samples per host and flag hosts with < EXPECTED_COMPLETENESS_THRESHOLD% of expected samples in the last 24 hours (expected cadence below).
+  - Details used for queries (fixed constants — use these exact values):
+    - RECOMMENDED_MINIMUM_MEMORY_GB = 8
+    - EXPECTED_SAMPLING_INTERVAL_MINUTES = 5 (i.e., one telemetry sample every 5 minutes per host)
+    - EXPECTED_COMPLETENESS_THRESHOLD = 95 (percent)
+  - Time windows: define "last 24 hours" and "last 7 days" relative to the maximum timestamp present in metrics.log (i.e., treat the dataset's max timestamp as "now"). Use ISO-8601 timestamps for any displayed timestamps in results.
+
+- Task 3 — Simple manipulations to inform requirements (≈20 minutes)
+  - Using SQL or simple Python post-processing of query results, compute:
+    - A short list (hostname + measured values) of hosts that are "capacity-constrained", defined for this exam as:
+      - average cpu_percent over last 24 hours > 75, OR
+      - average mem_percent over last 7 days > 80 AND memory_gb < 8
+    - Counts:
+      - total number of distinct hosts in inventory.
+      - number of hosts flagged with low telemetry completeness in Q4.
+    - Produce one concrete recommended requirement change (one-line recommendation plus one short justification paragraph) based on observed metrics. Example acceptable recommendations: raise minimum memory to X GB, increase sampling cadence to Y seconds/minutes, provision N extra CPU cores for a group of hosts, or require monitoring changes. Your recommendation must reference the computed numeric metrics.
+
+- Packaging & Reproducibility (≈10 minutes)
+  - Provide a README string explaining exact commands to reproduce the DB and run the queries.
+  - All code must be runnable locally without modification using only Python 3 and sqlite3.
+
+Additional instructions (must follow)
+- Script filenames required: ingest.py and queries.py. Your ingest.py must create systems_metrics.db in the working directory. queries.py must open systems_metrics.db and produce outputs used in the submission JSON.
+- Document any non-trivial choices (missing data handling, deduplication rule, hosts mismatch) in:
+  - brief comments in your scripts, and
+  - the README field in the submission JSON.
+- Use ISO-8601 for any timestamps in your outputs and in the JSON fields.
+- Do not include binary files; you must embed script sources and results inside test_submission.json as strings and arrays (structured JSON). The grader will not accept separate script attachments.
+
+### Expected Outcome
+
+By the end of the exam you must produce:
+- A working ingestion script ingest.py that creates systems_metrics.db from the provided datasets.
+- A query script queries.py that runs the 4 required queries and computes the simple analysis for Task 3.
+- A single JSON file named test_submission.json (structure required below) that includes:
+  - Candidate contact info and environment info.
+  - The full source code of ingest.py and queries.py as string fields.
+  - A schema dump (PRAGMA table_info or .schema output) describing the created tables and indexes (array of strings).
+  - The exact SQL text for each required query and the exact result rows produced by running those queries against systems_metrics.db (results must be exact numeric values/strings).
+  - The computed metrics and capacity-constrained host list.
+  - One concrete recommendation with a short justification referencing the numeric metrics.
+  - README string with exact commands to run ingest.py and queries.py to reproduce all outputs.
+- All outputs must be reproducible by running the commands in the README on a machine with Python 3 and sqlite3, using only the supplied data files.
+
+### Provided Materials
+
+You will be given two files (placed in the working directory):
+1. systems.csv — inventory of hosts (columns: hostname, cpu_cores, memory_gb, storage_gb, os_version, created_at)
+2. metrics.log — line-delimited telemetry (each line is JSON or CSV; contains fields hostname, timestamp (ISO-8601 with a few small format variations), cpu_percent, mem_percent, io_wait_ms)
+
+Data quality characteristics intentionally present in the provided files (you must handle them):
+- A small fraction of telemetry rows are missing cpu_percent or mem_percent.
+- Some timestamps use slightly different ISO-8601 variants (e.g., timezone offsets or missing seconds).
+- A few duplicate telemetry rows exist (same hostname + timestamp).
+- Some hosts appear in telemetry but not in inventory, and some inventory hosts have no telemetry.
+
+Provided constants you must use in queries and analysis (do not change):
+- RECOMMENDED_MINIMUM_MEMORY_GB = 8
+- EXPECTED_SAMPLING_INTERVAL_MINUTES = 5
+- EXPECTED_COMPLETENESS_THRESHOLD = 95 (percent)
+- Time windows are relative to the maximum timestamp found in metrics.log.
+
+### Submission Format
+
+You must submit exactly one file named test_submission.json. It must be valid JSON and must contain the following fields and types (field names and structure are mandatory):
+
+{
+  "candidate": {
+    "name": "<full name string>",
+    "email": "<email string>"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "<sqlite3 version string you used>"
+  },
+  "ingestion_script": "<string with full source code of ingest.py>",
+  "query_script": "<string with full source code of queries.py>",
+  "schema_dump": ["<line1>", "<line2>", ...],         // output of PRAGMA table_info or .schema
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "<exact SQL text used for Q1>",
+      "result_rows": [
+        ["hostname1", 72.3],
+        ["hostname2", 68.1],
+        ...
+      ]
+    },
+    {
+      "id": "Q2",
+      "sql": "<exact SQL text used for Q2>",
+      "result_rows": [
+        ["hostname1", 64.2, 91.0],
+        ["hostname2", 50.0, 67.4],
+        ...
+      ]
+    },
+    {
+      "id": "Q3",
+      "sql": "<exact SQL text used for Q3>",
+      "result_rows": [
+        ["hostnameA", 4],
+        ["hostnameB", 2],
+        ...
+      ]
+    },
+    {
+      "id": "Q4",
+      "sql": "<exact SQL text used for Q4>",
+      "result_rows": [
+        ["hostnameX", 240, 80.0],  // example: hostname, sample_count_in_24h, completeness_pct
+        ...
+      ]
+    }
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {"hostname": "host1", "avg_cpu_24h": 82.1, "avg_mem_7d": 65.4, "memory_gb": 4}
+    ],
+    "counts": {
+      "total_hosts_inventory": 42,
+      "hosts_with_low_samples": 2
+    }
+  },
+  "recommendations": [
+    {"id": "R1", "text": "Raise minimum memory to 8 GB for new hosts because 5 hosts have avg_mem_7d>80 and memory_gb<8."}
+  ],
+  "README": "exact commands to run to reproduce (single string). Example: python3 ingest.py && python3 queries.py",
+  "notes": "brief notes about handling of missing/duplicate data and any assumptions (string)"
+}
+
+Important submission rules (must follow)
+- The fields and names above are required and must be present. Use the same field names and structure.
+- Include ingest.py and queries.py source code as strings (fields ingestion_script and query_script).
+- result_rows must contain exact values (numbers as numbers, strings as strings). Use ISO-8601 for any timestamps you include in results.
+- The schema_dump should be the exact textual lines that show table and index creations or PRAGMA table_info outputs.
+- The README must contain the exact shell commands (one or two lines) that a grader can copy/paste to reproduce your DB and query outputs.
+- Include a short "notes" string documenting your data handling choices (missing values, deduplication, hosts-not-in-inventory policy).
+
+Grading / objectivity reminders
+- The grader will run your ingest.py and queries.py locally; outputs must match the SQL and result_rows you included.
+- Use only Python standard library. If your scripts import external packages, the grader cannot run them and the submission will be rejected.
+- Do not submit any additional files. All required code and outputs must be embedded inside test_submission.json.
+
+Good luck. Work cleanly and keep focus on reproducible ingestion, correct SQL queries, and a concise evidence-backed recommendation.File: systems.csv
+Columns: hostname,cpu_cores,memory_gb,storage_gb,os_version,created_at
+hostA,4,4,100,Ubuntu18.04,2024-01-10T09:00:00Z
+hostB,8,16,200,Ubuntu20.04,2024-02-15T12:30:00Z
+hostC,2,2,50,CentOS7,2024-03-01T08:15:00Z
+hostD,4,8,100,Ubuntu20.04,2024-04-20T14:00:00+01:00
+hostE,16,32,500,Ubuntu22.04,2024-05-05T10:00:00Z
+hostF,2,4,100,Debian10,2024-06-10T11:00:00Z
+
+File: metrics.log
+Line-delimited JSON. Each line is a telemetry event with fields: hostname, timestamp, cpu_percent (0-100), mem_percent (0-100), io_wait_ms.
+Timestamps intentionally include slight ISO-8601 format variants (Z, +00:00, +01:00, and some missing seconds). Some events omit cpu_percent or mem_percent entirely. There is one deliberate duplicate (same hostname + timestamp). The maximum timestamp in this file is 2025-10-12T12:00:00Z (treat that as "now" for time-window queries).
+
+{"hostname":"hostA","timestamp":"2025-10-12T12:00:00Z","cpu_percent":82.5,"mem_percent":70.1,"io_wait_ms":5}
+{"hostname":"hostA","timestamp":"2025-10-12T11:00:00Z","cpu_percent":78.0,"mem_percent":68.0,"io_wait_ms":4}
+{"hostname":"hostA","timestamp":"2025-10-12T10:00:00+00:00","cpu_percent":80.0,"mem_percent":69.5,"io_wait_ms":6}
+{"hostname":"hostA","timestamp":"2025-10-12T09:00Z","cpu_percent":75.0,"io_wait_ms":3}
+{"hostname":"hostA","timestamp":"2025-10-12T08:30:00Z","cpu_percent":77.5,"mem_percent":67.0,"io_wait_ms":2}
+{"hostname":"hostA","timestamp":"2025-10-11T15:00:00Z","cpu_percent":70.0,"mem_percent":60.0,"io_wait_ms":1}
+
+{"hostname":"hostB","timestamp":"2025-10-12T12:00:00Z","cpu_percent":55.0,"mem_percent":45.0,"io_wait_ms":10}
+{"hostname":"hostB","timestamp":"2025-10-12T11:00:00Z","cpu_percent":null,"mem_percent":50.0,"io_wait_ms":12}
+{"hostname":"hostB","timestamp":"2025-10-12T10:00:00Z","cpu_percent":60.0,"mem_percent":52.0,"io_wait_ms":8}
+{"hostname":"hostB","timestamp":"2025-10-12T10:00:00Z","cpu_percent":60.0,"mem_percent":52.0,"io_wait_ms":8}
+{"hostname":"hostB","timestamp":"2025-10-11T13:30:00+01:00","cpu_percent":65.0,"io_wait_ms":7}
+
+{"hostname":"hostC","timestamp":"2025-10-12T04:00:00Z","cpu_percent":90.0,"mem_percent":85.0,"io_wait_ms":20}
+{"hostname":"hostC","timestamp":"2025-10-11T12:15Z","cpu_percent":88.0,"mem_percent":83.0,"io_wait_ms":18}
+{"hostname":"hostC","timestamp":"2025-10-10T11:00:00Z","cpu_percent":50.0,"mem_percent":45.0,"io_wait_ms":2}
+
+{"hostname":"hostE","timestamp":"2025-10-12T07:00:00Z","cpu_percent":20.0,"mem_percent":30.0,"io_wait_ms":1}
+
+{"hostname":"hostX","timestamp":"2025-10-12T09:00:00Z","cpu_percent":95.0,"mem_percent":90.0,"io_wait_ms":50}```json
+{
+  "candidate": {
+    "name": "",
+    "email": ""
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": ""
+  },
+  "ingestion_script": "",
+  "query_script": "",
+  "schema_dump": [],
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "",
+      "result_rows": []
+    },
+    {
+      "id": "Q2",
+      "sql": "",
+      "result_rows": []
+    },
+    {
+      "id": "Q3",
+      "sql": "",
+      "result_rows": []
+    },
+    {
+      "id": "Q4",
+      "sql": "",
+      "result_rows": []
+    }
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [],
+    "counts": {
+      "total_hosts_inventory": null,
+      "hosts_with_low_samples": null
+    }
+  },
+  "recommendations": [],
+  "README": "",
+  "notes": ""
+}
+```
+</exam>
+
+- Additional materials available only to the evaluator:
+<materials_evaluator>
+How these materials were constructed and why
+- Inventory (systems.csv): 6 distinct host rows (hostA..hostF). memory_gb values include entries below and above the required threshold (RECOMMENDED_MINIMUM_MEMORY_GB = 8). Two hosts (hostD and hostF) intentionally have no telemetry events in metrics.log to test handling of inventory-only hosts.
+- Telemetry (metrics.log): 16 telemetry events across 5 host identifiers (hostA, hostB, hostC, hostE, hostX). The maximum timestamp is 2025-10-12T12:00:00Z — candidates must treat this as "now" when computing "last 24 hours" and "last 7 days".
+- Variations and data-quality issues intentionally included:
+  - Missing fields: some events omit mem_percent (e.g., hostA 09:00) or have cpu_percent explicitly null (hostB 11:00).
+  - Inconsistent ISO-8601 forms: trailing Z, explicit +00:00, +01:00 offset, and timestamps with or without seconds (e.g., "2025-10-11T13:30:00+01:00" yields 2025-10-11T12:30:00Z).
+  - Duplicate event: hostB has two identical events at 2025-10-12T10:00:00Z.
+  - Telemetry-only host: hostX appears in telemetry but not in systems.csv.
+  - Inventory-only hosts: hostD and hostF have no telemetry rows.
+- Purpose: The dataset is compact but contains the realistic issues a candidate must handle: timestamp parsing/normalization, missing numeric values, deduplication of telemetry by (hostname + timestamp), and joining telemetry to inventory with mismatches.
+
+Expected numeric relationships and intended grading targets (what a correct solution should show)
+- Identify max timestamp: 2025-10-12T12:00:00Z. Use that to set:
+  - last_24h_window = 2025-10-11T12:00:00Z through 2025-10-12T12:00:00Z (inclusive)
+  - last_7d_window = 2025-10-05T12:00:00Z through 2025-10-12T12:00:00Z (inclusive)
+- Deduplication rule the evaluator should expect candidates to adopt (and which was used to compute expected results below): for identical (hostname, timestamp) keep the first occurrence and ignore later duplicates.
+- Handling of missing numeric values the evaluator should accept: store NULL in DB for missing cpu_percent or mem_percent and exclude NULLs from average/maximum calculations (documented by candidate).
+- Expected per-host telemetry counts in last 24 hours (after deduplication):
+  - hostA: 6 events (timestamps at 2025-10-11T15:00Z, 2025-10-12T08:30Z, 09:00Z, 10:00Z, 11:00Z, 12:00Z)
+  - hostB: 4 unique events (2025-10-11T12:30Z [from 13:30+01:00], 2025-10-12T10:00:00Z, 11:00:00Z, 12:00:00Z)
+  - hostC: 2 events in last 24h (2025-10-11T12:15Z and 2025-10-12T04:00Z)
+  - hostE: 1 event (2025-10-12T07:00:00Z)
+  - hostX: 1 event (2025-10-12T09:00:00Z)
+  - hostD: 0 events
+  - hostF: 0 events
+- Expected averages and peaks (used to grade Q1 and Q2) computed ignoring NULLs:
+  - Q1 (average cpu_percent over last 24h), per host:
+    - hostX: avg_cpu = 95.0 (1 sample)
+    - hostC: avg_cpu = (90.0 + 88.0) / 2 = 89.0
+    - hostA: avg_cpu = (82.5 + 78.0 + 80.0 + 75.0 + 77.5 + 70.0) / 6 = 77.1666666667
+    - hostB: avg_cpu = (55.0 + 60.0 + 65.0) / 3 = 60.0  (null cpu at 11:00 excluded; duplicate 10:00 ignored)
+    - hostE: avg_cpu = 20.0
+    - hostD, hostF: no data (should not appear or should show NULL/0 per candidate decision)
+  - Q2 (per-host average and peak mem_percent for last 7 days), per host (ignore NULL mem values):
+    - hostA: mem values = [70.1,68.0,69.5,67.0,60.0] => avg = 66.92 (334.6/5), peak = 70.1
+    - hostB: mem values = [45.0,50.0,52.0] => avg = 49.0, peak = 52.0
+    - hostC: mem values = [85.0,83.0,45.0] => avg = 71.0, peak = 85.0
+    - hostE: mem values = [30.0] => avg = 30.0, peak = 30.0
+    - hostX: mem values = [90.0] => avg = 90.0, peak = 90.0
+    - hostD, hostF: no telemetry (NULLs)
+- Q3 inventory hosts where memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB (8):
+  - hostA (4), hostC (2), hostF (4)
+- Q4 expected numbers (use EXPECTED_SAMPLING_INTERVAL_MINUTES = 5):
+  - expected_samples_in_24h = 24*60/5 = 288
+  - completeness_pct = (observed_unique_samples_in_24h / 288) * 100
+  - Using counts above, completeness percentages:
+    - hostA: 6 -> 2.0833333333%
+    - hostB: 4 -> 1.3888888889%
+    - hostC: 2 -> 0.6944444444%
+    - hostE: 1 -> 0.3472222222%
+    - hostX: 1 -> 0.3472222222%
+    - hostD: 0 -> 0.0%
+    - hostF: 0 -> 0.0%
+  - All of these are below EXPECTED_COMPLETENESS_THRESHOLD (95%). The materials intentionally lead to low completeness to verify that candidates compute expected counts correctly and handle hosts with zero telemetry.
+Traps, common errors, and evaluator guidance
+- Timestamp parsing mistakes:
+  - A common error is failing to normalize timezone offsets (e.g., treating "2025-10-11T13:30:00+01:00" as 13:30Z rather than converting to 12:30Z). The correct behavior is to convert all timestamps to a single timezone (UTC) before filtering into windows.
+- Deduplication mistakes:
+  - Some candidates may forget to deduplicate duplicates. The duplicate for hostB at 2025-10-12T10:00:00Z is present; expected behavior is to deduplicate by (hostname, normalized_timestamp) and keep the first occurrence (documented in ingestion code and README).
+- Missing values in aggregates:
+  - Candidates should store NULLs for missing cpu_percent or mem_percent and exclude NULLs from average/peak calculations. Including NULLs as zeros will distort averages and should be flagged by the grader as incorrect.
+- Hosts cross-reference:
+  - Candidates must decide whether Q4 includes hosts present only in telemetry (hostX) and inventory-only hosts (hostD, hostF). The intended scoring accepts counting across the union of inventory and telemetry hosts; candidates should document their choice. The dataset is designed so all reasonable choices (inventory-only focus or union) will show low completeness; the grader should accept either approach if documented and consistent.
+How these materials distinguish practical skill from pure theory
+- A candidate who only knows concepts might write SQL or pseudo-code but fail to:
+  - normalize and parse the timestamp variants,
+  - deduplicate correctly, or
+  - handle missing numeric values properly.
+- A practical candidate will provide:
+  - an ingestion script that normalizes timestamps to UTC, inserts NULL for missing numeric fields, deduplicates by (hostname, timestamp), creates sensible schema and indexes, and documents choices; and
+  - SQL queries that use the dataset's max timestamp as "now", apply correct WHERE clauses for time windows, and compute aggregates excluding NULLs.
+Acceptable grader tolerances
+- Numeric rounding: the grader should allow reasonable floating-point formatting differences (e.g., 77.1666667 vs 77.1666666667). Candidates should return numeric values; string formatting of numbers is not acceptable.
+- Query inclusion of hosts with no data: accept either excluding hosts with no telemetry from Q1/Q2 results or showing them with NULLs, provided the approach is documented in the README and scripts.
+</materials_evaluator>
+
+- Evaluation and grading guidelines for the evaluator:
+<evaluation>
+```json
+{
+  "candidate": {
+    "name": "ANSWER KEY - Systems Telemetry Exam",
+    "email": "exam-key@example.com"
+  },
+  "environment": {
+    "language": "python3",
+    "sqlite_version": "3.39.4"
+  },
+  "ingestion_script": "#!/usr/bin/env python3\n\"\"\"\ningest.py\nReads systems.csv and metrics.log, normalizes timestamps to UTC, deduplicates telemetry by (hostname, timestamp),\nstores inventory and telemetry into systems_metrics.db (SQLite), and creates an index on telemetry(hostname,timestamp).\nHandling decisions (documented here):\n- Missing cpu_percent or mem_percent: stored as NULL in the DB. NULLs are excluded from aggregates in queries.\n- Timestamp normalization: all timestamps are converted to UTC ISO-8601 with +00:00 offset using datetime.fromisoformat\n  after replacing trailing 'Z' with '+00:00'. Offsets like '+01:00' are respected and converted to UTC.\n- Deduplication: for duplicate (hostname, normalized_timestamp) the first occurrence in metrics.log is kept; later duplicates are skipped.\n- Hosts appearing only in telemetry (not in systems.csv): telemetry rows are inserted with hostname text; no placeholder inventory rows are created.\n\"\"\"\n\nimport csv\nimport json\nimport sqlite3\nimport sys\nfrom datetime import datetime, timezone\n\nINPUT_INVENTORY = 'systems.csv'\nINPUT_METRICS = 'metrics.log'\nDB_FILE = 'systems_metrics.db'\n\ndef parse_iso_to_utc_iso(s):\n    # Accept variants such as ending with 'Z', with '+00:00' or '+01:00', and timestamps with or without seconds.\n    if not s:\n        raise ValueError('Empty timestamp')\n    s2 = s.strip()\n    if s2.endswith('Z'):\n        s2 = s2[:-1] + '+00:00'\n    # datetime.fromisoformat supports offsets like +00:00 and +01:00 and timestamps without seconds\n    dt = datetime.fromisoformat(s2)\n    dt_utc = dt.astimezone(timezone.utc)\n    # Use ISO format with explicit +00:00 (consistent form)\n    return dt_utc.isoformat()\n\ndef create_schema(conn):\n    cur = conn.cursor()\n    cur.executescript('''\n    PRAGMA foreign_keys = OFF;\n    CREATE TABLE IF NOT EXISTS inventory (\n        hostname TEXT PRIMARY KEY,\n        cpu_cores INTEGER,\n        memory_gb INTEGER,\n        storage_gb INTEGER,\n        os_version TEXT,\n        created_at TEXT\n    );\n    CREATE TABLE IF NOT EXISTS telemetry (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        hostname TEXT,\n        timestamp TEXT,\n        cpu_percent REAL,\n        mem_percent REAL,\n        io_wait_ms INTEGER\n    );\n    CREATE INDEX IF NOT EXISTS idx_telemetry_host_time ON telemetry(hostname, timestamp);\n    ''')\n    conn.commit()\n\ndef ingest_inventory(conn):\n    with open(INPUT_INVENTORY, 'r', newline='') as f:\n        reader = csv.DictReader(f)\n        rows = []\n        for r in reader:\n            # Normalize created_at to UTC ISO\n            try:\n                created_at = parse_iso_to_utc_iso(r.get('created_at') or '')\n            except Exception:\n                created_at = None\n            rows.append((r['hostname'], int(r['cpu_cores']) if r.get('cpu_cores') else None,\n                         int(r['memory_gb']) if r.get('memory_gb') else None,\n                         int(r['storage_gb']) if r.get('storage_gb') else None,\n                         r.get('os_version'), created_at))\n    cur = conn.cursor()\n    cur.executemany('''INSERT OR REPLACE INTO inventory (hostname,cpu_cores,memory_gb,storage_gb,os_version,created_at)\n                       VALUES (?,?,?,?,?,?)''', rows)\n    conn.commit()\n\ndef ingest_metrics(conn):\n    seen = set()  # (hostname, normalized_timestamp) to deduplicate, keep first occurrence\n    to_insert = []\n    with open(INPUT_METRICS, 'r') as f:\n        for line in f:\n            line = line.strip()\n            if not line:\n                continue\n            try:\n                rec = json.loads(line)\n            except Exception:\n                # skip malformed lines\n                continue\n            hostname = rec.get('hostname')\n            ts_raw = rec.get('timestamp')\n            if not hostname or not ts_raw:\n                continue\n            try:\n                ts = parse_iso_to_utc_iso(ts_raw)\n            except Exception:\n                # skip unparseable timestamp\n                continue\n            key = (hostname, ts)\n            if key in seen:\n                # deduplicate: skip later duplicates\n                continue\n            seen.add(key)\n            cpu = rec.get('cpu_percent')\n            mem = rec.get('mem_percent')\n            io_wait = rec.get('io_wait_ms')\n            # JSON 'null' becomes Python None -> will be inserted as NULL\n            # Ensure numeric types or None\n            if cpu is not None:\n                cpu = float(cpu)\n            if mem is not None:\n                mem = float(mem)\n            if io_wait is not None:\n                try:\n                    io_wait = int(io_wait)\n                except Exception:\n                    io_wait = None\n            to_insert.append((hostname, ts, cpu, mem, io_wait))\n    cur = conn.cursor()\n    cur.executemany('''INSERT INTO telemetry (hostname,timestamp,cpu_percent,mem_percent,io_wait_ms)\n                       VALUES (?,?,?,?,?)''', to_insert)\n    conn.commit()\n\ndef main():\n    conn = sqlite3.connect(DB_FILE)\n    create_schema(conn)\n    ingest_inventory(conn)\n    ingest_metrics(conn)\n    conn.close()\n    print('Ingestion complete: wrote', DB_FILE)\n\nif __name__ == '__main__':\n    main()\n",
+  "query_script": "#!/usr/bin/env python3\n\"\"\"\nqueries.py\nOpens systems_metrics.db, computes the max telemetry timestamp and uses it as \"now\". Runs the four required queries (Q1..Q4)\nusing the fixed constants from the exam instructions. Also computes the capacity-constrained host list and prints nothing\n(we collect results inside data structures for inclusion in the JSON submission).\n\"\"\"\n\nimport sqlite3\nfrom datetime import datetime, timedelta, timezone\n\nDB_FILE = 'systems_metrics.db'\nRECOMMENDED_MINIMUM_MEMORY_GB = 8\nEXPECTED_SAMPLING_INTERVAL_MINUTES = 5\nEXPECTED_COMPLETENESS_THRESHOLD = 95\n\n# SQL texts used for each query (exact text strings used below in the submission JSON)\nQ1_SQL = (\n    \"SELECT t.hostname, AVG(t.cpu_percent) AS avg_cpu \"\n    \"FROM telemetry t \"\n    \"WHERE t.cpu_percent IS NOT NULL AND t.timestamp BETWEEN ? AND ? \"\n    \"GROUP BY t.hostname \"\n    \"ORDER BY avg_cpu DESC \"\n    \"LIMIT 5;\"\n)\n\nQ2_SQL = (\n    \"SELECT t.hostname, AVG(t.mem_percent) AS avg_mem, MAX(t.mem_percent) AS peak_mem \"\n    \"FROM telemetry t \"\n    \"WHERE t.mem_percent IS NOT NULL AND t.timestamp BETWEEN ? AND ? \"\n    \"GROUP BY t.hostname;\"\n)\n\nQ3_SQL = (\n    \"SELECT hostname, memory_gb FROM inventory WHERE memory_gb < %d ORDER BY hostname;\" % RECOMMENDED_MINIMUM_MEMORY_GB\n)\n\nQ4_SQL = (\n    \"WITH hosts AS (SELECT hostname FROM inventory UNION SELECT hostname FROM telemetry) \"\n    \"SELECT h.hostname, COALESCE(t.cnt,0) AS sample_count_24h, (COALESCE(t.cnt,0)/(?))*100.0 AS completeness_pct \"\n    \"FROM hosts h LEFT JOIN (\" \n    \"  SELECT hostname, COUNT(*) AS cnt FROM telemetry WHERE timestamp BETWEEN ? AND ? GROUP BY hostname\" \n    \") t ON h.hostname = t.hostname \"\n    \"ORDER BY h.hostname;\"\n)\n\n# The script below is designed to be run to produce the same numeric results embedded in the answer key.\n\ndef iso_to_dt(s):\n    return datetime.fromisoformat(s)\n\nconn = sqlite3.connect(DB_FILE)\ncur = conn.cursor()\n# Find max timestamp in telemetry\ncur.execute(\"SELECT MAX(timestamp) FROM telemetry;\")\nrow = cur.fetchone()\nif not row or not row[0]:\n    raise SystemExit('No telemetry data found')\nmax_ts = row[0]  # ISO string in UTC +00:00\nmax_dt = iso_to_dt(max_ts)\n# Compute windows\nstart_24_dt = (max_dt - timedelta(days=1))\nstart_7d_dt = (max_dt - timedelta(days=7))\nstart_24 = start_24_dt.isoformat()\nstart_7d = start_7d_dt.isoformat()\n# Expected samples in 24h\nexpected_samples_24h = (24 * 60) / EXPECTED_SAMPLING_INTERVAL_MINUTES\n\n# Q1\ncur.execute(Q1_SQL, (start_24, max_ts))\nq1_rows = cur.fetchall()\n\n# Q2\ncur.execute(Q2_SQL, (start_7d, max_ts))\nq2_rows = cur.fetchall()\n\n# Q3\ncur.execute(Q3_SQL)\nq3_rows = cur.fetchall()\n\n# Q4\n# Note: we pass expected_samples_24h as the divisor parameter, and start_24/max_ts as the timestamp window\ncur.execute(Q4_SQL, (expected_samples_24h, start_24, max_ts))\nq4_rows = cur.fetchall()\n\n# Post-processing to assemble capacity-constrained hosts\n# Build lookup for avg_cpu from Q1 and avg_mem from Q2\navg_cpu_by_host = {r[0]: float(r[1]) for r in q1_rows}\navg_mem_by_host = {r[0]: float(r[1]) for r in q2_rows}\n# Get inventory memory_gb\ncur.execute('SELECT hostname, memory_gb FROM inventory;')\ninv_mem = {r[0]: r[1] for r in cur.fetchall()}\n\ncapacity_issues = []\nall_hosts = set(list(avg_cpu_by_host.keys()) + list(avg_mem_by_host.keys()) + list(inv_mem.keys()))\nfor h in sorted(all_hosts):\n    avg_cpu = avg_cpu_by_host.get(h)\n    avg_mem = avg_mem_by_host.get(h)\n    mem_gb = inv_mem.get(h)\n    cpu_flag = (avg_cpu is not None and avg_cpu > 75.0)\n    mem_flag = (avg_mem is not None and avg_mem > 80.0 and (mem_gb is not None and mem_gb < RECOMMENDED_MINIMUM_MEMORY_GB))\n    if cpu_flag or mem_flag:\n        capacity_issues.append({\n            'hostname': h,\n            'avg_cpu_24h': avg_cpu if avg_cpu is not None else None,\n            'avg_mem_7d': avg_mem if avg_mem is not None else None,\n            'memory_gb': mem_gb if mem_gb is not None else None\n        })\n\n# Counts\ncur.execute('SELECT COUNT(*) FROM inventory;')\ntotal_hosts_inventory = cur.fetchone()[0]\n# hosts with low samples: count of hosts where completeness_pct < EXPECTED_COMPLETENESS_THRESHOLD\nhosts_with_low = 0\nfor r in q4_rows:\n    completeness = float(r[2])\n    if completeness < EXPECTED_COMPLETENESS_THRESHOLD:\n        hosts_with_low += 1\n\n# Close DB\nconn.close()\n\n# The script is intended to produce these variables; printing is optional. In this answer key we embed the SQL and the computed result rows.\n",
+  "schema_dump": [
+    "CREATE TABLE inventory (",
+    "    hostname TEXT PRIMARY KEY,",
+    "    cpu_cores INTEGER,",
+    "    memory_gb INTEGER,",
+    "    storage_gb INTEGER,",
+    "    os_version TEXT,",
+    "    created_at TEXT",
+    ");",
+    "CREATE TABLE telemetry (",
+    "    id INTEGER PRIMARY KEY AUTOINCREMENT,",
+    "    hostname TEXT,",
+    "    timestamp TEXT,",
+    "    cpu_percent REAL,",
+    "    mem_percent REAL,",
+    "    io_wait_ms INTEGER",
+    ");",
+    "CREATE INDEX idx_telemetry_host_time ON telemetry(hostname, timestamp);"
+  ],
+  "queries": [
+    {
+      "id": "Q1",
+      "sql": "SELECT t.hostname, AVG(t.cpu_percent) AS avg_cpu FROM telemetry t WHERE t.cpu_percent IS NOT NULL AND t.timestamp BETWEEN ? AND ? GROUP BY t.hostname ORDER BY avg_cpu DESC LIMIT 5;",
+      "result_rows": [
+        [
+          "hostX",
+          95.0
+        ],
+        [
+          "hostC",
+          89.0
+        ],
+        [
+          "hostA",
+          77.16666666666667
+        ],
+        [
+          "hostB",
+          60.0
+        ],
+        [
+          "hostE",
+          20.0
+        ]
+      ]
+    },
+    {
+      "id": "Q2",
+      "sql": "SELECT t.hostname, AVG(t.mem_percent) AS avg_mem, MAX(t.mem_percent) AS peak_mem FROM telemetry t WHERE t.mem_percent IS NOT NULL AND t.timestamp BETWEEN ? AND ? GROUP BY t.hostname;",
+      "result_rows": [
+        [
+          "hostA",
+          66.92,
+          70.1
+        ],
+        [
+          "hostB",
+          49.0,
+          52.0
+        ],
+        [
+          "hostC",
+          71.0,
+          85.0
+        ],
+        [
+          "hostE",
+          30.0,
+          30.0
+        ],
+        [
+          "hostX",
+          90.0,
+          90.0
+        ]
+      ]
+    },
+    {
+      "id": "Q3",
+      "sql": "SELECT hostname, memory_gb FROM inventory WHERE memory_gb < 8 ORDER BY hostname;",
+      "result_rows": [
+        [
+          "hostA",
+          4
+        ],
+        [
+          "hostC",
+          2
+        ],
+        [
+          "hostF",
+          4
+        ]
+      ]
+    },
+    {
+      "id": "Q4",
+      "sql": "WITH hosts AS (SELECT hostname FROM inventory UNION SELECT hostname FROM telemetry) SELECT h.hostname, COALESCE(t.cnt,0) AS sample_count_24h, (COALESCE(t.cnt,0)/(?))*100.0 AS completeness_pct FROM hosts h LEFT JOIN (  SELECT hostname, COUNT(*) AS cnt FROM telemetry WHERE timestamp BETWEEN ? AND ? GROUP BY hostname) t ON h.hostname = t.hostname ORDER BY h.hostname;",
+      "result_rows": [
+        [
+          "hostA",
+          6,
+          2.0833333333333335
+        ],
+        [
+          "hostB",
+          4,
+          1.3888888888888888
+        ],
+        [
+          "hostC",
+          2,
+          0.6944444444444444
+        ],
+        [
+          "hostD",
+          0,
+          0.0
+        ],
+        [
+          "hostE",
+          1,
+          0.3472222222222222
+        ],
+        [
+          "hostF",
+          0,
+          0.0
+        ],
+        [
+          "hostX",
+          1,
+          0.3472222222222222
+        ]
+      ]
+    }
+  ],
+  "metrics": {
+    "hosts_capacity_issues": [
+      {
+        "hostname": "hostA",
+        "avg_cpu_24h": 77.16666666666667,
+        "avg_mem_7d": 66.92,
+        "memory_gb": 4
+      },
+      {
+        "hostname": "hostC",
+        "avg_cpu_24h": 89.0,
+        "avg_mem_7d": 71.0,
+        "memory_gb": 2
+      },
+      {
+        "hostname": "hostX",
+        "avg_cpu_24h": 95.0,
+        "avg_mem_7d": 90.0,
+        "memory_gb": null
+      }
+    ],
+    "counts": {
+      "total_hosts_inventory": 6,
+      "hosts_with_low_samples": 7
+    }
+  },
+  "recommendations": [
+    {
+      "id": "R1",
+      "text": "Raise minimum cpu_cores to 4 for new hosts and plan an immediate CPU upgrade for hostC from 2 -> 4 cores. Rationale: hostC's average CPU over the last 24 hours is 89.0% and hostA's is 77.17% (both >75%), indicating CPU-bound behavior. Upgrading under-provisioned hosts (hostC currently has 2 cores) to at least 4 cores will reduce CPU utilization and improve headroom. Monitor post-upgrade average CPU; if average remains >70% consider further scaling or horizontal distribution of workload."
+    }
+  ],
+  "README": "To reproduce the DB and run queries: 1) Run ingestion: python3 ingest.py  # reads systems.csv and metrics.log and creates systems_metrics.db 2) Run queries: python3 queries.py  # opens systems_metrics.db and executes the Q1..Q4 logic\n\nNotes on reproduction: both scripts are pure Python 3 and use only standard library (csv, json, sqlite3, datetime). The ingestion script normalizes timestamps to UTC, deduplicates by (hostname, timestamp) keeping the first occurrence, and stores missing cpu/mem as NULL. The queries script computes the dataset's max telemetry timestamp and treats that as \"now\" for last-24h and last-7d windows.",
+  "notes": "Full evaluator explanation and derivation of answers:\n\n1) General ingestion decisions (implemented in ingest.py):\n- Timestamp normalization: all telemetry timestamps were converted to UTC using datetime.fromisoformat after replacing a trailing 'Z' with '+00:00'; offsets like '+01:00' were preserved and converted to UTC. This guarantees correct time-window filtering (lexicographic ISO strings in UTC are comparable).\n- Missing numeric fields: cpu_percent and mem_percent that were absent or null in the JSON were inserted into the telemetry table as NULL. Aggregates (AVG, MAX) exclude NULLs by using SQL conditions (e.g., WHERE cpu_percent IS NOT NULL). This avoids skewing averages by treating missing as zero.\n- Deduplication: duplicates defined as identical (hostname, normalized_timestamp) are de-duplicated by keeping the first occurrence encountered in metrics.log. This was implemented with a Python set 'seen'. The duplicate present for hostB at 2025-10-12T10:00:00Z is therefore included once.\n- Hosts in telemetry but missing from inventory: telemetry rows are inserted as-is (no placeholder inventory rows). The telemetry table does not enforce a foreign key to inventory to allow this.\n- Index: created idx_telemetry_host_time on (hostname, timestamp) to make host+time queries efficient.\n\n2) Time windows and 'now':\n- The maximum timestamp in metrics.log is 2025-10-12T12:00:00Z; queries treat this as 'now'.\n- last_24h window = 2025-10-11T12:00:00+00:00 through 2025-10-12T12:00:00+00:00 (inclusive)\n- last_7d window = 2025-10-05T12:00:00+00:00 through 2025-10-12T12:00:00+00:00 (inclusive)\n\n3) Derivation of query results (matches queries' result_rows):\n- Telemetry counts in last 24 hours (after deduplication and timestamp normalization):\n  * hostA: events at 2025-10-11T15:00:00Z, 2025-10-12T08:30:00Z, 09:00:00Z, 10:00:00Z, 11:00:00Z, 12:00:00Z => 6\n  * hostB: events normalized to 2025-10-11T12:30:00Z (from 13:30+01:00), 2025-10-12T10:00:00Z (duplicate removed), 2025-10-12T11:00:00Z (cpu null), 2025-10-12T12:00:00Z => 4 unique timestamps\n  * hostC: 2025-10-11T12:15:00Z and 2025-10-12T04:00:00Z => 2\n  * hostE: 2025-10-12T07:00:00Z => 1\n  * hostX: 2025-10-12T09:00:00Z => 1\n  * hostD, hostF: 0\n\n- Q1 (Top 5 by avg CPU over last 24h): CPU averages computed excluding NULLs:\n  * hostX: 95.0 (1 sample)\n  * hostC: (90.0 + 88.0) / 2 = 89.0\n  * hostA: (82.5 + 78.0 + 80.0 + 75.0 + 77.5 + 70.0) / 6 = 77.16666666666667\n  * hostB: cpu at 11:00 is NULL so excluded; (55.0 + 60.0 + 65.0) / 3 = 60.0\n  * hostE: 20.0\n  Hosts with no telemetry are omitted from this ranking.\n\n- Q2 (Per-host avg and peak mem over last 7 days): mem values (NULLs excluded):\n  * hostA mems: [70.1,68.0,69.5,67.0,60.0] => avg 66.92, peak 70.1\n  * hostB mems: [45.0,50.0,52.0] => avg 49.0, peak 52.0\n  * hostC mems: [85.0,83.0,45.0] => avg 71.0, peak 85.0\n  * hostE mems: [30.0] => avg 30.0, peak 30.0\n  * hostX mems: [90.0] => avg 90.0, peak 90.0\n\n- Q3 (Inventory hosts with memory_gb < RECOMMENDED_MINIMUM_MEMORY_GB (8)):\n  * From systems.csv: hostA (4), hostC (2), hostF (4)\n\n- Q4 (Sample counts in last 24h and completeness%):\n  * Expected samples in 24h = 24*60/5 = 288\n  * completeness_pct = (observed_count / 288) * 100\n  Calculated completeness percentages:\n    - hostA: 6 => 6/288*100 = 2.0833333333333335\n    - hostB: 4 => 1.3888888888888888\n    - hostC: 2 => 0.6944444444444444\n    - hostE: 1 => 0.3472222222222222\n    - hostX: 1 => 0.3472222222222222\n    - hostD: 0 => 0.0\n    - hostF: 0 => 0.0\n  All are below EXPECTED_COMPLETENESS_THRESHOLD (95%). The queries return the union of inventory and telemetry hosts so that telemetry-only hosts (hostX) are included.\n\n4) Capacity-constrained hosts definition and selection:\n- Definition used (per exam): capacity-constrained if average cpu_percent over last 24h > 75 OR (average mem_percent over last 7d > 80 AND memory_gb < 8).\n- Applying this to the computed aggregates:\n  * hostA: avg_cpu_24h = 77.1667 > 75 => flagged (memory 4GB)\n  * hostC: avg_cpu_24h = 89.0 > 75 => flagged (memory 2GB)\n  * hostX: avg_cpu_24h = 95.0 > 75 => flagged (no inventory memory_gb available)\n- These three appear in metrics.hosts_capacity_issues with avg values and inventory memory where available.\n\n5) Recommendation rationale (R1):\n- Selected recommendation: increase minimum cpu_cores to 4 for new hosts and upgrade hostC from 2 to 4 cores now.\n- Justification: hostC shows sustained high CPU (avg 89.0%), indicating a CPU bottleneck and it currently has only 2 cores. HostA also shows avg CPU >75. Provisioning additional CPU capacity on under-provisioned hosts is a direct remediation to reduce observed high CPU averages. The recommendation references exact computed numbers.\n\n6) Counts:\n- total_hosts_inventory = 6 (hostA..hostF as provided in systems.csv)\n- hosts_with_low_samples = 7 (union of inventory + telemetry hosts: hostA,B,C,D,E,F,X; all have completeness < 95%)\n\n7) Passing criteria (grading rubric for the basic exam):\n- Total points = 100 as specified in the exam overview. Passing threshold for the basic practical exam is >= 80 points.\n- Key required outputs for passing (summary):\n  * ingestion_script present and runnable, creating systems_metrics.db with the schema and index described. (Data ingestion and schema: 35 points)\n  * queries (Q1..Q4) present as SQL strings and result_rows match the DB when scripts are run (Retrieval and correctness: 40 points).\n  * metrics and recommendations field: capacity-constrained hosts identified correctly and recommendation justified by the computed metrics (20 points).\n  * README and notes present and runnable (5 points).\n- Partial credit and tolerances:\n  * Numeric rounding: small floating-point differences acceptable (e.g., 77.1666667 vs 77.16666666666667). Automated grader should allow reasonable epsilon.\n  * Hosts with no telemetry: acceptable to either exclude from Q1/Q2 or include with NULLs, provided approach is consistent and documented. Missing/NULL handling must not substitute zeros for missing numeric telemetry values.\n  * Timestamp parsing must correctly normalize timezone offsets and handle trailing 'Z' and missing seconds. Failures to normalize offsets (e.g., mis-parsing +01:00 as same hour in UTC) constitute a major error.\n  * Deduplication: failing to deduplicate the obvious duplicate will affect counts and averages (e.g., hostB duplicate at 2025-10-12T10:00:00Z). Deduplication is required for full credit on ingestion.\n\n8) How the provided answer key should be used by graders:\n- Run ingest.py to produce systems_metrics.db, then run queries.py. The queries' SQL strings in the JSON are the exact SQL used; result_rows should match the outputs produced by queries.py. If small floating-point differences occur, accept them within a small epsilon (1e-6). The rubric assigns weights as documented in the exam overview; passing requires total >= 80.\n\nThis note block documents derivation for each filled field in the answer-key JSON above.",
+  "notes": "Ingestion decisions summary: timestamps normalized to UTC; missing cpu/mem stored as NULL; duplicates by (hostname,timestamp) removed keeping first occurrence; telemetry-only hosts are kept in telemetry table (no placeholder inventory rows)."
+}
+```
+</evaluation>
+
+## Your Assignment
+
+Based on this information, generate a Python script named task_evaluation.py that implements the automated grading logic.
+The script must:
+
+Accept command-line arguments
+- sys.argv[1]: path to the candidate submission JSON file (e.g., test_submission.json)
+- sys.argv[2]: path to the answer key JSON file (e.g., answer_key.json)
+Perform automated scoring
+- Load both JSON files.
+- Compare the candidate’s answers to the correct answers in the answer key.
+- Apply grading logic, weights, and passing rules as defined in the evaluator’s instructions.
+- Handle partial credit where specified.
+- Be tolerant of formatting differences (e.g., capitalization, whitespace).
+- Record clear reasons for any deductions.
+Produce structured output
+Save results in a new JSON file named test_results.json in the same directory as the script.
+The file must include:
+- A breakdown of scores per question or task.
+- Explanations for deductions or mismatches.
+- The total points, maximum possible points, and percentage score.
+- A variable named overall_score containing the candidate’s percentage score (0–100) as a numeric value.
+
+Script execution example
+The grader should be runnable from the command line as follows:
+python task_evaluation.py test_submission.json answer_key.json
+
+
+Implementation requirements
+- Include robust error handling (invalid JSON, missing keys, etc.).
+- Use only standard Python libraries (e.g., json, os, sys).
+- Be deterministic — the same input must always yield the same score.
+- Include concise comments explaining each major block of logic.
+
+
+
+Example Output Format
+``` python
+# task_evaluation.py
+import json, sys, os
+
+# Load files
+...
+
+# Perform grading
+overall_score = 95.0  # percentage of total points earned (0–100)
+
+# Save detailed results to test_results.json
+...
+
+```

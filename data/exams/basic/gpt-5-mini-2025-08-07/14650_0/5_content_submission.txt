@@ -1,30 +1,13 @@
 ```json
 {
   "candidate_name": "",
-  "start_time": "",
-  "end_time": "",
-  "environment": "",
-  "initial_test_run": "",
-  "diagnosis": null,
-  "final_test_run": "",
-  "modified_files": [
-    {
-      "path": "",
-      "content": "",
-      "rationale": "",
-      "related_task": ""
-    }
-  ],
-  "new_tests_added": [],
-  "open_issues": "",
-  "confidence": "",
-  "git_patch": "",
-  "time_taken_seconds": null,
-  "task_1_setup_and_initial_run": null,
-  "task_2_diagnose_failures": null,
-  "task_3_update_tests_and_fixtures": null,
-  "task_4_add_new_test": null,
-  "task_5_rerun_and_verify": null,
-  "submission_notes": ""
+  "time_spent_minutes": null,
+  "commands_run": [],
+  "test_output_before": "",
+  "test_output_after": "",
+  "modified_files": [],
+  "added_files": [],
+  "decision_log": [],
+  "reproduce_instructions": ""
 }
 ```

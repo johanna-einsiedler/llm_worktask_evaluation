@@ -1,223 +1,227 @@
 ### Exam Title
-Basic Practical Exam — Telemetry Ingest, Storage, Querying, and Reporting (90 minutes)
-
----
+System Telemetry: Ingest, Store, Query, and Export (Basic Practical Exam — 90 minutes)
 
 ### Instructions for Candidate
+You have 90 minutes. Use only your local code execution environment and a text editor. No network access and no third‑party libraries; use only the language runtime and standard library available on the machine. Python 3 + sqlite3 is recommended but not required.
 
-You have 90 minutes to complete this practical exam. Use only the tools available in the environment: a code execution environment and a text editor. Do not use the network or non-standard libraries. Python 3 is recommended and available; if you use another language, it must be runnable in the provided environment and use only its standard library.
+You must implement a single runnable end‑to‑end pipeline (one command) that:
+1. Ingests the provided CSV into a local SQLite database (system_logs.db).
+2. Runs the required queries/aggregations on the stored data.
+3. Produces the requested exports and a single submission JSON (test_submission.json) containing the required outputs and metadata.
 
-Place all code and artifacts in the exam root folder. You will be provided with input files (see Provided Materials). Your deliverable is a single JSON file named test_submission.json (see Submission Format). You may also include your scripts and the created DB file with your submission so an evaluator can re-run your work, but the grader will primarily read test_submission.json.
+Follow these step‑by‑step tasks:
 
-Follow these step-by-step tasks exactly.
+Step A — Ingest & Store (≈30 minutes)
+- Create a script (or small program) that:
+  - Reads the provided CSV file system_logs.csv.
+  - Parses timestamps (ISO8601). Rule: treat timestamps that include a timezone offset by converting them to UTC; timestamps without timezone are interpreted as UTC. If a timestamp is malformed and cannot be parsed, drop that row (see Submission Format notes).
+  - Normalizes and loads rows into a SQLite database file named system_logs.db. Use an appropriate normalized schema but you must store at least the fields: timestamp (as a DATETIME in UTC), host, component, level, event_id, metric_name, metric_value (numeric or NULL), message.
+  - Coerce metric_value to numeric when possible; invalid numeric strings become NULL.
+  - Remove exact duplicate rows (duplicate = identical values across all incoming CSV fields).
+  - If multiple non-identical rows share the same event_id (i.e., event_id collision), apply this deterministic rule: keep the row with the earliest timestamp and drop the others.
+  - Ensure event_id is unique in the final table (e.g., enforce a UNIQUE constraint or otherwise guarantee uniqueness).
+  - The script must create system_logs.db in the working directory.
 
-Task 1 — Setup & Ingest (25 minutes)
-- Create a file-backed database named telemetry.db in the exam root (SQLite is recommended and expected).
-- Design one or more tables to store the telemetry rows from telemetry.csv. Create any indices you find useful (e.g., on host and timestamp).
-- Implement an ingest script (single script/CLI entrypoint of your choice) that:
-  - Reads telemetry.csv.
-  - Parses and normalizes each row:
-    - Parse timestamps into a proper datetime value.
-    - Convert numeric fields to numeric types.
-    - Handle missing/malformed values by either coercing (e.g., empty numeric → NULL) or skipping the row.
-    - Detect and handle duplicate rows (your strategy must be consistent, documented in schema_description).
-  - Inserts valid rows into telemetry.db.
-  - Tracks rows_loaded and rows_skipped.
-- The ingest operation must be reproducible by running your entrypoint command (see Run Instructions below).
-- The DB file created must be named telemetry.db (put this path in your JSON submission).
+Step B — Query & Analyze (≈35 minutes)
+- Using the stored data in system_logs.db, compute these deterministic outputs:
+  1. unique_hosts: total number of unique host values.
+  2. top5_hosts_error: top 5 hosts by count of events where level = "ERROR". Order by error_count descending; break ties by host string ascending.
+  3. hourly_errors_last24: hourly counts of ERROR events for the last 24 hours of data. Deterministic definition:
+     - Let max_t = the maximum timestamp present in the cleaned DB (UTC).
+     - Let H0 = truncate(max_t to the hour (floor to HH:00:00 UTC)).
+     - Produce 24 hourly buckets: H0 - 23h, H0 - 22h, ..., H0 (inclusive). For each hour bucket produce {"hour":"YYYY-MM-DDTHH:00:00","count": integer}. Order the array ascending (oldest first).
+  4. avg_cpu_by_component: for each distinct component compute the average metric_value where metric_name = "cpu_usage" and metric_value IS NOT NULL. Exclude NULLs. Provide one entry per component as {"component": string, "avg_cpu": number}. Sort this array by component name ascending.
+  5. top10_event_ids: the 10 most frequent event_id values (after dedup rules) and their counts. Order by count descending, tie-breaker by event_id ascending.
 
-Task 2 — Query & Analysis (30 minutes)
-- Using the DB you created, produce the following query results and record them in test_submission.json:
-  Q1. total_rows: Total number of rows present in the DB after ingest.
-  Q2. top_hosts_by_avg_cpu: The top 3 hosts by average cpu_percent across the entire dataset. For each item return { host: string, avg_cpu: number } sorted descending by avg_cpu.
-  Q3. hourly_stats_for_host: For a single host specified in the provided file target_host.txt, compute time-windowed hourly aggregates for the most recent 24 hours in the dataset (or fewer if the dataset has less than 24 hours):
-     - For each hour window (hour-start timestamp in ISO8601), compute average CPU (avg_cpu) and peak memory (max_mem_mb).
-     - Return up to 24 hour buckets in chronological order (oldest first).
-     - Each item: { hour_start: ISO8601 string, avg_cpu: number, max_mem_mb: number }.
-  Q4. cpu_spike_periods: Identify periods for any host where cpu_percent > 90 for at least 3 consecutive samples (consecutive means successive recorded samples for that host ordered by timestamp with no intervening sample below or equal to 90). For each period return { host: string, start_ts: ISO8601 string, end_ts: ISO8601 string }. If multiple distinct spike sequences exist for the same host, include them all.
+Step C — Manipulate & Export (≈20 minutes)
+- Create two exports from the DB:
+  1. error_events_7days.csv — all events with level = "ERROR" whose timestamp >= (max_t - 7 days), where max_t is same as above. Columns (in this exact order): timestamp (ISO8601 UTC, format "YYYY-MM-DDTHH:MM:SSZ" or "YYYY-MM-DDTHH:MM:SS+00:00"), host, component, event_id, message, metric_value (empty or null allowed). Include all matching rows. Do not include header rows other than CSV header.
+  2. summary_report.json — JSON object with two top-level keys:
+     - top_hosts: array of the same objects as top5_hosts_error (full 5 entries).
+     - hourly_errors: array identical to hourly_errors_last24 (24 entries).
+- All exported files must be written in the current working directory.
 
-- Make sure numeric outputs are numbers (not strings) and timestamps are ISO8601 strings.
+Step D — Packaging & Single Command
+- Provide a single one-line command that runs your entire pipeline (ingest → analyze → export → create test_submission.json). This must be runnable from the exam folder without arguments. Example forms allowed: "python3 run.py" or "./run.sh". Your run_command will be recorded in test_submission.json and the evaluator will run it to verify reproducibility.
 
-Task 3 — Insert Single Record & Recompute (15 minutes)
-- A single new telemetry record will be provided in insert_record.json. Implement a function/command in your script to insert that record into telemetry.db (after validating/parsing it the same way you did for the CSV).
-- After insertion, re-run the relevant aggregation for the host in target_host.txt and return the updated average CPU for that host in the JSON output field updated_avg_cpu_for_host. Also indicate inserted_record_ok: true/false depending on whether the insertion succeeded.
+Other constraints
+- No network calls and no non-standard libraries.
+- Scripts must exit cleanly with status 0 on success.
+- The pipeline must be deterministic (same outputs every run on same input).
 
-Task 4 — Short Explanation & Recommendations (10 minutes)
-- In test_submission.json include:
-  - A 1–4 sentence schema_description that explains your table(s), column typing, and any normalization choices (e.g., flat table vs normalized host table).
-  - Two brief, practical suggested_improvements you would make in a production system (e.g., partitioning, retention, batching, monitoring).
-
-General requirements
-- Provide a single runnable entrypoint command (e.g., python3 run_exam.py) and include that exact command as run_instructions in test_submission.json.
-- Test_submission.json must follow the exact schema described below (Submission Format) so automated graders can parse it.
-- Do not require any external packages; only use the standard library for your language.
-- Keep your code readable and include minimal comments explaining non-obvious choices.
-- Record any non-fatal warnings encountered during execution in the optional errors array in the submission JSON.
-
----
+Estimated time: 90 minutes total (30 + 35 + 20 + packaging/notes).
 
 ### Expected Outcome
+By the end of the test you must produce the following files in the working directory (exact filenames required):
+- system_logs.db (SQLite DB file)
+- error_events_7days.csv
+- summary_report.json
+- test_submission.json (this is the only file used for automated evaluation)
 
-By the end of the exam you must produce:
-- A runnable script/CLI in the exam root that:
-  - Creates telemetry.db and loads telemetry.csv.
-  - Performs the queries and the insertion.
-  - Produces the values required for test_submission.json.
-- A JSON file named test_submission.json exactly matching the Submission Format below and containing all required fields and numeric results.
-- Optionally include your telemetry.db and your scripts alongside test_submission.json so the evaluator can re-run your process. The primary artifact for grading is test_submission.json.
-
-All numeric results should be numbers (floats/integers). Timestamps must use ISO 8601 strings (e.g., "2020-05-10T14:00:00Z" or timezone-aware equivalents). Two decimal places of precision for averages is acceptable.
-
----
+The evaluator will run your run_command and then validate test_submission.json and the produced files against deterministic queries on system_logs.db.
 
 ### Provided Materials
+You will be given these files when the exam starts:
+- system_logs.csv — a CSV file containing system telemetry/logs with columns:
+  - timestamp (ISO8601, some rows may be malformed or missing timezone),
+  - host,
+  - component,
+  - level (INFO/WARN/ERROR),
+  - event_id,
+  - metric_name,
+  - metric_value (nullable),
+  - message
+- README.txt — short environment notes and confirmation that only standard library use is permitted
 
-You will be given the following files in the exam root:
-- telemetry.csv — CSV file containing system telemetry rows (columns include at minimum: timestamp, host, cpu_percent, mem_mb, disk_io_kb, net_io_kb, event_type). The dataset contains a few controlled edge cases (a few missing CPU fields, one duplicate row, one malformed timestamp).
-- target_host.txt — a plain text file containing exactly one host name. Use this host for Q3 and to compute updated_avg_cpu_for_host after insertion.
-- insert_record.json — a JSON file containing one telemetry record to be inserted in Task 3. It matches the same columns as telemetry.csv.
-
-Do not assume any other files exist. The evaluator will provide those three files packaged with the exam.
-
----
+No other data or network access is available.
 
 ### Submission Format
+You must submit a single JSON file named test_submission.json in the working directory. This is the only file the automated evaluator will read for aggregated checking (besides opening your produced system_logs.db and exported files). The test_submission.json must exactly follow this structure and formatting rules:
 
-You must create a single JSON file named test_submission.json with the exact fields and structure below. Field names and nesting must match exactly. Numeric values must be JSON numbers. Timestamp strings must be ISO8601.
+Top-level keys and types:
+- candidate_name: string
+- language: string (e.g., "python3")
+- run_command: string (one-liner used to run your pipeline)
+- runtime_seconds: number (approximate total runtime you observed, can be integer)
+- outputs: object containing:
+  - unique_hosts: integer
+  - top5_hosts_error: array of 5 objects, each {"host": string, "error_count": integer}, ordered by error_count desc then host asc
+  - hourly_errors_last24: array of 24 objects, each {"hour": "YYYY-MM-DDTHH:00:00", "count": integer}, ordered ascending (oldest first)
+  - avg_cpu_by_component: array of objects {"component": string, "avg_cpu": number}, one per component, sorted by component ascending. avg_cpu must be a numeric type (float).
+  - top10_event_ids: array of 10 objects, each {"event_id": string, "count": integer}, ordered by count desc then event_id asc
+- sample_error_csv_rows: array of up to 5 objects representing the first up to 5 rows of error_events_7days.csv in the order they appear there. Each object must include keys: timestamp, host, component, event_id, message, metric_value (number or null).
+- files_produced: array of objects, each {"file": string, "bytes": integer} for the four required files (system_logs.db, error_events_7days.csv, summary_report.json, test_submission.json). Bytes must be the file size in bytes.
+- notes: string (maximum 200 words). In this field you must document:
+  - Schema choice (brief).
+  - Deduplication rule implemented (explicitly state you removed exact duplicate rows and kept earliest timestamp on event_id collisions).
+  - Timestamp parsing and timezone assumption (you must state that timestamps without timezone were treated as UTC and that timezone offsets were converted to UTC; note how many rows, if any, were dropped due to malformed timestamps).
+  - Any other deterministic edge-case rules you implemented (max ~200 words).
 
-Top-level fields:
-- candidate: { name: string, email: string (optional) }
-- env: { language: string, entrypoint: string, db_file: string }
-  - language: e.g., "python3"
-  - entrypoint: the exact command or filename you expect the grader to run (must match run_instructions)
-  - db_file: the path to telemetry.db you created (e.g., "telemetry.db")
-- ingestion: { rows_loaded: integer, rows_skipped: integer, note: string (optional) }
-- results:
-  - total_rows: integer
-  - top_hosts_by_avg_cpu: [ { host: string, avg_cpu: number } ]   (array length must be 3)
-  - hourly_stats_for_host: [ { hour_start: ISO8601 string, avg_cpu: number, max_mem_mb: number } ]   (up to 24 items)
-  - cpu_spike_periods: [ { host: string, start_ts: ISO8601 string, end_ts: ISO8601 string } ]
-- after_insert:
-  - inserted_record_ok: boolean
-  - updated_avg_cpu_for_host: number
-- schema_and_choices:
-  - schema_description: string  (1–4 sentences)
-  - suggested_improvements: [ string, string ]  (exactly two short suggestions)
-- run_instructions: string (the exact shell command(s) to run your solution from the exam root; one or two lines)
-- optional: errors: [ string ] (any non-fatal warnings, optional)
+Formatting and deterministic behavior rules (read carefully)
+- Hour strings must be exactly "YYYY-MM-DDTHH:00:00" (24-hour time, zero-padded).
+- Timestamps you output in CSV and sample rows must be in UTC; acceptable formats include "YYYY-MM-DDTHH:MM:SSZ" or with "+00:00". Be consistent.
+- Arrays must be ordered exactly as stated (top5/top10 order and hourly ascending).
+- All numeric fields must be numeric JSON values (not strings).
+- The notes field must be <= 200 words.
 
-Example minimal skeleton (you must replace placeholder values with your actual outputs):
+Example skeleton (you may use this structure when creating/test_submission.json):
 {
-  "candidate": { "name": "Jane Doe", "email": "jane@example.com" },
-  "env": { "language": "python3", "entrypoint": "run_exam.py", "db_file": "telemetry.db" },
-  "ingestion": { "rows_loaded": 1500, "rows_skipped": 3, "note": "Skipped 3 malformed timestamps" },
-  "results": {
-    "total_rows": 1500,
-    "top_hosts_by_avg_cpu": [
-      { "host": "host-42", "avg_cpu": 87.23 },
-      { "host": "host-7", "avg_cpu": 82.10 },
-      { "host": "host-3", "avg_cpu": 79.55 }
-    ],
-    "hourly_stats_for_host": [
-      { "hour_start": "2024-02-12T14:00:00Z", "avg_cpu": 23.5, "max_mem_mb": 2048 },
-      ...
-    ],
-    "cpu_spike_periods": [
-      { "host": "host-7", "start_ts": "2024-02-12T09:12:34Z", "end_ts": "2024-02-12T09:18:01Z" }
-    ]
+  "candidate_name": "<your name>",
+  "language": "python3",
+  "run_command": "python3 run.py",
+  "runtime_seconds": 42,
+  "outputs": {
+    "unique_hosts": 12,
+    "top5_hosts_error": [{"host":"host-1","error_count":120}, ...],
+    "hourly_errors_last24": [{"hour":"2025-10-12T10:00:00","count":3}, ...],
+    "avg_cpu_by_component": [{"component":"db","avg_cpu":23.456}, ...],
+    "top10_event_ids": [{"event_id":"E1001","count":53}, ...]
   },
-  "after_insert": { "inserted_record_ok": true, "updated_avg_cpu_for_host": 27.45 },
-  "schema_and_choices": {
-    "schema_description": "Flat telemetry table with typed columns: timestamp (UTC), host text, cpu_percent real, mem_mb integer, ...",
-    "suggested_improvements": ["Partition by date to improve query latency", "Batch writes and add write-ahead queue to reduce contention"]
-  },
-  "run_instructions": "python3 run_exam.py",
-  "optional": { "errors": [] }
+  "sample_error_csv_rows": [
+    {"timestamp":"2025-10-12T10:15:30Z","host":"host-1","component":"web","event_id":"E1001","message":"...","metric_value":12.4}
+  ],
+  "files_produced": [{"file":"system_logs.db","bytes":123456}, {"file":"error_events_7days.csv","bytes":2345}, {"file":"summary_report.json","bytes":456}, {"file":"test_submission.json","bytes":789}],
+  "notes":"Schema: single table 'logs' with timestamp stored as UTC datetime. Dedup: removed exact duplicate rows; on event_id collisions kept earliest timestamp. Timestamps lacking timezone interpreted as UTC; 3 malformed timestamps dropped."
 }
 
-Important notes about the JSON:
-- All keys shown in the schema above are required. The optional.errors array may be omitted if empty.
-- Keep numbers as numbers (not strings). Provide reasonable precision (two decimals OK).
+Evaluator behavior (what you should expect)
+- The evaluator will run your run_command to produce files.
+- It will open system_logs.db and recompute the deterministic aggregates. Your outputs in test_submission.json will be compared to those recomputed values.
+- It will verify exported files exist and sample rows match.
+- Any deviation in ordering, field names, or formats may cause automated mismatches.
 
----
+Scoring guidance (what is being checked)
+- Correct DB ingest and data cleaning (types, dedup, uniqueness).
+- Correctness of the five analytic outputs.
+- Correct filtered CSV and JSON summary.
+- Reproducible one-command workflow and adherence to format rules.
+- Clear, concise notes documenting your deterministic choices.
 
-Contact & Final Notes
+Good luck — implement your pipeline, run it with your single command, and submit test_submission.json (plus the generated files) in the working directory.CSV: system_logs.csv
+Columns: timestamp,host,component,level,event_id,metric_name,metric_value,message
 
-- Time limit: 90 minutes. Work efficiently and prioritize producing the required JSON with correct numeric values and timestamps over extra polish.
-- Evaluation is deterministic—your numeric answers are compared to expected values derived from telemetry.csv and insert_record.json.
-- If you cannot complete a task fully, still submit test_submission.json with the fields filled as best you can and include notes in ingestion.note or optional.errors explaining partial work.
+timestamp,host,component,level,event_id,metric_name,metric_value,message
+2025-10-15T15:34:10+00:00,host-1,web,ERROR,E1001,cpu_usage,75.5,Out of memory
+2025-10-15T14:50:00+00:00,host-2,db,ERROR,E1002,cpu_usage,60,Connection lost
+2025-10-15T13:05:00,host-1,web,INFO,E1003,cpu_usage,20,Request handled
+2025-10-15T09:30:00+00:00,host-3,cache,ERROR,E1004,hit_rate,0.95,Cache miss high
+2025-10-14T15:59:59,host-4,web,ERROR,E1005,cpu_usage,88,Spike detected
+2025-10-14T16:00:00+00:00,host-2,web,ERROR,E1002,cpu_usage,55,Retry
+2025-10-13T12:00:00+00:00,host-5,db,WARN,E1006,cpu_usage,N/A,Metric not numeric
+2025-10-15T10:00:00-05:00,host-6,web,ERROR,E1007,cpu_usage,70,Timeout
+2025-10-15T15:34:10+00:00,host-1,web,ERROR,E1001,cpu_usage,75.5,Out of memory
+2025-10-15T25:00:00Z,host-7,api,ERROR,E1008,cpu_usage,30,Bad time
+bad-timestamp,host-8,auth,ERROR,E10099,cpu_usage,45,Malformed
+2025-10-14T18:15:00+00:00,host-1,web,ERROR,E1009,cpu_usage,90,High CPU
+2025-10-12T08:00:00+00:00,host-9,db,ERROR,E1010,cpu_usage,10,Old error
+2025-10-15T15:00:00+00:00,host-10,auth,ERROR,E1011,cpu_usage,,Missing metric
+2025-10-15T14:00:00+00:00,host-2,db,ERROR,E1012,cpu_usage,65,DB overload
+2025-10-14T16:00:00+00:00,host-2,db,ERROR,E1013,cpu_usage,66,Edge hour
 
-Good luck. Make sure test_submission.json is at the exam root and named exactly "test_submission.json" before you finish.File: telemetry.csv
-timestamp,host,cpu_percent,mem_mb,disk_io_kb,net_io_kb,event_type
-2024-03-01T00:00:00Z,host-01,10.5,1024,120,30,INFO
-2024-03-01T00:05:00Z,host-02,55.0,2048,500,80,INFO
-2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
-2024-03-01T01:00:00Z,host-02,60.0,2100,600,90,INFO
-2024-03-01T01:10:00Z,host-03,91.0,600,15,7,WARN
-2024-03-01T01:20:00Z,host-03,95.5,610,16,8,WARN
-2024-03-01T01:30:00Z,host-03,93.0,605,14,6,ERROR
-2024-03-01T02:00:00Z,host-01,20.0,1100,130,40,INFO
-2024-03-01T02:10:00Z,host-01,,2200,700,100,INFO
-2024-03-01T03:00:00Z,host-02,88.0,2150,650,95,INFO
-2024-03-01T04:00:00Z,host-01,15.0,1150,140,45,INFO
-2024-03-01T05:00:00Z,host-02,92.0,2300,800,110,WARN
-2024-03-01T06:00:00Z,host-02,93.0,2310,820,120,WARN
-2024-03-01T06:10:00Z,host-02,30.0,2000,300,60,INFO
-2024-03-01T25:00:00Z,host-01,50.0,1200,150,50,INFO
-2024-03-01T00:10:00Z,host-03,12.0,512,10,5,INFO
+Text: README.txt
+README:
+- Time limit: 90 minutes.
+- Allowed languages/tools: Python 3 (recommended) using only the standard library (sqlite3 is allowed). Other languages OK if they require no external packages.
+- Required output filenames (exact):
+  - system_logs.db
+  - error_events_7days.csv
+  - summary_report.json
+  - test_submission.json
+- Single-command run: your pipeline must run end-to-end from the working directory with one one-line command (e.g., "python3 run.py" or "./run.sh"). Provide that command in test_submission.json "run_command".
+- Parsing rules (must be implemented by candidate):
+  - Timestamps that include a timezone offset must be converted to UTC.
+  - Timestamps without timezone are interpreted as UTC.
+  - Malformed timestamps that cannot be parsed must be dropped.
+  - metric_value should be coerced to numeric where possible; non-numeric strings become NULL.
+  - Exact duplicate CSV rows (identical across all CSV fields) must be removed.
+  - If multiple non-identical rows share the same event_id, keep the row with the earliest timestamp and drop others (deterministic).
+  - Ensure event_id is unique in the final table.
+- Deliverables:
+  - ingestion + analysis script(s) and system_logs.db
+  - error_events_7days.csv (columns: timestamp, host, component, event_id, message, metric_value)
+  - summary_report.json (keys: top_hosts, hourly_errors)
+  - test_submission.json (see instructions for exact JSON schema)
+- Example run command expected in test_submission.json: "python3 run.py"
+- No network access; do not import third-party libraries.
 
-File: target_host.txt
-host-02
-
-File: insert_record.json
+File: test_submission_template.json (for candidate to copy/use)
 {
-  "timestamp": "2024-03-01T06:30:00Z",
-  "host": "host-02",
-  "cpu_percent": 100.0,
-  "mem_mb": 2400,
-  "disk_io_kb": 900,
-  "net_io_kb": 130,
-  "event_type": "INFO"
+  "candidate_name": "<your name>",
+  "language": "python3",
+  "run_command": "python3 run.py",
+  "runtime_seconds": 0,
+  "outputs": {
+    "unique_hosts": 0,
+    "top5_hosts_error": [],
+    "hourly_errors_last24": [],
+    "avg_cpu_by_component": [],
+    "top10_event_ids": []
+  },
+  "sample_error_csv_rows": [],
+  "files_produced": [],
+  "notes": ""
 }```json
 {
-  "candidate": {
-    "name": "",
-    "email": ""
+  "candidate_name": "",
+  "language": "",
+  "run_command": "",
+  "runtime_seconds": null,
+  "scripts": {
+    "run_entrypoint_source": "", 
+    "ingest_script_source": "",
+    "analysis_script_source": "",
+    "export_script_source": "",
+    "db_schema_sql": ""
   },
-  "env": {
-    "language": "",
-    "entrypoint": "",
-    "db_file": ""
+  "outputs": {
+    "unique_hosts": null,
+    "top5_hosts_error": [],
+    "hourly_errors_last24": [],
+    "avg_cpu_by_component": [],
+    "top10_event_ids": []
   },
-  "ingestion": {
-    "rows_loaded": null,
-    "rows_skipped": null,
-    "note": ""
-  },
-  "results": {
-    "total_rows": null,
-    "top_hosts_by_avg_cpu": [
-      { "host": "", "avg_cpu": null },
-      { "host": "", "avg_cpu": null },
-      { "host": "", "avg_cpu": null }
-    ],
-    "hourly_stats_for_host": [],
-    "cpu_spike_periods": []
-  },
-  "after_insert": {
-    "inserted_record_ok": null,
-    "updated_avg_cpu_for_host": null
-  },
-  "schema_and_choices": {
-    "schema_description": "",
-    "suggested_improvements": [
-      "",
-      ""
-    ]
-  },
-  "run_instructions": "",
-  "optional": {
-    "errors": []
-  }
+  "sample_error_csv_rows": [],
+  "files_produced": [],
+  "notes": ""
 }
 ```

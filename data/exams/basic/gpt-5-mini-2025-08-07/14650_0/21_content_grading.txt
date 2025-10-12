@@ -1,0 +1,522 @@
+```python
+# task_evaluation.py
+"""
+Automated grader for the "Updating Automated Test Scripts to Ensure Currency — Basic Practical Exam".
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Produces:
+    test_results.json in the same directory as this script.
+
+The grader applies the rubric described in the evaluator materials and
+returns a breakdown of scores, explanations for deductions, and the
+overall percentage score (overall_score).
+"""
+
+import json
+import os
+import sys
+import re
+from difflib import SequenceMatcher
+from datetime import datetime
+
+# --- Configuration: scoring weights (points) ---
+WEIGHTS = {
+    "tests_passing": 50,
+    "correctness_minimality": 20,
+    "clarity_reproducibility": 15,
+    "test_quality_maintainability": 10,
+    "time_management_completeness": 5
+}
+MAX_POINTS = sum(WEIGHTS.values())
+
+
+def load_json(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f), None
+    except Exception as e:
+        return None, str(e)
+
+
+def safe_get(d, key, default=None):
+    return d.get(key, default) if isinstance(d, dict) else default
+
+
+def parse_pass_fail_from_results(text):
+    """
+    Try to extract number of passed and failed tests from pytest raw output text.
+    Returns (passed:int or None, failed:int or None)
+    """
+    if not text or not isinstance(text, str):
+        return None, None
+    # Look for something like "3 passed" and "0 failed" near the end.
+    passed = None
+    failed = None
+    m = re.search(r'(\d+)\s+passed', text)
+    if m:
+        passed = int(m.group(1))
+    m2 = re.search(r'(\d+)\s+failed', text)
+    if m2:
+        failed = int(m2.group(1))
+    # As fallback, look for "collected N items" and "X failed" to deduce passed = collected - failed
+    if (passed is None or failed is None):
+        mcol = re.search(r'collected\s+(\d+)\s+items', text)
+        if mcol:
+            collected = int(mcol.group(1))
+            if failed is not None and passed is None:
+                passed = collected - failed
+            if passed is not None and failed is None:
+                failed = collected - passed
+    return passed, failed
+
+
+def extract_failed_test_files(text):
+    """
+    Return a set of test file paths found in pytest output lines that failed or were collected.
+    Looks for occurrences like 'tests/test_user_api.py' in failure headers or summary.
+    """
+    if not text:
+        return set()
+    files = set(re.findall(r'(tests/[A-Za-z0-9_\-/]+\.py)', text))
+    return files
+
+
+def compute_line_similarity(a, b):
+    """
+    Return a similarity ratio (0..1) between two multiline strings using difflib.SequenceMatcher.
+    """
+    if a is None:
+        a = ""
+    if b is None:
+        b = ""
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def parse_dates_in_text(text):
+    """
+    Find date strings like 'YYYY-MM-DD' in the given text and return them as list of date objects.
+    Ignores invalid dates.
+    """
+    dates = []
+    for m in re.findall(r'(\d{4}-\d{2}-\d{2})', text or ""):
+        try:
+            dt = datetime.strptime(m, '%Y-%m-%d').date()
+            dates.append(dt)
+        except Exception:
+            continue
+    return dates
+
+
+def main():
+    # Basic CLI handling
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>")
+        sys.exit(2)
+
+    candidate_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
+
+    results = {
+        "scores": {},
+        "deductions": [],
+        "notes": [],
+        "errors": []
+    }
+
+    # Load candidate JSON
+    candidate_json, err = load_json(candidate_path)
+    if err:
+        results["errors"].append(f"Failed to load candidate submission '{candidate_path}': {err}")
+        # Write results and exit
+        out_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"Error: could not load candidate submission. See {out_path}")
+        sys.exit(1)
+
+    # Load answer key JSON
+    answer_json, err = load_json(answer_key_path)
+    if err:
+        results["errors"].append(f"Failed to load answer key '{answer_key_path}': {err}")
+        out_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"Error: could not load answer key. See {out_path}")
+        sys.exit(1)
+
+    # Validate presence of some required fields in candidate and answer key
+    required_fields = [
+        'initial_test_results', 'updated_test_results', 'modified_files',
+        'explanation_of_changes', 'reproduce_instructions', 'self_check',
+        'time_started_iso', 'time_finished_iso', 'time_spent_minutes', 'candidate_name'
+    ]
+    missing = [f for f in required_fields if f not in candidate_json]
+    if missing:
+        results["errors"].append(f"Candidate submission missing required fields: {missing}")
+
+    # Extract useful pieces
+    cand_initial = safe_get(candidate_json, 'initial_test_results', "")
+    cand_updated = safe_get(candidate_json, 'updated_test_results', "")
+    cand_modified_files = safe_get(candidate_json, 'modified_files', [])
+    cand_explanations = safe_get(candidate_json, 'explanation_of_changes', [])
+    cand_reproduce = safe_get(candidate_json, 'reproduce_instructions', "")
+    cand_self_check = safe_get(candidate_json, 'self_check', {})
+    cand_time_spent = safe_get(candidate_json, 'time_spent_minutes', None)
+
+    ans_initial = safe_get(answer_json, 'initial_test_results', "")
+    ans_updated = safe_get(answer_json, 'updated_test_results', "")
+    ans_self_check = safe_get(answer_json, 'self_check', {})
+    ans_modified_files = safe_get(answer_json, 'modified_files', [])
+
+    # --- 1) Tests Passing (50 points) ---
+    tp_max = WEIGHTS['tests_passing']
+    tp_score = 0
+    tp_notes = []
+
+    # Determine expected total tests from answer key self_check if available
+    try:
+        ans_passed = int(safe_get(ans_self_check, 'number_of_tests_passed', 0))
+        ans_failed = int(safe_get(ans_self_check, 'number_of_tests_failed', 0))
+        expected_total = ans_passed + ans_failed
+    except Exception:
+        # As fallback parse from answer updated/initial results
+        ap, af = parse_pass_fail_from_results(ans_updated)
+        if ap is not None:
+            expected_total = ap + (af or 0)
+        else:
+            expected_total = None
+
+    # Prefer candidate self_check numbers if provided
+    cand_passed = None
+    cand_failed = None
+    try:
+        cand_passed = cand_self_check.get('number_of_tests_passed', None)
+        cand_failed = cand_self_check.get('number_of_tests_failed', None)
+        if cand_passed is not None:
+            cand_passed = int(cand_passed)
+        if cand_failed is not None:
+            cand_failed = int(cand_failed)
+    except Exception:
+        cand_passed = None
+        cand_failed = None
+
+    # If candidate self_check missing, try to parse from updated_test_results
+    if cand_passed is None or cand_failed is None:
+        p, f = parse_pass_fail_from_results(cand_updated)
+        if p is not None:
+            cand_passed = p
+        if f is not None:
+            cand_failed = f
+
+    # If still None, set defaults and mark as suspect
+    if cand_passed is None or cand_failed is None:
+        results["notes"].append("Could not reliably determine number of passed/failed tests from candidate submission. Using conservative scoring for Tests Passing.")
+        # Treat as zero passing
+        cand_passed = cand_passed or 0
+        cand_failed = cand_failed or 0
+
+    # If expected_total known, compute fraction
+    if expected_total is None or expected_total == 0:
+        # Fall back: if candidate reports zero failed -> grant full points if updated output contains 'passed'
+        if cand_failed == 0 and cand_passed > 0:
+            tp_score = tp_max
+            tp_notes.append("No expected total available; candidate reports all tests passing -> full credit for Tests Passing.")
+        else:
+            tp_score = int(tp_max * (cand_passed / max(1, cand_passed + cand_failed)))
+            tp_notes.append("No expected total in answer key; partial credit based on candidate pass fraction.")
+    else:
+        # If candidate modified app.py -> automatic fail in this category (disallowed)
+        modified_paths = [safe_get(f, 'path', '') for f in cand_modified_files if isinstance(f, dict)]
+        modified_paths_lower = [p.lower() for p in modified_paths]
+        if any(p.endswith('app.py') or p == 'app.py' for p in modified_paths_lower):
+            tp_score = 0
+            results["deductions"].append("Candidate modified application source (app.py) which is not allowed. Tests Passing score set to 0.")
+        else:
+            # compute score proportionally: passed / expected_total
+            # but require that candidate fixed previously failing tests; full credit if no failures remain and total matches expected_total
+            if cand_failed == 0 and (cand_passed >= expected_total):
+                tp_score = tp_max
+                tp_notes.append("All tests pass and number of passed tests meets expectation -> full credit.")
+            else:
+                # Partial credit proportional to candidate_passed / expected_total
+                frac = max(0.0, min(1.0, cand_passed / expected_total))
+                tp_score = round(tp_max * frac, 2)
+                tp_notes.append(f"Partial credit: candidate passed {cand_passed}/{expected_total} tests -> {frac*100:.1f}% of Tests Passing points.")
+
+    results['scores']['tests_passing'] = {
+        "score": tp_score,
+        "max": tp_max,
+        "notes": tp_notes
+    }
+
+    # --- 2) Correctness & Minimality (20 points) ---
+    cm_max = WEIGHTS['correctness_minimality']
+    cm_score = 0
+    cm_notes = []
+
+    # Rules:
+    # - Only files under tests/ are allowed. If any modified file outside tests/ => 0 for this category.
+    # - If all files under tests/, full credit (subject to minimality check).
+    # - Minimality: compute average similarity ratio between original_content and new_content across modified_files.
+    #    If similarity ratio < 0.5 => half credit.
+    modified_entries = cand_modified_files if isinstance(cand_modified_files, list) else []
+    if not modified_entries:
+        cm_score = 0
+        cm_notes.append("No modified_files provided; cannot evaluate correctness/minimality -> 0 points.")
+        results["deductions"].append("modified_files is empty or missing.")
+    else:
+        outside = [f for f in modified_entries if not (isinstance(f, dict) and safe_get(f, 'path', '').startswith('tests/'))]
+        if outside:
+            cm_score = 0
+            cm_notes.append("One or more modified files are outside the 'tests/' directory. This violates allowed-changes rule.")
+            results["deductions"].append(f"Modified files outside tests/: {[safe_get(f,'path') for f in outside]}")
+        else:
+            # All modified files within tests/ -> compute minimality similarity
+            ratios = []
+            large_change_flag = False
+            for fe in modified_entries:
+                orig = safe_get(fe, 'original_content', '') or ''
+                new = safe_get(fe, 'new_content', '') or ''
+                ratio = compute_line_similarity(orig, new)
+                ratios.append(ratio)
+                if ratio < 0.4:
+                    large_change_flag = True
+            avg_ratio = sum(ratios) / max(1, len(ratios))
+            if large_change_flag:
+                # Penalize: large refactor(s) -> half points
+                cm_score = round(cm_max * 0.5, 2)
+                cm_notes.append(f"Edits appear more than minimal (average similarity {avg_ratio:.2f}). Partial credit awarded.")
+                results["deductions"].append("Large refactor(s) in test files; minimality reduced score.")
+            else:
+                cm_score = cm_max
+                cm_notes.append(f"All modified files are within tests/ and edits are reasonably minimal (average similarity {avg_ratio:.2f}).")
+    results['scores']['correctness_minimality'] = {
+        "score": cm_score,
+        "max": cm_max,
+        "notes": cm_notes
+    }
+
+    # --- 3) Clarity of explanations & reproducibility (15 points) ---
+    cr_max = WEIGHTS['clarity_reproducibility']
+    cr_score = 0
+    cr_notes = []
+
+    # Check that each modified file has a corresponding explanation entry
+    explain_entries = cand_explanations if isinstance(cand_explanations, list) else []
+    mod_paths = [safe_get(f, 'path', '') for f in modified_entries]
+    explained_paths = [safe_get(e, 'path', '') for e in explain_entries if isinstance(e, dict)]
+    missing_expl = [p for p in mod_paths if p not in explained_paths]
+
+    # Check reproduce_instructions contains pytest command
+    reproduce_ok = False
+    if isinstance(cand_reproduce, str) and 'pytest' in cand_reproduce.lower():
+        reproduce_ok = True
+    else:
+        results["deductions"].append("reproduce_instructions does not include 'pytest' command or is missing.")
+
+    # Evaluate explanations content quality
+    explanation_quality_penalty = 0
+    for e in explain_entries:
+        if not isinstance(e, dict):
+            explanation_quality_penalty += 1
+            continue
+        why = safe_get(e, 'why_changed', '').strip()
+        what = safe_get(e, 'what_changed', '').strip()
+        # require non-empty why and what
+        if not why or not what:
+            explanation_quality_penalty += 1
+
+    # Compute score:
+    if missing_expl:
+        cr_score = 0
+        cr_notes.append(f"Missing explanation entries for modified files: {missing_expl}.")
+        results["deductions"].append("Missing explanation_of_changes for some modified files.")
+    else:
+        # start with full and deduct for quality issues and reproduce_instructions
+        cr_score = cr_max
+        if explanation_quality_penalty > 0:
+            # subtract up to half the category for poor explanations
+            deduct = min(cr_max * 0.5, explanation_quality_penalty * (cr_max * 0.2))
+            cr_score = round(cr_score - deduct, 2)
+            cr_notes.append(f"Explanations present but some entries are incomplete ({explanation_quality_penalty} issues). Deducted {deduct} points.")
+            results["deductions"].append("Incomplete explanation_of_changes entries.")
+        if not reproduce_ok:
+            cr_score = round(max(0, cr_score - (cr_max * 0.3)), 2)
+            cr_notes.append("reproduce_instructions missing pytest command -> small deduction.")
+    results['scores']['clarity_reproducibility'] = {
+        "score": cr_score,
+        "max": cr_max,
+        "notes": cr_notes
+    }
+
+    # --- 4) Test quality / maintainability improvements (10 points) ---
+    tq_max = WEIGHTS['test_quality_maintainability']
+    tq_score = 0
+    tq_notes = []
+
+    # Indicators for positive maintainability:
+    # - Using tests/helpers.LOGIN_BUTTON_TEST_ID in UI test (look for string LOGIN_BUTTON_TEST_ID)
+    # - Checking data-test-id attribute (string 'data-test-id=')
+    # - Fixture expiry_date updated to >= 2025-01-15 (app.TODAY)
+    # - Not broadening assertions unnecessarily (if assertion_design_decision present and non-empty must justify)
+    maintain_indicators = 0
+    # Check modified files content
+    for fe in modified_entries:
+        path = safe_get(fe, 'path', '')
+        new = safe_get(fe, 'new_content', '') or ''
+        # UI improvements
+        if path.endswith('test_ui.py') or 'ui' in path:
+            if 'LOGIN_BUTTON_TEST_ID' in new or 'data-test-id' in new:
+                maintain_indicators += 1
+        # Fixtures date updated
+        if path.endswith('fixtures.py'):
+            dates = parse_dates_in_text(new)
+            # check if any date >= 2025-01-15
+            for d in dates:
+                try:
+                    if d >= datetime(2025, 1, 15).date():
+                        maintain_indicators += 1
+                        break
+                except Exception:
+                    continue
+        # Check for elimination of sleeps -> basic heuristic 'sleep(' removed or replaced by wait (not implemented)
+        if 'sleep(' not in new:
+            # neutral; don't count
+            pass
+
+    # Check assertion_design_decision fields: if any non-empty, allow but require justification
+    broadening_justifications = 0
+    for e in explain_entries:
+        if not isinstance(e, dict):
+            continue
+        adc = safe_get(e, 'assertion_design_decision', '')
+        if isinstance(adc, str) and adc.strip():
+            broadening_justifications += 1
+
+    # Compute score: award points proportional to number of indicators found (max 2 indicators -> full)
+    if maintain_indicators >= 2:
+        tq_score = tq_max
+        tq_notes.append("Good maintainability changes detected (stable selectors and updated fixture date).")
+    elif maintain_indicators == 1:
+        tq_score = round(tq_max * 0.6, 2)
+        tq_notes.append("Some maintainability improvements detected (one indicator).")
+    else:
+        tq_score = 0
+        tq_notes.append("No clear maintainability improvements detected (e.g., no stable selectors or updated fixture data found).")
+        results["deductions"].append("No maintainability improvements detected in modified test files.")
+
+    # If candidate broadened assertions without justification -> penalty
+    # Heuristic: if any explanation has 'assertion_design_decision' empty but diff shows 'or' or '|' in assertion?
+    # We'll check explanations: if any explanation mentions 'broaden' or 'either' and assertion_design_decision empty -> penalty
+    for e in explain_entries:
+        if not isinstance(e, dict):
+            continue
+        why = safe_get(e, 'why_changed', '').lower()
+        adc = safe_get(e, 'assertion_design_decision', '')
+        if ('either' in why or 'or ' in why or 'broaden' in why) and (not adc or not adc.strip()):
+            # reduce tq_score by half
+            old = tq_score
+            tq_score = round(max(0, tq_score * 0.5), 2)
+            tq_notes.append("Detected potential broadening of assertions without explicit justification; reduced maintainability score.")
+            results["deductions"].append("Broadening assertions without assertion_design_decision justification.")
+            break
+
+    results['scores']['test_quality_maintainability'] = {
+        "score": tq_score,
+        "max": tq_max,
+        "notes": tq_notes
+    }
+
+    # --- 5) Time management & completeness (5 points) ---
+    tm_max = WEIGHTS['time_management_completeness']
+    tm_score = 0
+    tm_notes = []
+
+    # Conditions for full credit:
+    # - time_spent_minutes present and <= 90
+    # - initial_test_results and updated_test_results present and non-empty
+    # - For each modified file, original_content present and non-empty
+    time_ok = True
+    if cand_time_spent is None:
+        tm_notes.append("time_spent_minutes missing.")
+        time_ok = False
+        results["deductions"].append("Missing time_spent_minutes.")
+    else:
+        try:
+            tsm = int(cand_time_spent)
+            if tsm <= 90 and tsm > 0:
+                pass
+            else:
+                time_ok = False
+                tm_notes.append(f"time_spent_minutes = {tsm} exceeds limit or invalid.")
+                results["deductions"].append("time_spent_minutes exceeds allowed limit or invalid.")
+        except Exception:
+            time_ok = False
+            tm_notes.append("time_spent_minutes invalid (not integer).")
+            results["deductions"].append("time_spent_minutes invalid.")
+
+    if not cand_initial or not cand_updated:
+        time_ok = False
+        tm_notes.append("initial_test_results or updated_test_results missing/empty.")
+        results["deductions"].append("Missing test run outputs (initial or updated).")
+
+    # Check original_content presence for modified files
+    orig_missing = []
+    for fe in modified_entries:
+        if not isinstance(fe, dict):
+            continue
+        if not safe_get(fe, 'original_content', ''):
+            orig_missing.append(safe_get(fe, 'path', '<unknown>'))
+    if orig_missing:
+        time_ok = False
+        tm_notes.append(f"original_content missing for modified files: {orig_missing}")
+        results["deductions"].append("original_content missing for some modified files.")
+
+    if time_ok:
+        tm_score = tm_max
+        tm_notes.append("Time and completeness checks passed.")
+    else:
+        # partial credit: if only minor issues, give half
+        tm_score = round(tm_max * 0.5, 2)
+        tm_notes.append("Partial credit due to missing/invalid time or missing original contents.")
+
+    results['scores']['time_management_completeness'] = {
+        "score": tm_score,
+        "max": tm_max,
+        "notes": tm_notes
+    }
+
+    # --- Aggregate final score ---
+    total_points = 0
+    for k in WEIGHTS:
+        total_points += results['scores'][k]['score']
+    percentage = round((total_points / MAX_POINTS) * 100, 2) if MAX_POINTS else 0.0
+
+    # Compose final structured output
+    results_summary = {
+        "scores": results['scores'],
+        "deductions": results.get('deductions', []),
+        "notes": results.get('notes', []),
+        "errors": results.get('errors', []),
+        "total_points": round(total_points, 2),
+        "max_points": MAX_POINTS,
+        "percentage": percentage,
+        "overall_score": percentage
+    }
+
+    # Save to test_results.json next to script
+    out_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results_summary, f, indent=2)
+        print(f"Grading complete. Results written to {out_path}")
+    except Exception as e:
+        print(f"Failed to write results to {out_path}: {e}")
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
+```

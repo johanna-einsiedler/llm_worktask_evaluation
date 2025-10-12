@@ -1,432 +1,545 @@
-Here's the requested automated grading script. Save it as task_evaluation.py. It loads the candidate submission and the answer key, applies the grading logic described in the evaluator instructions, and writes test_results.json in the same directory as the script.
-
-Script (task_evaluation.py):
-
-```python
 #!/usr/bin/env python3
 """
 task_evaluation.py
 
+Automated grader for the Practical Code Maintenance Basic exam.
+
 Usage:
-  python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
+    python task_evaluation.py path/to/test_submission.json path/to/answer_key.json
 
-This script loads the candidate submission JSON and the answer key JSON,
-applies automated grading rules (as described in the exam materials), and
-writes a detailed grading report to test_results.json in the same directory
-as this script.
+Produces:
+    test_results.json (in the same directory as this script)
 
-The report includes:
- - breakdown of scores per grading category
- - explanations for deductions
- - total points, max points, percentage score
- - overall_score (numeric percentage 0-100)
-
-Only standard library modules are used.
+This grader applies the weights and rules described in the exam materials.
+Only Python standard library is used.
 """
 
 import json
 import os
-import sys
-import math
-import statistics
 import re
-from typing import Any, Dict, List, Optional
+import sys
+from typing import Any, Dict, List, Tuple
 
-# ---- Helper utilities ----
+# -------------------------
+# Helper utilities
+# -------------------------
 
-def safe_load_json(path: str) -> Optional[Dict[str, Any]]:
+
+def load_json(path: str) -> Any:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception as e:
-        return {"__load_error__": str(e)}
+    except FileNotFoundError:
+        raise
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {path}: {e}")
 
-def get_task(submission: Dict[str, Any], task_id: str) -> Optional[Dict[str, Any]]:
-    tasks = submission.get("tasks") or []
-    for t in tasks:
-        if t.get("id") == task_id:
+
+def safe_get_task(tasks_list: List[Dict], tid: str) -> Dict:
+    for t in tasks_list:
+        if t.get("id") == tid:
             return t
-    return None
+    return {}
 
-def extract_passed_count(key_outputs: str) -> Optional[int]:
-    if not key_outputs:
-        return None
-    # Look for patterns like "4 passed" or "4 passed in 0.12s"
-    m = re.search(r"(\d+)\s+passed\b", key_outputs)
+
+def find_pass_fail_counts(output: str) -> Tuple[int, int]:
+    """
+    Attempt to extract 'X passed' and 'Y failed' counts from pytest/unittest output.
+    Returns (passed, failed). If not found, returns (0,0) as default.
+    """
+    if not output:
+        return 0, 0
+    out = output
+    # look for patterns like '4 passed' and '1 failed'
+    m_pass = re.search(r"(\d+)\s+passed", out, flags=re.IGNORECASE)
+    m_fail = re.search(r"(\d+)\s+failed", out, flags=re.IGNORECASE)
+    passed = int(m_pass.group(1)) if m_pass else 0
+    failed = int(m_fail.group(1)) if m_fail else 0
+    # If output contains 'ERROR' or 'Traceback' consider that as failed
+    if re.search(r"\b(error|traceback|exception)\b", out, flags=re.IGNORECASE):
+        # mark at least one failure if nothing detected explicitly
+        if failed == 0:
+            failed = 1
+    return passed, failed
+
+
+def tests_appear_passing(output: str) -> bool:
+    """
+    Heuristic: return True if output indicates no failures.
+    Conditions:
+      - If a failed count is present and >0 => return False
+      - Else if 'passed' count present and no errors reported => True
+      - Else False (can't confirm)
+    """
+    if output is None:
+        return False
+    passed, failed = find_pass_fail_counts(output)
+    if failed > 0:
+        return False
+    if passed > 0:
+        # ensure no 'FAILED' or 'ERROR' markers
+        if re.search(r"\b(fail|failed|error|traceback)\b", output, flags=re.IGNORECASE):
+            # If failed word appears but failed count is zero, still consider fail if 'FAILED' banner present
+            if re.search(r"\bFAILED\b", output, flags=re.IGNORECASE) or re.search(
+                r"\bERROR\b", output, flags=re.IGNORECASE
+            ):
+                return False
+        return True
+    # else conservative: not enough evidence tests passed
+    return False
+
+
+def contains_min_length_in_signature(proc_content: str) -> Tuple[bool, bool]:
+    """
+    Check whether processor.py defines count_words and top_n_words with min_length parameter.
+    Returns tuple (count_words_has_min, top_n_has_min).
+    """
+    if not proc_content:
+        return False, False
+    # naive detection: look for 'def count_words(' line and check for 'min_length' inside parentheses
+    def_sig_re = re.compile(r"def\s+count_words\s*\(([^)]*)\)", re.MULTILINE)
+    m = def_sig_re.search(proc_content)
+    count_has = False
     if m:
-        try:
-            return int(m.group(1))
-        except:
-            return None
-    # Another pytest style: "== 4 passed"
-    m2 = re.search(r"==\s*(\d+)\s+passed\b", key_outputs)
+        params = m.group(1)
+        if "min_length" in params:
+            count_has = True
+    top_sig_re = re.compile(r"def\s+top_n_words\s*\(([^)]*)\)", re.MULTILINE)
+    m2 = top_sig_re.search(proc_content)
+    top_has = False
     if m2:
-        try:
-            return int(m2.group(1))
-        except:
-            return None
-    return None
+        params = m2.group(1)
+        if "min_length" in params:
+            top_has = True
+    return count_has, top_has
 
-def mean_safe(nums: List[float]) -> Optional[float]:
-    try:
-        if not nums:
-            return None
-        return float(statistics.mean(nums))
-    except Exception:
-        return None
 
-def normalize_command(cmd: str) -> str:
-    if not cmd:
-        return ""
-    return " ".join(cmd.split()).strip()
+def detect_counter_usage(proc_content: str) -> bool:
+    """
+    Detect whether collections.Counter or Counter is used in processor.py content.
+    """
+    if not proc_content:
+        return False
+    if "Counter(" in proc_content or "from collections import Counter" in proc_content:
+        return True
+    return False
 
-def list_changed_files_from_tasks(tasks: List[Dict[str, Any]]) -> List[str]:
-    result = []
-    for t in tasks:
-        for f in t.get("files_changed", []):
-            fname = f.get("filename")
-            if fname:
-                result.append(fname)
-    return sorted(list(set(result)))
 
-def present_nonempty_string(s: Any) -> bool:
-    return isinstance(s, str) and s.strip() != ""
+def detect_find_duplicates_reimpl(proc_content: str) -> bool:
+    """
+    Detect if find_duplicates_bruteforce has been reimplemented (not the nested loop).
+    Heuristic: look for nested 'for i in' 'for j in' pattern (original O(n^2) form).
+    If absent and presence of Counter or linear logic found, consider reimplemented.
+    """
+    if not proc_content:
+        return False
+    nested_loop_pattern = re.search(r"for\s+\w+\s+in\s+range\([^)]*\):\s*?\n\s*for\s+\w+\s+in\s+range\(", proc_content, flags=re.MULTILINE)
+    if nested_loop_pattern:
+        # still nested => likely brute-force
+        return False
+    # if Counter used or 'counts = Counter' or 'counts =' with 'tokens' then reimplemented
+    if detect_counter_usage(proc_content):
+        return True
+    # other heuristics: presence of 'counts = {}' + single pass 'for w in tokens' and building counts
+    if re.search(r"counts\s*=\s*\{", proc_content) and re.search(r"for\s+\w+\s+in\s+tokens", proc_content):
+        return True
+    return False
 
-# ---- Grading logic ----
 
-def grade_submission(candidate: Dict[str, Any], answer: Dict[str, Any]) -> Dict[str, Any]:
-    # Initialize report structure
-    report = {
-        "categories": {},
-        "deductions": [],
-        "total_points": 0.0,
-        "max_points": 100.0,
-        "percentage": 0.0,
-        "overall_score": 0.0,
-        "notes": [],
-    }
+# -------------------------
+# Grading logic
+# -------------------------
 
-    # Quick validation
-    if "__load_error__" in candidate:
-        report["notes"].append(f"Error loading candidate submission JSON: {candidate['__load_error__']}")
-        # All zero score
-        report["percentage"] = 0.0
-        report["overall_score"] = 0.0
-        report["total_points"] = 0.0
-        report["deductions"].append("Candidate submission JSON could not be loaded - full deduction.")
-        return report
 
-    if "__load_error__" in answer:
-        report["notes"].append(f"Error loading answer key JSON: {answer['__load_error__']}")
-        report["percentage"] = 0.0
-        report["overall_score"] = 0.0
-        report["total_points"] = 0.0
-        report["deductions"].append("Answer key JSON could not be loaded - cannot grade.")
-        return report
+def grade_task_a(candidate_task: Dict, answer_task: Dict) -> Tuple[int, int, List[str]]:
+    """
+    Task A: 40 points total
+      - 30 pts: All Task A tests pass in candidate-submitted test_output
+      - 10 pts: Changes are minimal and well-scoped (only processor.py changed) -> award full
+                 If processor.py present but extra files changed => partial 5 pts
+                 If processor.py missing => 0 pts
+    """
+    max_points = 40
+    messages: List[str] = []
+    score = 0
 
-    # Category weights (points out of 100)
-    weights = {
-        "correctness": 50.0,
-        "reproducibility": 15.0,
-        "performance": 15.0,
-        "code_quality": 10.0,
-        "explanation": 10.0,
-    }
-
-    # 1) Correctness & completeness (50 points)
-    correctness_report = {"earned": 0.0, "max": weights["correctness"], "notes": []}
-    # Determine expected passing count from answer key (Finale/Finalize task key_outputs)
-    expected_passed = None
-    ans_finalize = get_task(answer, "Finalize") or get_task(answer, "T3") or get_task(answer, "T2") or {}
-    ans_finalize_outputs = ans_finalize.get("key_outputs", "")
-    expected_passed = extract_passed_count(ans_finalize_outputs)
-
-    # Determine candidate's passed count (prefer Finalize, else any task outputs)
-    cand_finalize = get_task(candidate, "Finalize") or {}
-    cand_passed = extract_passed_count(cand_finalize.get("key_outputs", "") or "")
-    if cand_passed is None:
-        # try T1 or T2 etc.
-        for tid in ("T2", "T3", "T1", "T0"):
-            t = get_task(candidate, tid)
-            if t:
-                c = extract_passed_count(t.get("key_outputs", "") or "")
-                if c is not None:
-                    cand_passed = c
-                    break
-
-    # If expected_passed not available, fallback to answer key new_tests length + original tests if found
-    if expected_passed is None:
-        # try to derive from answer key new_tests and tasks
-        ans_new_tests = answer.get("new_tests", []) or []
-        # Heuristic: original tests previously passing = in answer key sample it reports "4 passed"
-        # If we cannot find, assume expected_passed equals length of candidate final tests if present
-        expected_passed = len(ans_new_tests) + 3  # fallback guess to avoid divide by zero (heuristic)
-        correctness_report["notes"].append("Could not parse expected passed count from answer key; using heuristic expected_passed.")
-
-    # Now compute correctness score
-    if cand_passed is None:
-        correctness_report["earned"] = 0.0
-        correctness_report["notes"].append("Could not determine candidate's passed tests from provided key_outputs.")
-        report["deductions"].append("No evidence of passing tests in submission outputs.")
+    # 30 pts for tests passing
+    test_output = candidate_task.get("test_output", "")
+    if tests_appear_passing(test_output):
+        score += 30
+        messages.append("30/30: Task A tests appear to pass (no failures detected in test output).")
     else:
-        # If candidate passed >= expected -> full points
-        if cand_passed >= expected_passed:
-            correctness_report["earned"] = correctness_report["max"]
-            correctness_report["notes"].append(f"Candidate tests passed: {cand_passed} >= expected {expected_passed}. Full correctness credit.")
+        messages.append("0/30: Task A tests did not appear to pass (failing tests or errors detected).")
+
+    # 10 pts for minimal changes: expect processor.py modified and minimal other changes
+    modified = candidate_task.get("modified_files", {}) or {}
+    modified_keys = set(modified.keys())
+    if "processor.py" in modified_keys:
+        # If only processor.py changed, full points
+        others = modified_keys - {"processor.py"}
+        if not others:
+            score += 10
+            messages.append("10/10: Only processor.py was modified for Task A (minimal, well-scoped change).")
         else:
-            # Proportional credit
-            frac = float(cand_passed) / float(expected_passed) if expected_passed > 0 else 0.0
-            correctness_report["earned"] = round(correctness_report["max"] * frac, 2)
-            correctness_report["notes"].append(f"Candidate tests passed: {cand_passed} / expected {expected_passed} -> partial credit ({frac:.2%}).")
-            report["deductions"].append(f"Correctness: expected {expected_passed} tests to pass, candidate had {cand_passed}.")
-
-    report["categories"]["correctness"] = correctness_report
-
-    # 2) Tests & reproducibility (15 points)
-    repro_report = {"earned": 0.0, "max": weights["reproducibility"], "notes": []}
-    # Criteria
-    # - how_to_reproduce present (5 points)
-    # - new_tests included (5 points)
-    # - files_changed provided for main tasks T1,T2,T3 (5 points)
-    how_to_repro = candidate.get("how_to_reproduce", "")
-    if present_nonempty_string(how_to_repro):
-        repro_report["earned"] += 5.0
-        repro_report["notes"].append("how_to_reproduce provided.")
+            # partial credit if processor.py included but other files modified too
+            score += 5
+            messages.append(
+                f"5/10: processor.py was modified but additional files were changed ({sorted(list(others))})."
+            )
     else:
-        repro_report["notes"].append("how_to_reproduce missing or empty.")
-        report["deductions"].append("Missing how_to_reproduce; reproducibility penalty.")
+        messages.append("0/10: processor.py was not modified for Task A (expected).")
 
-    # new_tests
-    cand_new_tests = candidate.get("new_tests") or []
-    if isinstance(cand_new_tests, list) and len(cand_new_tests) > 0:
-        repro_report["earned"] += 5.0
-        repro_report["notes"].append(f"{len(cand_new_tests)} new test(s) provided.")
-    else:
-        repro_report["notes"].append("No new_tests included in submission.")
-        report["deductions"].append("No new automated test provided for the new feature (Task 2).")
+    return score, max_points, messages
 
-    # files_changed for T1,T2,T3
-    tasks = candidate.get("tasks") or []
-    found_changes = {"T1": False, "T2": False, "T3": False}
-    for t in tasks:
-        tid = t.get("id")
-        if tid in found_changes:
-            files_changed = t.get("files_changed") or []
-            if isinstance(files_changed, list) and len(files_changed) > 0:
-                found_changes[tid] = True
-    if all(found_changes.values()):
-        repro_report["earned"] += 5.0
-        repro_report["notes"].append("Files changed/unified diffs provided for T1, T2, and T3.")
-    else:
-        missing = [k for k, v in found_changes.items() if not v]
-        repro_report["notes"].append(f"Missing files_changed for tasks: {', '.join(missing)}")
-        report["deductions"].append(f"Files/diffs missing for tasks: {', '.join(missing)}")
 
-    report["categories"]["reproducibility"] = repro_report
+def grade_task_b(candidate_task: Dict, answer_task: Dict) -> Tuple[int, int, List[str]]:
+    """
+    Task B: 30 points total
+      - 20 pts: new feature works and its tests pass (min_length implemented)
+          * Check processor.py has min_length in count_words and top_n_words signatures.
+          * If only count_words has it but top_n_words doesn't, partial 10/20.
+      - 10 pts: Integration with existing code and candidate added unit test
+          * Expect tests/test_task_b_spec.py included in modified files and its content has 'min_length=4' usage
+    """
+    max_points = 30
+    messages: List[str] = []
+    score = 0
 
-    # 3) Performance improvement (15 points)
-    perf_report = {"earned": 0.0, "max": weights["performance"], "notes": []}
-    cand_perf = candidate.get("performance") or {}
-    ans_perf = answer.get("performance") or {}
+    modified = candidate_task.get("modified_files", {}) or {}
+    proc_content = modified.get("processor.py", "") or ""
+    # detect min_length presence in function signatures
+    count_has_min, top_has_min = contains_min_length_in_signature(proc_content)
 
-    cand_before = cand_perf.get("before_run_times") or []
-    cand_after = cand_perf.get("after_run_times") or []
-    # Ensure numeric arrays
-    def to_floats(lst):
-        res = []
-        for x in lst:
-            try:
-                res.append(float(x))
-            except Exception:
-                pass
-        return res
+    test_output = candidate_task.get("test_output", "")
 
-    cand_before_nums = to_floats(cand_before)
-    cand_after_nums = to_floats(cand_after)
-
-    if not cand_before_nums or not cand_after_nums:
-        perf_report["earned"] = 0.0
-        perf_report["notes"].append("Candidate did not supply valid before_run_times and/or after_run_times.")
-        report["deductions"].append("Performance numbers missing or invalid.")
-    else:
-        avg_before = mean_safe(cand_before_nums)
-        avg_after = mean_safe(cand_after_nums)
-        if avg_before is None or avg_after is None or avg_after <= 0:
-            perf_report["earned"] = 0.0
-            perf_report["notes"].append("Invalid benchmark averages computed.")
-            report["deductions"].append("Benchmark averages invalid (division by zero or missing).")
+    # Feature correctness points (20)
+    if count_has_min and top_has_min:
+        # also require tests passed (the full test suite or at least relevant test)
+        if tests_appear_passing(test_output):
+            score += 20
+            messages.append("20/20: min_length implemented in both count_words and top_n_words and tests pass.")
         else:
-            ratio = avg_before / avg_after
-            perf_report["notes"].append(f"Candidate avg_before={avg_before:.2f} ms, avg_after={avg_after:.2f} ms, ratio={ratio:.2f}x.")
-            # scoring: full points if ratio >= 2.0, partial up to ratio/2 * full points
-            if ratio >= 2.0:
-                perf_report["earned"] = perf_report["max"]
-                perf_report["notes"].append("Performance improvement meets or exceeds 2x target. Full credit.")
-            elif ratio > 1.0:
-                # linear scale: score = max_points * (ratio / 2)
-                frac = ratio / 2.0
-                perf_report["earned"] = round(perf_report["max"] * frac, 2)
-                perf_report["notes"].append(f"Performance improved but less than 2x; awarding partial credit ({frac:.2%} of max).")
-                report["deductions"].append(f"Performance improvement less than 2x (observed {ratio:.2f}x).")
+            # implemented, but tests don't appear passing
+            score += 10
+            messages.append("10/20: min_length implemented in both functions but tests do not appear to pass.")
+    elif count_has_min and not top_has_min:
+        # partial credit per rubric
+        score += 10
+        messages.append(
+            "10/20: min_length implemented in count_words but not propagated to top_n_words (partial credit)."
+        )
+    else:
+        messages.append("0/20: min_length not implemented in expected functions.")
+
+    # Integration & unit test (10)
+    test_file_name = "tests/test_task_b_spec.py"
+    test_file_present = test_file_name in modified
+    test_file_content = modified.get(test_file_name, "") or ""
+
+    if test_file_present:
+        # check the test includes min_length usage
+        if "min_length" in test_file_content or "min_length=" in test_file_content:
+            # ensure test output shows passing
+            if tests_appear_passing(test_output):
+                score += 10
+                messages.append("10/10: Integration test updated in tests/test_task_b_spec.py and tests pass.")
             else:
-                perf_report["earned"] = 0.0
-                perf_report["notes"].append("No performance improvement observed (ratio <= 1.0).")
-                report["deductions"].append("No measurable performance improvement.")
-    # also check benchmark_command matches expected (soft check)
-    cand_bench_cmd = normalize_command(cand_perf.get("benchmark_command", "") or "")
-    ans_bench_cmd = normalize_command(ans_perf.get("benchmark_command", "") or "")
-    if ans_bench_cmd and cand_bench_cmd and cand_bench_cmd != ans_bench_cmd:
-        perf_report["notes"].append(f"Candidate benchmark_command differs from answer key: '{cand_bench_cmd}' vs '{ans_bench_cmd}'.")
-        report["deductions"].append("benchmark_command mismatch (ensure you used the exact command in README).")
-
-    report["categories"]["performance"] = perf_report
-
-    # 4) Code quality & clarity (10 points) - heuristic checks
-    cq_report = {"earned": 0.0, "max": weights["code_quality"], "notes": []}
-    tasks_all = candidate.get("tasks") or []
-    changed_files = list_changed_files_from_tasks(tasks_all)
-    cq_report["notes"].append(f"Files changed (unique): {changed_files}")
-    # Acceptable set for this exam:
-    acceptable_files = {"code/deduper.py", "code/main.py", "tests/test_since_date.py"}
-    if not changed_files:
-        cq_report["earned"] = 0.0
-        cq_report["notes"].append("No file changes provided.")
-        report["deductions"].append("No code diffs or changed file contents included.")
-    else:
-        # If changes limited to acceptable_files and limited count => full credit
-        if set(changed_files).issubset(acceptable_files) and len(changed_files) <= 5:
-            cq_report["earned"] = cq_report["max"]
-            cq_report["notes"].append("Changes limited to expected files; awarding full code-quality credit.")
+                score += 5
+                messages.append(
+                    "5/10: Test for min_length present in tests/test_task_b_spec.py but tests did not appear to pass."
+                )
         else:
-            # partial credit: proportion of acceptable files covered
-            num_accept = len([f for f in changed_files if f in acceptable_files])
-            frac = num_accept / max(len(acceptable_files), 1)
-            # Cap at 0.9 if extra files changed (slight penalty)
-            score = round(cq_report["max"] * frac * (0.9 if len(changed_files) > len(acceptable_files) else 1.0), 2)
-            cq_report["earned"] = score
-            cq_report["notes"].append(f"Partial credit: {num_accept}/{len(acceptable_files)} expected files changed; {len(changed_files)} total changed.")
-            report["deductions"].append("Changes include unexpected files or too many files; partial code-quality credit awarded.")
-
-    report["categories"]["code_quality"] = cq_report
-
-    # 5) Explanation & process (10 points)
-    expl_report = {"earned": 0.0, "max": weights["explanation"], "notes": []}
-    # Criteria:
-    # - final_notes present -> 4 points
-    # - short_summary present for each task (T0,T1,T2,T3,Finalize) -> up to 6 points (proportional)
-    final_notes = candidate.get("final_notes", "")
-    if present_nonempty_string(final_notes):
-        expl_report["earned"] += 4.0
-        expl_report["notes"].append("final_notes provided.")
+            # test file changed but not invoking min_length properly
+            score += 3
+            messages.append("3/10: tests/test_task_b_spec.py was modified but does not appear to call min_length.")
     else:
-        expl_report["notes"].append("final_notes missing or empty.")
-        report["deductions"].append("Missing final_notes; deduction in explanation/process score.")
+        # no test added/modified in expected place
+        messages.append("0/10: Expected unit test in tests/test_task_b_spec.py not provided in modified_files.")
 
-    # Count tasks with short_summary
-    required_task_ids = ["T0", "T1", "T2", "T3", "Finalize"]
-    count_with_summary = 0
-    for tid in required_task_ids:
-        t = get_task(candidate, tid)
-        if t and present_nonempty_string(t.get("short_summary", "")):
-            count_with_summary += 1
-    frac = count_with_summary / float(len(required_task_ids))
-    expl_report["earned"] += round(6.0 * frac, 2)
-    expl_report["notes"].append(f"{count_with_summary}/{len(required_task_ids)} tasks include short_summary; awarding {round(6.0 * frac, 2)} points of 6 possible.")
+    return score, max_points, messages
 
-    report["categories"]["explanation"] = expl_report
 
-    # Sum totals
-    total_earned = 0.0
-    for cat, info in report["categories"].items():
-        total_earned += info.get("earned", 0.0)
-    report["total_points"] = round(total_earned, 2)
-    report["percentage"] = round((report["total_points"] / report["max_points"]) * 100.0, 2)
-    report["overall_score"] = report["percentage"]
+def grade_task_c(candidate_task: Dict, answer_task: Dict) -> Tuple[int, int, List[str]]:
+    """
+    Task C: 25 points total
+      - 15 pts: Demonstrable quantitative improvement (benchmark_before and benchmark_after numbers)
+          * Full points if both numbers provided and benchmark_after < benchmark_before by at least 5% (or at least a small absolute drop).
+          * Partial points if improvement is small but positive.
+          * If no numbers but algorithmic change detected (e.g., Counter) -> partial credit.
+      - 10 pts: Explanation present and mentions algorithmic choice / trade-offs
+          * Full 10 if explanation contains 'Counter', 'O(n)', 'linear', 'algorithm', or 'cache' keywords.
+          * 5 if explanation non-empty but not specific.
+    """
+    max_points = 25
+    messages: List[str] = []
+    score = 0
 
-    # Add some high-level notes and reproducibility checks
-    # Check that candidate submission adhered to required JSON schema minimally
-    missing_schema = []
-    required_top_keys = ["candidate_name", "start_time_utc", "end_time_utc", "environment", "tasks", "performance", "how_to_reproduce", "final_notes", "self_assessed_percent_complete"]
-    for key in required_top_keys:
-        if key not in candidate:
-            missing_schema.append(key)
-    if missing_schema:
-        report["notes"].append(f"Submission is missing expected top-level keys: {missing_schema}")
-        report["deductions"].append("Submission JSON missing required fields; partial reproducibility risk.")
+    bench_before = candidate_task.get("benchmark_before")
+    bench_after = candidate_task.get("benchmark_after")
+    proc_changed_files = candidate_task.get("modified_files", {}) or {}
+    proc_content = proc_changed_files.get("processor.py", "") or ""
+    explanation = (candidate_task.get("explanation") or "").strip()
+    test_output = candidate_task.get("test_output", "") or ""
 
-    # Provide a short final recommendation based on points and minimum pass threshold (80%)
-    pass_threshold = 80.0
-    if report["percentage"] >= pass_threshold:
-        report["notes"].append(f"Candidate PASS (score {report['percentage']}% >= threshold {pass_threshold}%).")
+    # 15 pts: measurable improvement
+    measurable_awarded = 0
+    if isinstance(bench_before, (int, float)) and isinstance(bench_after, (int, float)):
+        try:
+            b_before = float(bench_before)
+            b_after = float(bench_after)
+            if b_after < b_before:
+                # compute relative improvement
+                if b_before > 0:
+                    rel = (b_before - b_after) / b_before
+                else:
+                    rel = 0.0
+                # thresholds
+                if rel >= 0.05 or (b_before - b_after) >= 0.001:
+                    # acceptable measurable improvement
+                    score += 15
+                    measurable_awarded = 15
+                    messages.append(
+                        f"15/15: benchmark shows improvement: before={b_before:.6f}s after={b_after:.6f}s (rel improvement {rel*100:.1f}%)."
+                    )
+                else:
+                    # small but positive improvement
+                    score += 8
+                    measurable_awarded = 8
+                    messages.append(
+                        f"8/15: small improvement detected: before={b_before:.6f}s after={b_after:.6f}s (rel {rel*100:.1f}%)."
+                    )
+            else:
+                messages.append(
+                    f"0/15: benchmark shows no improvement or slower: before={b_before:.6f}s after={b_after:.6f}s."
+                )
+        except Exception:
+            messages.append("0/15: Invalid numeric benchmark values provided.")
     else:
-        report["notes"].append(f"Candidate FAIL (score {report['percentage']}% < threshold {pass_threshold}%).")
-
-    # Provide per-task quick status checks (present/absent)
-    task_statuses = {}
-    for tid in required_task_ids:
-        t = get_task(candidate, tid)
-        if t:
-            task_statuses[tid] = {
-                "present": True,
-                "status_field": t.get("status"),
-                "minutes_spent": t.get("minutes_spent"),
-            }
+        # No numeric benchmarks provided; try to detect algorithmic change
+        if detect_find_duplicates_reimpl(proc_content):
+            # partial credit
+            score += 10
+            measurable_awarded = 10
+            messages.append(
+                "10/15: No numeric benchmarks provided but processor.py appears to have reimplemented duplicate detection (linear approach detected); awarded partial credit."
+            )
         else:
-            task_statuses[tid] = {"present": False}
-    report["task_statuses"] = task_statuses
+            messages.append("0/15: No numeric benchmarks and no clear algorithmic improvement detected.")
 
-    # Attach some raw useful snippets for grader convenience
-    report["raw_candidate_summary"] = {
-        "candidate_name": candidate.get("candidate_name"),
-        "candidate_email": candidate.get("candidate_email"),
-        "candidate_passed_tests_detected": cand_passed,
-        "expected_passed_tests": expected_passed,
-        "candidate_benchmark": {
-            "before": cand_before_nums,
-            "after": cand_after_nums,
-            "command": cand_perf.get("benchmark_command"),
-        },
-        "changed_files": list_changed_files_from_tasks(candidate.get("tasks") or []),
+    # 10 pts: clear explanation
+    explanation_award = 0
+    if explanation:
+        # look for keywords indicating algorithmic reasoning
+        keywords = ["counter", "collections.Counter", "o(n)", "o(n^2)", "o(n2)", "linear", "algorithm", "complexity", "cache", "caching", "set(", "hash", "trade-off", "robust"]
+        expl_low = explanation.lower()
+        if any(k.lower() in expl_low for k in keywords):
+            score += 10
+            explanation_award = 10
+            messages.append("10/10: Explanation provided and mentions algorithmic choice or trade-offs.")
+        else:
+            score += 5
+            explanation_award = 5
+            messages.append("5/10: Explanation provided but lacks specific algorithmic keywords; partial credit.")
+    else:
+        messages.append("0/10: No explanation provided for Task C.")
+
+    return score, max_points, messages
+
+
+def grade_submission_quality(candidate: Dict) -> Tuple[int, int, List[str]]:
+    """
+    5 points total for submission quality & reproducibility
+      - run_commands present & non-empty
+      - JSON contains required top-level keys and 3 tasks
+      - modified_files entries included for changed files (we check that modified_files exists for each task)
+    """
+    max_points = 5
+    messages: List[str] = []
+    score = 0
+
+    # run_commands check
+    run_cmds = candidate.get("run_commands")
+    if isinstance(run_cmds, list) and run_cmds:
+        score += 2
+        messages.append("2/2: run_commands present.")
+    else:
+        messages.append("0/2: run_commands missing or empty.")
+
+    tasks = candidate.get("tasks")
+    if isinstance(tasks, list) and len(tasks) == 3:
+        score += 2
+        messages.append("2/2: tasks array present and contains 3 task objects.")
+    else:
+        messages.append("0/2: tasks array missing or does not contain 3 tasks.")
+
+    # modified_files presence: ensure each task has modified_files key (can be empty dict)
+    ok = True
+    if isinstance(tasks, list):
+        for t in tasks:
+            if "modified_files" not in t:
+                ok = False
+                break
+    if ok:
+        score += 1
+        messages.append("1/1: Each task includes modified_files key (even if empty).")
+    else:
+        messages.append("0/1: One or more task objects missing modified_files key.")
+
+    return score, max_points, messages
+
+
+# -------------------------
+# Main grading routine
+# -------------------------
+
+
+def grade_submission(candidate_path: str, answer_key_path: str) -> Dict:
+    results: Dict[str, Any] = {
+        "errors": [],
+        "tasks": {},
+        "total_points": 0,
+        "max_points": 100,
+        "overall_score": 0.0,
     }
 
-    return report
+    # Load files
+    try:
+        candidate = load_json(candidate_path)
+    except FileNotFoundError:
+        raise SystemExit(f"Candidate submission file not found: {candidate_path}")
+    except Exception as e:
+        raise SystemExit(f"Failed to load candidate JSON: {e}")
 
-# ---- Main entry point ----
+    try:
+        answer_key = load_json(answer_key_path)
+    except FileNotFoundError:
+        raise SystemExit(f"Answer key file not found: {answer_key_path}")
+    except Exception as e:
+        raise SystemExit(f"Failed to load answer key JSON: {e}")
+
+    # Basic validation of candidate JSON structure
+    top_level_required = ["name", "language", "time_taken_minutes", "run_commands", "tasks"]
+    missing = [k for k in top_level_required if k not in candidate]
+    if missing:
+        results["errors"].append(f"Candidate submission missing top-level keys: {missing}")
+
+    # Locate tasks in candidate and answer_key
+    cand_tasks = candidate.get("tasks", [])
+    ans_tasks = answer_key.get("tasks", [])
+
+    # Build mapping by id for convenience
+    cand_map = {t.get("id"): t for t in cand_tasks if "id" in t}
+    ans_map = {t.get("id"): t for t in ans_tasks if "id" in t}
+
+    # Grade Task A
+    try:
+        cand_A = cand_map.get("A", {})
+        ans_A = ans_map.get("A", {})
+        score_a, max_a, messages_a = grade_task_a(cand_A, ans_A)
+    except Exception as e:
+        score_a, max_a = 0, 40
+        messages_a = [f"Error grading Task A: {e}"]
+    results["tasks"]["A"] = {"score": score_a, "max": max_a, "notes": messages_a}
+    results["total_points"] += score_a
+
+    # Grade Task B
+    try:
+        cand_B = cand_map.get("B", {})
+        ans_B = ans_map.get("B", {})
+        score_b, max_b, messages_b = grade_task_b(cand_B, ans_B)
+    except Exception as e:
+        score_b, max_b = 0, 30
+        messages_b = [f"Error grading Task B: {e}"]
+    results["tasks"]["B"] = {"score": score_b, "max": max_b, "notes": messages_b}
+    results["total_points"] += score_b
+
+    # Grade Task C
+    try:
+        cand_C = cand_map.get("C", {})
+        ans_C = ans_map.get("C", {})
+        score_c, max_c, messages_c = grade_task_c(cand_C, ans_C)
+    except Exception as e:
+        score_c, max_c = 0, 25
+        messages_c = [f"Error grading Task C: {e}"]
+    results["tasks"]["C"] = {"score": score_c, "max": max_c, "notes": messages_c}
+    results["total_points"] += score_c
+
+    # Submission quality
+    try:
+        score_sub, max_sub, messages_sub = grade_submission_quality(candidate)
+    except Exception as e:
+        score_sub, max_sub = 0, 5
+        messages_sub = [f"Error grading submission quality: {e}"]
+    results["submission_quality"] = {"score": score_sub, "max": max_sub, "notes": messages_sub}
+    results["total_points"] += score_sub
+
+    # Final totals and percentage
+    results["max_points"] = 100
+    results["percentage"] = round((results["total_points"] / results["max_points"]) * 100, 2)
+    results["overall_score"] = results["percentage"]
+
+    # Provide a short summary explaining deductions
+    summary_lines: List[str] = []
+    # Task A summary
+    a_notes = results["tasks"]["A"]["notes"]
+    summary_lines.append(f"Task A: {results['tasks']['A']['score']}/{results['tasks']['A']['max']}.")
+    summary_lines.extend(a_notes)
+
+    # Task B summary
+    b_notes = results["tasks"]["B"]["notes"]
+    summary_lines.append(f"Task B: {results['tasks']['B']['score']}/{results['tasks']['B']['max']}.")
+    summary_lines.extend(b_notes)
+
+    # Task C summary
+    c_notes = results["tasks"]["C"]["notes"]
+    summary_lines.append(f"Task C: {results['tasks']['C']['score']}/{results['tasks']['C']['max']}.")
+    summary_lines.extend(c_notes)
+
+    # Submission
+    s_notes = results["submission_quality"]["notes"]
+    summary_lines.append(f"Submission quality: {results['submission_quality']['score']}/{results['submission_quality']['max']}.")
+    summary_lines.extend(s_notes)
+
+    results["final_summary"] = "\n".join(summary_lines)
+
+    return results
+
+
+# -------------------------
+# Script entrypoint
+# -------------------------
+
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: python task_evaluation.py test_submission.json answer_key.json")
+    if len(sys.argv) != 3:
+        print("Usage: python task_evaluation.py path/to/test_submission.json path/to/answer_key.json")
         sys.exit(2)
 
-    sub_path = sys.argv[1]
-    ans_path = sys.argv[2]
-    # Load files
-    candidate = safe_load_json(sub_path)
-    answer = safe_load_json(ans_path)
+    candidate_path = sys.argv[1]
+    answer_key_path = sys.argv[2]
 
-    # Grade
-    report = grade_submission(candidate, answer)
-
-    # Output path (same directory as script)
-    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_results.json")
     try:
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
-        print(f"Grading complete. Results written to {out_path}")
-        print(f"Overall score: {report.get('overall_score')}%")
+        results = grade_submission(candidate_path, answer_key_path)
     except Exception as e:
-        print(f"Failed to write results to {out_path}: {e}")
+        # write an error result file
+        out = {"errors": [str(e)], "overall_score": 0.0}
+        with open("test_results.json", "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=2)
+        print(f"Grading failed: {e}")
         sys.exit(1)
+
+    # Write results to test_results.json
+    try:
+        with open("test_results.json", "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+    except Exception as e:
+        print(f"Failed to write test_results.json: {e}")
+        sys.exit(1)
+
+    # Print a small console summary
+    print("Grading complete. Results written to test_results.json")
+    print(f"Overall score: {results['overall_score']:.2f}% ({results['total_points']}/{results['max_points']})")
+
 
 if __name__ == "__main__":
     main()
-```
-
-Notes and rationale
-- The grader follows the weighting described in the evaluator instructions.
-- It is tolerant: it attempts to parse pytest "X passed" lines, handles missing fields gracefully, and awards partial credit where applicable.
-- Performance scoring is based on candidate-supplied before/after averages and awards full credit only for >=2x improvement, partial for 1x–2x.
-- Code-quality and explanation scoring are heuristic-based (automatable checks); graders should inspect diffs and explanations manually for fine judgements.
-- The grader writes test_results.json, including an overall_score numeric field as requested.
-
-If you want the script adapted to stricter or different rules (for example, requiring all original tests to pass for any correctness credit), tell me and I will modify the logic accordingly.

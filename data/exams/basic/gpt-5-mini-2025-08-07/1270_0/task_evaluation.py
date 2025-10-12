@@ -1,717 +1,671 @@
-# task_evaluation.py
-import json
-import sys
-import os
-import re
+#!/usr/bin/env python3
+"""
+task_evaluation.py
 
-# -----------------------
-# Helper parsing functions
-# -----------------------
+Automated grader for the Basic Practical Exam — Inventory Manager.
+
+Usage:
+    python3 task_evaluation.py test_submission.json answer_key.json
+
+Output:
+    Writes test_results.json in the same directory where the script is executed.
+    The output contains detailed breakdown of scores, explanations for deductions,
+    and overall percentage score (stored as overall_score in JSON).
+
+Notes:
+- Uses only the Python standard library.
+- Robust to missing fields; produces helpful messages in the output.
+"""
+
+import json
+import os
+import sys
+import traceback
+
+# Scoring rubric constants
+MAX_POINTS = 100.0
+
+# Breakdown mapping per rubric (max points)
+RUBRIC = {
+    "functional": {
+        "description": "Functional correctness (add/get/update/remove, persistence, import/export)",
+        "max": 60.0,
+        # subcomponents mapping to internal checks
+        "sub": {
+            "add": 10.0,
+            "get": 10.0,
+            "update": 10.0,
+            "remove": 10.0,
+            "persistence": 10.0,
+            "import_export": 10.0
+        }
+    },
+    "validation": {
+        "description": "Validation & error handling (unique id, numeric validation, malformed CSV)",
+        "max": 15.0,
+        "sub": {
+            "unique_id": 5.0,
+            "quantity_price_validation": 5.0,
+            "malformed_csv_handling": 5.0
+        }
+    },
+    "demo_tests": {
+        "description": "Demonstration & tests (demo runner + at least 4 automated tests)",
+        "max": 15.0,
+        "sub": {
+            "demo_runner": 7.0,
+            "automated_tests": 8.0
+        }
+    },
+    "quality_docs": {
+        "description": "Code quality & documentation",
+        "max": 10.0,
+        "sub": {
+            "readme": 4.0,
+            "code_quality": 3.0,
+            "no_external_libs": 3.0
+        }
+    }
+}
+
+# Helper tolerant string search
+def contains_case_insensitive(haystack, needle):
+    if haystack is None:
+        return False
+    return needle.lower() in haystack.lower()
+
+def safe_get_file_content(files_list, filename):
+    if not isinstance(files_list, list):
+        return None
+    for f in files_list:
+        if not isinstance(f, dict):
+            continue
+        if f.get("filename") == filename:
+            return f.get("content", "")
+    return None
+
+def find_file_by_prefix(files_list, prefix):
+    if not isinstance(files_list, list):
+        return None
+    for f in files_list:
+        if not isinstance(f, dict):
+            continue
+        name = f.get("filename", "")
+        if name.startswith(prefix):
+            return f.get("content", "")
+    return None
 
 def load_json_file(path):
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        raise RuntimeError(f"Failed to load JSON from {path}: {e}")
+    with open(path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
 
-def write_json_file(path, obj):
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(obj, f, indent=2, ensure_ascii=False)
-
-def find_command_entries(commands_run, verb):
-    """Return list of command entries (dicts) where the command contains the whole word verb."""
-    out = []
-    for entry in commands_run:
-        cmd = entry.get('cmd', '')
-        # match whole word
-        if re.search(r'\b' + re.escape(verb) + r'\b', cmd, flags=re.IGNORECASE):
-            out.append(entry)
-    return out
-
-def parse_flag_from_cmd(cmd, flag_name):
+def normalize_inventory(inv):
     """
-    Extract a flag value from a command string.
-    Supports forms: --flag value  OR --flag="value" OR --flag='value' OR --flag=value
-    Returns None if not found.
+    Normalize inventory JSON structure into list of dicts with string id keys,
+    numeric quantity (int) and price (float). Returns list or None if invalid.
     """
-    # Try regex capturing quoted or unquoted value
-    pattern = r'--' + re.escape(flag_name) + r'(?:[ =]+)(?:"([^"]+)"|\'([^\']+)\'|([^\s]+))'
-    m = re.search(pattern, cmd)
-    if not m:
-        return None
-    return next((g for g in m.groups() if g is not None), None)
-
-def parse_qty_from_cmd(cmd):
-    """Parse qty (integer) from --qty or parse --change value (relative) as string."""
-    qty = parse_flag_from_cmd(cmd, 'qty')
-    change = parse_flag_from_cmd(cmd, 'change')
-    return qty, change
-
-def try_parse_int(s):
-    if s is None:
+    if inv is None:
         return None
     try:
-        return int(s)
-    except:
-        return None
-
-def safe_json_loads(s):
-    try:
-        return json.loads(s)
-    except:
-        return None
-
-def cmd_starts_with_entry_point(cmd, entry_point):
-    """Check if cmd starts with the provided entry_point (allow small differences in whitespace)."""
-    if not entry_point:
-        return False
-    # compare normalized prefixes
-    normalized_cmd = cmd.strip()
-    return normalized_cmd.startswith(entry_point)
-
-# -----------------------
-# Scoring helpers
-# -----------------------
-
-def score_core_functionality(commands_run, messages):
-    """
-    Core Functionality (60 points total):
-      - add (8)
-      - list (8)
-      - find (8)
-      - update (8)
-      - delete (8)
-      - persistence (15)
-      - exit codes & error messages for invalid commands (5)
-    """
-    max_points = 60
-    earned = 0
-    details = []
-
-    # Prepare tracking structures
-    add_entries = find_command_entries(commands_run, 'add')
-    successful_adds = []
-    add_skus = []
-    for e in add_entries:
-        if e.get('exit_code', 1) == 0:
-            sku = parse_flag_from_cmd(e.get('cmd', ''), 'sku')
-            if sku:
-                successful_adds.append((sku, e))
-                add_skus.append(sku)
-
-    # Add command scoring (8)
-    add_points = 0
-    if len(successful_adds) >= 3:
-        add_points = 8
-        details.append("add: >=3 successful adds detected -> full credit (8/8).")
-    elif 1 <= len(successful_adds) <= 2:
-        add_points = 4
-        details.append(f"add: {len(successful_adds)} successful add(s) detected -> partial credit (4/8).")
-    else:
-        add_points = 0
-        details.append("add: no successful add command detected -> 0/8.")
-    earned += add_points
-
-    # List command scoring (8)
-    list_entries = find_command_entries(commands_run, 'list')
-    list_points = 0
-    list_json_ok = False
-    list_contains_added = False
-    parsed_list_jsons = []
-    for e in list_entries:
-        if e.get('exit_code', 1) == 0:
-            stdout = e.get('stdout', '')
-            # Detect if --format json was used in cmd
-            if re.search(r'--format\s+json\b', e.get('cmd', ''), flags=re.IGNORECASE):
-                parsed = safe_json_loads(stdout)
-                if isinstance(parsed, list):
-                    parsed_list_jsons.append(parsed)
-                    list_json_ok = True
-                    # check if any of the added SKUs appear
-                    for sku in add_skus:
-                        if any(isinstance(it, dict) and it.get('sku') == sku for it in parsed):
-                            list_contains_added = True
-    if list_json_ok and list_contains_added:
-        list_points = 8
-        details.append("list: JSON format present, parseable, and contains added SKUs -> full credit (8/8).")
-    elif list_entries:
-        # at least some list ran; give partial if any succeeded
-        succeeded = any(e.get('exit_code', 1) == 0 for e in list_entries)
-        if succeeded:
-            list_points = 4
-            details.append("list: list command present and some succeeded but no valid JSON with added SKUs found -> partial credit (4/8).")
-        else:
-            list_points = 0
-            details.append("list: list command present but none succeeded -> 0/8.")
-    else:
-        list_points = 0
-        details.append("list: no list command detected -> 0/8.")
-    earned += list_points
-
-    # Find command scoring (8)
-    find_entries = find_command_entries(commands_run, 'find')
-    find_points = 0
-    find_json_ok = False
-    find_matches = False
-    for e in find_entries:
-        if e.get('exit_code', 1) == 0 and re.search(r'--format\s+json\b', e.get('cmd', ''), flags=re.IGNORECASE):
-            parsed = safe_json_loads(e.get('stdout', ''))
-            if isinstance(parsed, list):
-                find_json_ok = True
-                # If any non-empty list, consider matches
-                if len(parsed) > 0:
-                    find_matches = True
-    if find_json_ok and find_matches:
-        find_points = 8
-        details.append("find: find produced JSON arrays with matches -> full credit (8/8).")
-    elif find_entries and any(e.get('exit_code', 1) == 0 for e in find_entries):
-        find_points = 4
-        details.append("find: find command present and succeeded but JSON matches not found -> partial credit (4/8).")
-    else:
-        find_points = 0
-        details.append("find: no successful find command detected -> 0/8.")
-    earned += find_points
-
-    # Update command scoring (8)
-    update_entries = find_command_entries(commands_run, 'update')
-    update_points = 0
-    updated_sku_qtys = {}  # sku -> expected new qty (absolute)
-    for e in update_entries:
-        if e.get('exit_code', 1) == 0:
-            cmd = e.get('cmd', '')
-            sku = parse_flag_from_cmd(cmd, 'sku')
-            qty, change = parse_qty_from_cmd(cmd)
-            if sku:
-                if qty is not None:
-                    parsed_qty = try_parse_int(qty)
-                    if parsed_qty is not None:
-                        updated_sku_qtys[sku] = parsed_qty
-                elif change:
-                    # relative change; skip computing absolute here (we'll detect effect in list)
-                    updated_sku_qtys[sku] = 'relative:' + change
-    # Determine if later list shows update taking effect
-    update_effect_detected = False
-    for parsed_list in parsed_list_jsons:
-        if updated_sku_qtys:
-            for sku, expected in updated_sku_qtys.items():
-                for it in parsed_list:
-                    if isinstance(it, dict) and it.get('sku') == sku:
-                        if isinstance(expected, int):
-                            if it.get('qty') == expected:
-                                update_effect_detected = True
-                        elif isinstance(expected, str) and expected.startswith('relative:'):
-                            # we accept presence of changed qty (not equal to original add qty)
-                            # If add recorded initial qty, compare; else accept if qty value differs from earlier add if known
-                            update_effect_detected = True
-    if update_entries and any(e.get('exit_code', 1) == 0 for e in update_entries) and update_effect_detected:
-        update_points = 8
-        details.append("update: update command succeeded and reflected in subsequent list JSON -> full credit (8/8).")
-    elif update_entries and any(e.get('exit_code', 1) == 0 for e in update_entries):
-        update_points = 4
-        details.append("update: update command succeeded but no clear evidence in list JSON -> partial credit (4/8).")
-    else:
-        update_points = 0
-        details.append("update: no successful update command detected -> 0/8.")
-    earned += update_points
-
-    # Delete command scoring (8)
-    delete_entries = find_command_entries(commands_run, 'delete')
-    delete_points = 0
-    deleted_skus = []
-    for e in delete_entries:
-        if e.get('exit_code', 1) == 0:
-            sku = parse_flag_from_cmd(e.get('cmd', ''), 'sku')
-            if sku:
-                deleted_skus.append(sku)
-    # Check subsequent parsed_list_jsons for absence
-    deletion_verified = False
-    if deleted_skus and parsed_list_jsons:
-        # check the latest parsed list
-        latest = parsed_list_jsons[-1] if parsed_list_jsons else []
-        present_skus_latest = [it.get('sku') for it in latest if isinstance(it, dict) and 'sku' in it]
-        # If none of deleted_skus present in latest, accept
-        if not any(sku in present_skus_latest for sku in deleted_skus):
-            deletion_verified = True
-    if deleted_skus and deletion_verified:
-        delete_points = 8
-        details.append("delete: delete succeeded and later list shows SKU absent -> full credit (8/8).")
-    elif deleted_skus:
-        delete_points = 4
-        details.append("delete: delete command succeeded but absence not verifiable in list JSON -> partial credit (4/8).")
-    else:
-        delete_points = 0
-        details.append("delete: no successful delete command detected -> 0/8.")
-    earned += delete_points
-
-    # Persistence scoring (15)
-    # We look for adds earlier and lists later showing those SKUs; detect persistence by presence of items in lists that occur after add operations.
-    persistence_points = 0
-    persistence_verified = False
-    # Build timeline: get the indices of commands where add occurred and where list occurred
-    sku_add_indices = {}
-    for idx, e in enumerate(commands_run):
-        if re.search(r'\badd\b', e.get('cmd', ''), flags=re.IGNORECASE) and e.get('exit_code', 1) == 0:
-            sku = parse_flag_from_cmd(e.get('cmd', ''), 'sku')
-            if sku:
-                sku_add_indices.setdefault(sku, []).append(idx)
-    # For each sku added, see if a later list JSON exists containing it (index greater than add index)
-    for sku, indices in sku_add_indices.items():
-        for add_idx in indices:
-            # find list JSONs after this index
-            found_later = False
-            for later_idx, e in enumerate(commands_run):
-                if later_idx <= add_idx:
+        if isinstance(inv, dict):
+            # Unexpected shape: convert to list if single item keyed by id
+            return [inv]
+        if isinstance(inv, list):
+            normalized = []
+            for item in inv:
+                if not isinstance(item, dict):
                     continue
-                if re.search(r'\blist\b', e.get('cmd', ''), flags=re.IGNORECASE) and e.get('exit_code', 1) == 0 and re.search(r'--format\s+json\b', e.get('cmd', ''), flags=re.IGNORECASE):
-                    parsed = safe_json_loads(e.get('stdout', ''))
-                    if isinstance(parsed, list) and any(isinstance(it, dict) and it.get('sku') == sku for it in parsed):
-                        found_later = True
-                        break
-            if found_later:
-                persistence_verified = True
-                break
-        if persistence_verified:
-            break
-    if persistence_verified:
-        persistence_points = 15
-        details.append("persistence: items added are present in later list output -> full credit (15/15).")
-    else:
-        # partial if some lists show items but not clearly after restart
-        if parsed_list_jsons and add_skus:
-            # if any parsed list contains any added sku (even if same run), give half credit
-            any_match = any(any(isinstance(it, dict) and it.get('sku') in add_skus for it in parsed) for parsed in parsed_list_jsons)
-            if any_match:
-                persistence_points = 7
-                details.append("persistence: list JSON contains added SKUs but no clear later-invocation verification -> partial credit (7/15).")
-            else:
-                persistence_points = 0
-                details.append("persistence: no evidence of persistence across invocations -> 0/15.")
-        else:
-            persistence_points = 0
-            details.append("persistence: insufficient evidence -> 0/15.")
-    earned += persistence_points
+                nm = {}
+                nm['id'] = str(item.get('id')) if item.get('id') is not None else None
+                nm['name'] = item.get('name')
+                # normalize quantity to int if possible
+                qty = item.get('quantity')
+                try:
+                    nm['quantity'] = int(qty) if qty is not None else None
+                except Exception:
+                    try:
+                        nm['quantity'] = int(float(qty))
+                    except Exception:
+                        nm['quantity'] = None
+                # normalize price to float
+                pr = item.get('price')
+                try:
+                    nm['price'] = float(pr) if pr is not None else None
+                except Exception:
+                    nm['price'] = None
+                normalized.append(nm)
+            return normalized
+        # else unknown shape
+        return None
+    except Exception:
+        return None
 
-    # Exit codes & error messages for invalid commands (5)
-    exit_points = 0
-    # Determine if there are any commands with non-zero exit_code and non-empty stderr
-    invalid_ops = [e for e in commands_run if e.get('exit_code', 0) != 0]
-    invalid_with_stderr = [e for e in invalid_ops if e.get('stderr')]
-    # For full credit expect to see both duplicate SKU error and negative qty error
-    duplicate_err = False
-    negative_err = False
-    for e in invalid_with_stderr:
-        stderr = e.get('stderr', '').lower()
-        cmd = e.get('cmd', '')
-        sku = parse_flag_from_cmd(cmd, 'sku') or ''
-        if 'duplicate' in stderr or 'already exists' in stderr or 'exists' in stderr:
-            duplicate_err = True
-        if 'negative' in stderr or 'non-negative' in stderr or 'qty' in stderr and ('negative' in stderr or '-' in stderr):
-            negative_err = True
-    if duplicate_err and negative_err:
-        exit_points = 5
-        details.append("errors: duplicate SKU and negative qty errors present with stderr and non-zero exit codes -> full credit (5/5).")
-    elif invalid_with_stderr:
-        exit_points = 3
-        details.append("errors: some invalid operations returned non-zero exit codes and stderr -> partial credit (3/5).")
-    else:
-        exit_points = 0
-        details.append("errors: no invalid operations with stderr and non-zero exit codes detected -> 0/5.")
-    earned += exit_points
-
-    breakdown = {
-        "add": {"score": add_points, "max": 8},
-        "list": {"score": list_points, "max": 8},
-        "find": {"score": find_points, "max": 8},
-        "update": {"score": update_points, "max": 8},
-        "delete": {"score": delete_points, "max": 8},
-        "persistence": {"score": persistence_points, "max": 15},
-        "errors_exit_codes": {"score": exit_points, "max": 5},
+def score_candidate(candidate, answer_key):
+    """
+    Compute scores and explanations based on candidate submission and answer key.
+    Returns a dict describing scores, breakdown, comments and overall_score.
+    """
+    results = {
+        "breakdown": {},
+        "total_awarded": 0.0,
+        "total_possible": MAX_POINTS,
+        "deductions": [],
+        "notes": []
     }
 
-    return earned, max_points, details, breakdown
-
-def score_robustness(commands_run, messages):
-    """
-    Robustness & Input validation (10):
-     - reject duplicate SKUs, negative quantities, missing required fields: 6
-     - informative error messages and non-zero exit codes on failure: 4
-    """
-    max_points = 10
-    earned = 0
-    details = []
-
-    invalid_ops = [e for e in commands_run if e.get('exit_code', 0) != 0]
-    stderr_nonempty = [e for e in invalid_ops if e.get('stderr')]
-
-    duplicate_rejected = False
-    negative_rejected = False
-    missing_rejected = False
-
-    for e in stderr_nonempty:
-        stderr = e.get('stderr', '').lower()
-        cmd = e.get('cmd', '')
-        # duplicate
-        if 'duplicate' in stderr or 'already exists' in stderr or 'exists' in stderr:
-            duplicate_rejected = True
-        # negative qty
-        if 'negative' in stderr or 'non-negative' in stderr or ('qty' in stderr and ('negative' in stderr or 'non-negative' in stderr)):
-            negative_rejected = True
-        # missing required flag
-        if 'missing' in stderr or 'required' in stderr or 'missing required' in stderr:
-            missing_rejected = True
-
-    # First subscore (6)
-    sub1 = 0
-    if duplicate_rejected and negative_rejected:
-        sub1 = 6
-        details.append("robustness: both duplicate SKU and negative qty rejections detected -> full (6/6).")
-    elif duplicate_rejected or negative_rejected:
-        sub1 = 3
-        details.append("robustness: one of duplicate SKU or negative qty rejection detected -> partial (3/6).")
-    else:
-        sub1 = 0
-        details.append("robustness: neither duplicate SKU nor negative qty rejection detected -> 0/6.")
-    earned += sub1
-
-    # Second subscore (4): informative error messages & non-zero exit codes
-    sub2 = 0
-    if stderr_nonempty and invalid_ops:
-        sub2 = 4
-        details.append("robustness: non-zero exit codes and stderr present for invalid ops -> full (4/4).")
-    else:
-        sub2 = 0
-        details.append("robustness: missing stderr or non-zero exit codes for invalid operations -> 0/4.")
-    earned += sub2
-
-    breakdown = {
-        "validation_rejection": {"score": sub1, "max": 6},
-        "error_messages_exit_codes": {"score": sub2, "max": 4}
-    }
-    return earned, max_points, details, breakdown
-
-def score_deterministic(commands_run, submission, messages):
-    """
-    Deterministic & Scriptable outputs (10):
-      - JSON or fixed-format list output for easy parsing: 6
-      - Reproducible CLI contract (run commands provided and match outputs): 4
-    """
-    max_points = 10
-    earned = 0
-    details = []
-
-    # JSON support for list and find
-    list_json_present = False
-    find_json_present = False
-    for e in commands_run:
-        if re.search(r'\blist\b', e.get('cmd', ''), flags=re.IGNORECASE) and re.search(r'--format\s+json\b', e.get('cmd', ''), flags=re.IGNORECASE):
-            if safe_json_loads(e.get('stdout', '')) is not None:
-                list_json_present = True
-        if re.search(r'\bfind\b', e.get('cmd', ''), flags=re.IGNORECASE) and re.search(r'--format\s+json\b', e.get('cmd', ''), flags=re.IGNORECASE):
-            if safe_json_loads(e.get('stdout', '')) is not None:
-                find_json_present = True
-
-    json_points = 0
-    if list_json_present and find_json_present:
-        json_points = 6
-        details.append("deterministic: both list and find produced parseable JSON -> full (6/6).")
-    elif list_json_present:
-        json_points = 3
-        details.append("deterministic: list produced parseable JSON; find did not -> partial (3/6).")
-    else:
-        json_points = 0
-        details.append("deterministic: no parseable JSON outputs for list/find detected -> 0/6.")
-    earned += json_points
-
-    # CLI reproducibility: entry_point presence and commands beginning with it
-    cli_points = 0
-    entry_point = submission.get('entry_point', '').strip()
-    if entry_point:
-        # check if many commands start with entry_point (at least half)
-        starts_count = sum(1 for e in commands_run if cmd_starts_with_entry_point(e.get('cmd', ''), entry_point))
-        if commands_run:
-            ratio = starts_count / len(commands_run)
-        else:
-            ratio = 0
-        if ratio >= 0.5:
-            cli_points = 4
-            details.append("deterministic: entry_point provided and many commands use it -> full (4/4).")
-        elif ratio > 0:
-            cli_points = 2
-            details.append("deterministic: entry_point provided and some commands use it -> partial (2/4).")
-        else:
-            cli_points = 0
-            details.append("deterministic: entry_point provided but commands do not use it -> 0/4.")
-    else:
-        cli_points = 0
-        details.append("deterministic: no entry_point provided -> 0/4.")
-    earned += cli_points
-
-    breakdown = {
-        "json_outputs": {"score": json_points, "max": 6},
-        "cli_contract": {"score": cli_points, "max": 4}
-    }
-    return earned, max_points, details, breakdown
-
-def score_code_quality(submission, messages):
-    """
-    Code quality & organization (10):
-      - Readable code, modular functions, sensible names (6)
-      - Minimal inline comments or README/run instructions (4)
-    Note: grader has only submission metadata (short_description, self_assessment). We award based on presence and quality of short_description and self_assessment consistency.
-    """
-    max_points = 10
-    earned = 0
-    details = []
-
-    short_desc = submission.get('short_description', '')
-    self_assess = submission.get('self_assessment', {})
-    implemented_required = bool(self_assess.get('implemented_required', False))
-
-    # Heuristic: presence of a concise short_description (<=200 words) and implemented_required True yields full points
-    word_count = len(short_desc.split())
-    if short_desc and word_count <= 200 and implemented_required:
-        earned = 10
-        details.append("code_quality: short_description present <=200 words and implemented_required marked -> full (10/10).")
-    elif short_desc and word_count <= 200:
-        earned = 6
-        details.append("code_quality: short_description present but implemented_required not marked true -> partial (6/10).")
-    elif short_desc:
-        earned = 4
-        details.append("code_quality: short_description present but >200 words -> partial (4/10).")
-    else:
-        earned = 0
-        details.append("code_quality: no short_description provided -> 0/10.")
-
-    breakdown = {
-        "readability_and_design": {"score": earned, "max": 10}
-    }
-    return earned, max_points, details, breakdown
-
-def score_submission_completeness(commands_run, submission, messages):
-    """
-    Submission completeness & clarity (10):
-      - test_submission.json present and well-formed: assumed since we loaded it
-      - commands recorded: evaluate required demonstration:
-         - 3 adds (4 points)
-         - update present (2 points)
-         - delete present (2 points)
-         - find present (1 point)
-         - persistence (list after restart) present (1 point)
-    """
-    max_points = 10
-    earned = 0
-    details = []
-
-    # Count successful adds
-    add_entries = [e for e in commands_run if re.search(r'\badd\b', e.get('cmd', ''), flags=re.IGNORECASE) and e.get('exit_code', 1) == 0]
-    adds_count = len(add_entries)
-    add_score = 0
-    if adds_count >= 3:
-        add_score = 4
-        details.append("submission: >=3 successful adds recorded -> 4/4.")
-    elif 1 <= adds_count <= 2:
-        add_score = 2
-        details.append(f"submission: only {adds_count} successful adds recorded -> partial (2/4).")
-    else:
-        add_score = 0
-        details.append("submission: no successful adds recorded -> 0/4.")
-    earned += add_score
-
-    # Update presence (2)
-    update_present = any(re.search(r'\bupdate\b', e.get('cmd', ''), flags=re.IGNORECASE) for e in commands_run)
-    update_score = 2 if update_present else 0
-    earned += update_score
-    details.append("submission: update command " + ("found -> 2/2." if update_present else "not found -> 0/2."))
-
-    # Delete presence (2)
-    delete_present = any(re.search(r'\bdelete\b', e.get('cmd', ''), flags=re.IGNORECASE) for e in commands_run)
-    delete_score = 2 if delete_present else 0
-    earned += delete_score
-    details.append("submission: delete command " + ("found -> 2/2." if delete_present else "not found -> 0/2."))
-
-    # Find presence (1)
-    find_present = any(re.search(r'\bfind\b', e.get('cmd', ''), flags=re.IGNORECASE) for e in commands_run)
-    find_score = 1 if find_present else 0
-    earned += find_score
-    details.append("submission: find command " + ("found -> 1/1." if find_present else "not found -> 0/1."))
-
-    # Persistence demonstration (1) - check if any list after an add shows previously added sku (already partially covered earlier)
-    # Heuristic: if there exists an add and later list with JSON containing that sku, consider persistence demo present.
-    persistence_demo = False
-    sku_added_indices = {}
-    for idx, e in enumerate(commands_run):
-        if re.search(r'\badd\b', e.get('cmd', ''), flags=re.IGNORECASE) and e.get('exit_code', 1) == 0:
-            sku = parse_flag_from_cmd(e.get('cmd', ''), 'sku')
-            if sku:
-                sku_added_indices.setdefault(sku, []).append(idx)
-    for sku, indices in sku_added_indices.items():
-        for add_idx in indices:
-            for later_idx in range(add_idx + 1, len(commands_run)):
-                e = commands_run[later_idx]
-                if re.search(r'\blist\b', e.get('cmd', ''), flags=re.IGNORECASE) and e.get('exit_code', 1) == 0 and re.search(r'--format\s+json\b', e.get('cmd', ''), flags=re.IGNORECASE):
-                    parsed = safe_json_loads(e.get('stdout', ''))
-                    if isinstance(parsed, list) and any(isinstance(it, dict) and it.get('sku') == sku for it in parsed):
-                        persistence_demo = True
-                        break
-            if persistence_demo:
-                break
-        if persistence_demo:
-            break
-    persistence_score = 1 if persistence_demo else 0
-    earned += persistence_score
-    details.append("submission: persistence demonstration " + ("found -> 1/1." if persistence_demo else "not found -> 0/1."))
-
-    breakdown = {
-        "adds_3_items": {"score": add_score, "max": 4},
-        "update_present": {"score": update_score, "max": 2},
-        "delete_present": {"score": delete_score, "max": 2},
-        "find_present": {"score": find_score, "max": 1},
-        "persistence_demo": {"score": persistence_score, "max": 1},
-    }
-
-    return earned, max_points, details, breakdown
-
-# -----------------------
-# Main grading workflow
-# -----------------------
-
-def grade_submission(sub_path, answer_key_path):
-    messages = []
-    # Load files and basic validation
-    try:
-        submission = load_json_file(sub_path)
-    except Exception as e:
-        return {
-            "error": f"Failed to load submission JSON: {e}"
+    # Helper to award points for a sub-item, with comment
+    def award(category_key, sub_key, points_awarded, comment):
+        cat = results["breakdown"].setdefault(category_key, {})
+        cat[sub_key] = {
+            "awarded": round(points_awarded, 2),
+            "possible": RUBRIC[category_key]["sub"][sub_key],
+            "comment": comment
         }
+        results["total_awarded"] += points_awarded
 
-    try:
-        answer_key = load_json_file(answer_key_path)
-    except Exception as e:
-        # Answer key missing is not fatal but warn
-        answer_key = {}
-        messages.append(f"Warning: Failed to load answer key JSON: {e}")
+    # gather candidate top-level fields
+    # Validate candidate structure
+    # required top-level fields per exam: candidate_name, email, time_taken_minutes, language, run_commands, files, demo_stdout, test_results, final_inventory_json, notes
+    files = candidate.get("files", [])
+    run_commands = candidate.get("run_commands", [])
+    demo_stdout = candidate.get("demo_stdout", "") or ""
+    test_results = candidate.get("test_results", [])
+    final_inventory = candidate.get("final_inventory_json", None)
+    readme_txt = safe_get_file_content(files, "README.md") or safe_get_file_content(files, "README") or ""
+    inventory_py = safe_get_file_content(files, "inventory.py") or ""
+    demo_runner_py = safe_get_file_content(files, "demo_runner.py") or ""
+    tests_py = safe_get_file_content(files, "tests.py") or ""
+    import_csv = safe_get_file_content(files, "import.csv") or ""
+    final_inventory_file_content = safe_get_file_content(files, "final_inventory.json")
+    # If final_inventory.json file included in files, prefer that as exported content text
+    if final_inventory_file_content:
+        try:
+            parsed = json.loads(final_inventory_file_content)
+            # if candidate.final_inventory_json missing, use this file as the final inventory data
+            if final_inventory is None:
+                final_inventory = parsed
+        except Exception:
+            # if parsing fails, still leave final_inventory as is
+            pass
 
-    # Validate required keys in submission
-    required_keys = ['language', 'entry_point', 'persistence_file', 'commands_run', 'short_description', 'self_assessment', 'time_taken_minutes']
-    missing_keys = [k for k in required_keys if k not in submission]
-    if missing_keys:
-        messages.append(f"Warning: submission JSON missing keys: {missing_keys}")
+    # Normalized final inventories
+    candidate_inv_norm = normalize_inventory(final_inventory)
+    answer_inv_norm = normalize_inventory(answer_key.get("final_inventory_json"))
 
-    commands_run = submission.get('commands_run', [])
-    if not isinstance(commands_run, list):
-        return {"error": "submission 'commands_run' must be an array of command objects."}
+    # ----- Functional correctness (60) -----
+    # Subchecks: add/get/update/remove/persistence/import_export
+    func_info = RUBRIC["functional"]
+    # ADD operation (10)
+    # We check demo_stdout for evidence of adding I100 and I101, or test_results indicating add passing.
+    add_award = 0.0
+    add_comment_parts = []
+    # Look for 'Added' lines with I100 and I101 in demo stdout
+    added_i100 = any(("added" in line.lower() and "i100" in line.lower()) or ("i100" in line and "Added" in line) for line in demo_stdout.splitlines())
+    added_i101 = any(("added" in line.lower() and "i101" in line.lower()) or ("i101" in line and "Added" in line) for line in demo_stdout.splitlines())
+    # Also check tests results for add success (some submissions put tests verifying add)
+    tr_names = [str(tr.get("name", "")).lower() for tr in test_results if isinstance(tr, dict)]
+    tr_pass_map = {str(tr.get("name", "")).lower(): bool(tr.get("passed", False)) for tr in test_results if isinstance(tr, dict)}
+    add_test_present = any("add" in name and tr_pass_map.get(name, False) for name in tr_pass_map)
+    # Award logic:
+    # - If demo shows both adds succeeded -> full 10
+    # - Else if demo shows one add succeeded or tests show add passed -> half credit
+    if added_i100 and added_i101:
+        add_award = func_info["sub"]["add"]
+        add_comment = "Both adds (I100 and I101) observed in demo stdout."
+    elif added_i100 or added_i101 or add_test_present:
+        add_award = func_info["sub"]["add"] / 2.0
+        add_comment = "Partial evidence of add operation (one add observed or tests assert add)."
+    else:
+        add_award = 0.0
+        add_comment = "No clear evidence of add operation for required items in demo/test outputs."
+    award("functional", "add", add_award, add_comment)
 
-    # Apply scoring pieces
-    results = {}
-    total_earned = 0
-    total_possible = 100
+    # GET operation (10)
+    # Look for get usage in tests/demo: a JSON printed for an individual id or a test named 'get'
+    get_award = 0.0
+    get_evidence = False
+    # If any test output includes 'get:' or test name contains 'get' and passed
+    for tr in test_results:
+        if not isinstance(tr, dict):
+            continue
+        name = str(tr.get("name", "")).lower()
+        out = str(tr.get("output", "")).lower()
+        passed = bool(tr.get("passed", False))
+        if ("get" in name and passed) or ("get:" in out and passed) or ('"id"' in out and passed and 'get' in name):
+            get_evidence = True
+            break
+    # Demo may print a get result, but demo sequence doesn't include get. Rely on tests.
+    if get_evidence:
+        get_award = func_info["sub"]["get"]
+        get_comment = "Found passing test evidence for get (or get result in test outputs)."
+    else:
+        # fallback: check demo_stdout for JSON lines containing an 'id' field (may indicate get)
+        if any('"id"' in line or "'id'" in line for line in demo_stdout.splitlines()):
+            get_award = func_info["sub"]["get"] / 2.0
+            get_comment = "Possible get JSON output observed in demo stdout (partial evidence)."
+        else:
+            get_award = 0.0
+            get_comment = "No evidence of get operation in tests or demo outputs."
+    award("functional", "get", get_award, get_comment)
 
-    # Core Functionality
-    core_score, core_max, core_details, core_breakdown = score_core_functionality(commands_run, messages)
-    results['core_functionality'] = {
-        "score": core_score,
-        "max": core_max,
-        "details": core_details,
-        "breakdown": core_breakdown
+    # UPDATE operation (10)
+    # Check final_inventory contains I100 with quantity == 12 (standard demo update)
+    update_award = 0.0
+    update_comment = ""
+    if candidate_inv_norm is not None:
+        found_i100 = next((it for it in candidate_inv_norm if it.get("id") == "I100"), None)
+        if found_i100 and isinstance(found_i100.get("quantity"), int) and found_i100.get("quantity") == 12:
+            update_award = func_info["sub"]["update"]
+            update_comment = "I100 found in final inventory with quantity 12 (update applied)."
+        else:
+            # maybe tests show update; check test_results for update test passed
+            for tr in test_results:
+                if not isinstance(tr, dict):
+                    continue
+                name = str(tr.get("name", "")).lower()
+                passed = bool(tr.get("passed", False))
+                if "update" in name and passed:
+                    update_award = func_info["sub"]["update"]
+                    update_comment = "Passing test indicates update works (test output shows updated quantity)."
+                    break
+            if update_award == 0.0:
+                update_award = 0.0
+                update_comment = "No evidence that update operation applied (I100 quantity not 12 and no passing update test)."
+    else:
+        update_award = 0.0
+        update_comment = "Final inventory could not be parsed; cannot verify update."
+    award("functional", "update", update_award, update_comment)
+
+    # REMOVE operation (10)
+    remove_award = 0.0
+    remove_comment = ""
+    # Check demo_stdout for removal of I101 OR final inventory omits I101
+    removed_i101_demo = any(("removed" in line.lower() and "i101" in line.lower()) for line in demo_stdout.splitlines())
+    if removed_i101_demo:
+        remove_award = func_info["sub"]["remove"]
+        remove_comment = "Demo stdout shows removal of I101."
+    else:
+        # if final inventory does not contain I101, that's evidence removal
+        if candidate_inv_norm is not None:
+            if not any(it.get("id") == "I101" for it in candidate_inv_norm):
+                remove_award = func_info["sub"]["remove"]
+                remove_comment = "Final inventory does not contain I101 (evidence removal)."
+            else:
+                remove_award = 0.0
+                remove_comment = "I101 still present in final inventory and no removal message observed."
+        else:
+            # fallback: check test results for remove test
+            removed_by_test = any("remove" in str(tr.get("name", "")).lower() and bool(tr.get("passed", False)) for tr in test_results if isinstance(tr, dict))
+            if removed_by_test:
+                remove_award = func_info["sub"]["remove"]
+                remove_comment = "Passing test indicates remove operation works."
+            else:
+                remove_award = 0.0
+                remove_comment = "No evidence of remove operation."
+    award("functional", "remove", remove_award, remove_comment)
+
+    # Persistence (10)
+    persistence_award = 0.0
+    persistence_comment = ""
+    # If final_inventory_json present and parsed into a non-empty list, award points
+    if candidate.get("final_inventory_json") is not None:
+        # if final inventory array exists and has items
+        try:
+            ci = candidate.get("final_inventory_json")
+            if (isinstance(ci, list) and len(ci) >= 1) or (isinstance(ci, dict) and len(ci.keys()) >= 1):
+                persistence_award = func_info["sub"]["persistence"]
+                persistence_comment = "final_inventory_json present (persistence/export produced output)."
+            else:
+                persistence_award = func_info["sub"]["persistence"] / 2.0
+                persistence_comment = "final_inventory_json present but empty."
+        except Exception:
+            persistence_award = 0.0
+            persistence_comment = "final_inventory_json could not be interpreted."
+    else:
+        # maybe final_inventory.json file included in files and parsed earlier
+        if final_inventory_file_content:
+            persistence_award = func_info["sub"]["persistence"]
+            persistence_comment = "final_inventory.json file content included in submission files (persistence)."
+        else:
+            persistence_award = 0.0
+            persistence_comment = "No final inventory data found; persistence could not be verified."
+    award("functional", "persistence", persistence_award, persistence_comment)
+
+    # Import/Export (10)
+    import_export_award = 0.0
+    import_export_comment = ""
+    # If demo stdout contains import messages about added/skipped and export message, award points.
+    demo_lines_lower = [ln.lower() for ln in demo_stdout.splitlines()]
+    import_ann = any("import" in ln and ("added" in ln or "skipped" in ln or "import complete" in ln) for ln in demo_lines_lower)
+    export_ann = any("exported" in ln for ln in demo_lines_lower)
+    # Compare candidate final inventory to answer key final inventory (if answer key provided)
+    if answer_inv_norm is not None and candidate_inv_norm is not None:
+        # Compare sets of ids and quantities roughly
+        ans_ids = {it.get("id"): it for it in answer_inv_norm if it.get("id")}
+        cand_ids = {it.get("id"): it for it in candidate_inv_norm if it.get("id")}
+        # exact match awarding
+        if set(ans_ids.keys()) == set(cand_ids.keys()):
+            # check quantities and prices tolerance
+            match_count = 0
+            tot = len(ans_ids.keys())
+            for idk, ans_item in ans_ids.items():
+                cand_item = cand_ids.get(idk)
+                if not cand_item:
+                    continue
+                # compare quantity and price with tolerance for numeric types
+                if ans_item.get("quantity") == cand_item.get("quantity") and (ans_item.get("price") == cand_item.get("price")):
+                    match_count += 1
+            if tot > 0 and match_count == tot:
+                import_export_award = func_info["sub"]["import_export"]
+                import_export_comment = "Final inventory matches answer key expected final inventory exactly."
+            else:
+                import_export_award = func_info["sub"]["import_export"] / 2.0
+                import_export_comment = "Final inventory IDs match expected, but some quantities/prices differ."
+        else:
+            # maybe at least contains imported item (I102) -> partial credit
+            if any(it.get("id") == "I102" for it in candidate_inv_norm) and import_ann:
+                import_export_award = func_info["sub"]["import_export"] / 2.0
+                import_export_comment = "Import appears to have added I102 (partial match), but overall final inventory differs from expected."
+            else:
+                import_export_award = 0.0
+                import_export_comment = "Final inventory does not match expected answer key and import/export evidence missing."
+    else:
+        # fallback to checking demo stdout for import/export lines
+        if import_ann and export_ann:
+            import_export_award = func_info["sub"]["import_export"] / 2.0
+            import_export_comment = "Demo shows import/export activity but final inventory could not be compared to answer key."
+        else:
+            import_export_award = 0.0
+            import_export_comment = "No clear evidence of import/export operations in demo outputs."
+    award("functional", "import_export", import_export_award, import_export_comment)
+
+    # ----- Validation & error handling (15) -----
+    # unique_id (5)
+    unique_award = 0.0
+    unique_comment = ""
+    # Evidence: test_results 'add_duplicate_id' passed OR demo_stdout shows 'already exists' for duplicate add attempt OR import shows 'Skipped duplicate id'
+    duplicate_evidence = False
+    # Check test_results names
+    for tr in test_results:
+        if not isinstance(tr, dict):
+            continue
+        name = str(tr.get("name", "")).lower()
+        out = str(tr.get("output", "")).lower()
+        passed = bool(tr.get("passed", False))
+        if "duplicate" in name and passed:
+            duplicate_evidence = True
+            break
+        if "already exists" in out and passed:
+            duplicate_evidence = True
+            break
+    # Check demo stdout for duplicate messaging
+    if not duplicate_evidence:
+        if any("already exists" in ln or "skipped duplicate" in ln or "skipped duplicate id" in ln for ln in demo_lines_lower):
+            duplicate_evidence = True
+    if duplicate_evidence:
+        unique_award = RUBRIC["validation"]["sub"]["unique_id"]
+        unique_comment = "Evidence of duplicate ID handling (add or import) in demo/tests."
+    else:
+        unique_award = 0.0
+        unique_comment = "No evidence of unique ID enforcement for duplicates in demo or tests."
+    award("validation", "unique_id", unique_award, unique_comment)
+
+    # quantity_price_validation (5)
+    qp_award = 0.0
+    qp_comment = ""
+    # Check README mentions validation rules for quantity/price
+    readme_lower = readme_txt.lower() if isinstance(readme_txt, str) else ""
+    readme_mentions_q = ("quantity" in readme_lower and "integer" in readme_lower) or ("quantity" in readme_lower and ">=" in readme_lower) or ("quantity must" in readme_lower)
+    readme_mentions_p = ("price" in readme_lower and ">=" in readme_lower) or ("price must" in readme_lower) or ("price" in readme_lower and "numeric" in readme_lower)
+    # Check tests or demo show malformed numeric rejection
+    numeric_validation_evidence = False
+    # demo_lines_lower already defined
+    if any("invalid integer" in ln or "quantity must" in ln or "price must" in ln or "invalid numeric" in ln for ln in demo_lines_lower):
+        numeric_validation_evidence = True
+    # tests outputs may include 'Skipped malformed' or messages
+    for tr in test_results:
+        if not isinstance(tr, dict):
+            continue
+        out = str(tr.get("output", "")).lower()
+        if "invalid integer" in out or "quantity must" in out or "price must" in out:
+            numeric_validation_evidence = True
+            break
+    if (readme_mentions_q and readme_mentions_p) or numeric_validation_evidence:
+        qp_award = RUBRIC["validation"]["sub"]["quantity_price_validation"]
+        qp_comment = "Validation for numeric quantity/price documented and/or demonstrated."
+    elif readme_mentions_q or readme_mentions_p:
+        qp_award = RUBRIC["validation"]["sub"]["quantity_price_validation"] / 2.0
+        qp_comment = "Partial documentation of numeric validation in README or partial evidence."
+    else:
+        qp_award = 0.0
+        qp_comment = "No evidence or documentation of numeric validation for quantity/price."
+    award("validation", "quantity_price_validation", qp_award, qp_comment)
+
+    # malformed_csv_handling (5)
+    mal_award = 0.0
+    mal_comment = ""
+    # Check demo stdout or tests indicate malformed CSV row handling (skip/abort)
+    mal_evidence = any("malformed" in ln or "skipped malformed" in ln or "skipped malformed row" in ln or "invalid integer for quantity" in ln for ln in demo_lines_lower)
+    for tr in test_results:
+        if not isinstance(tr, dict):
+            continue
+        out = str(tr.get("output", "")).lower()
+        if "malformed" in out or "skipped malformed" in out:
+            mal_evidence = True
+            break
+    if mal_evidence:
+        mal_award = RUBRIC["validation"]["sub"]["malformed_csv_handling"]
+        mal_comment = "Malformed CSV rows are handled gracefully (skipped or reported) as evidenced in demo/tests."
+    else:
+        mal_award = 0.0
+        mal_comment = "No evidence that malformed CSV rows are handled gracefully."
+    award("validation", "malformed_csv_handling", mal_award, mal_comment)
+
+    # ----- Demonstration & tests (15) -----
+    # demo_runner (7)
+    demo_award = 0.0
+    demo_comment = ""
+    # Check run_commands includes demo_runner command and demo_stdout is non-empty
+    rcmds_lower = [str(c).lower() for c in run_commands] if isinstance(run_commands, list) else []
+    demo_cmd_present = any("demo_runner" in c or "demo_runner.py" in c for c in rcmds_lower)
+    demo_stdout_present = isinstance(demo_stdout, str) and len(demo_stdout.strip()) > 0
+    # Check demo printed final inventory JSON (presence of 'final inventory json' or final_inventory_json field)
+    final_printed_in_demo = any("final inventory json" in ln.lower() for ln in demo_lines_lower)
+    if demo_cmd_present and demo_stdout_present and final_printed_in_demo and candidate.get("final_inventory_json") is not None:
+        demo_award = RUBRIC["demo_tests"]["sub"]["demo_runner"]
+        demo_comment = "Demo runner command present and demo_stdout contains final inventory JSON printed (and final_inventory_json present)."
+    elif demo_stdout_present and candidate.get("final_inventory_json") is not None:
+        demo_award = RUBRIC["demo_tests"]["sub"]["demo_runner"] / 2.0
+        demo_comment = "Demo stdout / final inventory present but run_commands may not list demo_runner or final JSON not printed explicitly."
+    else:
+        demo_award = 0.0
+        demo_comment = "Demo runner evidence missing or incomplete."
+    award("demo_tests", "demo_runner", demo_award, demo_comment)
+
+    # automated_tests (8)
+    tests_award = 0.0
+    tests_comment = ""
+    # Must have at least 4 test result objects and tests should pass
+    if isinstance(test_results, list) and len(test_results) >= 4:
+        passed_count = sum(1 for t in test_results if isinstance(t, dict) and bool(t.get("passed", False)))
+        # award proportionally: full 8 if >=4 tests and all 4 pass; partial otherwise
+        if passed_count >= 4:
+            # cap at 4 baseline: if more tests exist, still only need 4
+            tests_award = RUBRIC["demo_tests"]["sub"]["automated_tests"]
+            tests_comment = f"{passed_count} tests passed (>=4)."
+        else:
+            tests_award = (passed_count / 4.0) * RUBRIC["demo_tests"]["sub"]["automated_tests"]
+            tests_comment = f"{passed_count} tests passed (need at least 4 for full credit)."
+    else:
+        # Maybe tests.py not run or results not provided; partial credit if some passing tests exist
+        if isinstance(test_results, list) and len(test_results) > 0:
+            passed_count = sum(1 for t in test_results if isinstance(t, dict) and bool(t.get("passed", False)))
+            tests_award = (passed_count / 4.0) * RUBRIC["demo_tests"]["sub"]["automated_tests"]
+            tests_comment = f"Only {len(test_results)} test result(s) provided; {passed_count} passed."
+        else:
+            tests_award = 0.0
+            tests_comment = "No test_results provided; cannot award automated tests credit."
+    # Cap award
+    if tests_award > RUBRIC["demo_tests"]["sub"]["automated_tests"]:
+        tests_award = RUBRIC["demo_tests"]["sub"]["automated_tests"]
+    award("demo_tests", "automated_tests", tests_award, tests_comment)
+
+    # ----- Code quality & documentation (10) -----
+    # README (4)
+    readme_award = 0.0
+    readme_comment = ""
+    if readme_txt and isinstance(readme_txt, str) and len(readme_txt.strip()) > 0:
+        # must include demo and tests run commands, persistence choice, and duplicate-import policy
+        has_demo_cmd = 'python3 demo_runner.py' in readme_txt or 'demo_runner.py' in readme_txt
+        has_tests_cmd = 'python3 tests.py' in readme_txt or 'tests.py' in readme_txt
+        has_persistence = 'inventory.json' in readme_txt.lower() or 'sqlite' in readme_txt.lower()
+        has_dup_policy = 'duplicate' in readme_txt.lower() or 'overwrite' in readme_txt.lower() or 'skip' in readme_txt.lower() or 'error' in readme_txt.lower()
+        score_parts = 0
+        if has_demo_cmd and has_tests_cmd:
+            score_parts += 2  # half of README credit
+        if has_persistence:
+            score_parts += 1  # quarter
+        if has_dup_policy:
+            score_parts += 1  # quarter
+        # total out of 4
+        readme_award = min(RUBRIC["quality_docs"]["sub"]["readme"], float(score_parts))
+        readme_comment = "README presence and content checked: demo/tests cmds, persistence, duplicate policy."
+    else:
+        readme_award = 0.0
+        readme_comment = "README.md missing or empty."
+    award("quality_docs", "readme", readme_award, readme_comment)
+
+    # Code quality (3)
+    code_quality_award = 0.0
+    code_quality_comment = ""
+    # Heuristic: inventory.py contains functions (def ), has some comments (#), and a main block
+    if inventory_py and isinstance(inventory_py, str) and len(inventory_py.strip()) > 0:
+        has_def = "def " in inventory_py
+        has_comments = "#" in inventory_py
+        has_main = ("if __name__" in inventory_py) or ("argparse" in inventory_py)
+        score_q = 0
+        if has_def:
+            score_q += 1
+        if has_comments:
+            score_q += 1
+        if has_main:
+            score_q += 1
+        code_quality_award = (score_q / 3.0) * RUBRIC["quality_docs"]["sub"]["code_quality"]
+        code_quality_comment = "Heuristic checks for defs/comments/main block in inventory.py."
+    else:
+        code_quality_award = 0.0
+        code_quality_comment = "inventory.py missing or empty; cannot evaluate code quality."
+    award("quality_docs", "code_quality", code_quality_award, code_quality_comment)
+
+    # No external libs (3)
+    no_ext_award = 0.0
+    no_ext_comment = ""
+    # Check for suspicious imports like 'requests' or 'pip' or other non-stdlib names in inventory.py
+    if inventory_py and isinstance(inventory_py, str):
+        lower_inv = inventory_py.lower()
+        # crude list of known non-stdlib module names common mistakes
+        suspicious = ["requests", "numpy", "pandas", "pip", "boto3", "sqlalchemy"]
+        found_suspicious = any(s in lower_inv for s in suspicious)
+        if found_suspicious:
+            no_ext_award = 0.0
+            no_ext_comment = "Found imports of likely external libraries in inventory.py; external libs not allowed."
+        else:
+            no_ext_award = RUBRIC["quality_docs"]["sub"]["no_external_libs"]
+            no_ext_comment = "No obvious external third-party libraries imported in inventory.py (heuristic)."
+    else:
+        no_ext_award = 0.0
+        no_ext_comment = "inventory.py missing; cannot verify external library usage."
+    award("quality_docs", "no_external_libs", no_ext_award, no_ext_comment)
+
+    # finalize totals
+    # Round totals to 2 decimal places
+    results["total_awarded"] = round(results["total_awarded"], 2)
+    results["percentage"] = round((results["total_awarded"] / results["total_possible"]) * 100.0, 2) if results["total_possible"] else 0.0
+    results["overall_score"] = results["percentage"]
+    # Add pass/fail based on >=80 threshold
+    results["pass"] = results["overall_score"] >= 80.0
+
+    # Add some contextual info and evidence summary for the evaluator
+    evidence_summary = {
+        "demo_cmd_present": demo_cmd_present,
+        "demo_stdout_present": bool(demo_stdout.strip()),
+        "demo_contains_final_json_print": any("final inventory json" in ln.lower() for ln in demo_lines_lower),
+        "test_results_count": len(test_results) if isinstance(test_results, list) else 0,
+        "test_results_passed_count": sum(1 for t in test_results if isinstance(t, dict) and bool(t.get("passed", False))),
+        "candidate_final_inventory_parsed_count": len(candidate_inv_norm) if candidate_inv_norm is not None else 0,
+        "answer_key_final_inventory_parsed_count": len(answer_inv_norm) if answer_inv_norm is not None else 0
     }
-    total_earned += core_score
+    results["evidence_summary"] = evidence_summary
 
-    # Robustness
-    rob_score, rob_max, rob_details, rob_breakdown = score_robustness(commands_run, messages)
-    results['robustness'] = {
-        "score": rob_score,
-        "max": rob_max,
-        "details": rob_details,
-        "breakdown": rob_breakdown
-    }
-    total_earned += rob_score
-
-    # Deterministic & Scriptable outputs
-    det_score, det_max, det_details, det_breakdown = score_deterministic(commands_run, submission, messages)
-    results['deterministic'] = {
-        "score": det_score,
-        "max": det_max,
-        "details": det_details,
-        "breakdown": det_breakdown
-    }
-    total_earned += det_score
-
-    # Code quality & organization
-    cq_score, cq_max, cq_details, cq_breakdown = score_code_quality(submission, messages)
-    results['code_quality'] = {
-        "score": cq_score,
-        "max": cq_max,
-        "details": cq_details,
-        "breakdown": cq_breakdown
-    }
-    total_earned += cq_score
-
-    # Submission completeness & clarity
-    sub_score, sub_max, sub_details, sub_breakdown = score_submission_completeness(commands_run, submission, messages)
-    results['submission_completeness'] = {
-        "score": sub_score,
-        "max": sub_max,
-        "details": sub_details,
-        "breakdown": sub_breakdown
-    }
-    total_earned += sub_score
-
-    # Final totals and percentage
-    percent = round((total_earned / total_possible) * 100, 2) if total_possible > 0 else 0.0
-
-    # Collect helpful summary messages
-    summary_messages = []
-    # Affirm missing required features if any major zeros
-    if core_breakdown['add']['score'] == 0:
-        summary_messages.append("No successful add command detected. Candidate must implement 'add'.")
-    if core_breakdown['list']['score'] == 0:
-        summary_messages.append("No functioning 'list' command detected. Must support '--format json' for machine-checkable output.")
-    if core_breakdown['find']['score'] == 0:
-        summary_messages.append("No functioning 'find' command detected.")
-    if core_breakdown['update']['score'] == 0:
-        summary_messages.append("No functioning 'update' command detected.")
-    if core_breakdown['delete']['score'] == 0:
-        summary_messages.append("No functioning 'delete' command detected.")
-    if results['core_functionality']['score'] < 48:  # less than 80% of core
-        summary_messages.append("Core functionality incomplete or partially implemented; major deductions expected.")
-
-    # Compose final result object
-    final = {
-        "scores": results,
-        "total_earned": total_earned,
-        "total_possible": total_possible,
-        "percentage": percent,
-        "overall_score": percent,
-        "summary_messages": summary_messages,
-        "raw_submission_filename": os.path.abspath(sub_path),
-        "raw_answer_key_filename": os.path.abspath(answer_key_path) if answer_key_path else None
-    }
-
-    return final
-
-# -----------------------
-# Entry point
-# -----------------------
+    return results
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: python task_evaluation.py <submission_json> <answer_key_json>")
+    # Entry point
+    if len(sys.argv) != 3:
+        print("Usage: python3 task_evaluation.py test_submission.json answer_key.json")
         sys.exit(2)
-    sub_path = sys.argv[1]
-    answer_key_path = sys.argv[2]
+    cand_path = sys.argv[1]
+    answer_path = sys.argv[2]
 
+    # Prepare output path
+    out_filename = "test_results.json"
     try:
-        result = grade_submission(sub_path, answer_key_path)
-    except Exception as e:
-        err = {"error": f"Grading failed with exception: {e}"}
-        write_json_file('test_results.json', err)
-        print("Grading failed. See test_results.json for details.")
-        sys.exit(1)
+        # Load candidate submission JSON
+        try:
+            candidate = load_json_file(cand_path)
+        except Exception as e:
+            err_info = f"Failed to load candidate submission JSON from '{cand_path}': {e}"
+            out = {
+                "error": err_info,
+                "overall_score": 0.0
+            }
+            with open(out_filename, "w", encoding="utf-8") as fh:
+                json.dump(out, fh, indent=2)
+            print(err_info)
+            sys.exit(1)
 
-    write_json_file('test_results.json', result)
-    print(f"Grading complete. Results written to test_results.json. Overall score: {result.get('overall_score')}%")
+        # Load answer key JSON
+        try:
+            answer_key = load_json_file(answer_path)
+        except Exception as e:
+            err_info = f"Failed to load answer key JSON from '{answer_path}': {e}"
+            out = {
+                "error": err_info,
+                "overall_score": 0.0
+            }
+            with open(out_filename, "w", encoding="utf-8") as fh:
+                json.dump(out, fh, indent=2)
+            print(err_info)
+            sys.exit(1)
+
+        # Perform scoring
+        grading = score_candidate(candidate, answer_key)
+
+        # Save results to test_results.json
+        with open(out_filename, "w", encoding="utf-8") as fh:
+            json.dump(grading, fh, indent=2)
+
+        # Print concise summary to stdout
+        print("Grading complete. Results written to", out_filename)
+        print("Total awarded: {}/{}  ({}%)".format(grading["total_awarded"], grading["total_possible"], grading["overall_score"]))
+        if grading.get("pass"):
+            print("PASS: Candidate score meets threshold (>= 80%)")
+        else:
+            print("FAIL: Candidate score below threshold (80%)")
+        sys.exit(0)
+    except Exception as e:
+        # Unexpected error: write diagnostics
+        tb = traceback.format_exc()
+        out = {
+            "error": "Internal grader error",
+            "exception": str(e),
+            "traceback": tb,
+            "overall_score": 0.0
+        }
+        with open(out_filename, "w", encoding="utf-8") as fh:
+            json.dump(out, fh, indent=2)
+        print("Internal grader error; details written to", out_filename)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

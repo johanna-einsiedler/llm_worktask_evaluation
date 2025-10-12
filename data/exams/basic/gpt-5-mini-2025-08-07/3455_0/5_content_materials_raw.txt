@@ -1,0 +1,97 @@
+<MATERIALS_FOR_CANDIDATE>
+File: systems.csv
+Columns: hostname,cpu_cores,memory_gb,storage_gb,os_version,created_at
+Content:
+hostname,cpu_cores,memory_gb,storage_gb,os_version,created_at
+host-a,4,4,100,Ubuntu18.04,2024-01-10T09:00:00Z
+host-b,8,16,200,Ubuntu20.04,2023-11-05T10:30:00Z
+host-c,2,2,50,CentOS7,2025-01-15T08:45:00Z
+host-d,4,8,100,Ubuntu22.04,2025-06-01T12:00:00Z
+host-e,16,64,1000,Ubuntu22.04,2024-12-12T12:00:00Z
+host-f,2,4,50,Debian10,2025-05-20T07:00:00Z
+
+File: metrics.log
+Format: line-delimited JSON (one JSON object per line)
+Each object fields: hostname, timestamp, cpu_percent (optional), mem_percent (optional), io_wait_ms
+
+Content (18 lines):
+{"hostname":"host-a","timestamp":"2025-10-12T12:00:00Z","cpu_percent":85,"mem_percent":60,"io_wait_ms":5}
+{"hostname":"host-a","timestamp":"2025-10-12T12:00:00Z","cpu_percent":85,"mem_percent":60,"io_wait_ms":5}
+{"hostname":"host-a","timestamp":"2025-10-12T11:55:00Z","cpu_percent":80,"io_wait_ms":4}
+{"hostname":"host-a","timestamp":"2025-10-11T13:00:00Z","cpu_percent":70,"mem_percent":65,"io_wait_ms":4}
+{"hostname":"host-b","timestamp":"2025-10-12T11:50:00Z","cpu_percent":20,"mem_percent":30,"io_wait_ms":2}
+{"hostname":"host-b","timestamp":"2025-10-12T11:59:30Z","cpu_percent":22,"io_wait_ms":2}
+{"hostname":"host-b","timestamp":"2025-10-05T12:00:00Z","cpu_percent":30,"mem_percent":35,"io_wait_ms":2}
+{"hostname":"host-c","timestamp":"2025-10-12T11:00:00+00:00","cpu_percent":88,"mem_percent":92,"io_wait_ms":20}
+{"hostname":"host-c","timestamp":"2025-10-12T11:00:00+00:00","cpu_percent":88,"mem_percent":92,"io_wait_ms":20}
+{"hostname":"host-c","timestamp":"2025-10-10T09:00:00-05:00","cpu_percent":95,"mem_percent":90,"io_wait_ms":10}
+{"hostname":"host-c","timestamp":"2025-10-06T12:00:00Z","mem_percent":85,"io_wait_ms":12}
+{"hostname":"host-d","timestamp":"2025-10-12T10:00Z","cpu_percent":50,"mem_percent":70,"io_wait_ms":1}
+{"hostname":"host-d","timestamp":"2025-10-11T11:00:00Z","cpu_percent":76,"mem_percent":81,"io_wait_ms":5}
+{"hostname":"host-e","timestamp":"2025-10-08T14:30:00Z","cpu_percent":10,"mem_percent":15,"io_wait_ms":0}
+{"hostname":"host-e","timestamp":"2025-10-11T12:00:00Z","cpu_percent":9,"mem_percent":10,"io_wait_ms":0}
+{"hostname":"host-x","timestamp":"2025-10-12T08:00:00Z","cpu_percent":60,"mem_percent":55,"io_wait_ms":3}
+{"hostname":"host-x","timestamp":"2025-10-06T12:00:00Z","cpu_percent":55,"mem_percent":60,"io_wait_ms":3}
+{"hostname":"host-b","timestamp":"2025-09-30T07:15:00Z","cpu_percent":25,"mem_percent":28,"io_wait_ms":2}
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+How the materials were constructed and why
+- Inventory (systems.csv): 6 named hosts (host-a, host-b, host-c, host-d, host-e, host-f). This gives a modest set of inventory-only hosts (host-f has no telemetry), mixed-capacity hosts (memory_gb values include <8 and >=8), and a range of cpu_cores for realistic decisions.
+- Telemetry (metrics.log): 18 deterministic JSON lines covering:
+  - A clear maximum timestamp: 2025-10-12T12:00:00Z (host-a). Graders and candidates must treat that as "now" when computing last-24h and last-7d windows.
+  - Telemetry-only host: host-x appears in telemetry but not in inventory (tests host-not-in-inventory handling).
+  - Inventory-only host: host-f has no telemetry (tests join/left-join and counting).
+  - Duplicates: exact duplicate lines for host-a at 2025-10-12T12:00:00Z and host-c at 2025-10-12T11:00:00+00:00 to require deduplication by hostname+timestamp.
+  - Missing fields: some lines omit cpu_percent (e.g., host-a at 11:55) or mem_percent (e.g., host-b at 11:59:30) to require handling NULLs or skipping.
+  - Inconsistent timestamp formats:
+    - UTC with Z: 2025-10-12T12:00:00Z
+    - No seconds but Z: 2025-10-12T10:00Z
+    - Explicit +00:00: 2025-10-12T11:00:00+00:00
+    - Timezone offset -05:00: 2025-10-10T09:00:00-05:00
+    - Older dates (outside 7-day window): 2025-09-30T07:15:00Z
+  - A spread of values so that:
+    - host-a and host-c have high average cpu_percent values and/or high mem_percent — these should be flagged as capacity-constrained by either CPU or memory rules.
+    - host-b and host-e show low utilization.
+    - host-f has no telemetry and therefore will have zero samples in telemetry-based completeness checks.
+
+Key patterns / relationships evaluators should expect candidates to notice
+- "Now" must be computed as the maximum timestamp in metrics.log: 2025-10-12T12:00:00Z. Time-window calculations (last 24 hours / last 7 days) should be relative to that value.
+- Expected sampling rate: 5 minutes → 288 expected samples per host in the last 24 hours. Given the small dataset, most hosts will fall well below 95% completeness; candidate should compute completeness_pct = (observed_samples_in_last_24h / 288) * 100.
+- Deduplication: duplicates share identical hostname and timestamp strings; a sensible rule is to keep the first occurrence (or last) and ignore duplicates when calculating aggregates.
+- Missing metrics: reasonable choices are (a) store NULLs in DB and let SQL aggregates ignore NULLs (AVG/MAX behave accordingly), or (b) drop records missing the metric needed for a particular aggregate. Candidate must document their chosen approach.
+- Hosts not present in systems.csv (host-x) should be handled explicitly: options include inserting a placeholder inventory row, creating telemetry rows with NULL foreign key, or leaving them unjoined. Evaluator should check the candidate documented and applied one consistent approach.
+
+Traps / common errors candidates might make
+- Treating the calendar date as "today" rather than computing max timestamp from metrics.log. That will produce incorrect windows and aggregates.
+- Failing to parse timezone offsets or timestamps without seconds; this leads to parsing errors or mis-allocated time windows.
+- Not deduplicating telemetry before computing averages or counts, which will inflate sample counts and skew averages.
+- Imputing zeros for missing cpu_percent or mem_percent without documenting/justifying the choice; this can bias averages.
+- Using the wrong expected sample count (e.g., computing expected samples from present data instead of using EXPECTED_SAMPLING_INTERVAL_MINUTES = 5).
+- Forgetting to create an index on telemetry(hostname, timestamp), which is a minor performance issue but part of the task.
+
+What correct/expected answers depend on
+- Correct time-window calculation using max timestamp 2025-10-12T12:00:00Z.
+- Deduplication rule applied consistently before aggregates.
+- Handling of NULLs in AVG/MAX (SQL AVG ignores NULLs; MAX ignores NULLs as well).
+- For capacity-constrained detection:
+  - CPU rule: avg cpu_percent over last 24 hours > 75
+  - Memory rule: avg mem_percent over last 7 days > 80 AND memory_gb < 8
+  - With the provided values, host-a and host-c should be flagged (host-a: high avg CPU; host-c: high avg mem and memory_gb=2).
+- Counts:
+  - total_hosts_inventory = 6 (rows in systems.csv)
+  - hosts_with_low_samples = number of inventory hosts whose completeness_pct < 95 for last 24 hours — with the provided telemetry, most inventory hosts will be flagged; evaluator should accept any answer consistent with the candidate's documented deduplication and time-window inclusivity rules.
+
+How these materials differentiate conceptual vs practical ability
+- Parsing and tolerant timestamp handling tests practical coding skills (datetime parsing without external libraries).
+- Deduplication and NULL handling separate candidates who can implement data-cleaning steps from those who only know SQL theory.
+- Schema choices (normalized telemetry table, proper types, and an index) reflect practical database design; poor schema will make queries more complex.
+- The need to compute expected sample counts and completeness requires combining domain constants (5-minute cadence → 288 expected samples) with correct time-window logic.
+- The small but non-trivial dataset forces candidates to implement decisions and document tradeoffs rather than rely on bulk tools or assumptions.
+
+Use notes for grading
+- Accept either policy for telemetry hosts not in inventory (insert placeholder inventory row or keep telemetry with NULL reference) provided the candidate documents and applies it consistently.
+- Accept either "keep first duplicate" or "keep last duplicate" if the candidate documents which and uses it consistently.
+- Expect README and script comments to state choices made for missing cpu_percent/mem_percent (insert NULL vs skip vs impute).
+- Verify reproducibility: ingest script must create systems_metrics.db and queries script must produce SQL outputs matching the submitted JSON results (candidate will run locally to produce those).
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

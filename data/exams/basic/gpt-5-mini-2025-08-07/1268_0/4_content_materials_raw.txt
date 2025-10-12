@@ -1,130 +1,123 @@
 <MATERIALS_FOR_CANDIDATE>
-Files and contents (place at top level of the exam workspace exactly as named):
-
-1) program.py
+File: program.py
 #!/usr/bin/env python3
 import sys
 
-def usage():
-    print("Usage: python3 program.py <input_file>", file=sys.stderr)
-    sys.exit(2)
-
 def main():
     if len(sys.argv) != 2:
-        usage()
-    input_path = sys.argv[1]
-    sums = {}
-    counts = {}
-    with open(input_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            parts = line.split(',')
-            # NOTE (intentional bug): this code does not skip empty lines.
-            # If `line` is empty, `parts` will be [''] and accessing parts[1] will fail.
-            id_field = parts[0].strip()
-            category = parts[1].strip()
-            value = float(parts[2].strip())
-            if category not in sums:
-                sums[category] = 0.0
-                counts[category] = 0
-            sums[category] += value
-            counts[category] += 1
+        print("Usage: python program.py <input_file>", file=sys.stderr)
+        sys.exit(2)
 
-    for category in sorted(sums.keys()):
-        total = sums[category]
-        cnt = counts[category]
-        avg = total / cnt
-        # Output: Category,Total(two decimals),Count,Average(two decimals)
-        print("{},{:.2f},{},{}".format(category, total, cnt, "{:.2f}".format(avg)))
+    input_path = sys.argv[1]
+    # NOTE: This original file intentionally does not handle blank lines or
+    # alternate delimiters robustly. Do not modify program.py for Task 1.
+    with open(input_path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+
+    total = 0
+    count = 0
+    top_score = -999
+    top_id = ""
+
+    for line in lines:
+        # Deliberately naive parsing (seeded bug: will fail on empty lines or wrong delimiter)
+        parts = line.split(',')
+        id = parts[0]
+        score = int(parts[1])
+        total += score
+        count += 1
+        if score > top_score:
+            top_score = score
+            top_id = id
+
+    avg = total / count
+    print("Summary Report")
+    print("Total records: {}".format(count))
+    print("Average score: {:.2f}".format(avg))
+    print("Top scorer: {} ({})".format(top_id, top_score))
 
 if __name__ == "__main__":
     main()
 
-2) README.txt
-Exam materials and usage
-- Run program: python3 program.py inputs/input1.txt
-- The program reads a CSV-like file where each non-empty line is:
-  RecordID,Category,Value
-  (RecordID string, Category string, Value numeric)
-- The program prints one output line per Category:
-  Category,TOTAL,COUNT,AVERAGE
-  TOTAL and AVERAGE are formatted with two decimal places.
-- Allowed actions:
-  - You may create run_tests.py (required).
-  - You may either modify program.py minimally or create an external wrapper to normalize inputs to make failing tests pass. Document your choice.
-- Files provided:
-  - program.py
-  - inputs/input1.txt
-  - inputs/input2.txt
-  - inputs/input3.txt
-  - expected/expected1.txt
-  - expected/expected2.txt
-  - expected/expected3.txt
+File: input_primary.txt
+S001,78
+S002,85
+S003,72
+S004,95
+S005,82
 
-3) inputs/input1.txt
-R001,Alpha,10.50
-R002,Beta,5.00
-R003,Alpha,4.50
+File: expected_output.txt
+Summary Report
+Total records: 5
+Average score: 82.40
+Top scorer: S004 (95)
 
-4) expected/expected1.txt
-Alpha,15.00,2,7.50
-Beta,5.00,1,5.00
+File: input_extra.txt
+S001,78
+S002,85
+S003,72
 
-5) inputs/input2.txt
-R010,Gamma,3.333
-R011,Gamma,2.667
-R012,Alpha,1.00
-R013,Beta,2.50
+S004,95
+S005,82
 
-6) expected/expected2.txt
-Alpha,1.00,1,1.00
-Beta,2.50,1,2.50
-Gamma,6.00,2,3.00
+File: README-run.txt
+Run instructions (minimal):
+- To run the program and produce the report to standard output:
+  python program.py input_primary.txt
 
-7) inputs/input3.txt
-R020,Alpha,2.00
+Notes and one intentional ambiguity:
+- Input files contain two fields per line: an identifier and an integer score.
+- Fields are documented as comma-separated, but some data sources may use semicolons; the instruction above does not strictly forbid semicolons. Decide whether to (A) modify the code to accept both comma and semicolon, or (B) update the instructions to require comma-only input. If you change instructions instead of code in Task 3, include the modified README-run.txt in your submission and justify the decision.
 
-R021,Alpha,3.00
-R022,Beta,4.00
-
-(Note: there is a blank line between the first and second non-empty record. This blank line is the deliberate cause of a failing test.)
-
-8) expected/expected3.txt
-Alpha,5.00,2,2.50
-Beta,4.00,1,4.00
-
-End of provided files.
+Provided files summary (do not rename files before Task 1):
+- program.py         (do not edit before Task 1)
+- input_primary.txt  (for Task 1)
+- expected_output.txt (canonical output for Task 1; must match byte-for-byte)
+- input_extra.txt    (extra input that exposes the seeded bug)
+- README-run.txt     (minimal run instructions; contains one intentional ambiguity)
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
-How the materials were constructed and their intent
-- program.py: A single-file Python 3 script that processes a CSV-like input file (RecordID,Category,Value) and prints one line per Category with totals, counts and averages. The output format is deterministic: Category,Total(two decimals),Count,Average(two decimals). The implementation intentionally omits a guard against empty/blank lines; when the input file contains a blank line the script will raise an indexing error (parts[1] access) and abort. This is the minimal, easy-to-diagnose bug appropriate for a basic practical exam: it requires the candidate to run the program, capture the failure, and choose either to patch the program or implement a wrapper that removes blank lines before invoking the original script.
-- inputs/expected pairs:
-  - input1 / expected1: a normal small dataset (two Alpha records, one Beta). program.py runs correctly and should match expected1.txt exactly.
-  - input2 / expected2: tests numeric formatting and aggregation across three categories, with floating input values (3.333+2.667 -> 6.00). This verifies correct summation and two-decimal formatting.
-  - input3 / expected3: same model as input1 but with a deliberate blank line inserted between records. The expected output assumes the blank line is ignored by a correct program; the provided program will fail on this file. This creates a single failing test case to exercise diagnosis+fix.
-- Relationships and patterns:
-  - The Category field is the grouping key. Expected outputs are sorted alphabetically by Category to make comparisons deterministic.
-  - Totals and averages are formatted to two decimal places in expected files; counts are integers.
-  - The bug is isolated: program.py behaves correctly on inputs without blank lines (input1, input2). Only input3 triggers the failure.
-- Typical candidate tasks and common mistakes:
-  - Candidate may forget to capture raw stderr/exit codes — the evaluator should confirm these were recorded in test_submission.json.
-  - Candidate may attempt to make the harness tolerant (e.g., fuzzy match instead of exact) to avoid addressing the failure. That is acceptable but Task 3 requires a justification if no code change is made. For this exam the failing case is best addressed by either:
-    - patching program.py to skip empty lines (minimal in-code fix), or
-    - creating a wrapper script that filters out blank lines before passing the file to program.py.
-  - Another frequent error is mismatching spacing or trailing newline differences between program output and expected files; to reduce ambiguity, expected outputs have exact formatting with no trailing spaces.
-  - Floating point rounding is deterministic here because formatting uses two decimals; the candidate should either compare text exactly or implement numeric parse+round-to-2-decimals when asserting.
-- How materials differentiate practical skill:
-  - Running & verifying: input1/input2 should pass immediately; candidate must capture stdout/stderr/exit codes for task 1.
-  - Automation: run_tests.py must automate the three test cases and exit nonzero if any test fails; the harness demonstrates scripting and assertions.
-  - Diagnosis & repair: The failing input3 is small and the failure is obvious in stderr (IndexError or similar) if the candidate inspects or reruns the program. Fixing requires minimal, well-scoped code change (skip empty lines) or a wrapper to normalize input; either option tests the candidate's ability to choose a pragmatic remediation and document it.
-  - Reporting: the candidate must produce concise reproducible commands and a short risk/limitation note (e.g., "this patch simply skips blank lines; it does not validate malformed numeric fields").
-- Expected correct outcome:
-  - Task 1: running "python3 program.py inputs/input1.txt" produces stdout matching expected/expected1.txt exactly, stderr empty, exit code 0.
-  - Task 2: run_tests.py runs all three tests and reports 2 passing, 1 failing (the failing one is input3).
-  - Task 3: after either patch or wrapper to ignore blank lines, re-running run_tests.py yields all three tests passing and harness exits 0. The candidate includes the unified diff (if patch) or wrapper source (if wrapper) and documents investigation commands and rationale.
-- Grading notes for evaluator:
-  - Confirm the harness (run_tests.py) supplied by candidate is named exactly and exits nonzero on failure and zero on success.
-  - Re-run the candidate's harness in the provided workspace to reproduce results. If the candidate modified program.py, compare the supplied unified diff to the actual file state.
-  - Accept either strategy (patch or wrapper) if fix is minimal and well-justified. Prefer minimal scoped changes (e.g., skip empty lines only) rather than large rewrites.
+How materials were constructed and why
+- program.py: A short, dependency-free Python 3 script that reads a single input file (specified on the command line), parses each line as "ID,score", computes a total record count, the average score (printed with two decimals), and the highest-scoring record. It is deliberately small so candidates can inspect it quickly and make a minimal patch in Task 3.
+- Seeded bug: program.py uses a naive parsing loop that calls line.split(',') without skipping empty lines or trimming whitespace; it assumes each non-empty line will split into at least two elements. input_extra.txt contains a blank line which will produce parts with length 1 and cause an IndexError (or ValueError when attempting int conversion). This forces the candidate to diagnose and apply a minimal and robust fix (e.g., skip empty lines and strip whitespace).
+- Ambiguity: README-run.txt intentionally mentions comma-separated fields but also notes that some sources may use semicolons. This gives the candidate a decision point: either modify code to accept both delimiters or document that inputs must be comma-separated and update the instructions. The evaluator should accept either reasonable choice, provided the candidate justifies it.
+- Primary input and expected output: input_primary.txt is small (5 rows) and deterministic. expected_output.txt contains the exact, byte-for-byte canonical output the original program should produce when run on input_primary.txt. The evaluator will compare the candidate's captured stdout to this file.
+- Extra input: input_extra.txt is identical to the primary input but includes a blank line between records to trigger the seeded parsing failure. It is the minimal change needed to expose the bug.
+
+Data patterns and relationships
+- Each data row format: <RecordID>,<IntegerScore>
+  - RecordID: string starting with "S" followed by three digits (e.g., S001).
+  - IntegerScore: whole number (e.g., 78).
+- Expected aggregate calculations:
+  - Total records: count of valid data lines.
+  - Average score: arithmetic mean printed with two decimal places.
+  - Top scorer: the RecordID with the maximum integer score; in the provided primary dataset S004 has the highest score (95).
+
+Traps, ambiguities, and common errors candidates might make
+- Running the program on input_extra.txt will crash because the code does not skip empty lines. A common incorrect “fix” is to simply remove blank lines from the input; that is not allowed because candidates must preserve provided input files and instead should fix the code or update instructions (and document the decision).
+- Another common mistake would be to over-engineer the patch (adding heavy parsing libraries or many lines). The expectation is a minimal change (1–15 lines), e.g., skip lines that are empty or whitespace and split on either ',' or ';' if the candidate chooses to accept both delimiters.
+- Forgetting to capture and report exit codes, or failing to provide exact commands used, will reduce reproducibility and score.
+- Tests: candidates must write their own run_tests.py (or similar) using only Python standard library — failing to do so or using external libraries will be scored down.
+
+What correct answers depend on
+- Task 1: Running the unmodified program.py against input_primary.txt must produce stdout that exactly matches expected_output.txt (byte-for-byte). The evaluator will re-run the candidate's listed command(s) to verify this.
+- Task 2: Candidate-created automated tests must be runnable with a single command (e.g., python run_tests.py). They should verify (at minimum):
+  - The program returns expected stdout for input_primary.txt.
+  - The program handles an input file with trailing whitespace or minor whitespace variations (if the candidate chooses to test this).
+  - The program exits with zero on success.
+  The tests must exit non-zero on failure so the evaluator can rely on exit codes.
+- Task 3: The candidate must diagnose the root cause (the parsing error on empty lines and/or delimiter ambiguity), apply a minimal patch (or update README-run.txt), re-run Task 1 and Task 2, and show passing outputs. The evaluator will run the candidate's supplied patched files exactly as provided.
+
+How materials differentiate conceptual vs. practical skills
+- Conceptual understanding (can describe a fix) is insufficient: candidates must actually run the original program, capture exact outputs and exit codes, write runnable automated tests, apply a minimal patch, and re-run everything to show the fix works. This tests practical competence: environment use, deterministic runs, test harness creation, debugging, small code changes, and reproducible reporting.
+
+Files and sizes
+- All files are short and deterministic: program.py is ~30 lines; each input file is ≤ 6 lines; expected output is 4 lines. These sizes keep the exam feasible within the 90-minute time limit.
+
+Evaluator guidance (quick checklist)
+- Task 1: Run "python program.py input_primary.txt" and verify stdout equals expected_output.txt exactly.
+- Task 2: Ensure the candidate's test command runs without external dependencies and that its exit code indicates pass/fail. Verify tests check at least three meaningful things (per instructions).
+- Task 3: Verify the patched program handles input_extra.txt (no crash) and that the tests pass after the patch. Confirm patch is minimal and justified in the candidate's notes.
+
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

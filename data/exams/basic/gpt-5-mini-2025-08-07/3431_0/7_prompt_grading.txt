@@ -1,0 +1,790 @@
+You are an expert exam systems engineer. Your task is to write a Python grading script that automatically evaluates a candidate’s submission against the official answer key for a practical exam.
+Inputs
+Below is the contextual information you have access to:
+- Exam overview (for evaluator context):
+<examoverview>
+### Exam Purpose
+To confirm that a candidate can practically modify an existing application to (a) find and correct defects, (b) adapt code to run correctly on constrained or different hardware environments, and (c) improve the runtime/memory performance of code. This exam demonstrates hands‑on ability to read an unfamiliar small codebase, implement correct fixes, make pragmatic architectural changes to cope with hardware constraints, and apply straightforward performance optimizations — all under time pressure as in real maintenance tasks.
+
+### Core Competencies to be Tested
+- Reading and understanding a small existing codebase and its tests.
+- Debugging and fixing functional defects so that provided tests pass.
+- Making safe changes that preserve correctness (regression-aware modification).
+- Adapting code to resource-constrained hardware (e.g., low memory, single CPU).
+- Identifying and implementing targeted performance improvements (algorithmic or I/O changes).
+- Producing clear, concise evidence of what was changed and why (commit/diff + short explanation).
+- Basic code hygiene: readable code, small tests or assertions, no breaking of other features.
+
+### Recommended Structure
+- Total time: 90 minutes (strict).
+- Number of tasks: 3 hands-on tasks, executed in sequence on a provided small codebase.
+  - Task A — Bug Fix (35 minutes)
+  - Task B — Hardware Adaptation (25 minutes)
+  - Task C — Performance Improvement (25 minutes)
+  - 5 minutes reserved at the end for preparing the JSON submission file
+- Deliverables:
+  - Modified source files (in-place in the provided repo).
+  - A single JSON file named test_submission.json (see required schema below).
+  - Optionally a small unified diff file (if the environment supports saving diffs).
+  - All tasks must include the command output evidence that proves correctness (unit test output, benchmark output, memory checkpoints, etc.) embedded in the JSON.
+
+Sequence:
+1. Candidate unpacks the exam package (contains codebase, tests, instructions).
+2. Run the supplied test and benchmark scripts to observe failing tests and baseline performance.
+3. Fix the defect(s) in Task A and re-run tests.
+4. Implement the hardware adaptation for Task B and re-run the adapted tests/validation script.
+5. Implement the performance changes for Task C and run the performance check.
+6. Populate test_submission.json with required structured information and paste outputs.
+
+Notes for exam pack author:
+- Provide a small single-language project (recommended: Python 3). Python is easy to run in most environments and requires minimal setup.
+- Provide a script run_all.sh (or run_all.py) that runs unit tests and the simple benchmarks; candidate will run that repeatedly.
+- Avoid any external network dependencies; use only the standard library.
+
+### Practicality — How to make it hands-on
+- Provide a runnable repository (zipped) including:
+  - src/ small program (200–300 lines total max) implementing a realistic tiny feature (e.g., CSV aggregator, log parser, or text indexer).
+  - tests/ unit tests or simple assertion scripts (some passing, at least one failing).
+  - scripts/ run_tests.sh, benchmark.sh or run_all.py that print clear pass/fail and baseline runtime/memory numbers.
+  - data/ a medium sized input file (a few MB) to permit measurable performance differences.
+- The tasks require direct code edits to pass tests and meet runtime/memory targets. No theoretical answers — all proof must come from running scripts and including their outputs.
+
+Concrete examples of hands-on elements (to include in the package):
+- A failing unit test that exercises a bug in parsing or numeric edge case.
+- A program that currently reads an entire data file into memory (Task B asks to adapt it to stream processing).
+- A function implemented with an O(n^2) approach on the dataset; Task C asks to reduce complexity (e.g., use a dictionary/hash map) so that the included benchmark shows improvement.
+
+### Strategic elements (decision points and multi-step processes)
+Design tasks so candidates must make and justify small trade-offs:
+- Task A: Candidate must identify the root cause (not just patch). Provide multiple plausible but incorrect quick fixes to trap candidates who do not run tests after changes.
+- Task B: Provide an adaptation scenario (e.g., “target hardware has <= 128MB RAM or no floating-point unit”) and require the candidate to modify code to still produce correct output under these constraints. Candidate decisions:
+  - Stream the data rather than loading whole file.
+  - Provide fallback code path when multiprocessing is not available (use sequential mode).
+  - Replace float-heavy calculations with integer math if the dataset is integer-compatible.
+- Task C: Candidate must select one focused optimization strategy (algorithmic, data structure, or I/O) and implement it. Decision points:
+  - Improve asymptotic complexity vs microoptimizations — the exam should favor asymptotic changes where feasible.
+  - Verify changes with supplied benchmark and include before/after measurements in JSON.
+
+These decision points separate candidates who can perform hands-on maintenance from those who only know theory: good candidates will run tests/benchmarks, iterate, and explain trade-offs succinctly.
+
+### Evaluation insights — what to look for and how to score
+Structure scoring across three tasks; total 100 points. Passing threshold for the basic exam: 80 points or more.
+
+Suggested point allocation:
+- Task A — Bug Fix: 35 points
+  - Correctness (unit tests pass) — 25 points
+  - Quality of fix (minimal, non-regressive, clear) — 5 points
+  - Explanation in JSON (root cause and what changed) — 5 points
+- Task B — Hardware Adaptation: 30 points
+  - Adaptation correctness (behavior preserved on streaming / fallback) — 15 points
+  - Evidence (show that the new mode runs on a simulated constrained setting or with reduced memory; e.g., benchmark script that checks memory) — 10 points
+  - Explanation of trade-offs and instructions on how to run adapted mode — 5 points
+- Task C — Performance Improvement: 35 points
+  - Meets reasonable performance improvement target (e.g., 2–5x faster on provided dataset or memory use reduced by a target) — 20 points
+  - Regression free (existing tests still pass) — 10 points
+  - Short explanation of the optimization and why it’s safe — 5 points
+
+Grading rubric details / observable outputs:
+- Definitive pass indicator: run_all script exits zero and prints “ALL TESTS PASSED” and benchmark script prints before/after numbers. These outputs should be embedded into test_submission.json.
+- Evidence of streaming/adaptation: developer must run a provided script that invokes the adapted mode (e.g., ./run_all.py --low-mem) and show it completes without exceeding a memory usage threshold. If the environment cannot measure memory precisely, require the candidate to run the low-memory mode and the script to assert no OOM and correct output (byte-for-byte or checksum).
+- Performance evidence: the benchmark script should run baseline then optimized and print both elapsed times; the candidate’s JSON must include these outputs. The grader can check if elapsed_optimized <= threshold * elapsed_baseline.
+- Code review: evaluator inspects diffs/modified files for code clarity and potential regressions (e.g., loss of error handling). Minor style problems are OK for a basic exam but egregious breaks are penalized.
+
+What indicates competence
+- Candidate passes the provided tests after changes.
+- Candidate can show the adapted mode runs correctly (explicit command + output).
+- Candidate shows a measurable and sensible performance improvement, and that tests still pass.
+- Candidate provides concise, accurate explanations for what they changed and why (in JSON). Explanations should show they located root causes, not just trial-and-error patches.
+
+Common failure modes to penalize
+- Fix that hard-codes test inputs instead of fixing logic.
+- Performance “optimization” that introduces incorrectness or fails some tests.
+- Incomplete evidence (no test outputs in JSON).
+- Big-behavior changes that break features not covered by the tests.
+
+### Required submission format (test_submission.json)
+Candidates must submit one JSON file named test_submission.json. It must be valid JSON UTF-8 and include the following fields:
+
+- name: string
+- email: string
+- time_spent_minutes: integer
+- environment: string (Python version, OS, any short notes)
+- tasks: array of objects, each with:
+  - id: string (e.g., "A-bugfix")
+  - status: string (one of "fixed", "partially_fixed", "not_fixed")
+  - files_changed: array of file paths modified (relative)
+  - commands_run: array of objects:
+    - cmd: string (command run)
+    - stdout: string (captured command stdout/stderr)
+    - exit_code: integer
+  - explanation: string (short summary of the root cause and what was changed; <200 words)
+  - evidence: object (task-specific numeric evidence)
+    - For Task A: {"tests_passed": true/false}
+    - For Task B: {"low_mem_mode_ran": true/false, "notes": string}
+    - For Task C: {"baseline_time_s": number, "optimized_time_s": number, "improvement_factor": number}
+- optional_diff: string (unified diff or link to file path in submission)
+- final_notes: string (anything else)
+
+Example minimal tasks array entry:
+{
+  "id": "A-bugfix",
+  "status": "fixed",
+  "files_changed": ["src/parser.py"],
+  "commands_run": [
+    {"cmd": "python3 -m pytest -q", "stdout": "...\n1 failed\n", "exit_code": 1},
+    {"cmd": "python3 -m pytest -q", "stdout": "...\nAll tests passed\n", "exit_code": 0}
+  ],
+  "explanation": "The parser incorrectly split fields with quoted commas. Fixed regex and added unit test for quoted fields.",
+  "evidence": {"tests_passed": true}
+}
+
+Evaluator instructions (manual or automated)
+- Run the included run_all script to verify the candidate’s final state reproduces the reported outputs.
+- Check that tests pass and examine the output blocks pasted into JSON to confirm authenticity.
+- Run the low-memory/alternate-mode command to verify Task B behavior.
+- Run the benchmark or inspect reported baseline/optimized times to check improvement factor.
+- Inspect files_changed and the diff/changed lines to ensure change scope is reasonable.
+- Score by the rubric above.
+
+### Time allocation (recommended)
+- 0–5 min: unpack and read README & task descriptions
+- 5–40 min: Task A (bug triage + fix + run tests)
+- 40–65 min: Task B (implement streaming/fallback + run validation)
+- 65–90 min: Task C (optimize, bench, ensure tests) + write test_submission.json and finalize
+
+---
+
+This design yields a compact, hands‑on, 90‑minute practical exam for entry-level Software Developers, Applications, focused on modifying existing software to fix defects, adapt to constrained hardware, and improve performance — all with strict evidence requirements (runnable commands and outputs) and an explicit JSON submission to simplify automated or semi-automated grading.
+</examoverview>
+
+- Full exam content:
+<exam>
+### Exam Title
+Practical Maintenance & Optimization — Basic (90-minute hands-on)
+
+### Instructions for Candidate
+You have 90 minutes total. Use only the provided machine, the local code editor, and the included execution environment (no internet, no external libraries). All work is done in-place in the provided repository.
+
+1. Unpack the exam package and read README and any task notes (0–5 minutes).
+2. Run the provided “run_all” script to get the baseline:
+   - Try ./run_all.sh or python3 run_all.py (whichever exists). This script runs unit tests and a small benchmark and prints baseline numbers.
+   - Capture the full stdout/stderr and exit code.
+3. Task A — Bug Fix (35 minutes)
+   - Goal: Find and fix the functional defect(s) so that the unit tests pass.
+   - Steps:
+     - Run the test suite (the run_all script does this) and read failing tests and stack traces.
+     - Modify the code in src/ only as needed to fix the bug(s). Keep changes minimal and safe.
+     - Re-run the test suite until all unit tests pass.
+   - Deliverable for Task A: tests must pass; capture commands and outputs in your JSON submission.
+4. Task B — Hardware Adaptation (25 minutes)
+   - Goal: Modify the code so it produces the same correct results under a constrained hardware mode (simulated low-memory or no-parallelism).
+   - The repository includes a validation/alternate mode script or accepts a flag to run in constrained mode (examples: ./run_all.sh --low-mem or python3 run_all.py --low-mem). Locate the instructions in README; use the provided mechanism to validate low-memory mode.
+   - Typical acceptable adaptations (choose one sensible approach; do not try to implement everything):
+     - Convert an operation that reads an entire input file into a streaming approach (process line-by-line / chunked).
+     - Provide a sequential fallback if multiprocessing is not available.
+     - Replace unnecessary large in-memory data structures with smaller or streaming alternatives.
+   - Run the provided low-memory validation script or run_all with the low-memory flag and capture the output. The validation must complete successfully without errors and must produce the expected result (the provided script will indicate correctness).
+   - Deliverable for Task B: evidence that the low-memory/constrained mode runs to completion and yields correct output.
+5. Task C — Performance Improvement (25 minutes)
+   - Goal: Implement a focused performance improvement that measurably reduces runtime or memory usage for the provided dataset.
+   - Steps:
+     - Before making changes, capture the baseline benchmark (from step 2).
+     - Implement a targeted optimization (for example: improve algorithmic complexity from O(n^2) to O(n) by using a dict/set, reduce I/O by streaming or buffering, or avoid repeated expensive operations).
+     - Re-run the benchmark using the same command used for baseline and capture optimized runtime/memory numbers.
+     - Ensure all tests still pass after optimization.
+   - Deliverable for Task C: a measurable improvement (the benchmark outputs before and after), with tests still passing.
+6. Prepare submission (final 5 minutes)
+   - Create a single JSON file named test_submission.json in the repository root following the required schema (see Submission Format below).
+   - In the JSON include the commands you ran, captured stdout/stderr, exit codes, files you changed (relative paths), short explanations of root causes and fixes, and numeric evidence (test pass boolean, low-mem run boolean/notes, baseline and optimized times and improvement factor).
+   - You may optionally generate a unified diff and reference it in the JSON, but only test_submission.json will be used for automated/manual evaluation.
+
+Important rules
+- Maximum time: 90 minutes. Work beyond this is not considered.
+- Do not use external network resources or non-standard libraries.
+- Make code changes in the local repository only; do not add large external files.
+- The grader will re-run the included scripts to verify your reported outputs; do not paste manipulated or fake outputs.
+
+### Expected Outcome
+By the end of the test you must provide:
+- A modified local repository where:
+  - All unit tests pass.
+  - The code includes a working low-memory (or no-parallelism) mode that produces correct results via the provided validation script or flag.
+  - The code contains a targeted performance improvement with a measurable improvement reported by the benchmark.
+- A single submission file test_submission.json (UTF-8 valid JSON) containing:
+  - Your name, email, time spent, environment string.
+  - Three task entries (A, B, C) listing modified files, commands executed, captured outputs and exit codes, short explanations (<~200 words each), and numeric evidence (tests_passed flag, low_mem_mode_ran flag and notes, baseline and optimized times and improvement factor).
+  - Optional: a unified diff string (optional_diff field) or other final notes.
+
+Acceptance criteria (objective)
+- Task A: All provided unit tests pass (verifiable by rerunning the provided test command).
+- Task B: The provided low-memory validation script or mode runs to completion and indicates correct output (no crashes/OOM).
+- Task C: Benchmark shows a measurable improvement (baseline_time_s and optimized_time_s reported, improvement_factor = baseline/optimized > 1), and tests still pass.
+- test_submission.json is valid JSON and contains the required fields.
+
+### Provided Materials
+The exam package contains the following (all available locally after unpacking):
+- src/ — small application source code ( ~200–300 lines total).
+- tests/ — unit tests and small assertion scripts (some may fail initially).
+- scripts/ or top-level files:
+  - run_all.sh or run_all.py — runs tests and baseline benchmark and prints times.
+  - (and also) a provided low-memory validation invocation / example (either a flag to run_all or a script in scripts/).
+- data/ — sample input file(s) (a few MB) that the benchmark and tests use.
+- README.md — instructions and notes about how to run the provided scripts.
+You must only use these materials and the standard library of the runtime environment.
+
+### Submission Format
+You must submit a single file named test_submission.json at the repository root. This is the only file that will be used for grading. The JSON must be valid UTF-8 and follow this schema exactly (field types and names):
+
+Top-level fields
+- name: string
+- email: string
+- time_spent_minutes: integer
+- environment: string (e.g., "Python 3.10.5 on Ubuntu 22.04")
+- tasks: array of three objects (one per task). Each task object must include:
+  - id: string — exactly one of "A-bugfix", "B-lowmem", "C-performance"
+  - status: string — one of "fixed", "partially_fixed", "not_fixed"
+  - files_changed: array of relative file paths (strings). If none, provide an empty array.
+  - commands_run: array of objects, each with:
+    - cmd: string (command you ran)
+    - stdout: string (captured stdout and stderr combined)
+    - exit_code: integer
+  - explanation: string (short summary of root cause and what you changed; keep under ~200 words)
+  - evidence: object (task-specific)
+    - For Task A: {"tests_passed": true/false}
+    - For Task B: {"low_mem_mode_ran": true/false, "notes": string}
+    - For Task C: {"baseline_time_s": number, "optimized_time_s": number, "improvement_factor": number}
+- optional_diff: string (optional unified diff text or empty string)
+- final_notes: string (optional)
+
+Example minimal task entry
+{
+  "id": "A-bugfix",
+  "status": "fixed",
+  "files_changed": ["src/parser.py"],
+  "commands_run": [
+    {"cmd": "python3 -m pytest -q", "stdout": "...\n1 failed\n", "exit_code": 1},
+    {"cmd": "python3 -m pytest -q", "stdout": "...\nAll tests passed\n", "exit_code": 0}
+  ],
+  "explanation": "Fixed parsing of quoted CSV fields by adjusting split logic so commas inside quotes are ignored.",
+  "evidence": {"tests_passed": true}
+}
+
+Grading will be objective — the grader will re-run the commands you list to verify outputs. Ensure everything you paste into the JSON is authentic and reproducible in the repository.
+
+Good luck. Manage your time: Task A (35m), Task B (25m), Task C (25m), finalization (5m).Repository layout (all paths are relative to repository root):
+
+README.md
+run_all.py
+data/events.csv
+src/processor.py
+tests/test_runner.py
+
+--- README.md ---
+Practical Maintenance & Optimization — Basic (90-minute hands-on)
+
+Repository structure:
+- src/processor.py        : application code to read events, aggregate and compute co-occurrence
+- data/events.csv        : input dataset (12 rows)
+- tests/test_runner.py   : test runner (uses only the standard library)
+- run_all.py             : runs tests and prints a benchmark; supports --low-mem flag
+
+Quick start (candidate):
+1. Run baseline: python3 run_all.py
+2. Run low-memory validation (will currently fail until Task B fixed): python3 run_all.py --low-mem
+3. Run tests only: python3 tests/test_runner.py
+
+You must make modifications inside src/ only. Produce test_submission.json as instructed in the exam.
+
+--- run_all.py ---
+#!/usr/bin/env python3
+"""
+Run tests and a small benchmark. Use --low-mem to run the low-memory validation.
+"""
+import sys
+import time
+import subprocess
+from pathlib import Path
+
+REPEATS = 5000  # repeat count to amplify the benchmark (adjustable but kept fixed)
+
+def run_tests():
+    print("Running tests (tests/test_runner.py)...")
+    p = subprocess.run([sys.executable, "tests/test_runner.py"], capture_output=True, text=True)
+    print(p.stdout)
+    if p.returncode != 0:
+        print("TESTS FAILED (exit code {})".format(p.returncode))
+    else:
+        print("ALL TESTS PASSED")
+    return p.returncode, p.stdout + p.stderr
+
+def benchmark():
+    print("Running benchmark (compute_cooccurrence) with REPEATS={}...".format(REPEATS))
+    # import processor after tests (in case code changed)
+    import importlib
+    import src.processor as processor
+    importlib.reload(processor)
+    events = processor.load_all_events("data/events.csv")
+    start = time.time()
+    # run compute_cooccurrence REPEATS times
+    for _ in range(REPEATS):
+        _ = processor.compute_cooccurrence(events)
+    elapsed = time.time() - start
+    print("BENCHMARK_TIME_S: {:.6f}".format(elapsed))
+    return elapsed
+
+def low_mem_validation():
+    print("Running low-memory validation (streaming aggregation)...")
+    import importlib
+    import src.processor as processor
+    importlib.reload(processor)
+    try:
+        result = processor.aggregate_by_event_code("data/events.csv", stream=True)
+    except NotImplementedError:
+        print("LOW-MEM MODE: NOT IMPLEMENTED in src/processor.py")
+        return 1, "NotImplemented"
+    # expected results (pre-computed for provided dataset)
+    expected = {"C1": 100, "C2": 20, "C3": 25}
+    ok = result == expected
+    print("LOW-MEM MODE RESULT: {}".format(result))
+    print("LOW-MEM MODE OK: {}".format(ok))
+    return (0 if ok else 2), str(result)
+
+def main():
+    args = sys.argv[1:]
+    rc, test_out = run_tests()
+    if rc != 0:
+        print("Skipping benchmark because tests failed.")
+        # still allow low-mem flag to be executed separately
+        if "--low-mem" in args:
+            lm_rc, lm_out = low_mem_validation()
+            sys.exit(lm_rc)
+        sys.exit(rc)
+    # run benchmark
+    baseline = benchmark()
+    print("BASELINE_TIME_S: {:.6f}".format(baseline))
+    if "--low-mem" in args:
+        lm_rc, lm_out = low_mem_validation()
+        sys.exit(lm_rc)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+
+--- data/events.csv ---
+EventID,UserID,EventCode,Value
+E1,U1,C1,10
+E2,U2,C1,5
+E3,U1,C2,7
+E4,U3,C1,15
+E5,U2,C2,3
+E6,U4,C3,20
+E7,U4,C1,5
+E8,U5,C2,10
+E9,U5,C1,5
+E10,U6,C3,5
+E11,U2,C1,60
+E12,U7,C2,0
+
+--- src/processor.py ---
+"""
+Processor module for the exam.
+Contains simple implementations; some parts intentionally incomplete or suboptimal
+for the candidate to modify.
+
+Public functions used by tests and run_all.py:
+- parse_line(line) -> (event_id, user_id, event_code, value_int)
+- load_all_events(path) -> list of tuples (event_id, user_id, event_code, value)
+- aggregate_by_event_code(path, stream=False) -> dict event_code -> total value
+- compute_cooccurrence(events) -> integer count of unordered user pairs that share event codes
+"""
+
+from typing import List, Tuple, Dict
+
+def parse_line(line: str) -> Tuple[str, str, str, int]:
+    """
+    Parse a CSV line into fields.
+    BUG: does not strip whitespace around fields (intentionally).
+    Candidate must fix this so whitespace is handled correctly.
+    """
+    parts = line.strip().split(",")
+    if len(parts) != 4:
+        raise ValueError("Bad line: {}".format(line))
+    event_id = parts[0]
+    user_id = parts[1]
+    event_code = parts[2]
+    value = int(parts[3])
+    return event_id, user_id, event_code, value
+
+def load_all_events(path: str) -> List[Tuple[str, str, str, int]]:
+    """
+    Load all events into memory and return a list of parsed tuples.
+    This is the non-streaming (default) implementation.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    # skip header
+    lines = lines[1:]
+    events = [parse_line(l) for l in lines]
+    return events
+
+def aggregate_by_event_code(path: str, stream: bool = False) -> Dict[str, int]:
+    """
+    Aggregate total Value per EventCode.
+    If stream=True is requested, this function currently raises NotImplementedError.
+    Candidate must implement a streaming version that does not load entire file into memory.
+    """
+    if stream:
+        raise NotImplementedError("Low-memory streaming mode not implemented")
+    events = load_all_events(path)
+    totals = {}
+    for _eid, _uid, code, value in events:
+        totals.setdefault(code, 0)
+        totals[code] += value
+    return totals
+
+def compute_cooccurrence(events: List[Tuple[str, str, str, int]]) -> int:
+    """
+    Compute the total number of unique unordered user pairs that share an EventCode.
+    Current implementation is a naive O(n^2) approach (slow on larger data).
+    Candidate will optimize this function in Task C while preserving correctness.
+    """
+    # build set of pairs (frozenset of two user ids) where both events have same code
+    pairs = set()
+    n = len(events)
+    for i in range(n):
+        _eid_i, user_i, code_i, _v_i = events[i]
+        for j in range(i+1, n):
+            _eid_j, user_j, code_j, _v_j = events[j]
+            if code_i == code_j and user_i != user_j:
+                pairs.add(frozenset([user_i, user_j]))
+    return len(pairs)
+
+# end of src/processor.py
+
+--- tests/test_runner.py ---
+#!/usr/bin/env python3
+"""
+A minimal test runner using only the standard library.
+Exits with non-zero code on failures. Prints details to stdout.
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # add repo root to path
+from src import processor
+
+def assert_equal(a, b, msg=""):
+    if a != b:
+        raise AssertionError("Assertion failed: {} != {}. {}".format(a, b, msg))
+
+def test_parse_line_whitespace():
+    line = "E1, U1, C1, 10"
+    parsed = processor.parse_line(line)
+    # expected: whitespace should be removed from user and code
+    assert_equal(parsed, ("E1", "U1", "C1", 10), "parse_line must strip fields")
+
+def test_aggregate_top_event():
+    totals = processor.aggregate_by_event_code("data/events.csv", stream=False)
+    # expected totals for provided data
+    expected = {"C1": 100, "C2": 20, "C3": 25}
+    assert_equal(totals, expected, "aggregate_by_event_code returned wrong totals")
+
+def test_cooccurrence_count():
+    events = processor.load_all_events("data/events.csv")
+    count = processor.compute_cooccurrence(events)
+    # For provided data:
+    # C1 users: U1,U2,U3,U4,U5 => 5C2 = 10
+    # C2 users: U1,U2,U5,U7 => 4C2 = 6
+    # C3 users: U4,U6 => 1
+    # total = 17
+    assert_equal(count, 17, "compute_cooccurrence returned wrong count")
+
+def run_all():
+    tests = [test_parse_line_whitespace, test_aggregate_top_event, test_cooccurrence_count]
+    failures = []
+    for t in tests:
+        try:
+            t()
+            print("PASS:", t.__name__)
+        except Exception as e:
+            print("FAIL:", t.__name__)
+            print("  ", e)
+            failures.append((t.__name__, str(e)))
+    if failures:
+        print("FAILED {} tests".format(len(failures)))
+        sys.exit(1)
+    else:
+        print("ALL TESTS PASSED")
+        sys.exit(0)
+
+if __name__ == "__main__":
+    run_all()```json
+{
+  "name": "",
+  "email": "",
+  "time_spent_minutes": null,
+  "environment": "",
+  "tasks": [
+    {
+      "id": "A-bugfix",
+      "status": "",
+      "files_changed": [],
+      "commands_run": [],
+      "explanation": "",
+      "evidence": {
+        "tests_passed": null
+      }
+    },
+    {
+      "id": "B-lowmem",
+      "status": "",
+      "files_changed": [],
+      "commands_run": [],
+      "explanation": "",
+      "evidence": {
+        "low_mem_mode_ran": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "C-performance",
+      "status": "",
+      "files_changed": [],
+      "commands_run": [],
+      "explanation": "",
+      "evidence": {
+        "baseline_time_s": null,
+        "optimized_time_s": null,
+        "improvement_factor": null
+      }
+    }
+  ],
+  "optional_diff": "",
+  "final_notes": ""
+}
+```
+</exam>
+
+- Additional materials available only to the evaluator:
+<materials_evaluator>
+How materials were constructed and purpose
+- Overall goal: small deterministic Python project (no external libs) that exercises reading an unfamiliar codebase and making three types of changes:
+  - Task A (bug fix): fix incorrect parsing (whitespace handling) so tests pass.
+  - Task B (hardware adaptation): implement streaming aggregation to avoid loading the full file into memory when --low-mem / stream=True is requested.
+  - Task C (performance improvement): replace the O(n^2) co-occurrence computation with an O(n) approach that counts unique users per event code and computes pair counts via combinatorics.
+
+Files and relationships
+- data/events.csv
+  - 12 deterministic rows. Header plus events E1..E12 with clearly labeled fields EventID,UserID,EventCode,Value.
+  - Pre-computed totals:
+    - C1 -> 100
+    - C2 -> 20
+    - C3 -> 25
+  - Pre-computed co-occurrence count: 17 (explanation included in test file comments).
+
+- src/processor.py
+  - parse_line(line): intentionally does not strip whitespace — this creates a failing unit test (Task A). This simulates a typical small parsing bug that can be fixed locally without changing test inputs.
+  - load_all_events(path): reads entire file into memory (read().splitlines()) — acceptable initially, but Task B will require a streaming alternative.
+  - aggregate_by_event_code(path, stream=False): uses in-memory events when stream=False; when stream=True raises NotImplementedError. Candidate must implement streaming aggregation (read file line-by-line, parse and accumulate) to succeed on low-memory validation.
+  - compute_cooccurrence(events): computes unique unordered user pairs that share an event code using a naive O(n^2) approach. This is correct but slow; candidate will optimize this to compute counts per code and sum k*(k-1)//2 to get O(n) behavior.
+
+- tests/test_runner.py
+  - Three deterministic tests:
+    1. test_parse_line_whitespace: constructs a line with spaces ("E1, U1, C1, 10") and asserts parse_line normalizes whitespace. This fails initially because parse_line doesn't strip — this is Task A.
+    2. test_aggregate_top_event: checks aggregate_by_event_code returns the exact expected dict for the provided dataset.
+    3. test_cooccurrence_count: asserts compute_cooccurrence returns 17 for the provided dataset.
+  - Tests use only the standard library and exit with non-zero if any test fails.
+
+- run_all.py
+  - Orchestrates tests and a small benchmark.
+  - On normal run: runs tests (calls tests/test_runner.py as a subprocess); if tests pass, runs benchmark that calls processor.load_all_events() and then calls processor.compute_cooccurrence(events) REPEATS times to measure elapsed time and prints BENCHMARK_TIME_S and BASELINE_TIME_S. Candidate should run this before making changes to capture baseline time.
+  - Supports --low-mem flag: when provided, after tests the script calls processor.aggregate_by_event_code(..., stream=True) and compares the returned dict to the expected totals; if stream=True is unimplemented it prints a NotImplemented message. This is the Task B validation target.
+
+Design choices and how they map to exam tasks
+- Task A (Bug Fix)
+  - The parse_line whitespace bug is small, localizable, and realistic. Candidates must run tests, inspect failing assertion from test_parse_line_whitespace, and fix parse_line by stripping whitespace from each field. This tests reading unfamiliar code, running tests, and applying a minimal safe fix.
+
+- Task B (Hardware Adaptation)
+  - The code currently reads the entire file in load_all_events. The run_all.py --low-mem path calls aggregate_by_event_code with stream=True, but the function currently raises NotImplementedError. Candidate should implement streaming aggregation by reading the file line-by-line, calling parse_line for each line, and updating totals without storing the entire dataset. The run_all.py low-memory validation compares the dict to the expected totals, so correctness is verifiable. This tests adapting to constrained memory by replacing in-memory approach with streaming.
+
+- Task C (Performance Improvement)
+  - The naive compute_cooccurrence is O(n^2). The optimal approach is to:
+    - Build a mapping from event_code -> set of users (single pass over events).
+    - For each code, compute pairs = k * (k-1) // 2 where k is number of unique users.
+    - Sum over codes to produce the same result.
+  - This yields a substantial improvement for repeated benchmarks because run_all.py calls compute_cooccurrence REPEATS times. Candidates must ensure the optimized result equals the original for the provided data and that tests still pass.
+  - The benchmark uses REPEATS = 5000 to amplify runtime difference deterministically. The evaluator can compare baseline and optimized times printed by run_all.py.
+
+Traps, common errors, and grader guidance
+- Possible naive but incorrect fixes for Task A:
+  - Hard-coding stripped values only for the test line or special-casing a test input. The grader should verify parse_line is generally fixed by trying a few additional lines or by inspecting the code change (must use strip()).
+  - Changing tests instead of code — tests are part of material; candidate must not alter tests.
+
+- Task B pitfalls:
+  - Implementing a streaming function that still accumulates all events into memory (e.g., reading lines but appending to a list) defeats the purpose. The evaluator should review code to ensure the stream=True path does not create a full listcopy.
+  - Not preserving correctness: the aggregator must produce the exact expected dict ordering-independent. The run_all.py script compares dict equality.
+
+- Task C pitfalls:
+  - Implementing an optimization that changes semantics (e.g., counting pair occurrences per event instance instead of unique user pairs) will break tests. Tests check cooccurrence number; final code must match 17 for provided dataset.
+  - Forgetting to keep function name compute_cooccurrence so the benchmark picks up the optimized implementation.
+
+What correct answers depend on
+- Correctness for Task A depends on trimming whitespace; parse_line should apply .strip() to each CSV field and still convert Value to int.
+- Correctness for Task B depends on a streaming implementation that iterates file lines and updates totals without building a full events list.
+- Correctness for Task C depends on computing the same unique unordered user-pair count as the naive algorithm, but doing so without nested loops (use mapping code->set(users) then sum combinations).
+
+How these materials differentiate candidates
+- Running tests and reading stack traces reveals whether the candidate follows an evidence-driven workflow (run tests, inspect failure, modify code).
+- Task A checks for straightforward debugging and safe minimal fixes.
+- Task B distinguishes those comfortable making small architectural changes (in-place streaming to adapt to low-memory constraints) versus those who attempt hacky or incomplete fixes.
+- Task C separates candidates who know basic algorithmic improvements (using sets and combinatorics to turn O(n^2) into O(n)) from those who attempt micro-optimizations or give up.
+- The requirement to produce concrete command outputs (run_all.py outputs and test outputs) makes it easy for evaluators to verify claimed improvements.
+
+Note about determinism and size
+- The dataset is concise (12 rows) and fully deterministic. The benchmark amplifies runtime differences by repeating the co-occurrence computation many times (REPEATS = 5000). This keeps files small while still making performance differences measurable.
+
+Evaluator hints
+- Initial run: python3 run_all.py should show tests failing (parse_line whitespace) and benchmark skipped.
+- After Task A: tests should pass; run_all.py then prints ALL TESTS PASSED and baseline benchmark time.
+- After Task B: python3 run_all.py --low-mem should print LOW-MEM MODE RESULT and LOW-MEM MODE OK: True.
+- After Task C: re-run python3 run_all.py and observe BENCHMARK_TIME_S / BASELINE_TIME_S decreased. The test_submission.json must include both baseline and optimized times copied from two runs (pre- and post-optimization).
+- Inspect src/processor.py diffs to ensure changes are minimal and correct: parse_line should now strip fields; aggregate_by_event_code(stream=True) should read file line-by-line; compute_cooccurrence should be optimized but produce identical numeric results.
+
+This set of materials is intentionally compact, deterministic, and directly runnable with only the standard Python interpreter. It supports clear, verifiable outputs for automated or manual grading.
+</materials_evaluator>
+
+- Evaluation and grading guidelines for the evaluator:
+<evaluation>
+```json
+{
+  "name": "Answer Key — Practical Maintenance & Optimization (Basic)",
+  "email": "evaluator@example.com",
+  "time_spent_minutes": 90,
+  "environment": "Python 3.x (3.8+), Linux/Unix-like environment (as provided in exam materials)",
+  "tasks": [
+    {
+      "id": "A-bugfix",
+      "status": "fixed",
+      "files_changed": [
+        "src/processor.py"
+      ],
+      "commands_run": [
+        {
+          "cmd": "python3 tests/test_runner.py",
+          "stdout": "FAIL: test_parse_line_whitespace\n  Assertion failed: ('E1', ' U1', ' C1', 10) != ('E1', 'U1', 'C1', 10). parse_line must strip fields\nFAILED 1 tests\n",
+          "exit_code": 1
+        },
+        {
+          "cmd": "python3 tests/test_runner.py",
+          "stdout": "PASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\n",
+          "exit_code": 0
+        }
+      ],
+      "explanation": "Root cause: parse_line() did not strip whitespace from CSV fields, so fields like ' U1' and ' C1' remained with leading spaces and failed the whitespace unit test. Fix: strip whitespace on each CSV field after splitting (parts = [p.strip() for p in line.strip().split(',')]). This is a small, local, non-regressive change that preserves semantics and fixes the failing test.",
+      "evidence": {
+        "tests_passed": true
+      }
+    },
+    {
+      "id": "B-lowmem",
+      "status": "fixed",
+      "files_changed": [
+        "src/processor.py"
+      ],
+      "commands_run": [
+        {
+          "cmd": "python3 run_all.py --low-mem",
+          "stdout": "Running tests (tests/test_runner.py)...\nPASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\nRunning benchmark (compute_cooccurrence) with REPEATS=5000...\nBENCHMARK_TIME_S: 0.030000\nBASELINE_TIME_S: 0.030000\nRunning low-memory validation (streaming aggregation)...\nLOW-MEM MODE RESULT: {'C1': 100, 'C2': 20, 'C3': 25}\nLOW-MEM MODE OK: True\n",
+          "exit_code": 0
+        }
+      ],
+      "explanation": "Requirement: support a low-memory streaming aggregation mode. Root cause: aggregate_by_event_code(stream=True) raised NotImplementedError and load_all_events() read the entire file into memory. Fix: implemented a streaming path for aggregate_by_event_code when stream=True that opens the file, skips the header, iterates line-by-line, calls parse_line(line) and accumulates totals into a small dict without building a full events list. This preserves correctness and avoids loading the whole file into memory.",
+      "evidence": {
+        "low_mem_mode_ran": true,
+        "notes": "run_all.py --low-mem executed streaming aggregation; returned expected totals {'C1': 100, 'C2': 20, 'C3': 25} and reported LOW-MEM MODE OK: True"
+      }
+    },
+    {
+      "id": "C-performance",
+      "status": "fixed",
+      "files_changed": [
+        "src/processor.py"
+      ],
+      "commands_run": [
+        {
+          "cmd": "python3 run_all.py",
+          "stdout": "Running tests (tests/test_runner.py)...\nPASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\nRunning benchmark (compute_cooccurrence) with REPEATS=5000...\nBENCHMARK_TIME_S: 0.030000\nBASELINE_TIME_S: 0.030000\n",
+          "exit_code": 0
+        },
+        {
+          "cmd": "python3 run_all.py",
+          "stdout": "Running tests (tests/test_runner.py)...\nPASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\nRunning benchmark (compute_cooccurrence) with REPEATS=5000...\nBENCHMARK_TIME_S: 0.006000\nBASELINE_TIME_S: 0.006000\n",
+          "exit_code": 0
+        }
+      ],
+      "explanation": "Root cause: compute_cooccurrence() used an O(n^2) pairwise nested loop adding frozenset pairs; correct but slow when repeated many times. Optimization: converted to O(n) algorithm by building a mapping code -> set(users) in a single pass, then for each code computing k*(k-1)//2 unique unordered user-pairs via combinatorics and summing. This produces identical results (17 for provided dataset) and reduces runtime substantially while keeping semantics and tests intact.",
+      "evidence": {
+        "baseline_time_s": 0.03,
+        "optimized_time_s": 0.006,
+        "improvement_factor": 5.0
+      }
+    }
+  ],
+  "optional_diff": "*** Begin Patch\n*** Update File: src/processor.py\n@@\n-def parse_line(line: str) -> Tuple[str, str, str, int]:\n+def parse_line(line: str) -> Tuple[str, str, str, int]:\n@@\n-    parts = line.strip().split(\",\")\n+    # strip whitespace from each field so fields like ' U1' become 'U1'\n+    parts = [p.strip() for p in line.strip().split(\",\")]\n@@\n def aggregate_by_event_code(path: str, stream: bool = False) -> Dict[str, int]:\n@@\n-    if stream:\n-        raise NotImplementedError(\"Low-memory streaming mode not implemented\")\n+    if stream:\n+        # streaming implementation: do not load entire file into memory\n+        totals = {}\n+        with open(path, \"r\", encoding=\"utf-8\") as f:\n+            # skip header line\n+            next(f)\n+            for line in f:\n+                _eid, _uid, code, value = parse_line(line)\n+                totals.setdefault(code, 0)\n+                totals[code] += value\n+        return totals\n@@\n def compute_cooccurrence(events: List[Tuple[str, str, str, int]]) -> int:\n@@\n-    # build set of pairs (frozenset of two user ids) where both events have same code\n-    pairs = set()\n-    n = len(events)\n-    for i in range(n):\n-        _eid_i, user_i, code_i, _v_i = events[i]\n-        for j in range(i+1, n):\n-            _eid_j, user_j, code_j, _v_j = events[j]\n-            if code_i == code_j and user_i != user_j:\n-                pairs.add(frozenset([user_i, user_j]))\n-    return len(pairs)\n+    # optimized approach: group unique users per code, then count combinations\n+    from collections import defaultdict\n+    users_by_code = defaultdict(set)\n+    for _eid, user, code, _v in events:\n+        users_by_code[code].add(user)\n+    total = 0\n+    for users in users_by_code.values():\n+        k = len(users)\n+        total += k * (k - 1) // 2\n+    return total\n*** End Patch\n",
+  "final_notes": "Passing criteria and scoring (basic exam): total 100 points; passing threshold 80 points. Scoring breakdown: Task A (35 pts) — 25 correctness (unit tests pass), 5 quality of fix, 5 explanation. Task B (30 pts) — 15 correctness (streaming/fallback works), 10 evidence (low-mem validation completes and yields expected results), 5 explanation. Task C (35 pts) — 20 performance improvement (measurable improvement), 10 regression-free (tests pass), 5 explanation. Partial credit: tasks marked 'partially_fixed' receive proportional credit (e.g., streaming implemented but incorrect totals => partial). Automated verification: grader re-runs commands listed under each task; expected outputs (tests pass, low-mem OK, baseline and optimized times) must match or be reproducible to award points. Evidence must be authentic (do not paste fabricated outputs)."
+}
+```
+</evaluation>
+
+## Your Assignment
+
+Based on this information, generate a Python script named task_evaluation.py that implements the automated grading logic.
+The script must:
+
+Accept command-line arguments
+- sys.argv[1]: path to the candidate submission JSON file (e.g., test_submission.json)
+- sys.argv[2]: path to the answer key JSON file (e.g., answer_key.json)
+Perform automated scoring
+- Load both JSON files.
+- Compare the candidate’s answers to the correct answers in the answer key.
+- Apply grading logic, weights, and passing rules as defined in the evaluator’s instructions.
+- Handle partial credit where specified.
+- Be tolerant of formatting differences (e.g., capitalization, whitespace).
+- Record clear reasons for any deductions.
+Produce structured output
+Save results in a new JSON file named test_results.json in the same directory as the script.
+The file must include:
+- A breakdown of scores per question or task.
+- Explanations for deductions or mismatches.
+- The total points, maximum possible points, and percentage score.
+- A variable named overall_score containing the candidate’s percentage score (0–100) as a numeric value.
+
+Script execution example
+The grader should be runnable from the command line as follows:
+python task_evaluation.py test_submission.json answer_key.json
+
+
+Implementation requirements
+- Include robust error handling (invalid JSON, missing keys, etc.).
+- Use only standard Python libraries (e.g., json, os, sys).
+- Be deterministic — the same input must always yield the same score.
+- Include concise comments explaining each major block of logic.
+
+
+
+Example Output Format
+``` python
+# task_evaluation.py
+import json, sys, os
+
+# Load files
+...
+
+# Perform grading
+overall_score = 95.0  # percentage of total points earned (0–100)
+
+# Save detailed results to test_results.json
+...
+
+```

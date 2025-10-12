@@ -1,99 +1,129 @@
 ### Exam Title
-Update an existing automated test suite so it is current, reliable, and maintainable (Basic practical exam — 90 minutes)
+Updating Automated Tests to Match Evolving Application Behavior (Basic Practical Exam)
+
+---
 
 ### Instructions for Candidate
-You have 90 minutes to complete this hands-on practical assessment. Use only the computer, the provided code execution environment, and a text editor. No internet access or external packages are available. Start a timer when you begin and record start/end times in UTC (ISO 8601).
 
-High-level goal: reproduce failing tests from the provided project, diagnose root causes, make minimal and correct edits to the automated tests or test helpers so the suite becomes current and more robust, re-run tests, and document everything in a single JSON file named test_submission.json.
+You have 90 minutes to complete this practical exam. Work only in the provided repository using the tools available on your machine (code execution environment and text editor). Do not access the internet or any external resources.
 
-Step-by-step (follow this order):
-1. Read the README and examine the repo contents (0–5 minutes).
-   - Identify the single command in the README to run the test suite (e.g., ./run_tests.sh or python -m pytest tests/). Use that command for all runs.
-2. Run the test suite once as-is and capture the complete raw console output (5–15 minutes).
-   - Save the exact command you executed and its raw output.
-3. Diagnose failing tests by inspecting:
-   - The failing test files under tests/
-   - The application files under app/ (static HTML/JS) and any test data files
-   - Any test helpers or config files used by the tests
-   - Identify the root cause(s): broken selector(s), hard-coded sleeps, config/API changes, deprecated helper usage, or test logic mismatch.
-4. Make targeted edits to the test files or test helpers to fix three focused issues (15–55 minutes). Typical edits expected:
-   - Task A (Selector fix): Fix one or two tests where an element id/class/text changed — update locator(s) to a stable approach.
-   - Task B (Timing/stability): Replace a hard-coded sleep with an explicit wait/poll (or otherwise make the test deterministic).
-   - Task C (Config/API/deprecation): Update a broken config value, test data path, or replace a deprecated helper/API call used by tests.
-   - Do not delete whole tests or silence assertions; changes should be minimal and reasonable.
-5. Re-run the test suite iteratively until you reach a stable final run (55–75 minutes).
-   - Capture the final raw console output.
-6. Add one small improvement if time permits (75–85 minutes). Examples: refactor a repeated selector into a helper function, add a short comment explaining a non-obvious wait, or minor test cleanup.
-7. Prepare and save test_submission.json (name must be exact) with all required fields (75–90 minutes).
-   - Ensure start_time_utc, end_time_utc and total_minutes are included.
+Overview — what you must do (four sequential tasks):
+1. Environment & baseline run — (≈10 minutes)
+   - Run the provided test suite exactly as-is and capture the test output that shows failing tests.
+   - Save the exact commands you ran (order matters). Example commands you might use: pytest -q, python -m pytest.
+   - Deliverable for this step: include the command list and the raw test output before any edits.
+
+2. Diagnosis & plan — (≈10 minutes)
+   - Inspect failing tests, their stack traces, and the small SUT files and README/spec in the repository.
+   - Decide which tests need to be changed (do not change product/SUT code unless absolutely necessary; if you do, you must explain and justify it).
+   - Write a short decision log describing the root cause for each failing test and your planned edits (one entry per failing test or issue).
+   - Deliverable for this step: decision_log entries.
+
+3. Implement updates to automated tests — (≈45 minutes)
+   - Edit existing test files to fix failures and to make tests more robust (reduce brittleness). Typical acceptable edits:
+     - Update assertions to match the new behavior (e.g., check essential keys/values rather than exact string equality).
+     - Replace fragile exact matches with contains/regex/partial checks.
+     - Remove hard-coded sleep/waits and use fixtures or mocks where appropriate (mocking may be simulated by small helper functions provided in repo).
+     - Fix or parametrize fixtures and repeated setup to avoid duplication.
+   - Add one new pytest test that implements a small new requirement described in the README.
+   - Keep edits limited to tests (tests/ files). If you believe the SUT must be changed, do so only with explicit justification in your submission (this may reduce score).
+   - Deliverable for this step: include full contents of all modified test files and any added test files in your submission JSON.
+
+4. Run, verify, and document — (≈25 minutes)
+   - Re-run the full test suite and capture the after-edit output that demonstrates all tests pass.
+   - Prepare concise per-file explanations of what changed and why.
+   - Prepare reproducible commands so an evaluator can re-run your steps exactly.
+   - Final deliverable: a single JSON file named test_submission.json containing all required fields described below.
 
 Important rules
-- Use only the provided repository and the local environment.
-- Do not fetch external libraries or services.
-- Do not remove tests to make the suite pass; prefer targeted fixes.
-- Keep edits minimal and focused. The evaluator will review original vs updated file contents.
+- Time limit: complete within 90 minutes. Record time_spent_minutes in JSON.
+- Only one file will be accepted for evaluation: test_submission.json. Do not submit any other files.
+- The evaluator will only examine the repository you were given plus the contents you place into test_submission.json. Therefore include full contents of any modified or new test files in that JSON.
+- Do not use the internet. Do not install external packages. Use only tools and files provided.
+
+---
 
 ### Expected Outcome
-By the end of the session you must provide:
-- Evidence that you reproduced failing tests: the initial test run command and its raw console output showing failing tests.
-- The final test run command and its raw console output after your edits.
-- A set of changed files with both the original and updated full file contents, along with a short rationale for each change (1–3 sentences).
-- A short high-level summary (<= 300 words) describing what you changed and why.
-- A short list of remaining risks and recommended next steps.
-- Optional: brief description of any small improvement you added (bonus).
 
-Minimum objective expectations (for scoring):
-- You must have captured the original failing output.
-- You must have made at least the three kinds of fixes described (selector, timing/stability, config/API/deprecation), unless a provided repo already has fewer eligible issues — in that case fix all failing issues present.
-- The final test run output should show that the previously failing tests you targeted now pass (evidence in final_test_output).
+By the end of the exam you must produce a single file named test_submission.json that demonstrates:
+
+- You ran the initial failing test suite and captured the failing output.
+- You diagnosed root causes and produced a concise decision_log describing changes to be made.
+- You updated the automated tests (and added one new test) so that the complete test suite passes.
+- You provide the exact commands you used to run tests before and after edits, the raw test outputs (before and after), and the full text of any modified and added test files.
+- You give short per-file reasons for each change and clear reproduction instructions so an evaluator can re-run your results.
+
+To pass this basic-level exam you should ensure:
+- Tests run before edits show failures.
+- Tests run after edits show zero failing tests (pytest summary of 0 failures).
+- All modifications are limited to test files unless a strong justification is provided.
+
+---
 
 ### Provided Materials
-You will be given a self-contained exam package (zip or repo) that includes:
-- README (includes the single command to run the tests).
-- run_tests.sh (or equivalent script) and/or instructions to run the tests locally (do not alter these unless you must to make tests pass; document any such change).
-- app/ — a small static application used by the tests (HTML/CSS/JS).
-- tests/ — pytest-based tests (or the runner described in README) that currently fail for realistic reasons:
-  - at least one test uses a selector whose id/class/text has changed
-  - at least one test contains a hard sleep (e.g., time.sleep(...) or similar) causing flakiness
-  - at least one test requires a config/data/path/API change or deprecated helper usage
-- test data files (JSON, fixtures) referenced by tests, possibly with a changed path/format.
-- CHANGELOG.txt or SCENARIO.txt that briefly states that the app changed in a few small ways and tests must be updated.
 
-Notes:
-- The provided environment includes all required runtimes for the tests (Python and pytest and any included drivers). You do not need to install packages.
-- All needed files are included in the repo; no network access is required.
+The exam repository you will receive contains:
+- A small Python SUT (module/package) implementing the application logic under test. (Pure Python, small size — no network access.)
+- tests/ — a pytest-based test suite (5–12 tests). Some tests are intentionally failing or brittle because the SUT behavior or outputs changed.
+- testdata/ or sample data files used by the SUT (if applicable).
+- README.md — contains:
+  - A short description of the intended new behavior (so you know what tests should assert).
+  - One small new requirement you must write a test for.
+  - How to run the test suite (example command).
+- A single command to run the tests is supported (e.g., pytest -q). Use that command unless you have good reason to run pytest differently; record any variations in commands_run.
+
+No external dependencies or network access will be necessary.
+
+---
 
 ### Submission Format
-You must submit one file named exactly test_submission.json placed at the repository root. The file must be valid JSON and include these fields (all required unless marked optional):
+
+You must submit exactly one file named test_submission.json. This JSON must be valid JSON (UTF-8). The evaluator will use only this file to assess your work. Include all required fields exactly as specified below.
+
+Required JSON schema and content expectations:
 
 - candidate_name: string
-- start_time_utc: string (ISO 8601)
-- end_time_utc: string (ISO 8601)
-- total_minutes: integer
-- commands_run: array of objects, each:
-  - command: string (exact command you executed)
-  - purpose: string (short description of what that run was for)
-- initial_test_output: string (raw console output captured from the first run)
-- final_test_output: string (raw console output after your edits)
-- changed_files: array of objects, each:
-  - file_path: string (relative path)
-  - original_content: string (full file text as you received it)
-  - updated_content: string (full updated file text after your edits)
-  - short_rationale: string (1–3 sentences: what you changed and why)
-- summary_of_changes: string (plain text, max 300 words — high-level summary of all edits and rationale)
-- risk_notes_and_next_steps: string (short list of remaining risks, assumptions, or recommended improvements)
-- optional_bonus: string (optional — brief description of any extra improvement you added)
+  - Your full name.
 
-Formatting and content requirements
-- Provide exact commands and raw outputs (copy/paste full console output). Do not edit or truncate the logs except to remove machine-specific timestamps if absolutely necessary — in that case indicate you redacted timestamps.
-- For changed_files, include full original and updated file contents so the evaluator can verify diffs.
-- Keep short_rationale concise and factual.
-- Ensure JSON is well-formed. Submissions missing required fields will be marked down.
+- time_spent_minutes: integer
+  - Total minutes you actually spent (<= 90).
 
-Evaluator will verify:
-- That the initial output shows the stated failures.
-- That the candidate made minimal, targeted edits and did not simply delete tests.
-- That the final output shows the previously failing tests now passing (or documents why full passing was not feasible).
-- That the explanations justify the changes and mention trade-offs or remaining risks.
+- commands_run: array[string]
+  - Ordered list of exact shell commands you executed while performing the exam. Include commands to run tests before and after edits, any helper commands, and any commands used to show file contents if you want. Example entries: "pytest -q", "python -m pytest", "sed -n '1,200p' tests/test_example.py"
 
-Good luck. Manage your time — reproduce first, then iterate fixes, then document.
+- test_output_before: string
+  - Raw output of the initial failing pytest run, or a clipped subset (first/last ~40 lines) that clearly shows failing tracebacks and pytest summary. Preserve formatting/newlines inside the string.
+
+- test_output_after: string
+  - Raw output of the final pytest run after your edits, or a clipped subset (first/last ~40 lines) that clearly shows a passing summary (e.g., "X passed, 0 failed").
+
+- modified_files: array of objects
+  - Each object must have:
+    - path: string — path to the modified file relative to repo root (e.g., "tests/test_calc.py")
+    - reason: string — brief reason why you changed this file (one sentence)
+    - content: string — full text content of the modified file after your edits (include entire file).
+
+- added_files: array of objects (empty array [] if none)
+  - Each object must have:
+    - path: string — path of the added file (e.g., "tests/test_new_requirement.py")
+    - reason: string — brief reason why you added this file
+    - content: string — full text content of the added file.
+
+- decision_log: array of objects
+  - Each object must have:
+    - step: string — short identifier (e.g., "fix-format-assertion" or "add-new-flag-test")
+    - decision: string — concise description of the decision you made for that step (1–2 sentences)
+    - alternatives_considered: string — short list of alternatives you considered and why you did not choose them (1–2 short bullets or sentences).
+
+- reproduce_instructions: string
+  - Minimal exact commands and steps an evaluator can run in the original repository to reproduce your results and test outputs. Keep this short and precise (example: "1) pytest -q (shows failures); 2) edit files; 3) pytest -q (shows all tests pass)"). Prefer actual shell commands.
+
+Content rules and tips (evaluate for objectivity):
+- All modified_files and added_files content must be full file contents. The evaluator will not open the repository to read your working files; include everything in JSON.
+- Keep changes scoped to tests/ files only unless you explicitly justify SUT edits in modified_files.reason (doing so may lower score).
+- test_output_before must show failing tests; test_output_after must show passing tests.
+- Keep explanations concise and factual. The decision_log should show you understood root causes and why your edits fix them.
+
+---
+
+If any part of your submission cannot be reproduced from the provided repository using only the included files and the commands you supply, it may be marked incorrect. Good luck.

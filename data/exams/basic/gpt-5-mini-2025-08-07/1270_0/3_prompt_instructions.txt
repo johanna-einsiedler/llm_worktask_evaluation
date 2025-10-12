@@ -1,227 +1,175 @@
 Here is the exam overview written by another exam designer:
 <examoverview>
 ### Exam Purpose
-This basic practical exam verifies that a candidate can design, implement, and maintain a small, working software component that performs everyday programmer tasks: designing a data model, implementing CRUD operations, validating input, persisting state, and providing a reproducible interface (CLI) to use the solution. It confirms the real-world capability to build and maintain a simple inventory/tracking utility that can be used to store, retrieve and update item data—skills directly transferable to tasks such as inventory tracking, small data services, or device-control helpers.
+This basic practical exam verifies that a candidate can design, implement, and maintain a small but realistic software component that performs CRUD (create, read, update, delete) operations, persists data, validates inputs, and provides reproducible behavior. It confirms the candidate can turn requirements into working code, handle simple data dependencies, produce a runnable deliverable, and demonstrate the system works via an automated scenario and lightweight tests — skills required in junior/entry-level programming roles (many of which require a Bachelor’s degree).
 
-### Core Competencies
-The exam will test these concrete skills:
-- Problem decomposition and program design (data model, CLI contract)
-- Implementation of functional requirements (add/list/update/delete/search)
-- Local data persistence (file-based or embedded DB) and correct load/save semantics
-- Input validation and error handling (robustness)
-- Reproducible operation (clear run instructions, deterministic outputs)
-- Basic automated verification (produce outputs that can be machine-checked)
-- Simple code quality and organization sufficient for maintainability
-- Packaging minimal run instructions and a small test log as JSON for remote evaluation
-
-These reflect the minimum expected for an entry-level programmer who will be asked to write and maintain small services and scripts.
+### Core Competencies to be Tested
+- Implementing working software that performs required tasks (coding to spec)
+- Data persistence and basic I/O (reading/writing JSON or CSV / SQLite)
+- Input validation and simple error handling
+- Basic scripting/automation to demonstrate workflows (reproducible runs)
+- Ability to produce runnable deliverables and clear run instructions (README)
+- Basic test or assertion-based verification of correct behavior
+- Code organization and clarity (modularity, comments, naming)
 
 ### Recommended Structure
-Total time allowed: 90 minutes.
+Total time: 90 minutes. The exam is a single, self-contained repository (or set of files) the candidate creates on their machine. Candidate must submit a single JSON file named test_submission.json containing code and required outputs (schema described below).
 
-High-level layout (what the candidate should do and in what order):
-1. Setup & design — (5–10 minutes)
-   - Choose a supported language available in the execution environment (e.g., Python, Node.js, Java).
-   - Decide on persistence format (JSON file or SQLite recommended).
+Number of tasks: 3 small practical tasks to be completed in sequence. Expected deliverables: source code files (one main program and optional modules), a demonstration script that performs a fixed scenario, a few simple tests or assertions, a short README with run instructions, and the test_submission.json with captured outputs.
 
-2. Implementation — (45–55 minutes)
-   - Create a single program (or small module + CLI wrapper) that provides the required functionality.
-   - Implement a small, deterministic storage format and APIs/commands for:
-     - add item
-     - list items
-     - update item quantity (or other field)
-     - delete item
-     - search/filter by SKU or name
-     - save/load to disk
-   - Ensure input validation and clear error messages for invalid operations.
+Suggested time allocation:
+- Task 1 (Core CLI + persistence): 45 minutes
+- Task 2 (Validation, import/export): 20 minutes
+- Task 3 (Demo script + tests + packaging submission JSON): 25 minutes
 
-3. Self-tests & sample run — (15–20 minutes)
-   - Run the program with a small set of commands that demonstrate each required capability.
-   - Save or capture the outputs of those runs.
+Tasks (high level)
+1. Core Inventory Manager (required)
+   - Implement a simple command-line inventory manager with persistent storage (JSON file or SQLite).
+   - Required operations: add item, update item, remove item, get item by id, list items.
+   - Items must include: id (string), name (string), quantity (integer), price (decimal).
+2. Import/Export & Validation (required)
+   - Implement import from a CSV file and export to JSON. (CSV format spec provided below.)
+   - Enforce validation: unique id, non-negative quantity, price >= 0, required fields present. On invalid input, fail gracefully with clear error messages.
+3. Demonstration script & tests (required)
+   - Provide a script (demo_runner.sh / demo_runner.py or similar) that executes a deterministic scenario (sequence of operations) and prints the final inventory JSON.
+   - Provide at least 4 simple assertions or tests demonstrating correct behavior (e.g., adding duplicate id fails, updating quantity works, import merges or rejects duplicates per your documented choice).
 
-4. Submission packaging — (5–10 minutes)
-   - Create test_submission.json with required fields (see exact schema below).
-   - Ensure code files, any generated data file (e.g., data.json or inventory.db), and test_submission.json are present in the submission bundle.
+Expected deliverables that the candidate must include in test_submission.json (full schema below):
+- Candidate metadata
+- Source files content (inventory program, demo runner, tests, README)
+- Commands to reproduce demo
+- Captured stdout for demo and test runs
+- Final inventory JSON (after demo)
+- Short notes on assumptions and any limitations
 
-Number of tasks (delivered as a single integrated task):
-- One integrated coding task (the inventory manager) with multiple required operations. This keeps it hands-on and realistic without being fragmented.
+Note: Candidate should use only the environment’s standard libraries. Recommend Python 3 for brevity; other languages are acceptable but must be documented in submission.
 
-Expected deliverables (what the candidate will submit):
-- Source files implementing the program (language-appropriate; single directory).
-- Any generated persistence file(s) created during their sample run (optional but recommended).
-- test_submission.json — a structured JSON file (exact schema below) that includes run instructions, the commands the candidate executed, the program outputs (or short excerpts), and self-assessment.
+### Practicality — making this hands-on
+- The candidate must write code that runs locally and manipulates a persistent data file. This ensures the exam is practical: it requires real code execution rather than multiple-choice or purely theoretical answers.
+- The evaluator will reproduce the candidate’s steps by running the provided commands which operate on files the candidate submitted.
+- The demo script must be fully automated (no interactive prompts) to enable straightforward reproduction and automatic grading.
+- The CSV import introduces realistic data dependency (external file ingestion). The candidate must show handling of malformed rows or conflicting IDs.
 
-Make the exam language-agnostic but recommend Python for time-limited tasks due to high productivity and standard libraries (JSON/SQLite).
+CSV import format (exact, to avoid ambiguity):
+- Columns: id,name,quantity,price
+- Example row: I001,Widget A,10,2.50
+- The candidate must include a small sample CSV (3–5 rows) they used in the demo; include it in test_submission.json as a file.
 
-### Practicality — How this is hands-on (not a quiz)
-- Candidate must write runnable code that performs each operation and persists data. There are no multiple choice or conceptual questions.
-- Graders can execute the candidate’s program (or automated grader script) against predefined test cases to confirm behavior.
-- The candidate must demonstrate the program’s state persistence after restart (save/load) by performing operations, exiting/restarting, and showing the persisted state.
-- Because the candidate has no internet, they must rely on their ability to program using only builtin libraries—an authentic, practical constraint.
+### Strategic elements (distinguishing real performers)
+The tasks are simple but include multi-step and decision points that reveal the candidate’s practical skills:
 
-### Strategic elements (multi-step decisions that separate knowing vs doing)
-Include these decision points and multi-step requirements in the task so graders can distinguish real implementers from those who only understand theory:
+- Choice & reasoning for persistence: JSON vs SQLite. A candidate who chooses SQLite should show how to initialize the DB and perform safe updates. A candidate who chooses JSON should show atomic write (write-temp-rename) to avoid corruption — this demonstrates practical thinking about persistence.
+- Validation and error handling: candidates must decide whether import rejects or merges duplicates; they must document the chosen behavior and implement it. Real performers will explicitly handle edge cases (e.g., numeric parsing errors, missing fields).
+- Reproducible automation: candidates must create a demo runner that executes a defined scenario. Candidates who just implement functions but cannot script the scenario show weaker operational capability.
+- Test coverage: small assertion tests are required. Candidates who provide meaningful tests that run automatically show they understand verification.
+- Minimal concurrency-safety: basic file-locking or atomic write approach is a distinguishing, but optional, plus for candidates who implement it.
 
-1. Data model & persistence choice
-   - Candidate chooses JSON file or SQLite DB. They must implement load/save semantics and show correctness after program restart (persistence test).
-   - The grader can inspect the persisted file to validate structure.
+Decision points for candidates (they must document their choice in README/notes):
+- How to store data (JSON vs SQLite). If JSON: how to avoid data corruption? If SQLite: ensure schema creation is idempotent.
+- On import duplicates: overwrite, skip, or error? Candidate must pick and document behavior.
+- Error reporting format (exit codes and stderr messages vs printing JSON error objects).
 
-2. State transitions and concurrency avoidance
-   - Candidate must ensure updates are atomic enough for a single-user CLI (e.g., write-to-temp-then-rename for file writes). This shows practical thinking about real-world file integrity.
+### Practical Elements to Include (explicit checklist for exam creator)
+- Provide candidate with initial empty project folder or ask them to create it.
+- Require the candidate to implement:
+  - One main executable file (inventory.py or inventory.js) that accepts command-line arguments or a subcommand style (e.g., inventory.py add --id I001 --name "X" --qty 5 --price 3.2).
+  - Persistent storage file used by program (inventory.json or inventory.db created at runtime).
+  - CSV import (import.csv included in submission).
+  - A demo runner script that runs the following sequence (this is the standard scenario the evaluator will reproduce):
+    1. Ensure starting with empty storage (delete any existing data file).
+    2. Add item I100, name "Screwdriver", quantity 15, price 5.50
+    3. Add item I101, name "Hammer", quantity 20, price 9.99
+    4. Update I100 quantity to 12
+    5. Attempt to add I101 again (should fail or be handled per documented policy)
+    6. Remove I101
+    7. Import provided CSV (3 rows: one new, one duplicate id, one malformed row)
+    8. Export final inventory to final_inventory.json and print its content to stdout
+  - At least 4 assertions/tests that run non-interactively (e.g., a small test file that runs commands and checks return codes and final state).
+  - README with precise commands to run demo and tests.
+- Candidate must capture stdout for the demo and include these transcripts in test_submission.json.
 
-3. Input validation and error paths
-   - Candidate must check for duplicate SKUs, invalid quantities (negative), missing fields; report errors with non-zero exit codes on failures.
+### Submission JSON Schema and Requirements
+Name the file test_submission.json and include at minimum the following fields:
 
-4. Reproducible CLI contract
-   - The CLI should accept commands in a way the grader can script (e.g., command-line arguments or a single-run mode that accepts a sequence of commands from stdin). This allows an automated grader to run test scenarios deterministically.
+- candidate_name: string
+- email: string
+- time_taken_minutes: integer
+- language: string (e.g., "Python 3.10")
+- run_commands: array of strings (commands an evaluator can run to reproduce demo; e.g., ["python3 demo_runner.py"])
+- files: array of objects { "filename": string, "content": string } — include all source files, sample CSV, README, and demo scripts
+- demo_stdout: string (exact stdout captured when running the demo script)
+- test_results: array of objects { "name": string, "passed": boolean, "output": string }
+- final_inventory_json: object or array (the final inventory data structure produced by demo; embed JSON)
+- notes: string (assumptions, known issues, design choices like merge vs reject on duplicates)
+- self_score_estimate: integer (0–100) — optional candidate estimate of score
 
-5. Demonstrated persistence test
-   - Candidate must run: add item -> save -> run a second invocation -> list items -> show item present. This demonstrates that the candidate wrote working persistence/load logic.
-
-6. Minimal automated verification
-   - Candidate should include a short script or provide explicit command sequence and captured outputs in test_submission.json to demonstrate working behavior and allow fast manual or automated checking.
-
-These elements require the candidate to program design choices and implement them correctly rather than simply answering conceptual questions.
-
-### Detailed Required Functionality (Basic scope)
-The program must implement the following, reachable within 90 minutes:
-
-Core features (required):
-- Data model for items: at minimum fields SKU (string, unique), name (string), quantity (integer >= 0), optional price (decimal) or description.
-- Commands:
-  - add --sku <SKU> --name <NAME> --qty <N> [--price <P>]
-  - list [--sort sku|name|qty]
-  - update --sku <SKU> --qty <new_qty> (or --change +N/-N)
-  - delete --sku <SKU>
-  - find --sku <SKU> or find --name <substring>
-- Persistence:
-  - Save to a local file (JSON preferred) or SQLite DB.
-  - On startup, program loads existing data file if present.
-- Return status:
-  - Commands must return exit codes: 0 for success, non-zero for error.
-  - Appropriate stderr messages for errors.
-- Deterministic CLI output:
-  - Output should be machine-parseable (e.g., JSON lines or a simple table with consistent separators) so grader can check outputs.
-- Simple input validation and informative error messages.
-
-Optional (bonus) features (not required for passing but increase score):
-- CSV import/export
-- Unit tests or a small automated test script
-- Atomic writes (write-to-temp-and-rename)
-- Sorting and pagination support on list
-
-Time allocation recommendation:
-- Implement core commands + persistence: 45–55 minutes
-- Validate and run sample scenarios: 15 minutes
-- Write submission JSON and tidy files: 10–15 minutes
-
-### test_submission.json — exact schema for candidate to produce
-Require this exact filename and JSON keys in submission root to simplify automated grading. Candidate must include the fields exactly as described.
-
-Required fields:
-- language: string — language used (e.g., "python3")
-- entry_point: string — command to run the program (for grader; e.g., "python3 inventory.py")
-- persistence_file: string — filename used to store data (e.g., "data.json")
-- commands_run: array of objects — chronological commands the candidate ran for demonstration, each object:
-  - cmd: string — the exact command-line or invocation used
-  - stdout: string — the captured standard output of that run (can be a short excerpt if long)
-  - stderr: string — captured standard error (empty string if none)
-  - exit_code: integer — exit code returned
-- short_description: string — ≤ 200 words describing how to run the program and design choices (persistence, format)
-- self_assessment: object:
-  - implemented_required: boolean
-  - bonus_features: array of strings (list of optional features implemented)
-  - known_issues: string — any known limitations or bugs
-- time_taken_minutes: integer — candidate's estimate of total time used
-
-Example (short) test_submission.json structure:
+Example minimal test_submission.json (excerpt):
 {
-  "language": "python3",
-  "entry_point": "python3 inventory.py",
-  "persistence_file": "inventory.json",
-  "commands_run": [
-    {
-      "cmd": "python3 inventory.py add --sku SKU001 --name \"Widget\" --qty 10",
-      "stdout": "Added SKU001",
-      "stderr": "",
-      "exit_code": 0
-    },
-    {
-      "cmd": "python3 inventory.py list --format json",
-      "stdout": "[{\"sku\":\"SKU001\",\"name\":\"Widget\",\"qty\":10}]",
-      "stderr": "",
-      "exit_code": 0
-    }
+  "candidate_name": "Jane Doe",
+  "email": "jane@example.com",
+  "time_taken_minutes": 78,
+  "language": "Python 3.10",
+  "run_commands": ["python3 demo_runner.py"],
+  "files": [
+    {"filename": "inventory.py", "content": "...source..."},
+    {"filename": "demo_runner.py", "content": "..."},
+    {"filename": "import.csv", "content": "I200,Plier,5,3.25\n..."},
+    {"filename": "README.md", "content": "..."}
   ],
-  "short_description": "...",
-  "self_assessment": {
-     "implemented_required": true,
-     "bonus_features": ["csv_import"],
-     "known_issues": "search is case-sensitive"
-  },
-  "time_taken_minutes": 78
+  "demo_stdout": "Final inventory: [ ... ]",
+  "test_results": [
+    {"name":"add_duplicate_id","passed":true,"output":"Duplicate id rejected"},
+    ...
+  ],
+  "final_inventory_json": [ { "id": "I100", "name": "Screwdriver", "quantity": 12, "price": 5.5 }, ... ],
+  "notes": "On import, duplicates are skipped. Data stored in inventory.json via atomic rename."
 }
 
-(Provide the above schema textually to the candidate; graders should require this JSON.)
+Evaluator must be able to save the provided files and run the listed commands to reproduce demo and run tests.
 
-### Practical elements to include (to ensure hands-on)
-- Reproducible commands: candidate must present commands and outputs in test_submission.json.
-- Persistence demonstration: include a command sequence showing a restart or separate invocation demonstrates saved state.
-- Machine-checkable outputs: prefer JSON output mode or fixed plain text format for list and find commands so automatable verifiers can parse expected results.
-- Small sample dataset: candidate should create at least 3 different items during their demonstration, exercise update and delete, and show search results.
+### Evaluation Insights — What to inspect and how to score (rubric)
+Total: 100 points. Passing for basic exam: >= 80 points.
 
-### Evaluation Insights — what to look for and scoring rubric
-Use an objective scoring rubric to determine whether the candidate meets the basic standard. Total 100 points; passing threshold 80+.
+1. Functional correctness (60 points)
+   - Core commands implemented and behave as specified: add/get/update/remove/list (40 pts)
+     - Each operation: add (10), get (10), update (10), remove (10)
+   - Persistence works: data file is created and subsequent runs reflect stored state (10 pts)
+   - Export/import behave to spec (10 pts)
 
-Suggested rubric:
-- Core Functionality: 60 points
-  - Add/list/find/update/delete implemented and working: 40 points (8 points each)
-  - Persistence (save/load across runs): 15 points
-  - Correct exit codes and error messages for invalid commands: 5 points
+2. Validation & error handling (15 points)
+   - Unique ID enforcement and proper handling of duplicates (5)
+   - Quantity and price validation (non-negative, numeric) with clear errors (5)
+   - Graceful handling of malformed CSV rows (5)
 
-- Robustness & Input validation: 10 points
-  - Rejects duplicate SKUs, negative quantities, missing required fields: 6 points
-  - Provides clear error messages and non-zero exit codes on failure: 4 points
+3. Demonstration & tests (15 points)
+   - Demo runner executes the required sequence and outputs final inventory (7)
+   - At least 4 automated assertions/tests that run and correctly reflect behaviors (8)
 
-- Deterministic & Scriptable outputs: 10 points
-  - JSON or fixed-format list output for easy parsing: 6 points
-  - Reproducible CLI contract (run commands provided and match outputs): 4 points
+4. Code quality & documentation (10 points)
+   - README with exact run instructions and explanation of design choices (4)
+   - Code is readable, modular, and commented (3)
+   - No reliance on external libraries beyond standard library unless documented/allowed (3)
 
-- Code quality & organization: 10 points
-  - Readable code, modular functions, sensible variable names: 6 points
-  - Minimal inline comments or README describing run instructions: 4 points
+Scoring notes:
+- Deduct points for runtime errors when evaluator reproduces the demo.
+- If candidate selects SQLite, require scripts to initialize DB on first run (no manual steps). If this works, award full persistence points.
+- Partial credit allowed (e.g., if add/get/update work but import/export missing, award partial).
 
-- Submission completeness & clarity: 10 points
-  - test_submission.json present and well-formed per schema: 5 points
-  - Commands recorded and outputs included: 5 points
+Observable outputs that indicate competence
+- The demo_stdout shows the expected sequence of operations and final inventory JSON that matches the evaluator’s expected final state given the scenario.
+- test_results all passing and non-flaky when re-run.
+- Files array contains runnable source and a clear README. The run_commands work as-is.
+- Code handles invalid inputs with clear errors (stderr or exit codes).
+- Data file produced (inventory.json or inventory.db) contains the persisted state consistent with demo.
 
-Notes on grading and observed outputs:
-- Functional checks are primary: graders should run the candidate's entry_point with scripted commands to verify behavior. The commands listed in test_submission.json should match executed outputs; inconsistencies are deductions.
-- Inspect persistence file format to ensure it contains expected records (e.g., check that SKU001 exists). If candidate claims JSON persistence, the file should be valid JSON and include the items they added.
-- Non-zero exit code on errors is important: having no error codes means less robust CLI design.
-- Bonus features can be used to raise final score but are not required for passing.
+### Minimal evaluator checklist (quick reproduction)
+1. Save files from test_submission.json to a temp folder.
+2. Run the run_commands in order (or the demo_runner command).
+3. Verify demo_stdout matches produced stdout; ensure final_inventory_json equals produced final JSON file.
+4. Run tests script(s) and check test_results.
+5. Score according to rubric.
 
-### Example automated acceptance tests (for exam creator)
-Create a small script that runs these steps against the candidate entry_point and checks outputs:
-1. Remove candidate persistence file (fresh start).
-2. Run: add SKU001 name A qty 5  -> expect exit code 0 and stdout contains "Added" or show item in JSON
-3. Run: add SKU002 name B qty 3  -> expect exit code 0
-4. Run: list --format json -> parse JSON and assert both SKUs present with expected qty
-5. Run: update --sku SKU001 --qty 7 -> expect exit code 0
-6. Run: list -> assert SKU001 qty == 7
-7. Run: delete --sku SKU002 -> expect exit code 0
-8. Run: new process list -> assert SKU002 is absent
-9. Introduce invalid command: add without sku -> assert non-zero exit code and error message.
-
-These checks mirror the rubric and can be performed within a minute or two if the candidate implemented deterministic output.
-
-### Final guidance for exam creators & evaluators
-- Make the environment clear: supply a language runtime (Python3 recommended) and tell candidates they may use only standard libraries.
-- Provide the test_submission.json schema to the candidate exactly as above before starting so they know how to present evidence.
-- Allow exactly 90 minutes; require single submission directory with code and test_submission.json. Automatic or manual grading should follow the scoring rubric.
-- Candidate must not access external resources; the environment should permit only standard library usage to keep time and reproducibility bounded.
-
-This structure ensures the exam is hands-on, practical, time-bounded, and distinguishes candidates who can actually implement and maintain simple software from those who can only describe it.
+This design ensures hands-on coding, data persistence, error handling, scripted reproducibility, and simple test coverage within a 90-minute window. It differentiates candidates who can implement working software with operational considerations from those who only understand concepts theoretically.
 </examoverview>
 
 ### Your assignment:
@@ -234,7 +182,7 @@ Your instructions must include:
    - Do not prescribe methods or tools beyond what’s listed in the context.
 2. **Expected Outcome** – What the candidate must achieve or produce by the end of the test.
 3. **Provided Materials** – Briefly describe any materials or data files that will be given.
-4. **Submission Instructions** – Instrut candidates that they must submit results as `"test_submission.json"`.
+4. **Submission Instructions** – Instruct candidates that they must submit results as `"test_submission.json"` and that this will be the only file used for evaluation.
 
 ### Objectivity and Evaluation Constraints
 - Avoid tasks that require subjective interpretation.

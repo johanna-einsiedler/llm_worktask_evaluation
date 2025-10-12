@@ -1,39 +1,45 @@
 ```json
 {
-  "candidate_name": "",
-  "time_taken_minutes": null,
-  "task_results": [
+  "name": "",
+  "email": "",
+  "time_spent_minutes": null,
+  "environment": "",
+  "tasks": [
     {
-      "task_id": "A-bugfix",
+      "id": "A-bugfix",
       "status": "",
-      "files_modified": [],
-      "patch_unified_diff": "",
-      "pre_fix_test_output": "",
-      "post_fix_test_output": "",
+      "files_changed": [],
+      "commands_run": [],
       "explanation": "",
-      "unit_tests_added_or_modified": [],
-      "self_assessed_confidence": ""
+      "evidence": {
+        "tests_passed": null
+      }
     },
     {
-      "task_id": "B-adapt_env",
+      "id": "B-lowmem",
       "status": "",
-      "files_modified": [],
-      "patch_unified_diff": "",
-      "run_output_after_adaptation": "",
+      "files_changed": [],
+      "commands_run": [],
       "explanation": "",
-      "risks_or_limitations": ""
+      "evidence": {
+        "low_mem_mode_ran": null,
+        "notes": ""
+      }
     },
     {
-      "task_id": "C-performance",
+      "id": "C-performance",
       "status": "",
-      "files_modified": [],
-      "patch_unified_diff": "",
-      "benchmark_before_ms": null,
-      "benchmark_after_ms": null,
-      "bench_command_run": "",
-      "explanation": ""
+      "files_changed": [],
+      "commands_run": [],
+      "explanation": "",
+      "evidence": {
+        "baseline_time_s": null,
+        "optimized_time_s": null,
+        "improvement_factor": null
+      }
     }
   ],
-  "other_notes": ""
+  "optional_diff": "",
+  "final_notes": ""
 }
 ```

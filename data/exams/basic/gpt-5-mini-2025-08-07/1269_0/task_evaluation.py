@@ -1,773 +1,544 @@
 # task_evaluation.py
+"""
+Automated grader for the "sales_agg" basic practical exam.
+
+Usage:
+    python task_evaluation.py <candidate_submission.json> <answer_key.json>
+
+Generates test_results.json in the same directory as this script.
+
+The grader:
+- Loads candidate submission JSON and answer key JSON.
+- Compares candidate outputs to expected outputs (tolerant normalization).
+- Applies weighted scoring per exam specification.
+- Produces a detailed breakdown with explanations for deductions.
+
+Implementation notes:
+- Uses only Python standard library.
+- Robust to missing fields; attempts best-effort grading and records reasons.
+"""
+
 import json
-import sys
 import os
-import math
+import sys
+import traceback
 
-# Grading weights (points)
-WEIGHTS = {
-    "functional_primary": 40,   # Task A
-    "functional_revision": 20,  # Task B
-    "code_readability": 20,
-    "documentation": 15,
-    "packaging": 5
-}
-TOTAL_POINTS = sum(WEIGHTS.values())
-
-# Tolerances
-FLOAT_TOL = 1e-6  # tolerance when comparing numeric aggregates
-
+# ---------- Helper utilities ----------
 
 def load_json_file(path):
-    """Load JSON from path with error handling."""
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f), None
-    except Exception as e:
-        return None, f"Failed to load JSON from '{path}': {e}"
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
+def safe_get(d, key, default=None):
+    return d.get(key, default) if isinstance(d, dict) else default
 
-def find_file_content(files_list, target_path):
-    """Return content for given path from files array (or None)."""
-    for entry in files_list:
-        if entry.get("path") == target_path:
-            return entry.get("content")
-    return None
-
-
-def find_captured_output(captured_outputs, name):
-    """Return content for a captured output entry by name."""
-    for entry in captured_outputs:
-        if entry.get("name") == name:
-            return entry.get("content")
-    return None
-
-
-def try_parse_json_string(s):
-    """Try parse a JSON string; return (obj, error_message)."""
+def normalize_output(s):
+    """
+    Normalize program output for tolerant comparison:
+    - Convert None to empty string.
+    - Split into lines, strip trailing and leading whitespace of each line.
+    - Remove leading/trailing blank lines.
+    - Join with '\n'.
+    """
     if s is None:
-        return None, "No content provided"
-    try:
-        return json.loads(s), None
-    except Exception as e:
-        # Try trimming whitespace/newlines
-        try:
-            return json.loads(s.strip()), None
-        except Exception as e2:
-            return None, f"JSON parse error: {e}; trimmed parse error: {e2}"
+        return ''
+    if not isinstance(s, str):
+        s = str(s)
+    # Normalize line endings
+    lines = s.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+    # Strip each line's trailing and leading whitespace
+    stripped = [ln.strip() for ln in lines]
+    # Remove leading/trailing empty lines
+    while stripped and stripped[0] == '':
+        stripped.pop(0)
+    while stripped and stripped[-1] == '':
+        stripped.pop()
+    return '\n'.join(stripped)
 
-
-def numeric_equal(a, b, tol=FLOAT_TOL):
-    """Compare two numeric values with tolerance, handle None."""
-    if a is None and b is None:
-        return True
-    if (a is None) != (b is None):
+def safe_str_contains(haystack, needles):
+    """Case-insensitive containment check; needles may be string or iterable of strings."""
+    if not isinstance(haystack, str):
         return False
-    try:
-        return abs(float(a) - float(b)) <= tol
-    except Exception:
-        return False
+    hay = haystack.lower()
+    if isinstance(needles, str):
+        needles = [needles]
+    return all(n.lower() in hay for n in needles)
 
-
-def score_summary(expected_obj, actual_obj):
+def count_comment_lines(content, language_hint=None):
     """
-    Compare 'summary' JSON structures.
-    Returns (points_awarded, max_points, messages_list).
-    This is used for Task A (primary).
+    Heuristic count of comment lines in a source file content.
+    Supports simple detection for languages using:
+    - '#' (python, shell)
+    - '//' (c/c++/java/js)
+    - '/*' ... '*/' (block comments counted naively)
+    - triple-quoted strings in Python as docstrings counted as comments (naive: detect triple quotes)
+    Returns (comment_lines, total_code_lines_nonblank).
     """
-    messages = []
-    max_points = WEIGHTS["functional_primary"]
-    points = 0
+    if not isinstance(content, str) or content.strip() == '':
+        return (0, 0)
+    lines = content.splitlines()
+    comment_lines = 0
+    code_lines = 0
+    in_block = False
+    for ln in lines:
+        stripped = ln.strip()
+        if stripped == '':
+            continue
+        # Block comment start/end detection (naive)
+        if '/*' in stripped:
+            in_block = True
+        if in_block:
+            comment_lines += 1
+            if '*/' in stripped:
+                in_block = False
+            continue
+        # Python triple-quote docstring heuristic
+        if stripped.startswith(('"""', "'''")) and stripped.count('"""') < 2 and stripped.count("'''") < 2:
+            # start of triple-quote block - count as comment lines until we see closing triple
+            comment_lines += 1
+            quote = '"""' if stripped.startswith('"""') else "'''"
+            if stripped.count(quote) >= 2:
+                # opening and closing on same line
+                pass
+            else:
+                # consume following lines until closing triple found
+                # naive: we'll keep flag and continue marking as comments
+                in_block = True
+            continue
+        if stripped.startswith('#') or stripped.startswith('//'):
+            comment_lines += 1
+        elif stripped.startswith(('"""', "'''")) and (stripped.endswith('"""') or stripped.endswith("'''")):
+            comment_lines += 1
+        else:
+            # also treat lines that are only comment after code? simplistic: if '#' appears and code before it, still count as comment+code; count as code
+            code_lines += 1
+    # total non-blank lines considered as code_lines + comment_lines
+    total_nonblank = code_lines + comment_lines
+    return (comment_lines, total_nonblank)
 
-    # Basic presence
-    if not isinstance(expected_obj, dict) or "summary" not in expected_obj:
-        messages.append("Answer key missing 'summary' top-level key.")
-        return 0, max_points, messages
-    if not isinstance(actual_obj, dict) or "summary" not in actual_obj:
-        messages.append("Candidate output missing 'summary' top-level key.")
-        return 0, max_points, messages
+# ---------- Grading logic and weights ----------
 
-    exp_summary = expected_obj["summary"]
-    act_summary = actual_obj["summary"]
+MAX_POINTS = 100.0
 
-    # Keys expected
-    exp_cols = sorted(list(exp_summary.keys()))
-    act_cols = sorted(list(act_summary.keys())) if isinstance(act_summary, dict) else []
+# Weight breakdown per exam overview (basic)
+WEIGHTS = {
+    'correctness': 50.0,      # functionality + tests correctness
+    'documentation': 20.0,    # README + changelog
+    'comments': 15.0,         # inline comments & clarity
+    'tests_evidence': 10.0,   # test runs, build_instructions, captured outputs
+    'revision': 5.0           # follow-up change implemented & documented
+}
 
-    if exp_cols != act_cols:
-        messages.append(f"Numeric column keys mismatch. Expected columns: {exp_cols}. Found: {act_cols}.")
-        # Partial credit still possible if intersection non-empty
+# ---------- Core grading function ----------
+
+def grade_submission(candidate, answer_key):
+    results = {
+        'breakdown': {},
+        'reasons': [],
+        'total_points': 0.0,
+        'max_points': MAX_POINTS,
+    }
+
+    # Basic presence checks
+    required_top_fields = [
+        'candidate_name', 'language', 'time_spent_minutes',
+        'source_files', 'build_instructions', 'readme',
+        'changelog', 'tests', 'assumptions', 'comments_coverage',
+        'self_score_estimate', 'signature'
+    ]
+    missing_fields = [f for f in required_top_fields if f not in candidate]
+    if missing_fields:
+        results['reasons'].append(f"Missing required top-level fields: {missing_fields}")
+
+    # --- Correctness (50 points) ---
+    correctness_score = 0.0
+    correctness_max = WEIGHTS['correctness']
+    correctness_details = []
+
+    # 1) Check presence of source file named sales_agg*
+    source_files = candidate.get('source_files', [])
+    has_sales_agg = False
+    any_source = False
+    sales_agg_filenames = []
+    total_comment_ratio = 0.0  # for comments scoring later
+    comment_lines_total = 0
+    total_nonblank_lines_total = 0
+
+    for sf in source_files:
+        fname = safe_get(sf, 'filename', '')
+        content = safe_get(sf, 'content', '')
+        if fname:
+            any_source = True
+            if 'sales_agg' in fname.lower():
+                has_sales_agg = True
+                sales_agg_filenames.append(fname)
+        # accumulate comment stats
+        cl, tn = count_comment_lines(content)
+        comment_lines_total += cl
+        total_nonblank_lines_total += tn
+
+    if any_source:
+        correctness_details.append("Source files provided.")
     else:
-        messages.append("Numeric column keys match expected ordering/values.")
+        correctness_details.append("No source files found.")
 
-    # For each column, compare metrics
-    col_scores = []
-    per_col_max = max_points / max(1, len(exp_cols))  # split points across columns roughly
+    if has_sales_agg:
+        correctness_details.append(f"Found source file(s) named like sales_agg: {sales_agg_filenames}.")
+        correctness_score += 5.0 * (correctness_max / correctness_max) * (1.0) * (1.0)  # allocate 5 points out of correctness below
+        # We'll credit 5 points out of 50 for presence of sales_agg and build instructions later in tests_evidence too.
+        # For clarity, directly add 5 points to correctness here.
+        # But to keep total weights consistent, we will cap later by WEIGHTS.
+        # Instead of complicating, we'll allocate fixed 5 points here.
+        # But ensure not to exceed correctness_max; we'll manage sums later.
+        correctness_score = min(correctness_score, correctness_max)
+    else:
+        correctness_details.append("No source file named sales_agg found (deduction).")
 
-    total_col_points = 0.0
-    for col in exp_cols:
-        exp_stats = exp_summary.get(col)
-        act_stats = act_summary.get(col)
-        if act_stats is None:
-            messages.append(f"Column '{col}' missing in candidate output.")
-            col_scores.append(0.0)
-            continue
+    # 2) Compare test outputs: use answer_key['tests'] expected outputs as ground truth.
+    expected_tests = answer_key.get('tests', [])
+    candidate_tests = candidate.get('tests', [])
 
-        # Check count exactly
-        exp_count = exp_stats.get("count")
-        act_count = act_stats.get("count")
+    # Build mapping of candidate tests by test_name for quick lookup
+    cand_tests_by_name = {}
+    for t in candidate_tests:
+        tn = safe_get(t, 'test_name', '')
+        if tn:
+            cand_tests_by_name[tn] = t
 
-        count_ok = (exp_count == act_count)
-        # Check numeric fields: sum, mean, min, max
-        numeric_fields = ["sum", "mean", "min", "max"]
-        numeric_ok = True
-        numeric_type_issues = False
-        numeric_value_mismatch = False
-        for field in numeric_fields:
-            exp_val = exp_stats.get(field)
-            act_val = act_stats.get(field)
-            if exp_val is None:
-                # Expect null
-                if act_val is not None:
-                    numeric_ok = False
-                    messages.append(f"Column '{col}' field '{field}': expected null, found {act_val}.")
-            else:
-                # expected is number
-                # Accept if actual is number equal within tolerance, OR if it's a string parseable to number
-                if isinstance(act_val, (int, float)):
-                    if not numeric_equal(exp_val, act_val):
-                        numeric_ok = False
-                        numeric_value_mismatch = True
-                        messages.append(f"Column '{col}' field '{field}': numeric mismatch. Expected {exp_val}, found {act_val}.")
-                else:
-                    # If it's a string that can parse to number, treat as formatting issue
-                    try:
-                        parsed = float(act_val)
-                        if numeric_equal(exp_val, parsed):
-                            numeric_type_issues = True
-                            messages.append(f"Column '{col}' field '{field}': value matches numerically but is stored as string ('{act_val}'), formatting/type issue.")
-                        else:
-                            numeric_ok = False
-                            numeric_value_mismatch = True
-                            messages.append(f"Column '{col}' field '{field}': numeric mismatch after parsing. Expected {exp_val}, found '{act_val}'.")
-                    except Exception:
-                        numeric_ok = False
-                        messages.append(f"Column '{col}' field '{field}': expected numeric {exp_val}, found non-numeric '{act_val}'.")
+    # For matching when test_name missing, allow fuzzy match by command substrings
+    # We'll iterate over expected_tests and try to find best match
+    test_matches = []
+    tests_points_total = 45.0  # part of correctness weight allocated to tests (out of 50)
+    single_test_point = tests_points_total / max(1, len(expected_tests))
+    tests_passed = 0
 
-        # Determine per-column score heuristics:
-        col_point = 0.0
-        # Start with half credit if counts correct and structure present
-        if count_ok and numeric_ok:
-            col_point = per_col_max
-            messages.append(f"Column '{col}': all metrics match (full column credit).")
-        elif count_ok and numeric_type_issues and not numeric_value_mismatch:
-            # numeric values correct but formatting/type issues -> partial
-            col_point = per_col_max * 0.75
-            messages.append(f"Column '{col}': numeric values correct, but formatting/type issues -> partial credit.")
-        elif count_ok and numeric_value_mismatch:
-            col_point = per_col_max * 0.5
-            messages.append(f"Column '{col}': count correct but numeric value mismatches -> partial credit.")
-        elif not count_ok and (numeric_ok or numeric_type_issues):
-            # counts wrong but numeric values somewhat okay
-            col_point = per_col_max * 0.4
-            messages.append(f"Column '{col}': count mismatch ({exp_count} vs {act_count}) but some numeric values OK -> partial credit.")
+    for et in expected_tests:
+        et_name = safe_get(et, 'test_name', '')
+        et_expected_output = safe_get(et, 'expected_output', '')
+        et_command = safe_get(et, 'command', '')
+        matched = None
+        # Try exact name match
+        if et_name and et_name in cand_tests_by_name:
+            matched = cand_tests_by_name[et_name]
         else:
-            # poor match
-            col_point = 0.0
-            messages.append(f"Column '{col}': poor or missing match -> no points for this column.")
-
-        total_col_points += col_point
-        col_scores.append(col_point)
-
-    # Bound to max_points
-    total_col_points = min(total_col_points, max_points)
-    points = total_col_points
-    return points, max_points, messages
-
-
-def score_groups(expected_obj, actual_obj):
-    """
-    Compare 'groups' JSON structures for Task B.
-    Returns (points, max_points, messages).
-    """
-    messages = []
-    max_points = WEIGHTS["functional_revision"]
-    points = 0
-
-    if not isinstance(expected_obj, dict) or "groups" not in expected_obj:
-        messages.append("Answer key missing 'groups' top-level key.")
-        return 0, max_points, messages
-    if not isinstance(actual_obj, dict) or "groups" not in actual_obj:
-        messages.append("Candidate output missing 'groups' top-level key.")
-        return 0, max_points, messages
-
-    exp_groups = expected_obj["groups"]
-    act_groups = actual_obj["groups"]
-
-    exp_group_keys = sorted(list(exp_groups.keys()))
-    act_group_keys = sorted(list(act_groups.keys())) if isinstance(act_groups, dict) else []
-
-    if exp_group_keys != act_group_keys:
-        messages.append(f"Group keys mismatch. Expected: {exp_group_keys}. Found: {act_group_keys}.")
-        # still proceed to compare intersection for partial credit
-
-    # Distribute points across groups
-    per_group_max = max_points / max(1, len(exp_group_keys))
-    total_group_points = 0.0
-
-    for gk in exp_group_keys:
-        exp_group = exp_groups.get(gk)
-        act_group = act_groups.get(gk)
-        if act_group is None:
-            messages.append(f"Group '{gk}' missing in candidate output.")
-            continue
-
-        # Compare columns inside group similar to summary check
-        exp_cols = sorted(list(exp_group.keys()))
-        act_cols = sorted(list(act_group.keys()))
-        if exp_cols != act_cols:
-            messages.append(f"In group '{gk}' columns mismatch. Expected {exp_cols}, found {act_cols}.")
-
-        # For each column compare metrics
-        col_score_acc = 0.0
-        per_col_max = per_group_max / max(1, len(exp_cols))
-        for col in exp_cols:
-            exp_stats = exp_group.get(col, {})
-            act_stats = act_group.get(col, {})
-            # compare count
-            exp_count = exp_stats.get("count")
-            act_count = act_stats.get("count")
-            count_ok = (exp_count == act_count)
-
-            numeric_fields = ["sum", "mean", "min", "max"]
-            numeric_ok = True
-            numeric_type_issues = False
-            numeric_value_mismatch = False
-            for field in numeric_fields:
-                exp_val = exp_stats.get(field)
-                act_val = act_stats.get(field)
-                if exp_val is None:
-                    if act_val is not None:
-                        numeric_ok = False
-                        messages.append(f"Group '{gk}', column '{col}', field '{field}': expected null, found {act_val}.")
-                else:
-                    if isinstance(act_val, (int, float)):
-                        if not numeric_equal(exp_val, act_val):
-                            numeric_ok = False
-                            numeric_value_mismatch = True
-                            messages.append(f"Group '{gk}', column '{col}', field '{field}': numeric mismatch. Expected {exp_val}, found {act_val}.")
-                    else:
-                        try:
-                            parsed = float(act_val)
-                            if numeric_equal(exp_val, parsed):
-                                numeric_type_issues = True
-                                messages.append(f"Group '{gk}', column '{col}', field '{field}': numeric matches but stored as string ('{act_val}').")
-                            else:
-                                numeric_ok = False
-                                numeric_value_mismatch = True
-                                messages.append(f"Group '{gk}', column '{col}', field '{field}': numeric mismatch after parse. Expected {exp_val}, found '{act_val}'.")
-                        except Exception:
-                            numeric_ok = False
-                            messages.append(f"Group '{gk}', column '{col}', field '{field}': expected numeric, found non-numeric '{act_val}'.")
-
-            # Determine column points for this group
-            col_point = 0.0
-            if count_ok and numeric_ok:
-                col_point = per_col_max
-            elif count_ok and numeric_type_issues and not numeric_value_mismatch:
-                col_point = per_col_max * 0.75
-            elif count_ok and numeric_value_mismatch:
-                col_point = per_col_max * 0.5
-            elif not count_ok and (numeric_ok or numeric_type_issues):
-                col_point = per_col_max * 0.4
-            else:
-                col_point = 0.0
-
-            col_score_acc += col_point
-
-        total_group_points += min(col_score_acc, per_group_max)
-
-    total_group_points = min(total_group_points, max_points)
-    points = total_group_points
-    return points, max_points, messages
-
-
-def score_code_readability(submission, messages):
-    """
-    Heuristic scoring for code readability and commenting (20 points).
-    - top_of_file header: 5 points
-    - function/docstrings/comments: 10 points
-    - reasonable structure/naming (presence of main guard or main function): 5 points
-    Returns points, messages (appends to messages).
-    """
-    max_points = WEIGHTS["code_readability"]
-    pts = 0.0
-
-    language = submission.get("language", "")
-    files = submission.get("files", [])
-
-    # Determine expected source filename
-    lang_to_file = {"Python": "summarizer.py", "Java": "Summarizer.java", "C": "summarizer.c"}
-    src_filename = lang_to_file.get(language, "summarizer.py")
-    src_content = find_file_content(files, src_filename)
-    if src_content is None:
-        messages.append(f"Source file '{src_filename}' not found for language '{language}'. No code readability credit.")
-        return 0.0, messages
-
-    # Top-of-file header detection
-    header_ok = False
-    stripped = src_content.lstrip()
-    if language == "Python":
-        # Check for module docstring or initial comments
-        if stripped.startswith('"""') or stripped.startswith("'''"):
-            header_ok = True
-        else:
-            # if first few non-empty lines start with '#'
-            lines = src_content.splitlines()
-            for ln in lines[:10]:
-                if ln.strip() == "":
+            # Try to find candidate test whose command contains recognizable substrings
+            for ct in candidate_tests:
+                cmd = safe_get(ct, 'command', '')
+                if not cmd:
                     continue
-                if ln.strip().startswith("#"):
-                    header_ok = True
-                break
-    else:
-        # Java/C: look for /* ... */ or // at top
-        lines = src_content.splitlines()
-        for ln in lines[:6]:
-            ts = ln.strip()
-            if ts.startswith("/*") or ts.startswith("//"):
-                header_ok = True
-                break
+                # Match by presence of key substrings from expected command (e.g., sample_sales.csv, malformed_sales.csv, --min-revenue)
+                # Build list of keywords
+                keywords = []
+                if 'sample_sales.csv' in et_command:
+                    keywords.append('sample_sales.csv')
+                if 'malformed_sales.csv' in et_command:
+                    keywords.append('malformed_sales.csv')
+                if '--min-revenue' in et_command or '-m' in et_command:
+                    keywords.append('--min-revenue')
+                # Also include product file names if present directly in command
+                if keywords and all(k in cmd for k in keywords):
+                    matched = ct
+                    break
+        if matched is None and candidate_tests:
+            # fallback: pick first candidate test that hasn't been matched yet
+            for ct in candidate_tests:
+                if ct not in [m[1] for m in test_matches]:
+                    matched = ct
+                    break
 
-    if header_ok:
-        pts += 5
-        messages.append("Top-of-file header comment detected (5/5).")
-    else:
-        messages.append("Top-of-file header comment not detected (0/5).")
+        # Evaluate matched test
+        if matched is None:
+            reason = f"Expected test '{et_name}' not found in candidate tests."
+            correctness_details.append(reason)
+            test_matches.append((et_name, None, False, reason))
+            continue
 
-    # Function docstrings / comments heuristic
-    func_doc_pts = 0.0
-    if language == "Python":
-        # Count defs and docstring occurrences
-        defs = [ln for ln in src_content.splitlines() if ln.strip().startswith("def ")]
-        num_defs = len(defs)
-        has_docstring = '"""' in src_content or "'''" in src_content
-        if num_defs == 0:
-            # If no defs, check for any triple-quoted docstrings or comments
-            if has_docstring:
-                func_doc_pts = 6.0  # partial
-                messages.append("No top-level functions, but module docstring present (6/10).")
-            else:
-                func_doc_pts = 2.0
-                messages.append("No functions and no docstrings found (2/10).")
+        cand_actual = normalize_output(safe_get(matched, 'actual_output', ''))
+        # Prefer using expected_output from answer key for strictness
+        expected_norm = normalize_output(et_expected_output)
+        passed = (cand_actual == expected_norm)
+        if passed:
+            tests_passed += 1
+            correctness_score += single_test_point
+            correctness_details.append(f"Test '{et_name}' passed (command: {safe_get(matched,'command','')}).")
         else:
-            # Check simple heuristic: at least one function docstring
-            func_with_doc = False
-            lines = src_content.splitlines()
-            for idx, ln in enumerate(lines):
-                if ln.strip().startswith("def "):
-                    # check next non-empty line for triple-quoted string
-                    j = idx + 1
-                    while j < len(lines) and lines[j].strip() == "":
-                        j += 1
-                    if j < len(lines) and (lines[j].strip().startswith('"""') or lines[j].strip().startswith("'''")):
-                        func_with_doc = True
-                        break
-            if func_with_doc:
-                func_doc_pts = 10.0
-                messages.append("At least one function has a docstring (10/10).")
-            else:
-                func_doc_pts = 6.0
-                messages.append("Functions present but no function docstrings detected; comments may exist (6/10).")
-    else:
-        # For Java/C, check for presence of comment tokens across the file
-        if "/*" in src_content or "//" in src_content or "///" in src_content:
-            func_doc_pts = 10.0
-            messages.append("Comments detected in Java/C source (10/10).")
-        else:
-            func_doc_pts = 4.0
-            messages.append("No comments detected in Java/C source (4/10).")
+            # Provide diff-like reason (first differing line)
+            reason = f"Test '{et_name}' failed. Expected (normalized):\n{expected_norm}\nActual (normalized):\n{cand_actual}"
+            correctness_details.append(reason)
+        test_matches.append((et_name, matched, passed, None if passed else reason))
 
-    pts += func_doc_pts
-
-    # Structure / naming / main guard
-    structure_pts = 0.0
-    if language == "Python":
-        if "if __name__ == \"__main__\"" in src_content or "if __name__ == '__main__'" in src_content:
-            structure_pts = 5.0
-            messages.append("Python main guard detected (5/5).")
-        else:
-            # presence of a main() function is also acceptable
-            if "def main(" in src_content:
-                structure_pts = 4.0
-                messages.append("Python main() function detected but no main guard (4/5).")
-            else:
-                structure_pts = 2.0
-                messages.append("No main guard or main() found; structure may be less reproducible (2/5).")
-    elif language == "Java":
-        if "public static void main" in src_content:
-            structure_pts = 5.0
-            messages.append("Java main() method detected (5/5).")
-        else:
-            structure_pts = 2.0
-            messages.append("No Java main() method detected (2/5).")
-    elif language == "C":
-        if "int main(" in src_content:
-            structure_pts = 5.0
-            messages.append("C main() function detected (5/5).")
-        else:
-            structure_pts = 2.0
-            messages.append("No C main() function detected (2/5).")
-    else:
-        structure_pts = 3.0
-        messages.append("Unknown language; minimal structure credit given (3/5).")
-
-    pts += structure_pts
-
-    # Cap to max
-    pts = min(pts, max_points)
-    return pts, messages
-
-
-def score_documentation(submission, messages):
-    """
-    Score README and CHANGELOG (15 points).
-    README: 10 points (presence, run commands, assumptions)
-    CHANGELOG: 5 points (contains at least two entries)
-    Returns points_awarded, max_points, messages
-    """
-    max_points = WEIGHTS["documentation"]
-    pts = 0.0
-
-    # README presence and consistency
-    readme_field = submission.get("README", "")
-    changelog_field = submission.get("changelog", "")
-    files = submission.get("files", [])
-    readme_file = find_file_content(files, "README.md")
-    changelog_file = find_file_content(files, "CHANGELOG.md")
-
-    # README presence
-    readme_msgs = []
-    readme_pts = 0.0
-    if not readme_field or not readme_file:
-        readme_msgs.append("README missing either in top-level field or in files array.")
-        readme_pts = 0.0
-    else:
-        # Ensure fields match
-        if readme_field.strip() != readme_file.strip():
-            readme_msgs.append("README content mismatch between README field and files[README.md].")
-            # still give partial credit if content non-empty
-        else:
-            readme_msgs.append("README content in field and file match.")
-
-        # Check for exact run commands depending on language
-        lang = submission.get("language", "")
-        required_commands = []
-        if lang == "Python":
-            required_commands = [
-                "python3 summarizer.py data.csv --output out_initial.json",
-                "python3 summarizer.py data.csv --group-by group --output out_groupby.json",
-            ]
-        elif lang == "Java":
-            required_commands = [
-                "javac Summarizer.java",
-                "java Summarizer data.csv --output out_initial.json",
-                "java Summarizer data.csv --group-by group --output out_groupby.json",
-            ]
-        elif lang == "C":
-            required_commands = [
-                "gcc summarizer.c -o summarizer",
-                "./summarizer data.csv --output out_initial.json",
-                "./summarizer data.csv --group-by group --output out_groupby.json",
-            ]
-        else:
-            required_commands = []
-
-        # Check presence of required commands
-        found_all_cmds = True
-        for cmd in required_commands:
-            if cmd not in readme_field and cmd not in readme_file:
-                found_all_cmds = False
-                readme_msgs.append(f"Required run/build command not found in README: '{cmd}'")
-        if found_all_cmds:
-            readme_pts += 6.0  # out of 10
-            readme_msgs.append("All required run/build commands found in README (6/10).")
-        else:
-            # partial: if at least primary run command found give partial
-            primary_cmd = required_commands[0] if required_commands else None
-            if primary_cmd and (primary_cmd in readme_field or primary_cmd in readme_file):
-                readme_pts += 3.0
-                readme_msgs.append("Primary run command found, but other commands missing (3/10).")
-            else:
-                readme_msgs.append("Run commands missing or incomplete (0/10).")
-
-        # Check for assumptions and numeric formatting mention
-        asum_ok = False
-        if ("assum" in readme_field.lower()) or ("assum" in readme_file.lower()):
-            asum_ok = True
-            readme_msgs.append("Assumptions section found in README.")
-            readme_pts += 2.0
-        else:
-            readme_msgs.append("Assumptions section not clearly present.")
-
-        if ("two decimal" in readme_field.lower()) or ("two decimal" in readme_file.lower()) or ("two decimals" in readme_field.lower()):
-            readme_msgs.append("Numeric formatting (two decimal places) mentioned in README.")
-            readme_pts += 2.0
-        else:
-            readme_msgs.append("Numeric formatting mention not found in README.")
-
-        # Cap readme_pts to 10
-        readme_pts = min(readme_pts, 10.0)
-
-    messages.extend(readme_msgs)
-    pts += readme_pts
-
-    # CHANGELOG presence and entries
-    changelog_pts = 0.0
-    changelog_msgs = []
-    changelog_text = changelog_field or changelog_file
-    if not changelog_text:
-        changelog_msgs.append("CHANGELOG missing in submission.")
-        changelog_pts = 0.0
-    else:
-        # Heuristic: check for at least two lines that look like entries (lines starting with date or '-')
-        lines = [ln.strip() for ln in changelog_text.splitlines() if ln.strip()]
-        entry_count = 0
-        for ln in lines:
-            if ln.startswith("-") or ln.lower().startswith("202") or "initial" in ln.lower() or "revision" in ln.lower():
-                entry_count += 1
-        if entry_count >= 2:
-            changelog_pts = 5.0
-            changelog_msgs.append("CHANGELOG contains at least two entries (5/5).")
-        else:
-            # partial credit if at least one entry
-            if entry_count == 1:
-                changelog_pts = 2.5
-                changelog_msgs.append("CHANGELOG contains one entry (2.5/5).")
-            else:
-                changelog_msgs.append("CHANGELOG entries not sufficient (0/5).")
-
-    messages.extend(changelog_msgs)
-    pts += changelog_pts
-
-    pts = min(pts, max_points)
-    return pts, max_points, messages
-
-
-def score_packaging(submission, messages):
-    """
-    Score packaging and reproducibility (5 points).
-    Checks:
-    - primary_run_command and revision_run_command present and non-empty
-    - files array contains source file, data.csv, out_initial.json, out_groupby.json, README.md, CHANGELOG.md
-    - captured_outputs contains out_initial.json and out_groupby.json
-    Returns points, max_points, messages
-    """
-    max_points = WEIGHTS["packaging"]
-    pts = 0.0
-    files = submission.get("files", [])
-    captured = submission.get("captured_outputs", [])
-    lang = submission.get("language", "")
-
-    required_paths = ["data.csv", "out_initial.json", "out_groupby.json", "README.md", "CHANGELOG.md"]
-    lang_to_file = {"Python": "summarizer.py", "Java": "Summarizer.java", "C": "summarizer.c"}
-    src_file = lang_to_file.get(lang)
-    if src_file:
-        required_paths.append(src_file)
-
-    missing_files = []
-    for rp in required_paths:
-        if find_file_content(files, rp) is None:
-            missing_files.append(rp)
-    if missing_files:
-        messages.append(f"Missing required files in 'files' array: {missing_files}")
-    else:
-        pts += 3.0  # a chunk of packaging score
-        messages.append("All required files present in files array (partial packaging credit).")
-
-    # Check captured_outputs presence
-    missing_captured = []
-    for name in ["out_initial.json", "out_groupby.json"]:
-        if find_captured_output(captured, name) is None:
-            missing_captured.append(name)
-    if missing_captured:
-        messages.append(f"Missing required captured_outputs entries: {missing_captured}")
-    else:
-        pts += 1.0
-        messages.append("Captured output entries present (partial packaging credit).")
-
-    # Check commands present
-    pcmd = submission.get("primary_run_command", "") or ""
-    rcmd = submission.get("revision_run_command", "") or ""
-    if pcmd.strip() != "" and rcmd.strip() != "":
-        pts += 1.0
-        messages.append("Primary and revision run commands present.")
-    else:
-        messages.append("Primary or revision run commands missing or empty.")
-
-    pts = min(pts, max_points)
-    return pts, max_points, messages
-
-
-def build_result_object(submission, answer_key):
-    """
-    Orchestrates scoring of all components and composes a detailed result object.
-    """
-    results = {}
-    explanations = []
-
-    # Validate basics
-    if not isinstance(submission, dict):
-        raise ValueError("Submission must be a JSON object.")
-    if not isinstance(answer_key, dict):
-        raise ValueError("Answer key must be a JSON object.")
-
-    # Get expected outputs from answer_key captured_outputs by name
-    expected_initial_raw = find_captured_output(answer_key.get("captured_outputs", []), "out_initial.json")
-    expected_group_raw = find_captured_output(answer_key.get("captured_outputs", []), "out_groupby.json")
-    if expected_initial_raw is None or expected_group_raw is None:
-        # Also try scanning answer_key['files'] for those paths
-        expected_initial_raw = expected_initial_raw or find_file_content(answer_key.get("files", []), "out_initial.json")
-        expected_group_raw = expected_group_raw or find_file_content(answer_key.get("files", []), "out_groupby.json")
-
-    # Extract candidate captured outputs
-    cand_captured = submission.get("captured_outputs", [])
-    cand_initial_raw = find_captured_output(cand_captured, "out_initial.json")
-    cand_group_raw = find_captured_output(cand_captured, "out_groupby.json")
-
-    # Score primary functional correctness
-    functional_msgs = []
-    primary_points = 0.0
-    primary_max = WEIGHTS["functional_primary"]
-    if expected_initial_raw is None:
-        functional_msgs.append("Answer key missing expected out_initial.json; cannot grade primary functional correctness.")
-    elif cand_initial_raw is None:
-        functional_msgs.append("Candidate missing out_initial.json in captured_outputs; zero points for primary functional correctness.")
-    else:
-        # parse both as JSON and compare
-        exp_obj, exp_err = try_parse_json_string(expected_initial_raw)
-        act_obj, act_err = try_parse_json_string(cand_initial_raw)
-        if exp_err:
-            functional_msgs.append(f"Failed parsing expected out_initial.json: {exp_err}")
-        if act_err:
-            functional_msgs.append(f"Failed parsing candidate out_initial.json: {act_err}")
-            # If candidate's output isn't parseable JSON, try to salvage numeric info by searching text - but for now zero
-            primary_points = 0.0
-        else:
-            pts, mx, msgs = score_summary(exp_obj, act_obj)
-            primary_points = pts
-            functional_msgs.extend(msgs)
-
-    # Score revision functional correctness
-    revision_points = 0.0
-    revision_max = WEIGHTS["functional_revision"]
-    if expected_group_raw is None:
-        functional_msgs.append("Answer key missing expected out_groupby.json; cannot grade revision functional correctness.")
-    elif cand_group_raw is None:
-        functional_msgs.append("Candidate missing out_groupby.json in captured_outputs; zero points for revision functional correctness.")
-    else:
-        exp_obj, exp_err = try_parse_json_string(expected_group_raw)
-        act_obj, act_err = try_parse_json_string(cand_group_raw)
-        if exp_err:
-            functional_msgs.append(f"Failed parsing expected out_groupby.json: {exp_err}")
-        if act_err:
-            functional_msgs.append(f"Failed parsing candidate out_groupby.json: {act_err}")
-            revision_points = 0.0
-        else:
-            pts, mx, msgs = score_groups(exp_obj, act_obj)
-            revision_points = pts
-            functional_msgs.extend(msgs)
-
-    results["functional"] = {
-        "primary": {"score": primary_points, "max": primary_max, "messages": functional_msgs},
-        "revision": {"score": revision_points, "max": revision_max, "messages": []}
+    # Cap correctness_score to correctness_max
+    correctness_score = min(correctness_score, correctness_max)
+    results['breakdown']['correctness'] = {
+        'score': round(correctness_score, 2),
+        'max_score': correctness_max,
+        'details': correctness_details
     }
+    results['total_points'] += correctness_score
 
-    # Note: score_groups already appended messages into functional_msgs; but we should include group messages separately.
-    # For better structure, re-run score_groups to capture messages
-    if expected_group_raw and cand_group_raw:
-        exp_obj, _ = try_parse_json_string(expected_group_raw)
-        act_obj, _ = try_parse_json_string(cand_group_raw)
-        _, _, group_msgs = score_groups(exp_obj, act_obj)
-        results["functional"]["revision"]["messages"] = group_msgs
+    # --- Documentation (20 points) ---
+    documentation_score = 0.0
+    doc_max = WEIGHTS['documentation']
+    doc_details = []
+    readme = candidate.get('readme', '')
+    changelog = candidate.get('changelog', [])
 
-    # Code readability
-    code_msgs = []
-    code_points, code_msgs = score_code_readability(submission, code_msgs)
-    results["code_readability"] = {"score": code_points, "max": WEIGHTS["code_readability"], "messages": code_msgs}
+    if isinstance(readme, str) and readme.strip() != '':
+        documentation_score += doc_max * 0.6  # 60% of doc weight for README presence/content
+        doc_details.append("README present and non-empty.")
+        # Check README mentions build/run commands or sample filenames
+        if safe_str_contains(readme, ['sample_sales.csv', 'malformed_sales.csv']):
+            documentation_score += doc_max * 0.15
+            doc_details.append("README mentions sample input filenames.")
+        if safe_str_contains(readme, ['--min-revenue', '-m']):
+            documentation_score += doc_max * 0.1
+            doc_details.append("README documents --min-revenue flag.")
+        # Check README mentions assumptions
+        if safe_str_contains(readme, ['assum', 'header', 'missing', 'round']):
+            documentation_score += doc_max * 0.05
+            doc_details.append("README documents assumptions (header/missing/rounding).")
+    else:
+        doc_details.append("README missing or empty (deduction).")
 
-    # Documentation & changelog
-    doc_points, doc_max, doc_msgs = score_documentation(submission, [])
-    results["documentation"] = {"score": doc_points, "max": doc_max, "messages": doc_msgs}
+    # Changelog scoring
+    if isinstance(changelog, list) and len(changelog) >= 1:
+        # Base points for changelog presence
+        documentation_score += doc_max * 0.1
+        doc_details.append("Changelog present.")
+        # Prefer multiple entries and mention of revision (--min-revenue)
+        if len(changelog) >= 2:
+            documentation_score += doc_max * 0.05
+            doc_details.append("Changelog has multiple entries.")
+        # Check changelog entries for mention of min-revenue/filter
+        changelog_text = json.dumps(changelog).lower()
+        if '--min-revenue' in changelog_text or 'min-revenue' in changelog_text or 'filter' in changelog_text:
+            documentation_score += doc_max * 0.05
+            doc_details.append("Changelog documents follow-up revision (--min-revenue/filter).")
+    else:
+        doc_details.append("Changelog missing or empty (deduction).")
 
-    # Packaging
-    pack_points, pack_max, pack_msgs = score_packaging(submission, [])
-    results["packaging"] = {"score": pack_points, "max": pack_max, "messages": pack_msgs}
+    # Cap documentation_score
+    documentation_score = min(documentation_score, doc_max)
+    results['breakdown']['documentation'] = {
+        'score': round(documentation_score, 2),
+        'max_score': doc_max,
+        'details': doc_details
+    }
+    results['total_points'] += documentation_score
 
-    # Aggregate totals
-    total_score = primary_points + revision_points + code_points + doc_points + pack_points
-    percentage = (total_score / TOTAL_POINTS) * 100.0 if TOTAL_POINTS > 0 else 0.0
+    # --- Comments & clarity (15 points) ---
+    comments_score = 0.0
+    comments_max = WEIGHTS['comments']
+    comments_details = []
 
-    # Compose test_results object
-    test_results = {
-        "candidate_name": submission.get("candidate_name"),
-        "language": submission.get("language"),
-        "time_minutes_used": submission.get("time_minutes_used"),
-        "scores": results,
-        "total_points": total_score,
-        "max_points": TOTAL_POINTS,
-        "percentage": round(percentage, 2),
-        "overall_score": round(percentage, 2),
-        "notes": {
-            "functional_messages": functional_msgs,
-            "packaging_messages": pack_msgs,
-            "documentation_messages": doc_msgs,
-            "code_readability_messages": code_msgs
+    comments_coverage_field = candidate.get('comments_coverage', '')
+    if isinstance(comments_coverage_field, str) and comments_coverage_field.strip() != '':
+        comments_score += comments_max * 0.2  # base credit for having self-assessed comments coverage
+        comments_details.append("comments_coverage field present.")
+    else:
+        comments_details.append("comments_coverage field missing or empty.")
+
+    # Heuristic: evaluate actual comment ratio in source files computed earlier
+    if total_nonblank_lines_total > 0:
+        comment_ratio = comment_lines_total / total_nonblank_lines_total
+        # Scale: >=8% comment ratio -> full points (remaining 80%); linear scaling otherwise
+        if comment_ratio >= 0.08:
+            comments_score += comments_max * 0.8
+            comments_details.append(f"Comment density is high ({comment_ratio:.2%}), awarding full comment points.")
+        else:
+            partial = comments_max * 0.8 * (comment_ratio / 0.08)
+            comments_score += partial
+            comments_details.append(f"Comment density low ({comment_ratio:.2%}); awarding partial points ({partial:.2f}).")
+    else:
+        comments_details.append("No code lines to analyze for comment coverage (deduction).")
+
+    # Cap comments_score
+    comments_score = min(comments_score, comments_max)
+    results['breakdown']['comments'] = {
+        'score': round(comments_score, 2),
+        'max_score': comments_max,
+        'details': comments_details
+    }
+    results['total_points'] += comments_score
+
+    # --- Tests & evidence (10 points) ---
+    tests_evidence_score = 0.0
+    tests_evidence_max = WEIGHTS['tests_evidence']
+    tests_evidence_details = []
+
+    # Check number of tests provided
+    num_tests_provided = len(candidate.get('tests', []))
+    if num_tests_provided >= 2:
+        tests_evidence_score += tests_evidence_max * 0.2  # base for >=2 tests
+        tests_evidence_details.append(f"{num_tests_provided} test runs provided (>=2).")
+    if num_tests_provided >= 3:
+        tests_evidence_score += tests_evidence_max * 0.2
+        tests_evidence_details.append("At least 3 test runs provided.")
+
+    # Check build_instructions mention required commands
+    build_instr = candidate.get('build_instructions', '')
+    if isinstance(build_instr, str) and build_instr.strip() != '':
+        # Look for sample file names and min-revenue flag
+        found_sample = 'sample_sales.csv' in build_instr
+        found_malformed = 'malformed_sales.csv' in build_instr
+        found_filter = ('--min-revenue' in build_instr) or ('-m' in build_instr)
+        if found_sample and found_malformed and found_filter:
+            tests_evidence_score += tests_evidence_max * 0.3
+            tests_evidence_details.append("build_instructions include commands for sample, malformed, and --min-revenue runs.")
+        else:
+            # Partial credit for including some commands
+            score_add = tests_evidence_max * 0.3 * ((1 if found_sample else 0) + (1 if found_malformed else 0) + (1 if found_filter else 0)) / 3.0
+            tests_evidence_score += score_add
+            tests_evidence_details.append(f"build_instructions partially include required commands (sample:{found_sample}, malformed:{found_malformed}, filter:{found_filter}).")
+    else:
+        tests_evidence_details.append("build_instructions missing or empty (deduction).")
+
+    # Check actual_output captured for tests
+    candidate_tests_list = candidate.get('tests', [])
+    actual_outputs_nonempty = all((normalize_output(safe_get(t, 'actual_output','')) != '') for t in candidate_tests_list) and len(candidate_tests_list) > 0
+    if actual_outputs_nonempty:
+        tests_evidence_score += tests_evidence_max * 0.2
+        tests_evidence_details.append("All candidate tests include non-empty actual_output.")
+    else:
+        tests_evidence_details.append("Some tests missing actual_output or actual_output empty (deduction).")
+
+    # Check tests included 'passed' boolean flags
+    passed_flag_present = all('passed' in t for t in candidate_tests_list) and len(candidate_tests_list) > 0
+    if passed_flag_present:
+        tests_evidence_score += tests_evidence_max * 0.1
+        tests_evidence_details.append("Tests include 'passed' boolean flags.")
+    else:
+        tests_evidence_details.append("Tests missing 'passed' flags (deduction).")
+
+    # Cap tests_evidence_score
+    tests_evidence_score = min(tests_evidence_score, tests_evidence_max)
+    results['breakdown']['tests_evidence'] = {
+        'score': round(tests_evidence_score, 2),
+        'max_score': tests_evidence_max,
+        'details': tests_evidence_details
+    }
+    results['total_points'] += tests_evidence_score
+
+    # --- Revision (5 points) ---
+    revision_score = 0.0
+    revision_max = WEIGHTS['revision']
+    revision_details = []
+
+    # Check changelog or readme or source files mention --min-revenue or min-revenue or filter
+    combined_text = ''
+    combined_text += '\n' + (readme or '')
+    combined_text += '\n' + json.dumps(changelog or [])
+    for sf in source_files:
+        combined_text += '\n' + safe_get(sf, 'content', '')
+    combined_text_l = combined_text.lower()
+
+    if '--min-revenue' in combined_text_l or 'min-revenue' in combined_text_l or '-m' in combined_text_l or 'min revenue' in combined_text_l or 'filter' in combined_text_l:
+        revision_score = revision_max
+        revision_details.append("Follow-up revision (--min-revenue filter) implemented and documented.")
+    else:
+        # partial credit if changelog has entries (indicating revision attempts)
+        if isinstance(changelog, list) and len(changelog) >= 2:
+            revision_score = revision_max * 0.4
+            revision_details.append("Changelog suggests multiple edits but no explicit mention of --min-revenue detected.")
+        else:
+            revision_details.append("No evidence of follow-up revision (--min-revenue) found.")
+
+    results['breakdown']['revision'] = {
+        'score': round(revision_score, 2),
+        'max_score': revision_max,
+        'details': revision_details
+    }
+    results['total_points'] += revision_score
+
+    # --- Additional sanity checks and deductions summary ---
+    # Time spent check
+    time_spent = candidate.get('time_spent_minutes', None)
+    if isinstance(time_spent, int) or isinstance(time_spent, float):
+        if time_spent > 90:
+            results['reasons'].append(f"time_spent_minutes is {time_spent} (>90) — exam time limit exceeded (informational).")
+    else:
+        results['reasons'].append("time_spent_minutes missing or not numeric (informational).")
+
+    # signature presence
+    signature = candidate.get('signature', '')
+    if not isinstance(signature, str) or signature.strip() == '':
+        results['reasons'].append("Missing signature line (deduction in documentation).")
+
+    # Ensure totals are rounded and consistent
+    results['total_points'] = float(round(results['total_points'], 2))
+    results['overall_percentage'] = round((results['total_points'] / results['max_points']) * 100.0, 2)
+    results['pass'] = results['overall_percentage'] >= 80.0
+
+    # Include test match summary
+    test_summary = []
+    for et_name, matched, passed, reason in test_matches:
+        entry = {
+            'expected_test_name': et_name,
+            'matched_candidate_test': safe_get(matched, 'test_name', None) if isinstance(matched, dict) else None,
+            'command': safe_get(matched, 'command', None) if isinstance(matched, dict) else None,
+            'passed': bool(passed)
         }
-    }
+        if reason:
+            entry['reason'] = reason
+        test_summary.append(entry)
+    results['test_summary'] = test_summary
 
-    return test_results
+    return results
 
+# ---------- Main script ----------
 
 def main():
-    # Basic CLI parsing
+    # Validate args
     if len(sys.argv) != 3:
-        print("Usage: python task_evaluation.py <submission_json> <answer_key_json>", file=sys.stderr)
+        print("Usage: python task_evaluation.py <candidate_submission.json> <answer_key.json>", file=sys.stderr)
         sys.exit(2)
 
-    submission_path = sys.argv[1]
-    answer_key_path = sys.argv[2]
+    cand_path = sys.argv[1]
+    key_path = sys.argv[2]
 
-    submission, err = load_json_file(submission_path)
-    if err:
-        print(err, file=sys.stderr)
-        sys.exit(1)
-    answer_key, err = load_json_file(answer_key_path)
-    if err:
-        print(err, file=sys.stderr)
-        sys.exit(1)
+    # Determine output path (same directory as this script)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(script_dir, 'test_results.json')
 
-    # Build results
+    # Load JSON inputs
     try:
-        results = build_result_object(submission, answer_key)
+        candidate = load_json_file(cand_path)
     except Exception as e:
-        print(f"Grading failed: {e}", file=sys.stderr)
-        # Attempt to emit a minimal test_results.json with error info
-        minimal = {"error": str(e)}
-        with open("test_results.json", "w", encoding="utf-8") as f:
-            json.dump(minimal, f, indent=2)
+        err = {
+            'error': f"Failed to load candidate submission JSON from {cand_path}: {str(e)}",
+            'traceback': traceback.format_exc()
+        }
+        with open(output_path, 'w', encoding='utf-8') as fout:
+            json.dump(err, fout, indent=2)
+        print(f"Error: could not load candidate submission. Details written to {output_path}", file=sys.stderr)
         sys.exit(1)
 
-    # Write to test_results.json in current directory
-    out_path = "test_results.json"
     try:
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2)
-        print(f"Grading complete. Results written to {out_path}. Overall score: {results['overall_score']}%")
+        answer_key = load_json_file(key_path)
     except Exception as e:
-        print(f"Failed to write {out_path}: {e}", file=sys.stderr)
+        err = {
+            'error': f"Failed to load answer key JSON from {key_path}: {str(e)}",
+            'traceback': traceback.format_exc()
+        }
+        with open(output_path, 'w', encoding='utf-8') as fout:
+            json.dump(err, fout, indent=2)
+        print(f"Error: could not load answer key. Details written to {output_path}", file=sys.stderr)
         sys.exit(1)
 
+    # Perform grading
+    results = grade_submission(candidate, answer_key)
 
-if __name__ == "__main__":
+    # Add overall_score alias as required
+    results['overall_score'] = results.get('overall_percentage', 0.0)
+
+    # Save results
+    try:
+        with open(output_path, 'w', encoding='utf-8') as fout:
+            json.dump(results, fout, indent=2)
+        print(f"Grading complete. Results written to {output_path}")
+    except Exception as e:
+        print(f"Failed to write results to {output_path}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == '__main__':
     main()

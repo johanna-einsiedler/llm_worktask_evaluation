@@ -1,15 +1,68 @@
 ```json
 {
+  "candidate_name": "",
+  "email": "",
+  "time_taken_minutes": null,
   "language": "",
-  "entry_point": "",
-  "persistence_file": "",
-  "commands_run": [],
-  "short_description": "",
-  "self_assessment": {
-    "implemented_required": null,
-    "bonus_features": [],
-    "known_issues": ""
+  "run_commands": [],
+  "files": [
+    {
+      "filename": "inventory.py",
+      "content": ""
+    },
+    {
+      "filename": "demo_runner.py",
+      "content": ""
+    },
+    {
+      "filename": "tests.py",
+      "content": ""
+    },
+    {
+      "filename": "README.md",
+      "content": ""
+    },
+    {
+      "filename": "import.csv",
+      "content": ""
+    },
+    {
+      "filename": "final_inventory.json",
+      "content": ""
+    }
+  ],
+  "demo_stdout": "",
+  "test_results": [],
+  "final_inventory_json": null,
+  "notes": "",
+  "self_score_estimate": null,
+  "_instructions": "Fill all required fields above. Use only this JSON as your submission. Required items: inventory.py (main CLI program), demo_runner.py (automated demo sequence), tests.py (automated assertions, exit 0 on success), README.md (run instructions and design choices), import.csv (3 rows as specified). 'run_commands' must list commands an evaluator can run (e.g., \"python3 demo_runner.py\", \"python3 tests.py\"). 'demo_stdout' must contain the exact stdout captured when running the demo command. 'test_results' must be an array of objects with fields {\"name\": string, \"passed\": boolean, \"output\": string} containing at least 4 entries. 'final_inventory_json' must be the JSON array/object representing the final inventory exported by your demo.",
+  "_fields_guidance": {
+    "candidate_name": "string - full name",
+    "email": "string - contact email",
+    "time_taken_minutes": "integer or null - total minutes used",
+    "language": "string - runtime and version, e.g., 'Python 3.10'",
+    "run_commands": [
+      "array of strings - commands to reproduce demo and tests in order"
+    ],
+    "files": [
+      {
+        "filename": "string - exact filename to write (e.g., inventory.py)",
+        "content": "string - full file content (UTF-8). Include all files required to run demo/tests."
+      }
+    ],
+    "demo_stdout": "string - exact stdout captured when running the demo_runner command",
+    "test_results": [
+      {
+        "name": "string - test identifier",
+        "passed": null,
+        "output": "string - captured stdout/stderr for that test"
+      }
+    ],
+    "final_inventory_json": "object or array or null - the JSON data structure produced by the demo export step",
+    "notes": "string - assumptions, persistence choice (JSON or SQLite), duplicate-import behavior (overwrite/skip/error), limitations",
+    "self_score_estimate": "integer 0-100 or null"
   },
-  "time_taken_minutes": null
+  "_validation_rules_reminder": "Use null for numeric/object/list fields you leave blank, use empty string \"\" for text fields, use empty arrays [] for lists. Do not include any external files; put all file contents into the 'files' array. The evaluator will recreate files exactly as provided."
 }
 ```

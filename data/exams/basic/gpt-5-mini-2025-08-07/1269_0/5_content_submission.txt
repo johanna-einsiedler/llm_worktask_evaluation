@@ -1,58 +1,63 @@
 ```json
 {
+  "_schema_version": "1.0",
+  "_instructions": "Fill every field below. Save this object as test_submission.json and submit only that one file. Follow the blank-field conventions: use \"\" for text, null for numeric values, and [] for empty lists. Do not add extra top-level fields. Use the arrays to provide one or more entries where required.",
   "candidate_name": "",
   "language": "",
-  "time_minutes_used": null,
-  "primary_run_command": "",
-  "revision_run_command": "",
-  "files": [
-    {
-      "path": "data.csv",
-      "content": ""
-    },
-    {
-      "path": "summarizer.py",
-      "content": ""
-    },
-    {
-      "path": "Summarizer.java",
-      "content": ""
-    },
-    {
-      "path": "summarizer.c",
-      "content": ""
-    },
-    {
-      "path": "README.md",
-      "content": ""
-    },
-    {
-      "path": "CHANGELOG.md",
-      "content": ""
-    },
-    {
-      "path": "out_initial.json",
-      "content": ""
-    },
-    {
-      "path": "out_groupby.json",
-      "content": ""
-    }
-  ],
-  "captured_outputs": [
-    {
-      "name": "out_initial.json",
-      "path": "out_initial.json",
-      "content": ""
-    },
-    {
-      "name": "out_groupby.json",
-      "path": "out_groupby.json",
+  "time_spent_minutes": null,
+  "source_files": [],
+  "build_instructions": "",
+  "readme": "",
+  "changelog": [],
+  "tests": [],
+  "run_output_summary": "",
+  "assumptions": [],
+  "comments_coverage": "",
+  "self_score_estimate": {
+    "score": null,
+    "justification": ""
+  },
+  "signature": "",
+  "_field_descriptions": {
+    "candidate_name": "Full name of the candidate as a string.",
+    "language": "Programming language used (e.g., \"python\", \"go\", \"java\").",
+    "time_spent_minutes": "Integer minutes spent on the exam (must be <= 90). Use null if unknown.",
+    "source_files": "Array of source file objects. Provide complete source code text for every file needed to run the program.",
+    "build_instructions": "Exact shell commands to build/compile (if needed) and to run the program and the test scripts. Must include commands for: normal sample, malformed sample, and --min-revenue sample.",
+    "readme": "Plain-text README describing how to run, assumptions, input format, and example usage. Must allow reproducing runs from build_instructions.",
+    "changelog": "Array of change entry objects describing edits and revisions made during the session.",
+    "tests": "Array of test run objects. Each object must include the exact command executed, expected_output (exact string), actual_output (captured stdout and stderr concatenated if any), and passed boolean.",
+    "run_output_summary": "Short summary describing program behavior during runs and any issues encountered.",
+    "assumptions": "Array of strings listing all assumptions made (e.g., header handling, numeric parsing rules).",
+    "comments_coverage": "Candidate self-assessment of how well the source code is commented.",
+    "self_score_estimate": "Object containing numeric score (0-100) and a one-sentence justification.",
+    "signature": "One-line statement asserting the work is the candidate's own (e.g., 'I certify this submission is my own work — <Name>')."
+  },
+  "source_files_schema_example": {
+    "note": "This object is an example schema only. Do not include code here. Instead add one or more objects into the source_files array, each with the fields below.",
+    "file_object": {
+      "filename": "",
+      "language": "",
       "content": ""
     }
-  ],
-  "README": "",
-  "changelog": "",
-  "notes_for_evaluator": ""
+  },
+  "changelog_entry_schema_example": {
+    "note": "Each changelog entry must follow this object shape and be included in the changelog array (timestamp may be any short string).",
+    "entry_object": {
+      "time": "",
+      "change": "",
+      "reason": ""
+    }
+  },
+  "test_entry_schema_example": {
+    "note": "Each test object must follow this shape and be included in the tests array.",
+    "test_object": {
+      "test_name": "",
+      "command": "",
+      "expected_output": "",
+      "actual_output": "",
+      "passed": null
+    }
+  }
 }
 ```

@@ -1,136 +1,98 @@
 {
-  "scores": {
-    "core_functionality": {
-      "score": 60,
-      "max": 60,
-      "details": [
-        "add: >=3 successful adds detected -> full credit (8/8).",
-        "list: JSON format present, parseable, and contains added SKUs -> full credit (8/8).",
-        "find: find produced JSON arrays with matches -> full credit (8/8).",
-        "update: update command succeeded and reflected in subsequent list JSON -> full credit (8/8).",
-        "delete: delete succeeded and later list shows SKU absent -> full credit (8/8).",
-        "persistence: items added are present in later list output -> full credit (15/15).",
-        "errors: duplicate SKU and negative qty errors present with stderr and non-zero exit codes -> full credit (5/5)."
-      ],
-      "breakdown": {
-        "add": {
-          "score": 8,
-          "max": 8
-        },
-        "list": {
-          "score": 8,
-          "max": 8
-        },
-        "find": {
-          "score": 8,
-          "max": 8
-        },
-        "update": {
-          "score": 8,
-          "max": 8
-        },
-        "delete": {
-          "score": 8,
-          "max": 8
-        },
-        "persistence": {
-          "score": 15,
-          "max": 15
-        },
-        "errors_exit_codes": {
-          "score": 5,
-          "max": 5
-        }
+  "breakdown": {
+    "functional": {
+      "add": {
+        "awarded": 10.0,
+        "possible": 10.0,
+        "comment": "Both adds (I100 and I101) observed in demo stdout."
+      },
+      "get": {
+        "awarded": 10.0,
+        "possible": 10.0,
+        "comment": "Found passing test evidence for get (or get result in test outputs)."
+      },
+      "update": {
+        "awarded": 10.0,
+        "possible": 10.0,
+        "comment": "I100 found in final inventory with quantity 12 (update applied)."
+      },
+      "remove": {
+        "awarded": 10.0,
+        "possible": 10.0,
+        "comment": "Demo stdout shows removal of I101."
+      },
+      "persistence": {
+        "awarded": 10.0,
+        "possible": 10.0,
+        "comment": "final_inventory_json present (persistence/export produced output)."
+      },
+      "import_export": {
+        "awarded": 10.0,
+        "possible": 10.0,
+        "comment": "Final inventory matches answer key expected final inventory exactly."
       }
     },
-    "robustness": {
-      "score": 10,
-      "max": 10,
-      "details": [
-        "robustness: both duplicate SKU and negative qty rejections detected -> full (6/6).",
-        "robustness: non-zero exit codes and stderr present for invalid ops -> full (4/4)."
-      ],
-      "breakdown": {
-        "validation_rejection": {
-          "score": 6,
-          "max": 6
-        },
-        "error_messages_exit_codes": {
-          "score": 4,
-          "max": 4
-        }
+    "validation": {
+      "unique_id": {
+        "awarded": 5.0,
+        "possible": 5.0,
+        "comment": "Evidence of duplicate ID handling (add or import) in demo/tests."
+      },
+      "quantity_price_validation": {
+        "awarded": 5.0,
+        "possible": 5.0,
+        "comment": "Validation for numeric quantity/price documented and/or demonstrated."
+      },
+      "malformed_csv_handling": {
+        "awarded": 5.0,
+        "possible": 5.0,
+        "comment": "Malformed CSV rows are handled gracefully (skipped or reported) as evidenced in demo/tests."
       }
     },
-    "deterministic": {
-      "score": 10,
-      "max": 10,
-      "details": [
-        "deterministic: both list and find produced parseable JSON -> full (6/6).",
-        "deterministic: entry_point provided and many commands use it -> full (4/4)."
-      ],
-      "breakdown": {
-        "json_outputs": {
-          "score": 6,
-          "max": 6
-        },
-        "cli_contract": {
-          "score": 4,
-          "max": 4
-        }
+    "demo_tests": {
+      "demo_runner": {
+        "awarded": 7.0,
+        "possible": 7.0,
+        "comment": "Demo runner command present and demo_stdout contains final inventory JSON printed (and final_inventory_json present)."
+      },
+      "automated_tests": {
+        "awarded": 8.0,
+        "possible": 8.0,
+        "comment": "4 tests passed (>=4)."
       }
     },
-    "code_quality": {
-      "score": 4,
-      "max": 10,
-      "details": [
-        "code_quality: short_description present but >200 words -> partial (4/10)."
-      ],
-      "breakdown": {
-        "readability_and_design": {
-          "score": 4,
-          "max": 10
-        }
-      }
-    },
-    "submission_completeness": {
-      "score": 10,
-      "max": 10,
-      "details": [
-        "submission: >=3 successful adds recorded -> 4/4.",
-        "submission: update command found -> 2/2.",
-        "submission: delete command found -> 2/2.",
-        "submission: find command found -> 1/1.",
-        "submission: persistence demonstration found -> 1/1."
-      ],
-      "breakdown": {
-        "adds_3_items": {
-          "score": 4,
-          "max": 4
-        },
-        "update_present": {
-          "score": 2,
-          "max": 2
-        },
-        "delete_present": {
-          "score": 2,
-          "max": 2
-        },
-        "find_present": {
-          "score": 1,
-          "max": 1
-        },
-        "persistence_demo": {
-          "score": 1,
-          "max": 1
-        }
+    "quality_docs": {
+      "readme": {
+        "awarded": 4.0,
+        "possible": 4.0,
+        "comment": "README presence and content checked: demo/tests cmds, persistence, duplicate policy."
+      },
+      "code_quality": {
+        "awarded": 3.0,
+        "possible": 3.0,
+        "comment": "Heuristic checks for defs/comments/main block in inventory.py."
+      },
+      "no_external_libs": {
+        "awarded": 3.0,
+        "possible": 3.0,
+        "comment": "No obvious external third-party libraries imported in inventory.py (heuristic)."
       }
     }
   },
-  "total_earned": 94,
-  "total_possible": 100,
-  "percentage": 94.0,
-  "overall_score": 94.0,
-  "summary_messages": [],
-  "raw_submission_filename": "/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/gpt-5-mini-2025-08-07/1270_0/answer_key.json",
-  "raw_answer_key_filename": "/Users/einsie0004/Documents/research/21_automatisation/llm_worktask_evaluation_v2/data/exams/basic/gpt-5-mini-2025-08-07/1270_0/answer_key.json"
+  "total_awarded": 100.0,
+  "total_possible": 100.0,
+  "deductions": [],
+  "notes": [],
+  "percentage": 100.0,
+  "overall_score": 100.0,
+  "pass": true,
+  "evidence_summary": {
+    "demo_cmd_present": true,
+    "demo_stdout_present": true,
+    "demo_contains_final_json_print": true,
+    "test_results_count": 4,
+    "test_results_passed_count": 4,
+    "candidate_final_inventory_parsed_count": 2,
+    "answer_key_final_inventory_parsed_count": 2
+  }
 }

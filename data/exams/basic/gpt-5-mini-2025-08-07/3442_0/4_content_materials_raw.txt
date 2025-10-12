@@ -1,98 +1,172 @@
 <MATERIALS_FOR_CANDIDATE>
-CSV: `events.csv`
-event_id,user_id,timestamp,event_type,value
-E1,U1,2021-07-01T08:30:00Z,Click,"10"
-E2,U2,2021-07-01 09:15:00, view ,5
-E3,U1,2021-07-01T10:00:00Z,PURCHASE,"100"
-E4,U3,2021-07-01T11:05:00Z, Click,20
-E5,U2,,View,15
-E6,U4,2021-07-01T12:00:00Z,click,"0"
-E7,U1,2021-07-01T12:30:00Z,view,"2"
-E8,U5,not_a_timestamp,Click,1
-E9,U3,2021-07-01T13:00:00Z,purchase,"50"
-E10,U2,2021-07-01T14:00:00Z, CLICK ,"3"
-E11,U4,2021-07-01T15:00:00Z,View,4
-E12,U1,2021-07-01T16:00:00Z,click,"7"
-E13,U2,2021-07-01T17:00:00Z,view,"1"
-E3,U1,2021-07-01T10:00:00Z,PURCHASE,"100"
-E14,U5,2021-07-01T18:00:00Z,CLICK,"2"
+CSV file: system_events.csv
+Contents (UTF-8 plain text):
 
-CSV: `users.csv`
-user_id,signup_date,plan
-U1,2021-01-15,pro
-U2,2021-02-20,free
-U3,2021-03-10,pro
-U4,2021-04-05,enterprise
-U5,,free
-U6,2021-05-01,free
+id,timestamp,component_id,metric_value,status_code,message
+1,2025-01-10T00:00:00Z,comp_A,450,200,OK
+2,2025-01-10T00:01:00Z,comp_A,470,200,OK
+3,2025-01-10T00:02:00Z,comp_A,430,200,OK
+4,2025-01-10T00:03:00Z,comp_A,480,200,OK
+5,2025-01-10T00:04:00Z,comp_A,500,500,Internal error
+6,2025-01-10T00:05:00Z,comp_A,410,200,OK
+7,2025-01-10T00:06:00Z,comp_A,,200,missing metric
+8,2025-01-10T00:07:00Z,comp_A,455,200,OK
+9,2025-01-10T00:08:00Z,comp_A,440,200,OK
+10,2025-01-10T25:61:00Z,comp_A,460,200,bad timestamp
+11,2025-01-10T00:10:00Z,comp_A,445,201,OK
+12,2025-01-10T00:11:00Z,comp_A,420,503,Service unavailable
+13,2025-01-10T00:12:00Z,comp_A,435,200,OK
+14,2025-01-10T00:13:00Z,comp_A,425,200,OK
+15,2025-01-10T00:14:00Z,comp_A,410,200,OK
+16,2025-01-10T00:15:00Z,comp_A,460,200,OK
+17,2025-01-10T00:16:00Z,comp_A,455,200,OK
+18,2025-01-10T00:17:00Z,comp_A,NaN,200,non-numeric
+19,2025-01-10T00:18:00Z,comp_A,470,500,Internal error
+20,2025-01-10T00:19:00Z,comp_A,480,200,OK
+21,2025-01-10T00:20:00Z,comp_B,250,200,OK
+22,2025-01-10T00:21:00Z,comp_B,260,200,OK
+23,2025-01-10T00:22:00Z,comp_B,240,200,OK
+24,2025-01-10T00:23:00Z,comp_B,270,200,OK
+25,2025-01-10T00:24:00Z,comp_B,260,503,Service unavailable
+26,2025-01-10T00:25:00Z,comp_B,255,200,OK
+27,2025-01-10T00:26:00Z,comp_B,245,200,OK
+28,2025-01-10T00:27:00Z,comp_B,300,200,OK
+29,2025-01-10T00:28:00Z,comp_B,280,200,OK
+30,2025-01-10T00:29:00Z,comp_B,275,500,Internal error
+31,2025-01-10T00:30:00Z,comp_B,265,200,OK
+32,2025-01-10T00:31:00Z,comp_B,290,200,OK
+33,2025-01-10T00:32:00Z,comp_B,230,200,OK
+34,2025-01-10T00:33:00Z,comp_B,240,200,OK
+35,2025-01-10T00:34:00Z,comp_B,310,200,OK
+36,2025-01-10T00:35:00Z,comp_C,80,200,OK
+37,2025-01-10T00:36:00Z,comp_C,75,200,OK
+38,2025-01-10T00:37:00Z,comp_C,90,200,OK
+39,2025-01-10T00:38:00Z,comp_C,85,200,OK
+40,2025-01-10T00:39:00Z,comp_C,70,200,OK
+41,2025-01-10T00:40:00Z,comp_C,65,200,OK
+42,2025-01-10T00:41:00Z,comp_C,60,200,OK
+43,2025-01-10T00:42:00Z,comp_C,55,200,OK
+44,2025-01-10T00:43:00Z,comp_C,68,404,Not found
+45,2025-01-10T00:44:00Z,comp_C,72,200,OK
+46,2025-01-10T00:45:00Z,comp_D,180,200,OK
+47,2025-01-10T00:46:00Z,comp_D,190,200,OK
+48,2025-01-10T00:47:00Z,comp_D,175,200,OK
+49,2025-01-10T00:48:00Z,comp_D,210,500,Internal error
+50,2025-01-10T00:49:00Z,comp_D,205,200,OK
+51,2025-01-10T00:50:00Z,comp_D,160,200,OK
+52,2025-01-10T00:51:00Z,comp_D,170,200,OK
+53,2025-01-10T00:52:00Z,comp_D,185,200,OK
+54,2025-01-10T00:53:00Z,comp_E,15,200,OK
+55,2025-01-10T00:54:00Z,comp_E,abc,200,bad metric
+56,2025-01-10T00:55:00Z,comp_E,12,200,OK
+57,2025-01-10T00:56:00Z,comp_E,18,200,OK
+58,2025/01/11 12:00:00,comp_E,20,500,bad timestamp
+59,2025-01-11T12:01:00Z,comp_E,22,200,OK
+60,2025-01-11T12:02:00Z,comp_E,14,200,OK
+
+CSV file: components_lookup.csv
+Contents (UTF-8 plain text):
+
+component_id,name
+comp_A,Auth Service
+comp_B,Payment Service
+comp_C,Cache Service
+comp_D,Search Service
+comp_E,Notification Service
+
+Notes for candidate (included as plain text with materials):
+- Use the file system_events.csv and (optional) components_lookup.csv. Both are provided above.
+- system_events.csv contains 60 rows. There are exactly 3 rows with invalid/non-numeric metric_value (ids: 7, 18, 55) and exactly 2 rows with malformed timestamps (ids: 10, 58). You must explicitly state how you handle those in your submission.
+- Analytical questions you must answer (as per exam instructions) refer to N = 50 for the per-day count.
+- Allowed tools: sqlite3, python3 (standard library), bash. Internet access is disabled during the exam.
+
+End of materials.
 </MATERIALS_FOR_CANDIDATE>
 
 <MATERIALS_EXPLANATION_FOR_EVALUATOR>
 How the materials were constructed and why
-- Two small CSV files are provided: events.csv (15 data rows including one exact duplicate row) and users.csv (6 users). This size keeps the whole exam doable within 90 minutes while still requiring schema design, cleaning, joins, and aggregation.
-- The events.csv intentionally includes several "dirty" elements to force real ingestion decisions:
-  - One exact duplicate row: the row with event_id E3 appears twice (identical row). Candidate must deduplicate.
-  - One missing timestamp: event_id E5 has an empty timestamp field.
-  - One malformed timestamp: event_id E8 has timestamp value "not_a_timestamp".
-  - Inconsistent event_type casing and extra whitespace: values like "Click", " click ", "CLICK ", "PURCHASE", and "View".
-  - Numeric values are represented as strings in quotes for some rows (e.g., "10", "100") and as plain numbers in others; candidate must cast to numeric type.
-- users.csv includes one user (U6) with no events (to test handling of zero-count users) and one user (U5) missing signup_date. Plans are "free", "pro", "enterprise". All user_ids used by events (U1..U5) exist in users.csv; U6 is present only in users.csv.
 
-Key patterns / relationships for the evaluator to expect
-- After basic cleaning steps a typical deterministic pipeline would:
-  1. Remove exact duplicate rows (dedupe full-row equality) — removes the duplicate E3 row.
-  2. Handle missing/malformed timestamps by either dropping those rows or imputing timestamps (the candidate must choose and state which). The problematic rows are:
-     - E5 (missing timestamp)
-     - E8 (malformed timestamp "not_a_timestamp")
-  3. Normalize event_type by trimming whitespace and lowercasing (e.g., " Click" -> "click", "PURCHASE" -> "purchase").
-  4. Cast value column to numeric (integer).
-  5. Parse timestamps into a consistent ISO-8601 form; if timezone absent (e.g., "2021-07-01 09:15:00"), the candidate may treat it as UTC and convert to "2021-07-01T09:15:00Z".
-  6. Create an index on a frequently queried column such as user_id or timestamp (if using SQLite). The candidate should report whether the index was created.
+1) Construction goals
+- The dataset models short system telemetry / event logs with columns required by the exam: id, timestamp, component_id, metric_value, status_code, message.
+- The dataset size is 60 rows to keep the workload small but allow one day to exceed the threshold N = 50 so the candidate must produce a non-empty result for the "days with more than N events" query.
+- The components_lookup.csv is provided so the required join (human-readable names) can be performed without inventing mappings.
 
-Deterministic expected numbers (if grader wants a canonical reference)
-- If the candidate chooses the common approach of dropping rows with missing or malformed timestamps and removing duplicate rows:
-  - Original rows in events.csv: 15
-  - Duplicate removed (E3 duplicate): -1
-  - Dropped rows for timestamp issues (E5 and E8): -2
-  - Total events after cleaning: 12
-  - Unique users present in cleaned events: 5 (U1, U2, U3, U4, U5; U6 has no events)
-  - Normalized event_type counts among cleaned events:
-    - "click": 6
-    - "view": 4
-    - "purchase": 2
-  - events_by_plan (sum of events for users in each plan):
-    - pro: users U1 (4 events), U3 (2 events) => 6
-    - free: users U2 (3), U5 (1), U6 (0) => 4
-    - enterprise: user U4 (2) => 2
-  - average_events_per_active_user (active users = users with >=1 event, i.e., U1..U5): total_events 12 / 5 active users = 2.4
-  - average_events_per_user_by_plan (computed over all users in that plan, including zero-event users):
-    - pro: 6 total events / 2 users = 3.0
-    - free: 4 total events / 3 users = 1.3333333333...
-    - enterprise: 2 total events / 1 user = 2.0
+2) Key patterns and relationships intended for grading
+- Day distribution:
+  - Intended assignment: 52 events have timestamps on 2025-01-10 and 8 events on 2025-01-11 (raw CSV). This ensures 2025-01-10 has more than N=50 events.
+  - Two rows have malformed timestamps (id 10 and id 58). If the candidate drops malformed timestamps, counts become: 2025-01-10 => 51 events; 2025-01-11 => 7 events. Either approach (keep or drop malformed-timestamp rows) is acceptable so long as the candidate documents and uses the same choice consistently; the evaluator must accept both but verify the candidate's stated handling.
+- Metric completeness:
+  - Three rows have invalid metric_value entries (id 7: empty, id 18: "NaN", id 55: "abc"). Candidates must decide to drop or coerce these rows for numeric aggregations. The exam requires explicit handling and justification.
+- Component distributions (to allow grouping, averages, and error-rate computations):
+  - comp_A: 20 events (IDs 1–20) with high metric_value (~410–500).
+  - comp_B: 15 events (IDs 21–35) with medium metric_value (~230–310).
+  - comp_C: 10 events (IDs 36–45) with low metric_value (~55–90).
+  - comp_D: 8 events (IDs 46–53) with mid-high metric_value (~160–210).
+  - comp_E: 7 events (IDs 54–60) with very low metric_value (~12–22).
+- Errors (status_code >= 500) are sprinkled so error-rate and filter logic are meaningful:
+  - comp_A has three server errors (ids 5, 12, 19).
+  - comp_B has two server errors (ids 25, 30).
+  - comp_D has one server error (id 49).
+  - comp_E has one server error (id 58) but note id 58 also has malformed timestamp.
+  - comp_C has no server errors (0 entries >=500).
 
-Traps, ambiguities, and common errors a candidate might make
-- Not removing the duplicate E3 row — leads to inflated totals and skewed per-user/per-plan aggregates.
-- Failing to treat whitespace and casing in event_type — leads to multiple event_type categories (e.g., "Click" vs "click").
-- Parsing timestamps naively: some timestamps are in "YYYY-MM-DD HH:MM:SS" form (no 'T' or 'Z') and one is clearly malformed. Candidates must decide and implement consistent parsing and handle malformed values explicitly.
-- Ambiguity about averaging per plan: implementer could average only over active users (users with >=1 event) or over all users in the plan (including zero-event users). For objective grading, the evaluator should accept either approach if the candidate documents the choice clearly; the materials explanation above gives the canonical numbers for the approach that includes all users in plan.
-- Forgetting to use parameterized SQL statements (if using SQLite) — the instructions require parameterized queries for safety.
-- Creating non-deterministic ordering for sample rows; the sample_transformed_rows must be stable (e.g., order by event_id) to be reproducible.
+3) Expected/typical correct results (assuming the candidate:
+     - excludes rows with non-numeric metric_value from average calculations and
+     - excludes rows with malformed timestamps when computing per-day aggregates)
+   - Row counts:
+     - CSV total rows: 60
+     - Malformed metric_value rows: ids 7, 18, 55 (3 rows)
+     - Malformed timestamp rows: ids 10, 58 (2 rows)
+     - Rows remaining after dropping malformed timestamps: 58
+   - Events per day (after dropping malformed timestamps):
+     - 2025-01-10 => 51 events (this is > N=50)
+     - 2025-01-11 => 7 events
+   - Top 5 components by average metric_value (exclude invalid metric rows; with malformed timestamp rows also dropped if candidate applied that rule):
+     - comp_A ≈ 449.12 (17 valid metric rows after dropping ids 7,10,18)
+     - comp_B ≈ 264.67 (15 valid rows)
+     - comp_D ≈ 184.38 (8 valid rows)
+     - comp_C = 72.00 (10 valid rows)
+     - comp_E ≈ 16.20 (5 valid rows after dropping ids 55 and 58)
+     - Note: these averages depend on whether the candidate drops malformed timestamp rows (id 10, 58) before computing component averages. The evaluator should accept either approach if the submission documents it and uses it consistently.
+   - Error rates (status_code >= 500) per component (using the same row-dropping rules):
+     - comp_A: 3 errors out of 17 events ≈ 17.65%
+     - comp_B: 2 / 15 ≈ 13.33%
+     - comp_D: 1 / 8 = 12.50%
+     - comp_C: 0 / 10 = 0.00%
+     - comp_E: 0 / 5 = 0.00% (if id 58 was dropped for malformed timestamp); if id 58 is kept, comp_E becomes 1 / 6 ≈ 16.67%
+   - Per-component averages for successful vs error events (query 4):
+     - Candidates should compute avg(metric_value) for status_code in 200..299 and for status_code >= 500; where there are no error or no success rows, return NULL for that category.
+     - For comp_C: avg_error = NULL; avg_success ≈ 72.0.
+     - For comp_A: avg_success ≈ (exclude ids with status >=500 and invalid metric) — evaluator should verify the candidate's exact numbers consistent with their inclusion/exclusion choices.
 
-How these materials differentiate conceptual vs practical capability
-- Conceptual-only candidates might describe steps but fail to produce the persisted store, deduplicate rows, or implement parsing/casting. The small but realistic dirty dataset forces hands-on coding to read, clean, persist, query, and aggregate.
-- Practical competence is evaluated by:
-  - Producing a persistent store (SQLite file or local CSV/JSON files).
-  - Implementing deduplication and timestamp handling in code (not by hand).
-  - Using parameterized SQL queries or safe filters.
-  - Generating deterministic sample transformed rows and the final JSON report.
+4) Grader guidance / traps and common errors
+- Timestamp parsing:
+  - Some candidates may ignore malformed timestamps and include them as-is (which will distort per-day grouping) or may attempt to coerce malformed formats. The exam requires the candidate to explicitly state how they handled malformed timestamps; accept either dropping or converting if conversion is clearly documented and reproducible.
+- Numeric coercion:
+  - Some candidates may coerce "NaN" or "abc" to 0. This is acceptable only if explicitly justified; more typical (and safer) choice is to treat non-numeric metric_value as missing and exclude from numeric aggregations. The rubric allocates points for explicit handling.
+- Inclusion consistency:
+  - The candidate must be consistent: if they drop a row in Step 1 due to malformed timestamp, later queries and transformation must operate on the same cleaned data.
+- Join with lookup:
+  - components_lookup.csv is provided. If a candidate instead invents a different mapping, accept only if they declare it in assumptions; prefer using the provided lookup.
+- Expected verification:
+  - Evaluator can re-run candidate SQL/scripts and compare counts:
+    - Total rows in CSV = 60 (verifiable).
+    - Malformed metric rows: ids 7, 18, 55.
+    - Malformed timestamp rows: ids 10, 58.
+    - Per-day counts: if the candidate drops malformed timestamps, expect 2025-01-10 => 51 and 2025-01-11 => 7.
+    - Top-5 by average: ordering comp_A, comp_B, comp_D, comp_C, comp_E should hold given reasonable cleaning choices.
 
-Evaluator guidance
-- If you want a single canonical correct result for automated comparison, use the "drop malformed/missing timestamps" approach described above; the canonical numeric outputs are provided.
-- Alternatively, accept the candidate's numeric outputs if they:
-  - Implement and state a consistent timestamp policy (drop or impute) in their design_decisions,
-  - Demonstrate deduplication and normalization,
-  - Compute all reported metrics programmatically from the persisted store.
-- Check that sample_transformed_rows are ordered deterministically (e.g., ORDER BY event_id) and that value is numeric, event_type is normalized, timestamp is ISO-8601, and event_hour is integer 0–23.
+5) How these materials differentiate practical ability
+- The dataset is small enough to process in 90 minutes but contains realistic issues: malformed timestamps and non-numeric metrics that require practical cleaning choices.
+- The candidate must implement ingestion, schema, queries, an explicit transformation (e.g., normalize timestamps to date), and produce reproducible commands. This separates candidates who only describe approaches from those who can run and produce results.
+- Decisions that affect outputs (drop vs coerce) are intentionally embedded so the evaluator can score rationale and reproducibility, not just numerical answers.
 
-This set of materials is intentionally small, deterministic, and self-contained so the candidate can complete the 4-step pipeline (ingest → store → query → report) within the 90-minute limit.
+Row lists for quick reference (for evaluator):
+- Malformed metric_value ids: 7, 18, 55
+- Malformed timestamps ids: 10, 58
+- Total CSV rows: 60
+- Component ids present: comp_A, comp_B, comp_C, comp_D, comp_E
+
+Evaluator note:
+- Accept submissions that (a) drop malformed rows and document them, or (b) coerce/repair malformed values and document exact steps. The correctness of queries and transforms should be judged relative to the candidate's documented cleaning decisions and the reproducibility of their commands/scripts.
 </MATERIALS_EXPLANATION_FOR_EVALUATOR>

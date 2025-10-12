@@ -1,0 +1,9 @@
+{
+  "prompt_summary": "LLM diagnosis of answer key self-test failure",
+  "response_raw": "{\n    \"diagnosis\": \"grading_script_issue\",\n    \"rationale\": \"The grader penalized the answer key when grading itself because its heuristics expect SQL/text in specific fields (artifacts.code) and apply strict sub-scores (e.g., transformation max awarded < full points). The answer key places runnable SQL in artifacts.commands (not artifacts.code) and otherwise follows the schema, so the script incorrectly deducted points.\",\n    \"recommendation\": \"Regenerate the grading script (task_evaluation.py) to correctly inspect both artifacts.code and artifacts.commands for SQL/queries and to align section sub-scores with intended maxima (adjust transformation scoring logic).\"\n}",
+  "parsed_result": {
+    "diagnosis": "grading_script_issue",
+    "rationale": "The grader penalized the answer key when grading itself because its heuristics expect SQL/text in specific fields (artifacts.code) and apply strict sub-scores (e.g., transformation max awarded < full points). The answer key places runnable SQL in artifacts.commands (not artifacts.code) and otherwise follows the schema, so the script incorrectly deducted points.",
+    "recommendation": "Regenerate the grading script (task_evaluation.py) to correctly inspect both artifacts.code and artifacts.commands for SQL/queries and to align section sub-scores with intended maxima (adjust transformation scoring logic)."
+  }
+}

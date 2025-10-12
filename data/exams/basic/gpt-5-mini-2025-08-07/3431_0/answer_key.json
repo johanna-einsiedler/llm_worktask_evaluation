@@ -1,43 +1,77 @@
 {
-  "candidate_name": "Example Candidate",
-  "time_taken_minutes": 68,
-  "task_results": [
+  "name": "Answer Key — Practical Maintenance & Optimization (Basic)",
+  "email": "evaluator@example.com",
+  "time_spent_minutes": 90,
+  "environment": "Python 3.x (3.8+), Linux/Unix-like environment (as provided in exam materials)",
+  "tasks": [
     {
-      "task_id": "A-bugfix",
+      "id": "A-bugfix",
       "status": "fixed",
-      "files_modified": [
+      "files_changed": [
         "src/processor.py"
       ],
-      "patch_unified_diff": "--- a/src/processor.py\n+++ b/src/processor.py\n@@\n-    # BUG: sorts ascending (smallest totals first), expected descending\n-    sorted_items = sorted(totals.items(), key=lambda kv: kv[1])\n+    # sort descending to return highest totals first\n+    sorted_items = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)\n     top = [prod for prod, amt in sorted_items[:n]]\n     return top\n",
-      "pre_fix_test_output": "test_compute_product_totals (tests.test_processor.ProcessorTests) ... ok\ntest_top_n_products (tests.test_processor.ProcessorTests) ... FAIL\n\n======================================================================\nFAIL: test_top_n_products (tests.test_processor.ProcessorTests)\nTraceback (most recent call last):\n  File \"tests/test_processor.py\", line 15, in test_top_n_products\n    self.assertEqual(top, ['P03', 'P02', 'P01'])\nAssertionError: Lists differ: ['P01', 'P02', 'P03'] != ['P03', 'P02', 'P01']\n\nFirst differing element 0:\n'P01'\n'P03'\n\n- ['P01', 'P02', 'P03']\n+ ['P03', 'P02', 'P01']\n\n----------------------------------------------------------------------\nRan 2 tests in 0.001s\n\nSOME TESTS FAILED\n",
-      "post_fix_test_output": "test_compute_product_totals (tests.test_processor.ProcessorTests) ... ok\ntest_top_n_products (tests.test_processor.ProcessorTests) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK\nALL TESTS PASS\n",
-      "explanation": "Root cause: top_n_products sorted product totals in ascending order, returning the smallest totals first. The test expects highest totals first. Fix: change the sorted() call to sort by value in descending order (reverse=True). This is a minimal one-line change that corrects ordering without touching other logic or tests.",
-      "unit_tests_added_or_modified": [],
-      "self_assessed_confidence": "5"
-    },
-    {
-      "task_id": "B-adapt_env",
-      "status": "adapted",
-      "files_modified": [
-        "src/app.py"
+      "commands_run": [
+        {
+          "cmd": "python3 tests/test_runner.py",
+          "stdout": "FAIL: test_parse_line_whitespace\n  Assertion failed: ('E1', ' U1', ' C1', 10) != ('E1', 'U1', 'C1', 10). parse_line must strip fields\nFAILED 1 tests\n",
+          "exit_code": 1
+        },
+        {
+          "cmd": "python3 tests/test_runner.py",
+          "stdout": "PASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\n",
+          "exit_code": 0
+        }
       ],
-      "patch_unified_diff": "--- a/src/app.py\n+++ b/src/app.py\n@@\n-    # current behavior: only reads from a file path\n-    content = read_input_from_file(path)\n+    # support reading from standard input:\n+    # - when filename is '-' or when --stdin flag is present\n+    use_stdin = (path == '-') or ('--stdin' in argv)\n+    if use_stdin:\n+        content = sys.stdin.read()\n+    else:\n+        content = read_input_from_file(path)\n",
-      "run_output_after_adaptation": "P03\nP02\nP01\n",
-      "explanation": "Change made: main() now detects when the user provides '-' as the filename or includes the '--stdin' flag and reads input from sys.stdin.read() in that case. Existing file-reading behavior is preserved for normal filenames. This is a small, localized change to the input-selection logic and keeps the rest of the CLI unchanged.",
-      "risks_or_limitations": "Reading stdin with sys.stdin.read() will buffer the entire stdin into memory; for extremely large inputs a streaming approach would be preferable. The implementation assumes text input encoded as UTF-8 (matching the rest of the repo)."
+      "explanation": "Root cause: parse_line() did not strip whitespace from CSV fields, so fields like ' U1' and ' C1' remained with leading spaces and failed the whitespace unit test. Fix: strip whitespace on each CSV field after splitting (parts = [p.strip() for p in line.strip().split(',')]). This is a small, local, non-regressive change that preserves semantics and fixes the failing test.",
+      "evidence": {
+        "tests_passed": true
+      }
     },
     {
-      "task_id": "C-performance",
-      "status": "improved",
-      "files_modified": [
+      "id": "B-lowmem",
+      "status": "fixed",
+      "files_changed": [
         "src/processor.py"
       ],
-      "patch_unified_diff": "--- a/src/processor.py\n+++ b/src/processor.py\n@@\n-def compute_product_totals(orders):\n-    \"\"\"\n-    Compute total amount per product.\n-    Implementation intentionally written using repeated scans (inefficient)\n-    to leave room for a measurable optimization for Task C.\n-    Returns dict: {product: total_amount}\n-    \"\"\"\n-    # collect product order in a list (preserve first-seen order)\n-    products = [o['product'] for o in orders]\n-    unique = []\n-    for p in products:\n-        if p not in unique:\n-            unique.append(p)\n-\n-    totals = {}\n-    # inefficient: for each unique product, sum by scanning orders\n-    for p in unique:\n-        total = 0.0\n-        for o in orders:\n-            if o['product'] == p:\n-                total += o['amount']\n-        totals[p] = total\n-    return totals\n+def compute_product_totals(orders):\n+    \"\"\"\n+    Compute total amount per product using a single-pass accumulation.\n+    This is O(n) and much faster on large inputs than the previous\n+    repeated-scan implementation.\n+    Returns dict: {product: total_amount}\n+    \"\"\"\n+    totals = {}\n+    for o in orders:\n+        p = o['product']\n+        totals[p] = totals.get(p, 0.0) + o['amount']\n+    return totals\n",
-      "benchmark_before_ms": 300.456,
-      "benchmark_after_ms": 5.678,
-      "bench_command_run": "python3 bench.py",
-      "explanation": "Optimization: replaced the repeated-scan totals accumulation with a single-pass dictionary accumulation (totals[p] = totals.get(p,0.0) + amount). This reduces complexity from O(unique_products * records) to O(records) and yields a large improvement on the provided benchmark. Trade-offs: memory usage is proportional to number of distinct products (the previous implementation also effectively retained the unique list), but the single-pass approach is significantly faster and preserves numeric behavior. Risk: for extremely many distinct products memory usage could grow, so for memory-constrained environments a streaming/aggregation-to-disk approach might be needed."
+      "commands_run": [
+        {
+          "cmd": "python3 run_all.py --low-mem",
+          "stdout": "Running tests (tests/test_runner.py)...\nPASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\nRunning benchmark (compute_cooccurrence) with REPEATS=5000...\nBENCHMARK_TIME_S: 0.030000\nBASELINE_TIME_S: 0.030000\nRunning low-memory validation (streaming aggregation)...\nLOW-MEM MODE RESULT: {'C1': 100, 'C2': 20, 'C3': 25}\nLOW-MEM MODE OK: True\n",
+          "exit_code": 0
+        }
+      ],
+      "explanation": "Requirement: support a low-memory streaming aggregation mode. Root cause: aggregate_by_event_code(stream=True) raised NotImplementedError and load_all_events() read the entire file into memory. Fix: implemented a streaming path for aggregate_by_event_code when stream=True that opens the file, skips the header, iterates line-by-line, calls parse_line(line) and accumulates totals into a small dict without building a full events list. This preserves correctness and avoids loading the whole file into memory.",
+      "evidence": {
+        "low_mem_mode_ran": true,
+        "notes": "run_all.py --low-mem executed streaming aggregation; returned expected totals {'C1': 100, 'C2': 20, 'C3': 25} and reported LOW-MEM MODE OK: True"
+      }
+    },
+    {
+      "id": "C-performance",
+      "status": "fixed",
+      "files_changed": [
+        "src/processor.py"
+      ],
+      "commands_run": [
+        {
+          "cmd": "python3 run_all.py",
+          "stdout": "Running tests (tests/test_runner.py)...\nPASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\nRunning benchmark (compute_cooccurrence) with REPEATS=5000...\nBENCHMARK_TIME_S: 0.030000\nBASELINE_TIME_S: 0.030000\n",
+          "exit_code": 0
+        },
+        {
+          "cmd": "python3 run_all.py",
+          "stdout": "Running tests (tests/test_runner.py)...\nPASS: test_parse_line_whitespace\nPASS: test_aggregate_top_event\nPASS: test_cooccurrence_count\nALL TESTS PASSED\nRunning benchmark (compute_cooccurrence) with REPEATS=5000...\nBENCHMARK_TIME_S: 0.006000\nBASELINE_TIME_S: 0.006000\n",
+          "exit_code": 0
+        }
+      ],
+      "explanation": "Root cause: compute_cooccurrence() used an O(n^2) pairwise nested loop adding frozenset pairs; correct but slow when repeated many times. Optimization: converted to O(n) algorithm by building a mapping code -> set(users) in a single pass, then for each code computing k*(k-1)//2 unique unordered user-pairs via combinatorics and summing. This produces identical results (17 for provided dataset) and reduces runtime substantially while keeping semantics and tests intact.",
+      "evidence": {
+        "baseline_time_s": 0.03,
+        "optimized_time_s": 0.006,
+        "improvement_factor": 5.0
+      }
     }
   ],
-  "other_notes": "All changes were minimal and focused. Commands used: python3 run_tests.py; python3 bench.py; cat data/sample_orders.txt | python3 src/app.py -"
+  "optional_diff": "*** Begin Patch\n*** Update File: src/processor.py\n@@\n-def parse_line(line: str) -> Tuple[str, str, str, int]:\n+def parse_line(line: str) -> Tuple[str, str, str, int]:\n@@\n-    parts = line.strip().split(\",\")\n+    # strip whitespace from each field so fields like ' U1' become 'U1'\n+    parts = [p.strip() for p in line.strip().split(\",\")]\n@@\n def aggregate_by_event_code(path: str, stream: bool = False) -> Dict[str, int]:\n@@\n-    if stream:\n-        raise NotImplementedError(\"Low-memory streaming mode not implemented\")\n+    if stream:\n+        # streaming implementation: do not load entire file into memory\n+        totals = {}\n+        with open(path, \"r\", encoding=\"utf-8\") as f:\n+            # skip header line\n+            next(f)\n+            for line in f:\n+                _eid, _uid, code, value = parse_line(line)\n+                totals.setdefault(code, 0)\n+                totals[code] += value\n+        return totals\n@@\n def compute_cooccurrence(events: List[Tuple[str, str, str, int]]) -> int:\n@@\n-    # build set of pairs (frozenset of two user ids) where both events have same code\n-    pairs = set()\n-    n = len(events)\n-    for i in range(n):\n-        _eid_i, user_i, code_i, _v_i = events[i]\n-        for j in range(i+1, n):\n-            _eid_j, user_j, code_j, _v_j = events[j]\n-            if code_i == code_j and user_i != user_j:\n-                pairs.add(frozenset([user_i, user_j]))\n-    return len(pairs)\n+    # optimized approach: group unique users per code, then count combinations\n+    from collections import defaultdict\n+    users_by_code = defaultdict(set)\n+    for _eid, user, code, _v in events:\n+        users_by_code[code].add(user)\n+    total = 0\n+    for users in users_by_code.values():\n+        k = len(users)\n+        total += k * (k - 1) // 2\n+    return total\n*** End Patch\n",
+  "final_notes": "Passing criteria and scoring (basic exam): total 100 points; passing threshold 80 points. Scoring breakdown: Task A (35 pts) — 25 correctness (unit tests pass), 5 quality of fix, 5 explanation. Task B (30 pts) — 15 correctness (streaming/fallback works), 10 evidence (low-mem validation completes and yields expected results), 5 explanation. Task C (35 pts) — 20 performance improvement (measurable improvement), 10 regression-free (tests pass), 5 explanation. Partial credit: tasks marked 'partially_fixed' receive proportional credit (e.g., streaming implemented but incorrect totals => partial). Automated verification: grader re-runs commands listed under each task; expected outputs (tests pass, low-mem OK, baseline and optimized times) must match or be reproducible to award points. Evidence must be authentic (do not paste fabricated outputs)."
 }
