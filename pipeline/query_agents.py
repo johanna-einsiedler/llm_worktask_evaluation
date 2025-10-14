@@ -1,11 +1,11 @@
 import os
 
 import anthropic
-import requests
 from dotenv import find_dotenv, load_dotenv
 from google import genai
 from google.genai import types
 from openai import OpenAI
+import requests
 from together import Together
 
 dotenv_path = find_dotenv()
@@ -106,9 +106,7 @@ def query_deepseek(system_prompt, user_prompt, model="deepseek-chat", temperatur
         return None
 
 
-def query_gemini(
-    system_prompt, user_prompt, model="gemini-2.0-flash-thinking-exp", temperature=0
-):
+def query_gemini(system_prompt, user_prompt, model="gemini-2.0-flash-thinking-exp", temperature=0):
     """
     Sends a system and user prompt to the Gemini model and returns the response.
 
@@ -170,9 +168,7 @@ def query_gemini(
         return None
 
 
-def query_open_source(
-    system_prompt, user_prompt, model="deepseek-ai/DeepSeek-V3", temperature=0
-):
+def query_open_source(system_prompt, user_prompt, model="deepseek-ai/DeepSeek-V3", temperature=0):
     """
     Sends a system and user prompt to Together API  model and returns the response.
 
@@ -228,9 +224,10 @@ def query_chatgpt(system_prompt, user_prompt, model="gpt-4o", temperature=0):
                 {"role": "user", "content": user_prompt},
             ],
             model=model,
-            temperature=temperature,
-            max_tokens=4000,  # Adjust max tokens as needed
+            # temperature=temperature,
+            # max_tokens=4000,  # Adjust max tokens as needed
         )
+        # print(response)
         return [response.choices[0].message.content, response.usage]
     except Exception as e:
         print(f"Error: {e}")
@@ -270,9 +267,7 @@ def query_o3(system_prompt, user_prompt, model="o3-2025-04-16", temperature=1):
         return None
 
 
-def query_claude(
-    system_prompt, user_prompt, model="claude-3-7-sonnet-20250219", temperature=0
-):
+def query_claude(system_prompt, user_prompt, model="claude-3-7-sonnet-20250219", temperature=0):
     """
     Sends a system and user prompt to the Claude model (Anthropic API) and returns the response.
 
