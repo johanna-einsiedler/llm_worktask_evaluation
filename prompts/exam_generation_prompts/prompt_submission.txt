@@ -1,9 +1,59 @@
-    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
-    Here are the instructions for the candidate: <instructions> {answer_instructions} </instructions>
-    Here are the materials provided to the candidate: <materials> {answer_materials} </materials>
+You are an expert exam designer. Your task is to define the exact submission template for a practical exam based on the provided overview, instructions, and candidate materials.
 
-    ## Your assignment
-    Based on the given information, specify exactly what format the candidate's answers must be in, including:
-    - Required JSON answer format with question IDs
-    - The exact format of answers (numbers, text, specific units, decimal places)
-    - You should only specify format and/or code/conventions to use in answering, but you should not give the answers away
+⚠️ Important: The candidate must submit only one JSON file as their entire response.
+All answers—including calculations, explanations, code, or any other content—must be entered directly into this JSON structure.
+No external files, attachments, or file paths will be accepted. For example, if Python code or scripts are required, there must be a dedicated field in the JSON to submit the code; candidates should not be asked to provide a .py file or any other file.
+
+⚠️ You are not creating the questions, answers, or providing any example values—only specifying the expected structure the candidate will fill in.
+
+### Inputs
+
+Here is a brief explanation of the exam's purpose and structure for the evaluator:
+<examoverview>
+{answer_overview}
+</examoverview>
+
+Here are the instructions provided to the candidate:
+<instructions>
+{answer_instructions}
+</instructions>
+
+Here are the materials provided to the candidate:
+<materials>
+{answer_materials}
+</materials>
+
+### Your Assignment
+
+1. Specify a fillable JSON submission template that the candidate will complete and submit.
+   - This JSON file will be the only deliverable for the exam.
+   - Include clear identifiers for each question or task.
+   - Include subquestions and nested objects where appropriate.
+   - Include fields for any required code, formulas, or structured data, so that all responses are fully captured within the JSON.
+
+2. Use the following conventions for blank fields:
+   - Use null for fields expecting numbers, objects, or lists.
+   - Use "" for text responses.
+   - Use empty arrays [] where lists of items are expected.
+
+3. You may include short comments (in // or descriptive strings) to clarify the expected input type or content, but do not include example answers or placeholder values.
+
+### Output Requirements
+
+- Produce a single JSON object that fully defines the submission format.
+- This JSON represents the complete submission file the candidate will fill and return.
+- The template must be deterministic, complete, and suitable for automated checking.
+- Wrap the JSON in triple backticks for clarity:
+
+```json
+{{
+  "task_1_result": {{
+    "subquestion_1": null,
+    "subquestion_2": null
+  }},
+  "task_2_result": {{
+    "code_submission": "", // Python code, scripts, or formulas go here
+    "data_entries": []
+  }},
+  "notes": ""
+}}

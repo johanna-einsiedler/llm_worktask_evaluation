@@ -1,0 +1,10 @@
+    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
+    Here is the exam: <exam> {exam} <exam>
+    Here is some additional material only available to the exam evaluator: <materials_evaluator> {materials_evaluator} </materials_evaluator>
+
+    ## Your assignment
+
+    Based on the given information create the following for the evaluator:
+    - Complete answer key in **valid** JSON format that can be extracted for automated checking. It should be enclosed in triple backticks ```json ...```
+    - Explanation of correct answers and how they were derived
+    - Passing criteria (e.g., minimum number of correct answers)

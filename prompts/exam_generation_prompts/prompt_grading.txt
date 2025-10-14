@@ -1,18 +1,74 @@
-    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {overview}</examoverview>
-    Here is the exam: <exam> {exam} <exam>
-    Here is some additional material only available to the exam evaluator: <materials_evaluator> {materials_evaluator} </materials_evaluator>
-    Here is the information given to the evaluator: <evaluation> {evaluation} </evaluation>
+You are an expert exam systems engineer. Your task is to write a Python grading script that automatically evaluates a candidate’s submission against the official answer key for a practical exam.
+Inputs
+Below is the contextual information you have access to:
+- Exam overview (for evaluator context):
+<examoverview>
+{overview}
+</examoverview>
 
-    ## Your assignment
-    Based on the given information, create a Python script named 'task_evaluation.py' that reads in the candidate submission and the answer key provided as arguments in the command line. The script should:
-    - Accept two arguments in the following order:
-    1. The **first argument** is the name of the candidate submission JSON file (e.g., `test_submission.json`).
-    2. The **second argument** is the name of the answer key JSON file (e.g., `answer_key.json`).
-    - Automatically score the test performance based on the provided files.
-    - Save the results as `test_results.json` in the same folder as the script.
-    - In addition to the detailed test results, `test_results.json` should include one variable `overall_score` with the percentage of points achieved by the candidate.
+- Full exam content:
+<exam>
+{exam}
+</exam>
 
-    The script should be runnable from the command line like this:
-    ```bash
-    python task_evaluation.py test_submission.json answer_key.json
-    ```
+- Additional materials available only to the evaluator:
+<materials_evaluator>
+{materials_evaluator}
+</materials_evaluator>
+
+- Evaluation and grading guidelines for the evaluator:
+<evaluation>
+{evaluation}
+</evaluation>
+
+## Your Assignment
+
+Based on this information, generate a Python script named task_evaluation.py that implements the automated grading logic.
+The script must:
+
+Accept command-line arguments
+- sys.argv[1]: path to the candidate submission JSON file (e.g., test_submission.json)
+- sys.argv[2]: path to the answer key JSON file (e.g., answer_key.json)
+Perform automated scoring
+- Load both JSON files.
+- Compare the candidate’s answers to the correct answers in the answer key.
+- Apply grading logic, weights, and passing rules as defined in the evaluator’s instructions.
+- Handle partial credit where specified.
+- Be tolerant of formatting differences (e.g., capitalization, whitespace).
+- Record clear reasons for any deductions.
+Produce structured output
+Save results in a new JSON file named test_results.json in the same directory as the script.
+The file must include:
+- A breakdown of scores per question or task.
+- Explanations for deductions or mismatches.
+- The total points, maximum possible points, and percentage score.
+- A variable named overall_score containing the candidate’s percentage score (0–100) as a numeric value.
+
+Script execution example
+The grader should be runnable from the command line as follows:
+python task_evaluation.py test_submission.json answer_key.json
+
+
+Implementation requirements
+- Include robust error handling (invalid JSON, missing keys, etc.).
+- Use only standard Python libraries (e.g., json, os, sys).
+- Be deterministic — the same input must always yield the same score.
+- Include concise comments explaining each major block of logic.
+
+
+
+Example Output Format
+``` python
+# task_evaluation.py
+import json, sys, os
+
+# Load files
+...
+
+# Perform grading
+overall_score = 95.0  # percentage of total points earned (0–100)
+
+# Save detailed results to test_results.json
+...
+
+```

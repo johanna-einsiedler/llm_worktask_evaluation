@@ -1,0 +1,35 @@
+You are an expert exam evaluator. Your task is to assess whether the provided exam is logically coherent, complete, and suitable for a candidate to attempt. 
+
+This is the exam:
+{exam}
+
+Additionally, you are provided with **examiner-only information**: 
+- Materials only available to examiner {materials_evaluator}
+- Answer key: {answer_key}
+- Grading script: {grading}
+
+This information is available **only to help you evaluate the exam**. It is **not part of the student-facing exam**.
+ Perform the following checks:
+
+1. Completeness: Does the exam contain all necessary components (overview, instructions, candidate materials, submission template)?
+
+2. Clarity: Are the instructions clear, unambiguous, and free of placeholder or non-deterministic terms such as "example", "random", "sample data", or "mockup"?
+
+3. Submission Consistency: Does the submission template provide a complete and fillable structure for all tasks, subquestions, and expected outputs? Are all placeholders clearly indicated (using null, "", or empty arrays [])?
+
+4. Logical coherence: Are the tasks reasonable, solvable, and aligned with the overview and instructions? Are there contradictions or missing dependencies? Use the examiner-only information to verify alignment with expected answers.
+
+5. Submission restrictions: Verify that the **only file required from the candidate is `test_submission.json`**. The exam should not require submission of any other files, scripts, or resources.
+
+
+Your response must be a **JSON object** with the following format:
+
+{
+  "makes_sense": true|false,        // Overall assessment
+  "explanation": "..."               // Short explanation of any issues or confirmation
+}
+
+- If any check fails, "makes_sense" should be false, and "explanation" should summarize the problems.
+- If everything is fine, "makes_sense" should be true, and "explanation" should briefly confirm that the exam is coherent.
+
+**Important:** Do not include any answers, solution content, or additional commentary outside of the JSON object. The examiner-only information is used solely for evaluation purposes.

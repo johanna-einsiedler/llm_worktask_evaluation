@@ -1,26 +1,143 @@
-    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
-    Here are the instructions for the candidate: <instructions> {answer_instructions} </instructions>
+You are an expert exam designer. Your task is to create synthetic but realistic digital materials for a **remote practical exam**.
 
-    ## Your assignment:
-    - If the exam doesn't require any additional material, just respond with "No material required".
-    - Otherwise, create two parts:
-    1. Synthetic test materials (CSV contents, datasets, etc.) that have predictable outcomes. Include the actual content to be provided to candidates and ensure all materials have clear identifiers, labels, or pre-defined categories that prevent ambiguity.
-    2. An explanation for the evaluator on how these materials were created and any knowledge helpful for knowing the correct answers
+Here is the exam overview for the evaluator:
+<examoverview>
+{answer_overview}
+</examoverview>
 
-    Format your response with these specific XML tags:
-    <MATERIALS_FOR_CANDIDATE>
-    [Include here the actual content to be provided to candidates. Ensure all materials have clear identifiers, labels, or pre-defined categories that prevent ambiguity.]
-    </MATERIALS_FOR_CANDIDATE>
+Here are the instructions the candidate will see:
+<instructions>
+{answer_instructions}
+</instructions>
 
-    <MATERIALS_EXPLANATION_FOR_EVALUATOR>
-    [Explain to the evaluator:
-    - How the materials were created and what, if any, statistical patterns or other relationships exist
-    - Cross-references or important conections between different materials (e.g., codes in a CSV that match details in text, or relationships between texts)
-    - Any tricky elements or common pitfalls in the materials that may cause candidates to answer incorrectly
-    - "Hidden" information that requires careful reading to identify]
-    </MATERIALS_EXPLANATION_FOR_EVALUATOR> 
+---
 
-    IMPORTANT: When designing the test, eliminate any opportunities for candidates to make arbitrary choices (like custom account codes, naming conventions, or classification systems) that would complicate evaluation. Either:
-    - Provide pre-defined structures/codes that must be used, or
-    - Design questions with objectively verifiable numerical/text answers that don't depend on the candidate's approach
-    - Make sure both start and end XML tags are present
+## 🎯 Your objectives
+
+1. Determine whether **any materials are required** for the candidate to complete the exam.  
+   - If *no* materials are needed, respond **exactly** with: `No material required` (and nothing else).  
+   - Otherwise, proceed with Steps 2–3.
+
+2. Create **synthetic materials for the candidate** that are:
+   - Small enough to be completed within 90 minutes.
+   - Fully deterministic — no randomness, placeholders, or vague “sample” references.
+   - Internally coherent and cross-referenced (e.g., matching IDs, categories, or filenames).
+   - Labeled with consistent structures that prevent arbitrary interpretation.
+   - Provided as complete content (not summaries or templates).
+
+3. Provide an **evaluator explanation** describing how materials were constructed and what patterns or relationships exist.
+
+---
+
+## 🧱 Output Format (MUST follow exactly)
+
+<MATERIALS_FOR_CANDIDATE>
+[Provide here the exact material content to be given to the candidate.  
+Examples: small CSV table, short text passage, JSON dataset, or multi-part folder structure.  
+Use clear identifiers (e.g., `Customer_ID`, `Transaction_Code_A1`) and avoid arbitrary naming.  
+Ensure the candidate can complete the exam with only these materials.]
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+[Explain to the evaluator:
+- How and why you created these materials
+- What data patterns or hidden relationships exist
+- What traps, ambiguities, or common errors a candidate might make
+- What the correct or expected answers depend on
+- How these materials help differentiate between conceptual and practical understanding]
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+---
+
+## ⚙️ Design Rules
+
+- **Deterministic**: Never include the words “random”, “example only”, “placeholder”, or “sample data”.  
+- **Complete**: Both XML tag pairs must exist and contain non-empty content.  
+- **Consistent**: Use the same variable names, identifiers, or categories across all files or sections.  
+- **Objective**: Materials should support questions with *verifiable* answers (numerical, textual, or structural).  
+- **Size**: Keep datasets concise — typically ≤ 20 rows or ≤ 500 words total content.  
+- **Clarity**: Label all columns, categories, and entities clearly.
+
+---
+
+## ✅ Example (structure only)
+
+<MATERIALS_FOR_CANDIDATE>
+CSV: `customer_transactions.csv`
+You are an expert exam designer. Your task is to create synthetic but realistic digital materials for a **remote practical exam**.
+
+Here is the exam overview for the evaluator:
+<examoverview>
+{answer_overview}
+</examoverview>
+
+Here are the instructions the candidate will see:
+<instructions>
+{answer_instructions}
+</instructions>
+
+---
+
+## 🎯 Your objectives
+
+1. Determine whether **any materials are required** for the candidate to complete the exam.  
+   - If *no* materials are needed, respond **exactly** with: `No material required` (and nothing else).  
+   - Otherwise, proceed with Steps 2–3.
+
+2. Create **synthetic materials for the candidate** that are:
+   - Small enough to be completed within 90 minutes.
+   - Fully deterministic — no randomness, placeholders, or vague “sample” references.
+   - Internally coherent and cross-referenced (e.g., matching IDs, categories, or filenames).
+   - Labeled with consistent structures that prevent arbitrary interpretation.
+   - Provided as complete content (not summaries or templates).
+
+3. Provide an **evaluator explanation** describing how materials were constructed and what patterns or relationships exist.
+
+---
+
+## 🧱 Output Format (MUST follow exactly)
+
+<MATERIALS_FOR_CANDIDATE>
+[Provide here the exact material content to be given to the candidate.  
+Examples: small CSV table, short text passage, JSON dataset, or multi-part folder structure.  
+Use clear identifiers (e.g., `Customer_ID`, `Transaction_Code_A1`) and avoid arbitrary naming.  
+Ensure the candidate can complete the exam with only these materials.]
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+[Explain to the evaluator:
+- How and why you created these materials
+- What data patterns or hidden relationships exist
+- What traps, ambiguities, or common errors a candidate might make
+- What the correct or expected answers depend on
+- How these materials help differentiate between conceptual and practical understanding]
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>
+
+---
+
+## ⚙️ Design Rules
+
+- **Deterministic**: Never include the words “random”, “example only”, “placeholder”, or “sample data”.  
+- **Complete**: Both XML tag pairs must exist and contain non-empty content.  
+- **Consistent**: Use the same variable names, identifiers, or categories across all files or sections.  
+- **Objective**: Materials should support questions with *verifiable* answers (numerical, textual, or structural).  
+- **Size**: Keep datasets concise — typically ≤ 20 rows or ≤ 500 words total content.  
+- **Clarity**: Label all columns, categories, and entities clearly.
+
+---
+
+## ✅ Example (structure only)
+
+<MATERIALS_FOR_CANDIDATE>
+CSV: `customer_transactions.csv`
+Customer_ID,Product_Code,Amount,Region
+C001,P01,120,North
+C002,P02,80,East
+...
+</MATERIALS_FOR_CANDIDATE>
+
+<MATERIALS_EXPLANATION_FOR_EVALUATOR>
+This dataset was created to simulate customer purchases across 4 regions.
+Only "North" region includes a loyalty discount, affecting task 3 results.
+The expected correct result involves calculating net revenue using column "Amount".
+</MATERIALS_EXPLANATION_FOR_EVALUATOR>

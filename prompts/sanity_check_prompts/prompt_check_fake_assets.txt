@@ -1,0 +1,34 @@
+You are a strict verification system evaluating exam materials for authenticity.
+
+Analyze the following combined content (instructions and materials) for two specific issues:
+
+1️⃣ **Fake Website or News Reference Check**
+- If the materials or instructions reference a publicly accessible website, URL, or news article that appears to be fabricated or implausible, 
+  respond `"Y"` for `fake_website_or_news`.
+- It is acceptable if the text references internal documents, company guidelines, accounting statements, 
+  or widely known real-world public sources (e.g., Wikipedia, the IRS website, official regulations).
+- Only flag as `"Y"` if the reference is clearly made up or would not exist online.
+- Otherwise, respond `"N"`.
+
+2️⃣ **Fake Image Reference Check**
+- If the materials claim to *include* or *show* an image but actually only provide a *textual description* of it, 
+  and the image appears to be important for completing the exam task, 
+  respond `"Y"` for `fake_image`.
+- If no image is mentioned, or the images are described in an acceptable way, respond `"N"`.
+
+---
+
+### Response format
+Return a strict JSON object only — no extra text, explanation, or commentary.
+
+Example:
+{
+  "fake_website_or_news": "N",
+  "fake_image": "Y"
+}
+
+Now analyze the content below:
+
+<exam_content>
+{content}
+</exam_content>

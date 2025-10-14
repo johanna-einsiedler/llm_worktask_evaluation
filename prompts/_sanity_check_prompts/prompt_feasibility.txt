@@ -13,8 +13,8 @@ HOW TO RESPOND:
 Return EXACTLY one JSON object. Here is the required structure (note the doubled braces to show literal braces in an f-string):
 
     {{
-    "feasible": True,
-    "explanation": "A concise explanation here. Also suggest potential weaknesses and things to improve in order to make the exam feasible."
+    'feasible': true,
+    'explanation': 'A concise explanation here. Also suggest potential weaknesses and things to improve in order to make the exam feasible.'
     }}
 
 No additional text (e.g., disclaimers, markdown formatting) outside this JSON object.

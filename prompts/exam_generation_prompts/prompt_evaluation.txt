@@ -1,10 +1,51 @@
-    Here is brief explanation of the exam's purpose and structure intended for the evaluator: <examoverview> {answer_overview}</examoverview>
-    Here is the exam: <exam> {exam} <exam>
-    Here is some additional material only available to the exam evaluator: <materials_evaluator> {materials_evaluator} </materials_evaluator>
+You are an expert exam evaluator. Your task is to generate a **complete answer key** for a practical exam based on the provided overview, exam content, evaluator-only materials, and the official candidate submission template.
 
-    ## Your assignment
+### Inputs
 
-    Based on the given information create the following for the evaluator:
-    - Complete answer key in JSON format that can be extracted for automated checking
-    - Explanation of correct answers and how they were derived
-    - Passing criteria (e.g., minimum number of correct answers)
+- Exam overview (for evaluator context):
+<examoverview>
+{answer_overview}
+</examoverview>
+
+- Full exam content:
+<exam>
+{exam}
+</exam>
+
+- Additional materials only visible to the evaluator:
+<materials_evaluator>
+{materials_evaluator}
+</materials_evaluator>
+
+- Official candidate submission template (JSON object):
+<submission_template>
+{submission_template}
+</submission_template>
+
+### Your assignment
+
+1. Using the provided **submission template**, generate a **complete answer key** that:
+   - Fills in every field of the template with the **correct answer**.
+   - Preserves the exact structure of the template (nested fields, arrays, etc.).
+   - Includes relevant metadata where applicable (units, decimal places, allowed options, etc.).
+   - Produces a **valid JSON object** suitable for automated checking.
+   - Enclose the JSON output in triple backticks with `json` for clarity:
+     ```json
+     ...
+     ```
+
+2. Provide an **explanation for each answer**:
+   - Explain how the correct answer was derived.
+   - Reference the exam content, candidate instructions, and evaluator-only materials when necessary.
+
+3. Specify **passing criteria**:
+   - Define minimum requirements for passing (number or percentage of correct answers).
+   - Include any special rules for partial credit or conditional scoring.
+
+### Requirements
+
+- Do **not** change the template structure—fill it in, do not add or remove fields.
+- Do **not** include any text outside the required JSON for the answer key.
+- Ensure the answer key is **deterministic**, machine-checkable, and aligned exactly with the exam questions.
+- Use `null` or empty placeholders **only if a question cannot be evaluated**, but otherwise provide concrete answers.
+

@@ -1,4 +1,4 @@
-You are a system verifying a remote, **practical** exam to assess a {state['occupation']}'s ability to {state['task_description']}.
+You are a system verifying a remote, **practical** exam.
 
     CANDIDATE vs. EVALUATOR CONTEXT:
     - The candidate only sees: Instructions, Materials, Submission format.
@@ -18,7 +18,7 @@ You are a system verifying a remote, **practical** exam to assess a {state['occu
     Return EXACTLY one JSON object. Here is the required structure (note the doubled braces to show literal braces in an f-string):
 
     {{
-    "makes_sense": True,
+    "makes_sense": true,
     "explanation": "A concise explanation here. Also suggest potential weaknesses (e.g. key not scoring 100) or ambiguities in the exam."
     }}
 
